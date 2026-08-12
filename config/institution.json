@@ -1,0 +1,22 @@
+{
+  "_note": "VERIFIED PRODUCTION DATA. This is the issuing-institution configuration for release. 'draft' (false) is the release-state control: while false, no DRAFT watermark is applied. The sha256 of this file is computed at runtime and recorded in data/processing_report.json for auditability.",
+  "draft": false,
+  "version": "1.0.0",
+  "institution": {
+    "name": "ÚSSZ pro Ústecký kraj, Liberecký kraj, Královéhradecký kraj a Pardubický kraj, OSSZ Teplice",
+    "street": "Přítkovská",
+    "house_number": "1576/44",
+    "city": "Teplice",
+    "postal_code": "415 02",
+    "country_code": "CZ",
+    "code": "558"
+  },
+  "certificate": {
+    "member_state": "CZ",
+    "start_date": "26.09.2025",
+    "end_date": "25.09.2026",
+    "document_id_prefix": "N65021S558/2025/DE"
+  },
+  "issue_date": "20.10.2025",
+  "signed_by": "Milena Vitíková"
+}

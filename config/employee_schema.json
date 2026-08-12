@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/employee/1.0",
+  "title": "Normalized Employee Record",
+  "description": "Shape produced by build_employee_db() in scripts/batch_generate_a1.py: one record per employee merged from ID-card/residence/insurance OCR documents. Core identity fields are REQUIRED before a certificate may be generated.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "person": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "surname": { "type": "string", "minLength": 1 },
+        "given_name": { "type": "string", "minLength": 1 },
+        "dob": { "type": "string", "minLength": 1 },
+        "insurance_number": { "type": "string", "minLength": 1 },
+        "maiden_name": { "type": "string" },
+        "nationality": { "type": "string" },
+        "birth_place": { "type": "string" },
+        "document_number": { "type": "string" }
+      }
+    },
+    "residence": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "street": { "type": "string", "minLength": 1 },
+        "house_number": { "type": "string", "minLength": 1 },
+        "city": { "type": "string", "minLength": 1 },
+        "district": { "type": "string" },
+        "postal_code": { "type": "string" },
+        "country_code": { "type": "string" },
+        "authority": { "type": "string" }
+      }
+    },
+    "employment": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "employer_name": { "type": "string" },
+        "employer_id": { "type": "string" },
+        "street": { "type": "string" },
+        "house_number": { "type": "string" },
+        "city": { "type": "string" },
+        "postal_code": { "type": "string" },
+        "country_code": { "type": "string" },
+        "activity_name": { "type": "string" },
+        "activity_address": { "type": "string" }
+      }
+    },
+    "institution": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "street": { "type": "string" },
+        "house_number": { "type": "string" },
+        "city": { "type": "string" },
+        "postal_code": { "type": "string" },
+        "country_code": { "type": "string" },
+        "code": { "type": "string" },
+        "issue_date": { "type": "string" },
+        "signed_by": { "type": "string" },
+        "insurer_code": { "type": "string" },
+        "insurer_name": { "type": "string" }
+      }
+    },
+    "certificate": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "member_state": { "type": "string" },
+        "start_date": { "type": "string" },
+        "end_date": { "type": "string" },
+        "document_id": { "type": "string" }
+      }
+    },
+    "_id": { "type": "string" },
+    "_files": { "type": "array" },
+    "_sources": { "type": "object" },
+    "_field_coverage": { "type": "object" },
+    "_validation": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": [
+    "person",
+    "residence"
+  ]
+}

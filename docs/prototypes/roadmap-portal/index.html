@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Práce v Německu — vizuální návrhy</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#content">Přeskočit na obsah</a>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">PN</span>
+      <div><strong>Práce v Německu</strong><small>Vizuální plán &amp; prototyp portálu</small></div>
+    </div>
+    <div class="prototype-badge">Syntetická data · koncept</div>
+  </header>
+
+  <nav class="mode-tabs" aria-label="Typ prototypu">
+    <button class="mode-tab active" data-mode="roadmap">Vizuální roadmapa</button>
+    <button class="mode-tab" data-mode="portal">Janův portál</button>
+    <button class="mode-tab" data-mode="decisions">Rozhodnutí</button>
+  </nav>
+
+  <main id="content">
+    <section class="mode active" id="mode-roadmap">
+      <div class="page-head">
+        <div><p class="eyebrow">PLÁNOVÁNÍ PROJEKTU</p><h1>Tři pohledy na stejnou roadmapu</h1><p>Vyberte způsob, ve kterém je vám postup projektu nejčitelnější. Data a milníky jsou stejné; mění se způsob pohledu.</p></div>
+        <div class="status-pill"><span></span> Nyní: M0 + M1A</div>
+      </div>
+
+      <div class="view-switch" role="tablist" aria-label="Zobrazení roadmapy">
+        <button class="view-button active" data-view="journey">1 · Cesta</button>
+        <button class="view-button" data-view="board">2 · Pracovní deska</button>
+        <button class="view-button" data-view="map">3 · Mapa závislostí</button>
+      </div>
+
+      <div class="roadmap-view active" id="view-journey">
+        <div class="legend"><span class="dot active-dot"></span> probíhá <span class="dot wait-dot"></span> čeká <span class="diamond"></span> rozhodovací brána</div>
+        <div class="journey">
+          <article class="milestone active-card"><div class="m-number">M0</div><div><small>ZÁKLAD</small><h2>Získat kontrolu</h2><p>Git, adresáře a jednoznačná pravidla projektu.</p><ul><li>Schválit zdrojový strom</li><li>Oddělit source a runtime</li><li>Ověřit kanonické příkazy</li></ul><b class="gate">Výstup: srozumitelný projekt</b></div></article>
+          <div class="connector live"></div>
+          <article class="milestone active-card"><div class="m-number">M1A</div><div><small>PŘIPRAVENOST 1A</small><h2>Ověřit návrh</h2><p>Janův workflow a technické prototypy.</p><ul><li>Schválit vizuální brief</li><li>Ověřit MFA, úlohy, storage</li><li>Zapsat ADR-001/002</li></ul><b class="gate">Brána: Release 1A připravena</b></div></article>
+          <div class="connector"></div>
+          <article class="milestone"><div class="m-number">M2</div><div><small>STAVBA</small><h2>Syntetický základ</h2><p>Přihlášení, organizace, audit a chráněné soubory.</p><b class="gate">Brána: bezpečný staging</b></div></article>
+          <div class="connector"></div>
+          <article class="milestone"><div class="m-number">M3</div><div><small>JANŮV WORKFLOW</small><h2>Pracovníci &amp; OCR</h2><p>Nahrání, kontrola údajů a přiřazení.</p><b class="gate">Brána: celý syntetický průchod</b></div></article>
+          <div class="connector"></div>
+          <article class="milestone"><div class="m-number">M4</div><div><small>A1</small><h2>Příprava balíčku</h2><p>Validace, náhled, schválení a historie.</p><b class="gate">Brána: deterministická QA</b></div></article>
+          <div class="connector"></div>
+          <article class="milestone"><div class="m-number">M5</div><div><small>PILOT</small><h2>Reálná data</h2><p>Řízený provoz s Janem.</p><b class="gate">Brána: bezpečnost + souhlas</b></div></article>
+          <div class="connector"></div>
+          <article class="milestone"><div class="m-number">M6</div><div><small>RŮST</small><h2>Veřejný produkt</h2><p>Pracovní nabídky, kandidáti a marketing.</p></div></article>
+        </div>
+      </div>
+
+      <div class="roadmap-view" id="view-board">
+        <div class="board">
+          <section class="lane"><header><span class="lane-dot now"></span><h2>Teď</h2><b>6</b></header>
+            <article class="task"><small>DATA · JEDINÁ BRÁNA</small><h3>Implementovat pravidla reálných dat</h3><p>Účel, přístup, audit, retence a bezpečný výmaz.</p><footer><span>ENGINEERING</span><em>M1–M2</em></footer></article>
+            <article class="task"><small>PRODUKT</small><h3>Schválit Janův solution brief</h3><p>Potvrdit jen změny proti doporučení.</p><footer><span>PAVEL + JAN</span><em>M1</em></footer></article>
+            <article class="task"><small>ARCHITEKTURA</small><h3>Prototyp MFA, úloh a storage</h3><p>Syntetická data, měřitelné výsledky.</p><footer><span>ENGINEERING</span><em>M1</em></footer></article>
+          </section>
+          <section class="lane"><header><span class="lane-dot next"></span><h2>Další</h2><b>5</b></header>
+            <article class="task"><small>ROZHODNUTÍ</small><h3>ADR-001</h3><p>Uzamknout balíčky a deployment.</p><footer><span>PAVEL</span><em>M1</em></footer></article>
+            <article class="task"><small>ZÁKLAD</small><h3>Django + PostgreSQL</h3><p>Organizace, role, audit a MFA.</p><footer><span>ENGINEERING</span><em>M2</em></footer></article>
+            <article class="task"><small>UX</small><h3>Otestovat 4 klíčové cesty</h3><p>Pracovník, OCR, přiřazení, A1.</p><footer><span>JAN</span><em>M2</em></footer></article>
+          </section>
+          <section class="lane"><header><span class="lane-dot later"></span><h2>Později</h2><b>4</b></header>
+            <article class="task"><small>WORKFLOW</small><h3>OCR a pracovníci</h3><p>Celý průchod bez ručních skriptů.</p><footer><span>PRODUCT</span><em>M3</em></footer></article>
+            <article class="task"><small>A1</small><h3>Integrovat A1 engine</h3><p>Případ, balíček, QA a audit.</p><footer><span>PRODUCT</span><em>M4</em></footer></article>
+            <article class="task dim"><small>VEŘEJNÝ WEB</small><h3>Nabídky práce</h3><p>Až po úspěšném pilotu.</p><footer><span>DEFERRED</span><em>M6</em></footer></article>
+          </section>
+        </div>
+      </div>
+
+      <div class="roadmap-view" id="view-map">
+        <div class="dependency-map">
+          <div class="map-node root-node"><small>CÍL</small><strong>Jan používá portál s reálnými daty</strong></div>
+          <svg class="map-lines" viewBox="0 0 1000 480" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M500 70 V130 M500 130 H170 V185 M500 130 V185 M500 130 H830 V185"/><path d="M170 260 V320 H500 M500 260 V380 M830 260 V320 H500 M500 320 V380"/>
+          </svg>
+          <div class="map-node branch b1"><small>M0</small><strong>Projekt uspořádán</strong><span>Serverové práce jsou průběžný backlog</span></div>
+          <div class="map-node branch b2"><small>M1A</small><strong>Workflow a architektura schváleny</strong><span>Brief + ADR-001/002</span></div>
+          <div class="map-node branch b3"><small>M1 / LEGAL</small><strong>Pravidla pro reálná data</strong><span>Nezastavuje syntetický vývoj</span></div>
+          <div class="map-node merge"><small>M2–M4</small><strong>Funkční syntetický portál</strong><span>OCR → pracovník → přiřazení → A1</span></div>
+          <div class="map-node final"><small>M5</small><strong>Řízený pilot</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mode" id="mode-portal">
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="app-brand"><span class="brand-mark">PN</span><b>Portál</b></div>
+          <nav aria-label="Portál">
+            <button class="screen-link active" data-screen="dashboard">⌂ <span>Přehled</span></button>
+            <button class="screen-link" data-screen="workers">♙ <span>Pracovníci</span></button>
+            <button class="screen-link" data-screen="ocr">▣ <span>Dokumenty</span><i>3</i></button>
+            <button class="screen-link" data-screen="assignment">⇄ <span>Přiřazení</span></button>
+            <button class="screen-link" data-screen="a1">A1 <span>A1 případy</span><i>1</i></button>
+          </nav>
+          <div class="user-card"><span>DA</span><div><b>Demo administrátor</b><small>Syntetický účet</small></div></div>
+        </aside>
+        <div class="app-content">
+          <div class="app-top"><span>12. srpna 2026</span><button class="secondary">Nápověda</button><button class="avatar">DA</button></div>
+
+          <section class="screen active" id="screen-dashboard">
+            <div class="screen-head"><div><small>DOBRÝ DEN, JANE</small><h1>Co dnes vyžaduje pozornost</h1></div><button class="primary" data-goto="ocr">+ Nahrát dokument</button></div>
+            <div class="attention-grid">
+              <button class="attention amber" data-goto="ocr"><b>3</b><span>Dokumenty k ověření</span><small>Zkontrolovat OCR →</small></button>
+              <button class="attention blue" data-goto="workers"><b>2</b><span>Chybějící údaje</span><small>Doplnit pracovníky →</small></button>
+              <button class="attention green" data-goto="a1"><b>1</b><span>A1 připraveno</span><small>Otevřít kontrolu →</small></button>
+              <button class="attention red" data-goto="assignment"><b>1</b><span>Termínový konflikt</span><small>Vyřešit přiřazení →</small></button>
+            </div>
+            <div class="two-col">
+              <section class="panel"><header><h2>Aktivní pracovníci</h2><button data-goto="workers">Zobrazit vše</button></header>
+                <div class="person-row"><span class="initials">AN</span><div><b>Adam Novotný</b><small>OSVČ · Mnichov</small></div><span class="tag success">Aktivní</span></div>
+                <div class="person-row"><span class="initials purple">EK</span><div><b>Eva Králová</b><small>Zaměstnanec · Drážďany</small></div><span class="tag warning">Chybí údaj</span></div>
+                <div class="person-row"><span class="initials teal">TM</span><div><b>Tomáš Malý</b><small>OSVČ · Norimberk</small></div><span class="tag success">Aktivní</span></div>
+              </section>
+              <section class="panel"><header><h2>Poslední aktivita</h2><button>Historie</button></header>
+                <ol class="activity"><li><span></span><div><b>OP potvrzen demo administrátorem</b><small>Adam Novotný · před 12 minutami</small></div></li><li><span></span><div><b>Nové přiřazení</b><small>Eva Králová · před 1 hodinou</small></div></li><li><span></span><div><b>A1 náhled vygenerován</b><small>Tomáš Malý · včera</small></div></li></ol>
+              </section>
+            </div>
+          </section>
+
+          <section class="screen" id="screen-ocr">
+            <div class="screen-head"><div><small>DOKUMENTY / OCR</small><h1>Ověření načtených údajů</h1><p>Porovnejte údaje se skenem. Opravením nebo potvrzením se uloží pod vaším účtem.</p></div><span class="tag warning">1 z 3</span></div>
+            <div class="ocr-layout">
+              <section class="document-preview"><header><b>Občanský průkaz · strana 1</b><span>100%　−　＋</span></header><div class="fake-id"><div class="fake-photo">AN</div><div class="fake-lines"><b>ČESKÁ REPUBLIKA</b><span></span><span></span><span class="short"></span><span></span></div><mark class="focus-box">OCR oblast</mark></div><footer>Syntetický náhled — žádný skutečný doklad</footer></section>
+              <form class="ocr-form" onsubmit="return false"><div class="form-progress"><span style="width: 62%"></span></div><p>5 z 8 polí ověřeno</p>
+                <label>Jméno a příjmení <small>Návrh z OCR</small><input value="Adam Novotný"><span class="confidence">Vysoká jistota</span></label>
+                <label>Datum narození <small>Návrh z OCR</small><input value="01. 02. 1990"><span class="confidence">Vysoká jistota</span></label>
+                <label>Číslo dokladu <small>Návrh z OCR · zkontrolujte</small><input value="SYNTH-123456"><span class="confidence low">Nízká jistota</span></label>
+                <label>Adresa <small>Návrh z OCR</small><input value="Ukázková 12, Praha"><span class="confidence">Střední jistota</span></label>
+                <div class="form-actions"><button class="secondary">Uložit rozpracované</button><button class="primary confirm-button">Potvrdit údaje</button></div>
+                <div class="confirm-note" role="status">Potvrzením se uloží vaše jméno, čas a vazba na tento dokument.</div>
+              </form>
+            </div>
+          </section>
+
+          <section class="screen" id="screen-workers">
+            <div class="screen-head"><div><small>PRACOVNÍK</small><h1>Adam Novotný</h1><p><span class="tag neutral">OSVČ</span> <span class="tag success">Údaje potvrzeny</span></p></div><div><button class="secondary">Upravit</button> <button class="primary" data-goto="a1">Nový A1 případ</button></div></div>
+            <div class="profile-grid"><section class="panel summary-card"><h2>Shrnutí</h2><dl><dt>Aktuální přiřazení</dt><dd>Stavba München Zentrum</dd><dt>Období</dt><dd>1. 8. – 15. 9. 2026</dd><dt>Dokumenty</dt><dd>OP ověřen · ZP ověřena</dd><dt>A1</dt><dd>1 otevřený případ</dd></dl></section><section class="panel timeline-card"><h2>Přiřazení</h2><div class="timeline-item current"><span></span><div><small>AKTUÁLNÍ</small><b>Stavba München Zentrum</b><p>1. 8. – 15. 9. 2026 · Elektrikář</p></div></div><div class="timeline-item future"><span></span><div><small>PLÁNOVANÉ</small><b>Servis Augsburg</b><p>20. 9. – 30. 9. 2026</p></div></div></section></div>
+          </section>
+
+          <section class="screen" id="screen-assignment">
+            <div class="screen-head"><div><small>PŘIŘAZENÍ</small><h1>Nové přiřazení</h1><p>Vyberte pracovníka, pracoviště a období.</p></div></div>
+            <div class="wizard"><div class="wizard-step done"><b>1</b><span>Pracovník</span></div><div class="wizard-step active"><b>2</b><span>Práce</span></div><div class="wizard-step"><b>3</b><span>Kontrola</span></div></div>
+            <section class="panel form-panel"><div class="field-grid"><label>Pracovník<select><option>Adam Novotný · OSVČ</option></select></label><label>Partner<select><option>Demo Bau GmbH</option></select></label><label>Pracoviště<input value="München Zentrum"></label><label>Role<input value="Elektrikář"></label><label>Začátek<input type="date" value="2026-09-10"></label><label>Konec<input type="date" value="2026-09-30"></label></div><div class="inline-alert"><b>⚠ Překrytí přiřazení</b><span>Adam má aktivní přiřazení do 15. 9. 2026. Můžete pokračovat, ale před A1 bude potřeba období zkontrolovat.</span></div><div class="form-actions"><button class="secondary">Uložit jako návrh</button><button class="primary">Vytvořit přiřazení</button></div></section>
+          </section>
+
+          <section class="screen" id="screen-a1">
+            <div class="screen-head"><div><small>A1 PŘÍPAD · A1-2026-DEMO</small><h1>Adam Novotný</h1><p>Stav: <span class="tag warning">Data neúplná</span></p></div><button class="secondary">Zobrazit zdroje</button></div>
+            <div class="a1-grid"><section class="panel task-list"><h2>Připravenost balíčku</h2><div class="check done">✓ <span><b>Osobní údaje potvrzeny</b><small>Demo administrátor · dnes 10:42</small></span></div><div class="check done">✓ <span><b>Typ osoby potvrzen</b><small>OSVČ</small></span></div><div class="check wait">! <span><b>Zkontrolovat překrytí přiřazení</b><small>10.–15. 9. 2026</small></span></div><div class="check open">○ <span><b>Vygenerovat náhled</b><small>Dostupné po vyřešení konfliktu</small></span></div><div class="check open">○ <span><b>Potvrdit připravený balíček</b></span></div></section><aside class="panel readiness"><div class="ring">60<small>%</small></div><h2>3 kroky zbývají</h2><p>Balíček zatím nelze připravit.</p><button class="primary">Vyřešit konflikt</button></aside></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section class="mode" id="mode-decisions">
+      <div class="page-head"><div><p class="eyebrow">ROZHODOVACÍ PANEL</p><h1>Co už víme a co ještě ověříme</h1><p>Jedna stránka místo hledání poznámek v několika plánech.</p></div></div>
+      <div class="decision-columns">
+        <section><header class="accepted-head">✓ Schváleno</header><article><b>Projekt zůstává ve /var/www</b><p>Žádné projektové soubory v /root, /home nebo /srv.</p></article><article><b>Janův portál je první produkt</b><p>Pracovníci, OCR, přiřazení a A1.</p></article><article><b>Jednoduché potvrzení OCR</b><p>Uploader opraví nebo potvrdí; audit uloží kdo a kdy.</p></article><article><b>Jan může delegovat administrátora</b><p>Jan, Pavel a pověřený admin mohou schvalovat.</p></article></section>
+        <section><header class="proof-head">◌ Ověříme prototypem</header><article><b>Přihlášení a MFA</b><p>two-factor-auth vs. allauth MFA.</p></article><article><b>Úlohy na pozadí</b><p>django-q2 vs. Celery/Redis.</p></article><article><b>Chráněné soubory</b><p>Filesystem + interní Nginx download.</p></article><article><b>Provoz serveru</b><p>Kapacita, oprávnění, monitoring a případné zálohy jsou neblokující backlog.</p></article><article><b>Vizuální styl</b><p>Bootstrap/HTMX prototyp s Janem.</p></article></section>
+        <section><header class="blocked-head">! Jediná brána reálných dat</header><article><b>Pravidla reálných dat</b><p>Účel každého příjmu, přístup podle organizace, potvrzení OCR, audit, 90denní retenční kontrola, řízený výmaz a zákaz celých dokumentů u externích modelů.</p></article><article><b>Nezastavuje implementaci</b><p>Syntetický Django základ, UX a A1 integrace pokračují ihned.</p></article></section>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">Prototyp je pouze vizuální pomůcka. Neobsahuje skutečné osoby ani dokumenty.</footer>
+  <script src="app.js"></script>
+</body>
+</html>

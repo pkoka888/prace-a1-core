@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "review_status": "VERIFIED",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/ustecky-kraj/most",
+  "verified_on": "11.08.2026",
+  "current_office_contact": {"name": "Ing. Ivana Zlatníčková Henžlová", "role": "ředitelka OSSZ", "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"},
+  "expected_ossz": "OSSZ Most",
+  "institution": {
+    "name": "OSSZ Most",
+    "street": "tř. Budovatelů",
+    "house_number": "1987",
+    "city": "Most",
+    "postal_code": "434 01",
+    "country_code": "CZ",
+    "code": "557"
+  }
+}

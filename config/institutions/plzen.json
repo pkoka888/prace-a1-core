@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "review_status": "VERIFIED",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/plzensky-kraj/plzen-mesto",
+  "verified_on": "11.08.2026",
+  "current_office_contact": {"name": "JUDr. Martina Černušáková", "role": "ředitelka OSSZ", "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"},
+  "expected_ossz": "OSSZ Plzeň",
+  "institution": {
+    "name": "OSSZ Plzeň",
+    "street": "Americká",
+    "house_number": "28-30",
+    "city": "Plzeň",
+    "postal_code": "301 00",
+    "country_code": "CZ",
+    "code": "444"
+  }
+}

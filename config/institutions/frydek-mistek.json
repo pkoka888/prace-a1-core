@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "review_status": "VERIFIED",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/moravskoslezsky-kraj/frydek-mistek",
+  "verified_on": "11.08.2026",
+  "current_office_contact": {"name": "Mgr. Sylva Švehláková", "role": "ředitelka OSSZ", "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"},
+  "expected_ossz": "OSSZ Frýdek-Místek",
+  "institution": {
+    "name": "OSSZ Frýdek-Místek",
+    "street": "Palackého",
+    "house_number": "115",
+    "city": "Frýdek-Místek",
+    "postal_code": "738 01",
+    "country_code": "CZ",
+    "code": "886"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "status": "PROVISIONAL_PLACEHOLDERS",
+  "notice": "CLIENT_CONFIRMATION_COPY",
+  "activity_name": "Samostatná výdělečná činnost",
+  "activity_address": "DE, CZ",
+  "employment_mode": "self_employed_multi_state",
+  "validity_policy": "2.1=CZ; 2.2 equals the per-employee provisional 6.10 date; 2.3 is one year minus one day after 2.2",
+  "issue_date_reference": "11.08.2026",
+  "warning": "All activity, certificate, date, issue and signed-by values are layout placeholders until confirmed by OSSZ. Current office directors are contacts, not confirmed certificate signatories."
+}

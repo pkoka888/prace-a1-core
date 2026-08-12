@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prace-v-nemecku.tvoje.info/schemas/a1-visual-qa.schema.json",
+  "title": "A1 visual QA result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pdf", "pdf_sha256", "template_sha256", "layout_sha256", "pages", "status"],
+  "properties": {
+    "pdf": {"type": "string", "pattern": "^A1_[a-z0-9-]+\\.pdf$"},
+    "pdf_sha256": {"$ref": "#/$defs/hash"},
+    "template_sha256": {"$ref": "#/$defs/hash"},
+    "layout_sha256": {"$ref": "#/$defs/hash"},
+    "pages": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/page"}
+    },
+    "status": {"enum": ["PASS", "FAIL"]},
+    "reviewed_by": {"type": "string", "minLength": 1},
+    "reviewed_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status"],
+      "properties": {
+        "name": {"enum": ["field_containment", "row_clearance", "line_continuity", "no_opaque_mask", "checkbox_state", "no_clipping", "no_overlap", "visual_review"]},
+        "status": {"enum": ["PASS", "FAIL"]},
+        "field": {"type": "string"},
+        "measured_pt": {"type": "number"},
+        "limit_pt": {"type": "number"},
+        "note": {"type": "string"}
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["page", "preview", "preview_sha256", "checks", "status"],
+      "properties": {
+        "page": {"type": "integer", "minimum": 1, "maximum": 3},
+        "preview": {"type": "string", "pattern": "-page-[123]\\.png$"},
+        "preview_sha256": {"$ref": "#/$defs/hash"},
+        "checks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/check"}},
+        "status": {"enum": ["PASS", "FAIL"]}
+      }
+    }
+  }
+}

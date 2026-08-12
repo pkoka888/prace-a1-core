@@ -1,0 +1,4 @@
+interface:
+  display_name: "A1 PDF Production"
+  short_description: "Generate and visually validate Czech A1 PDFs"
+  default_prompt: "Use $a1-pdf-production to generate or audit the provisional A1 PDF package."

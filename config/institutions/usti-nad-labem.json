@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "review_status": "PROVISIONAL",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/ustecky-kraj/usti-nad-labem",
+  "verified_on": "11.08.2026",
+  "current_office_contact": {
+    "name": "Ing. Šárka Baičevová, DiS.",
+    "role": "ředitelka OSSZ Ústí nad Labem",
+    "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
+  },
+  "expected_ossz": "OSSZ Ústí nad Labem",
+  "institution": {
+    "name": "OSSZ Ústí nad Labem",
+    "street": "Revoluční",
+    "house_number": "3289/15",
+    "city": "Ústí nad Labem",
+    "postal_code": "400 01",
+    "country_code": "CZ",
+    "code": "TBD"
+  },
+  "_note": "Office address + director verified from cssz.cz (https://www.cssz.cz/web/cz/kontakty/region/ossz/ustecky-kraj/usti-nad-labem). Only the OSSZ branch 'code' remains unverified (statnisprava.cz registry blocked fetches) — set before final use."
+}

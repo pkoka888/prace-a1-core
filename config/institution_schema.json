@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/institution-config/1.0",
+  "title": "Institution & Certificate Config",
+  "description": "The single trusted source for issuing-institution and certificate data used by scripts/batch_generate_a1.py. No hardcoded defaults or fallbacks are allowed; if this file is missing or schema-invalid the batch fails hard. 'draft' is the release-state control: while true every generated PDF is watermarked DRAFT and the release gate cannot pass.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "draft",
+    "version",
+    "institution",
+    "certificate",
+    "issue_date",
+    "signed_by"
+  ],
+  "properties": {
+    "draft": { "type": "boolean" },
+    "version": { "type": "string", "minLength": 1 },
+    "_note": { "type": "string" },
+    "institution": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "city", "postal_code", "code"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "street": { "type": "string", "minLength": 1 },
+        "house_number": { "type": "string", "minLength": 1 },
+        "city": { "type": "string", "minLength": 1 },
+        "postal_code": { "type": "string", "minLength": 1 },
+        "country_code": { "type": "string", "minLength": 1 },
+        "code": { "type": "string", "minLength": 1 }
+      }
+    },
+    "certificate": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["member_state", "start_date", "end_date", "document_id_prefix"],
+      "properties": {
+        "member_state": { "type": "string", "minLength": 1 },
+        "start_date": { "type": "string", "minLength": 1 },
+        "end_date": { "type": "string", "minLength": 1 },
+        "document_id_prefix": { "type": "string", "minLength": 1 }
+      }
+    },
+    "issue_date": { "type": "string", "minLength": 1 },
+    "signed_by": { "type": "string", "minLength": 1 },
+    "employment": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Optional employer defaults. Currently NOT injected into generated records by the batch pipeline."
+    }
+  }
+}

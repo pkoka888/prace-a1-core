@@ -1,0 +1,414 @@
+#!/usr/bin/env python3
+"""Single source of truth for validated A1 data and PDF rendering."""
+
+from __future__ import annotations
+
+import json
+import re
+import unicodedata
+from copy import deepcopy
+from datetime import datetime, timedelta
+from io import BytesIO
+from pathlib import Path
+from typing import Any
+
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+
+
+PAGE_SIZE = (595.2, 841.92)
+PROVISIONAL_NOTICE = "NÁVRH – ČEKÁ NA POTVRZENÍ OSSZ"
+ROOT = Path(__file__).resolve().parents[1]
+FONT_CANDIDATES = (
+    Path("C:/Windows/Fonts/arial.ttf"),
+    Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"),
+    Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+    ROOT / "assets/fonts/DejaVuSans.ttf",
+    Path(
+        "C:/Users/pavel/.cache/codex-runtimes/codex-primary-runtime/"
+        "dependencies/native/poppler/Library/share/fonts/DejaVuSans.ttf"
+    ),
+    Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+)
+
+
+class A1ValidationError(ValueError):
+    """Raised when unreviewed or incomplete data would enter a final A1."""
+
+
+def load_json(path: str | Path) -> dict[str, Any]:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def normalize_date(value: str | None) -> str:
+    if not value:
+        return ""
+    value = value.strip().replace("/", ".").replace("-", ".")
+    match = re.fullmatch(r"(\d{1,2})\.(\d{1,2})\.(\d{4})", value)
+    if not match:
+        raise A1ValidationError(f"Unsupported date format: {value!r}")
+    day, month, year = (int(part) for part in match.groups())
+    try:
+        datetime(year, month, day)
+    except ValueError:
+        raise A1ValidationError(f"Invalid date: {value!r}") from None
+    return f"{day:02d}.{month:02d}.{year:04d}"
+
+
+def validate_provisional_issue_date(value: str, reference: str) -> str:
+    """Require client-review issue dates 2–6 months back and on Mon/Thu.
+
+    This is only a placeholder scheduling policy; OSSZ must supply the official
+    issue date. Different employees may use different qualifying dates.
+    """
+    normalized = normalize_date(value)
+    issued = datetime.strptime(normalized, "%d.%m.%Y")
+    reference_day = datetime.strptime(normalize_date(reference), "%d.%m.%Y")
+    age_days = (reference_day - issued).days
+    if issued.weekday() not in {0, 3}:
+        raise A1ValidationError("Provisional issue date must be Monday or Thursday")
+    if not 61 <= age_days <= 180:
+        raise A1ValidationError("Provisional issue date must be 61–180 days before reference")
+    return normalized
+
+
+def provisional_one_year_period(start_value: str) -> tuple[str, str]:
+    """Return A1 fields 2.2/2.3 for a one-year inclusive provisional period."""
+    start_text = normalize_date(start_value)
+    start = datetime.strptime(start_text, "%d.%m.%Y")
+    try:
+        anniversary = start.replace(year=start.year + 1)
+    except ValueError:  # 29 February -> 28 February in the following year.
+        anniversary = start.replace(year=start.year + 1, day=28)
+    end = anniversary - timedelta(days=1)
+    return start_text, end.strftime("%d.%m.%Y")
+
+
+def _key(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(char for char in text if not unicodedata.combining(char)).casefold().strip()
+
+
+def czech_display_case(value: str | None) -> str:
+    """Convert scan-style uppercase names/places/streets to Czech display casing."""
+    if not value:
+        return ""
+    keep_upper = {"CZ", "DE", "EU", "OSSZ", "ÚSSZ", "SRN"}
+    lower_inside = {"a", "i", "k", "ke", "na", "nad", "od", "pod", "pro", "u", "v", "ve", "z", "ze"}
+    words = []
+    for index, word in enumerate(value.strip().split()):
+        if word.upper() in keep_upper:
+            words.append(word.upper())
+            continue
+        parts = word.lower().split("-")
+        rendered = []
+        for part_index, part in enumerate(parts):
+            if index > 0 and part_index == 0 and part in lower_inside:
+                rendered.append(part)
+            else:
+                rendered.append(part[:1].upper() + part[1:])
+        words.append("-".join(rendered))
+    return " ".join(words)
+
+
+def enrich_residence(
+    residence: dict[str, Any], rules_config: dict[str, Any]
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Apply only exact, evidence-backed municipality/address enrichment rules."""
+    result = deepcopy(residence)
+    evidence: list[dict[str, Any]] = []
+    for rule in rules_config.get("rules", []):
+        if _key(rule.get("city")) != _key(result.get("city")):
+            continue
+        if rule.get("district") and _key(rule["district"]) != _key(result.get("district")):
+            continue
+        if rule.get("street") and _key(rule["street"]) != _key(result.get("street")):
+            continue
+        if rule.get("house_number") and _key(rule["house_number"]) != _key(result.get("house_number")):
+            continue
+        for field in ("postal_code", "administrative_district", "ossz"):
+            if rule.get(field) and not result.get(field):
+                result[field] = rule[field]
+        evidence.append(
+            {
+                "source": rule.get("source", ""),
+                "verified_on": rule.get("verified_on", ""),
+                "fields": [
+                    field
+                    for field in ("postal_code", "administrative_district", "ossz")
+                    if rule.get(field)
+                ],
+            }
+        )
+        break
+    return result, evidence
+
+
+def _full_address(data: dict[str, Any]) -> str:
+    return " ".join(
+        part for part in (data.get("street", ""), data.get("house_number", "")) if part
+    )
+
+
+def build_form_data(
+    employee: dict[str, Any], institution_config: dict[str, Any]
+) -> dict[str, Any]:
+    """Create the only flat data model accepted by the renderer."""
+    person = deepcopy(employee.get("person", {}))
+    source_nationality = person.get("nationality", "")
+    if _key(source_nationality) in {"ceska republika", "czech republic", "cz", "cze"}:
+        person["nationality"] = "CZ"
+    residence = deepcopy(employee.get("residence", {}))
+    employment = deepcopy(employee.get("employment", {}))
+    certificate = deepcopy(institution_config.get("certificate", {}))
+    certificate.update(employee.get("certificate", {}))
+    institution = deepcopy(institution_config.get("institution", {}))
+
+    # Situation is source-backed only: the reviewed status profile selects the
+    # checkboxes. It is never guessed from other employee fields.
+    a1 = employee.get("a1") or {}
+    status_profile = str(a1.get("status_profile", "")).strip()
+    if status_profile not in {"self_employed_multi_state", "employee_multi_state"}:
+        raise A1ValidationError(
+            f"Missing or unsupported a1.status_profile: {status_profile!r}"
+        )
+    # Enrich residence with address rules
+    address_rules = load_json(ROOT / "config" / "address_enrichment.json")
+    enriched_residence, _ = enrich_residence(residence, address_rules)
+    residence = enriched_residence
+
+    document_id = certificate.get("document_id") or certificate.get("document_id_prefix", "")
+    institution_profile = str(a1.get("institution_profile", "")).strip()
+    form = {
+        "meta": {
+            "employee_id": employee.get("id", ""),
+            "status_profile": status_profile,
+            "resolved_ossz": residence.get("ossz", ""),
+            "institution_source": (
+                f"config/institutions/{institution_profile}.json"
+                if institution_profile
+                else ""
+            ),
+            "source_nationality": source_nationality,
+        },
+        "person": {
+            **person,
+            "dob": normalize_date(person.get("dob")) if person.get("dob") else "",
+        },
+        "residence": residence,
+        "employment": employment,
+        "certificate": {
+            **certificate,
+            "start_date": normalize_date(certificate.get("start_date"))
+            if certificate.get("start_date")
+            else "",
+            "end_date": normalize_date(certificate.get("end_date"))
+            if certificate.get("end_date")
+            else "",
+            "document_id": document_id,
+            "member_state": certificate.get("member_state", ""),
+        },
+        "institution": {
+            **institution,
+            "issue_date": normalize_date(
+                employee.get("institution", {}).get("issue_date")
+                or institution_config.get("issue_date", "")
+            )
+            if (
+                employee.get("institution", {}).get("issue_date")
+                or institution_config.get("issue_date")
+            )
+            else "",
+            "signed_by": employee.get("institution", {}).get("signed_by")
+            or institution_config.get("signed_by", ""),
+        },
+        "activity": deepcopy(employee.get("activity", {})),
+        # Checkboxes: derived from the reviewed status profile.
+        "status_posted_employee": status_profile == "employee_multi_state",
+        "status_osv_c_multistate": status_profile == "self_employed_multi_state",
+        "employer_type_employee": status_profile == "employee_multi_state",
+        "employer_type_self_employed": status_profile == "self_employed_multi_state",
+        # Gender: from person
+        "gender_male": person.get("sex") == "M",
+        "gender_female": person.get("sex") == "F",
+        # Valid duration and provisional are intentionally unchecked without source data.
+        # We'll leave them unchecked for now.
+        "valid_duration": False,
+        "provisional": False,
+        "transitional_rules": False,
+        # No reviewed source field exists for this checkbox yet.
+        "no_fixed_address": False,
+    }
+    validate_form_data(form)
+    return form
+
+
+def mark_provisional(form: dict[str, Any], reason: str, visible_notice: bool = False) -> dict[str, Any]:
+    """Mark a form as non-final when certificate facts are temporary placeholders.
+
+    Jurisdiction may be resolved from exact address evidence by ``enrich_residence``.
+    The current director/contact from an official OSSZ page is only an office contact;
+    it is not proof that this person issued or signed the future certificate.
+    """
+    result = deepcopy(form)
+    result.setdefault("meta", {})["provisional"] = True
+    result["meta"]["provisional_reason"] = reason
+    result["meta"]["provisional_notice_visible"] = visible_notice
+    return result
+
+
+def validate_form_data(form: dict[str, Any]) -> None:
+    required = {
+        "person": ("insurance_number", "surname", "given_name", "dob", "birth_place", "nationality", "sex"),
+        "residence": ("street", "house_number", "city", "postal_code", "country_code"),
+        "certificate": ("member_state", "start_date", "end_date", "document_id"),
+    }
+    missing = [
+        f"{section}.{field}"
+        for section, fields in required.items()
+        for field in fields
+        if not form.get(section, {}).get(field)
+    ]
+    employment = form.get("employment", {})
+    for field in ("employer_id", "employer_name", "street", "house_number", "city", "postal_code", "country_code"):
+        if not employment.get(field):
+            missing.append(f"employment.{field}")
+    if missing:
+        raise A1ValidationError("Missing required A1 fields: " + ", ".join(sorted(missing)))
+    if form.get("person", {}).get("sex") not in {"M", "F"}:
+        raise A1ValidationError("person.sex must be M or F")
+    if form.get("meta", {}).get("status_profile") not in {
+        "self_employed_multi_state", "employee_multi_state"
+    }:
+        raise A1ValidationError(
+            "Unsupported status_profile for this visual template"
+        )
+
+
+def _get_path(data: dict[str, Any], path: str) -> str:
+    current: Any = data
+    for part in path.split("."):
+        if not isinstance(current, dict):
+            return ""
+        current = current.get(part, "")
+    return str(current or "")
+
+
+def _register_font() -> str:
+    if "A1Sans" in pdfmetrics.getRegisteredFontNames():
+        return "A1Sans"
+    for candidate in FONT_CANDIDATES:
+        if candidate.exists():
+            pdfmetrics.registerFont(TTFont("A1Sans", str(candidate)))
+            return "A1Sans"
+    return "Helvetica"
+
+
+def _fit_font(text: str, font: str, size: float, max_width: float) -> float:
+    while size > 6 and pdfmetrics.stringWidth(text, font, size) > max_width:
+        size -= 0.25
+    return size
+
+
+def _draw_field(c: canvas.Canvas, value: str, cfg: dict[str, Any], font: str) -> None:
+    if not value:
+        return
+    size = float(cfg.get("size", 9))
+    max_width = float(cfg.get("max_width", 400))
+    max_lines = int(cfg.get("max_lines", 1))
+    line_height = float(cfg.get("line_height", size + 2))
+    words = value.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if current and pdfmetrics.stringWidth(candidate, font, size) > max_width:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    if len(lines) > max_lines:
+        lines = [value]
+        max_lines = 1
+        size = _fit_font(value, font, size, max_width)
+    for index, line in enumerate(lines[:max_lines]):
+        line_size = _fit_font(line, font, size, max_width)
+        c.setFont(font, line_size)
+        c.drawString(float(cfg["x"]), float(cfg["y"]) - index * line_height, line)
+
+
+def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
+    font = _register_font()
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=PAGE_SIZE)
+    fields_by_page: dict[int, list[tuple[str, dict[str, Any]]]] = {}
+    for field_name, cfg in layout["fields"].items():
+        fields_by_page.setdefault(int(cfg["page"]), []).append((field_name, cfg))
+
+    computed = {
+        "residence.address": _full_address(form["residence"]),
+        "employment.address": _full_address(form["employment"]),
+        "institution.address": _full_address(form["institution"]),
+    }
+    page_count = int(layout.get("page_count", 3))
+    for page_number in range(page_count):
+        for field_name, cfg in fields_by_page.get(page_number, []):
+            value = computed.get(field_name, _get_path(form, cfg.get("source", field_name)))
+            _draw_field(c, value, cfg, font)
+        c.saveState()
+        for field, cfg in layout.get("checkboxes", {}).items():
+            if int(cfg["page"]) != page_number:
+                continue
+            x, y, size = float(cfg["x"]), float(cfg["y"]), float(cfg.get("size", 8.5))
+            c.setStrokeColorRGB(0.22, 0.32, 0.34)
+            c.setLineWidth(0.65)
+            if cfg.get("reconstruct_border"):
+                c.rect(x, y, size, size, fill=0, stroke=1)
+            if form.get(field):
+                c.setStrokeColorRGB(0.05, 0.35, 0.48)
+                c.setLineWidth(0.8)
+                inset = max(1.2, size * 0.16)
+                c.line(x + inset, y + inset, x + size - inset, y + size - inset)
+                c.line(x + size - inset, y + inset, x + inset, y + size - inset)
+        c.restoreState()
+        if form.get("meta", {}).get("provisional_notice_visible"):
+            c.saveState()
+            c.setFillColorRGB(0.78, 0.12, 0.12)
+            c.setFillAlpha(0.75)
+            c.setFont(font, 7)
+            c.drawRightString(PAGE_SIZE[0] - 35, 18, PROVISIONAL_NOTICE)
+            c.restoreState()
+        c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+
+def generate_a1_pdf(
+    form: dict[str, Any],
+    background_pdf: str | Path,
+    layout_json: str | Path,
+    output_pdf: str | Path,
+) -> Path:
+    validate_form_data(form)
+    layout = load_json(layout_json)
+    background = PdfReader(str(background_pdf))
+    if len(background.pages) != layout.get("page_count", 3):
+        raise A1ValidationError("A1 background and layout page counts differ")
+    overlay = PdfReader(render_overlay(form, layout))
+    writer = PdfWriter()
+    for index, source_page in enumerate(background.pages):
+        source_page.merge_page(overlay.pages[index])
+        writer.add_page(source_page)
+    output = Path(output_pdf)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("wb") as stream:
+        writer.write(stream)
+    reopened = PdfReader(str(output))
+    if len(reopened.pages) != 3 or reopened.get_fields():
+        raise A1ValidationError("Generated A1 failed static-PDF structural verification")
+    return output
