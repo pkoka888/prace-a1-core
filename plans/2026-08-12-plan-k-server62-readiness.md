@@ -4,6 +4,11 @@
 **Milestone:** M0–M5
 **Owner:** server sysadmin; product engineering verifies application requirements
 
+**Current evidence:** The repository-safe 2026-08-12 host snapshot and open
+actions are recorded in
+[`docs/operations/sysadmin-readiness-2026-08-12.md`](../docs/operations/sysadmin-readiness-2026-08-12.md).
+Volatile host facts must be re-verified before production changes.
+
 ## Objective
 
 Maintain Debian 13 server62 for the Jan pilot and return an as-built report.
