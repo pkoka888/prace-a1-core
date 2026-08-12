@@ -41,6 +41,29 @@ the work with portal scaffolding or repository-history remediation.
 - `validated_by_user=1` plus authoritative evidence remains mandatory for promotion.
 - Relevant unit/integration/regression tests and `git diff --check` pass.
 
+## Deferred OCR validator classification
+
+Review on 2026-08-12 confirmed that the untracked
+`scripts/validate_ocr_proposals.py` is **non-executable project input** and must
+not be staged, committed, or run against operational data in its current form.
+It is not part of the canonical A1 pipeline.
+
+The redesign gate remains open because the draft:
+
+- offers an in-place mutating `--fix` mode without atomic publication,
+  provenance, or operator confirmation;
+- prints employee identifiers and field values to standard output;
+- accepts a literal missing-data placeholder instead of failing closed;
+- derives birth-date/sex data without the required complete Czech birth-number
+  date and checksum contract;
+- has no approved proposal schema, privacy/logging contract, or synthetic tests.
+
+Any successor must be implemented from a reviewed specification with synthetic
+fixtures, non-mutating validation by default, redacted diagnostics, and an
+explicit human-confirmation boundary. The existing untracked draft is preserved
+only pending a separate disposition decision; this plan does not authorize its
+deletion or replacement.
+
 ## Exit gate
 
 The canonical cohort is reproducible from authorized sources, all manifests and
