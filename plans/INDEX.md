@@ -23,6 +23,8 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | [Plan H — UX, UI, and copy](2026-08-12-plan-h-ux-ui-and-copy-research.md) | active | M1A–M3 | Tested workflow, localization, and accessibility contract |
 | [Plan J — data protection and legal](2026-08-12-plan-j-data-protection-and-legal.md) | active | M1A–M5 | Activation gate and operational procedures |
 | [Plan L — operating model](2026-08-12-plan-l-agent-operating-model.md) | active | M0–M1A | Coherent authority, decisions, status, and documentation checkpoint |
+| [Plan K — server62 readiness](2026-08-12-plan-k-server62-readiness.md) | active | M0–M5 | Capacity, repaired edge path, monitoring, mandatory recovery proof, rollback, permissions, and TLS evidence |
+| [Plan Q — repository history, reference, and privacy remediation](2026-08-12-plan-q-repository-history-reference-privacy.md) | active | M0 | Reconciled published checkpoint, remaining inventories, rollback retention, and no implicit remote action |
 
 ## Planned after the operating-model checkpoint
 
@@ -32,14 +34,7 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | [Plan N — role and data discovery](2026-08-12-plan-n-full-platform-role-and-data-discovery.md) | planned | M1A–M1B | Release 1A catalog first; broader discovery afterward |
 | [Plan O — database and transactions](2026-08-12-plan-o-database-and-transaction-architecture.md) | planned | M1A–M1B | Release 1A data architecture and ADR-002 first |
 | [Plan P — payroll and finance architecture](2026-08-12-plan-p-payroll-and-finance-architecture.md) | planned | M1B | Parallel later design and ADR-003; not a 1A gate |
-| [Plan Q — repository history, reference, and privacy remediation](2026-08-12-plan-q-repository-history-reference-privacy.md) | active | M0 | Verified procedure and inventories; no implicit remote action |
 | [Plan R — A1 production stabilization](2026-08-12-plan-r-a1-production-stabilization.md) | planned | A1 operations | Reproducible canonical 11/33 package contract |
-
-## Non-blocking operational backlog
-
-| Plan | Status | Milestone | Exit result |
-|---|---|---|---|
-| [Plan K — server62 readiness](2026-08-12-plan-k-server62-readiness.md) | planned | M0–M5 | Capacity, monitoring, recovery, rollback, permissions, and TLS evidence |
 
 ## Reviewed handoff
 

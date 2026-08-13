@@ -215,17 +215,20 @@ without undue delay and, where feasible, within 72 hours when the breach is like
 to result in risk; a processor informs the controller without undue delay. See
 [GDPR Article 33](https://eur-lex.europa.eu/eli/reg/2016/679/art_33/oj/eng).
 
-## 12. Backups and accepted durability risk
+## 12. Mandatory recovery before real-data activation
 
-Backups are not a condition for beginning implementation or the initial pilot.
-The owner has accepted that database records and runtime documents may be
-irrecoverably lost while no backup exists.
+Backups are not a condition for synthetic implementation. They are mandatory
+before new real-data portal uploads or migration. The activation evidence must
+include an encrypted application-consistent PostgreSQL dump, the protected-file
+set and manifest, a fresh off-host archive, an integrity check, and an isolated
+actual restore with schema/query and representative file validation. The recorded
+elapsed time must be compared with the approved RTO; RPO, retention, key custody,
+and stale/failed-backup alert ownership must be explicit.
 
 Git protects tracked source history only. It does not back up gitignored scans,
 runtime files, PostgreSQL data, or secrets. Do not compensate by creating ad-hoc
-`.backup`, archive, ZIP, or copied PII trees. If backups are introduced later,
-they must be encrypted and governed by the same access, retention, incident, and
-deletion rules.
+`.backup`, archive, ZIP, or copied PII trees. Approved backups must be encrypted
+and governed by the same access, retention, incident, and deletion rules.
 
 ## 13. Responsibility boundary
 
@@ -266,6 +269,10 @@ the following pass:
 - [ ] full documents cannot be sent to external model providers;
 - [ ] Pavel is configured as the immediate incident contact;
 - [ ] the gate passes with synthetic acceptance fixtures.
+- [ ] Plan K's capacity threshold is satisfied and forecast margin recorded;
+- [ ] a fresh encrypted backup passes integrity checks and an isolated restore;
+- [ ] backup key custody, RPO/RTO, retention, and failure alert owner are recorded.
 
-Capacity, optional backups, visual refinements, and later infrastructure
-hardening remain operational work. They do not block starting implementation.
+Capacity and recovery proof do not block synthetic implementation, but they do
+block activation with real data. Visual refinements and later hardening remain
+operational work unless another accepted decision promotes them to a gate.

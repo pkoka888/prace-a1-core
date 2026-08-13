@@ -10,17 +10,17 @@ Produce a verified, reversible procedure and repository inventory before any
 history replacement, archival, cleanup, or remote publication. This plan does not
 itself authorize a force-push, deletion, external-file move, or remote change.
 
-## Verified starting context — 2026-08-12
+## Reconciled execution context — 2026-08-13
 
-- Local branch `codex/unified-a1-core` is at `0b86174`, tracks
-  `origin/codex/unified-a1-core`, and is 12 commits ahead / 0 behind that ref.
-- Against `origin/master`, the feature side has 16 commits and master has two;
-  this is a divergence, not a fast-forward replacement.
-- Local `master` and `origin/master` are both at `3302934`; the feature upstream is
-  at `2250845`. Independent live GitHub verification confirmed those SHAs, remote
-  HEAD/default branch `master`, private visibility, and sole collaborator
-  `pkoka888` with admin access. Branch-protection/ruleset APIs return the expected
-  free-plan 403, so neither branch has an available server-side ruleset guard.
+- The 2026-08-12 SHA/no-push snapshot below is superseded. A sanitized checkpoint
+  `c01aa2b` was published to both remote branches before this reconciliation; do
+  not plan from the former `2250845` premise.
+- The working branch at reconciliation is
+  `feat/prace-readiness-plan-2026-08-13` at `ba06e05`, ahead of the published
+  sanitized checkpoint. Re-resolve all local and remote refs immediately before
+  any later publication; these values are evidence, not an authorization.
+- Remote visibility remains private. The branch-protection/ruleset API previously
+  returned a free-plan 403, so server-side protection must not be assumed.
 - The working tree is mixed and dirty: governance/planning, A1 code/config/tests,
   historical/reference material, and untracked documents are present together.
 - Reachable objects still contain OP/ZP scans, generated A1 PDFs, employee JSON,
@@ -30,9 +30,10 @@ itself authorize a force-push, deletion, external-file move, or remote change.
   was found in the initial path-only scan. Generic `sk-`/`OPENAI_API_KEY` hits were
   false positives in the PDF template and policy prose; this is not a substitute
   for an approved full secret scanner.
-- Local rollback ref `refs/rollback/2026-08-12-pre-plan-q-0b86174` now anchors the
-  committed HEAD. `git fsck --no-reflogs --full` found no corruption or missing
-  objects and reported 26 dangling blobs, which remain uninspected and undeleted.
+- Existing pre-rewrite and rollback refs remain local retention assets. Inventory
+  their exact object IDs and expiry before garbage collection; never publish them
+  as branches or tags. `git fsck`/reflog evidence must be refreshed before any
+  retention or GC decision.
 - A full project-scope check covered 72 Markdown files with zero broken relative
   links. The earlier 48-file result was a valid active-document subset only.
 - `scripts/inventory_repository.py` still maps the removed
@@ -62,6 +63,12 @@ itself authorize a force-push, deletion, external-file move, or remote change.
 8. After the audit, propose an archive manifest and a `paddleocr` subdirectory in
    the future documentation archive; preserve existing non-executable banners until the
    separately approved move. Never create a root `archive/` to satisfy stale text.
+9. Merge unique verified facts from the untracked readiness/unblock reports into
+   canonical plans or the decision register. Those handoff files are evidence, not
+   authority, and must not be committed merely because they exist.
+10. Record the already-executed sanitized checkpoint in the decision register,
+    including actor/approval evidence if recoverable, resulting refs, scan
+    evidence, and remaining rollback-ref retention/GC decision.
 
 ## Deliverables
 
@@ -79,10 +86,10 @@ itself authorize a force-push, deletion, external-file move, or remote change.
 
 ## Exit gate
 
-The procedure is independently reviewable, exact targets and rollback are known,
-all intended objects and the final tree have scan criteria, and every archival or
-deletion candidate has a consumer/privacy disposition. M0 requires this verified
-procedure, not execution of remote replacement.
+The executed checkpoint and current refs are reconciled, the remaining procedure
+is independently reviewable, rollback retention is explicit, all intended objects
+and the final tree have scan criteria, and every archival/deletion candidate has a
+consumer/privacy disposition. No further push or GC is implied.
 
 ## Exclusions
 

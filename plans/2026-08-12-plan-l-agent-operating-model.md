@@ -150,6 +150,52 @@ verify a fresh clone. The existing rewrite mirror is not an instruction to push.
   audit. Only then may a dedicated change move non-PII historical material to a
   project-local archive or delete it. Never archive PII for convenience.
 
+## Agent-tooling audit and consolidation
+
+Treat tooling as executable product surface, not as a collection to preserve by
+default. The project currently has one tracked project skill
+(`.agents/skills/a1-pdf-production`), `AGENTS.md`, and a schema-only Kilo config;
+it does not have a project-local OpenCode command/rule/workflow framework. Do not
+copy the fleet repository's much larger framework into this repository.
+
+For every agent, skill, rule, workflow, command, script, hook, and tool config:
+
+1. Generate a ledger with path, owner, trigger/consumer, referenced files and
+   commands, last verified date, static check, bounded runtime proof, privacy
+   class, and disposition.
+2. Build a reference graph from `AGENTS.md`, this index, active plans, scripts,
+   and skill metadata. Grep references are evidence of reachability, not proof of
+   runtime use.
+3. Forward-test every retained skill with a synthetic task. Verify each referenced
+   path exists and each documented command supports `--help` or a bounded
+   read-only smoke test.
+4. Classify each item as `KEEP`, `REPAIR`, `ARCHIVE-CANDIDATE`, `DELETE`, or
+   `QUARANTINE`. A retained executable item must be discoverable, internally
+   consistent, bounded, privacy-safe, and have a live consumer or explicit core
+   purpose.
+5. Delete reproducible caches rather than archiving them. In particular,
+   `.kilo/node_modules` and local package-manager artifacts are tool state, not
+   project history. Remove the tiny `.kilo` config too only if Kilo support is
+   explicitly retired.
+6. Keep `.history-remediation` protected and ignored. It may contain rollback
+   objects and PII; it is never a candidate for a tracked archive. Disposal needs
+   a separate retention/privacy decision under Plan Q.
+7. Leave Plan R's untracked `scripts/validate_ocr_proposals.py` quarantined. Plan
+   R alone decides whether it is redesigned or removed.
+
+Classification is allowed now; moves and deletions wait for Plan Q's reference and
+privacy audit plus a clean checkpoint. Before any approved archive move, add a
+manifest entry first with original path, reason, replacement, privacy class, and
+rollback commit. Never archive secrets, real data, outputs, scans, or private
+history merely to make the active tree look clean.
+
+The planned governance validator must be deterministic and read-only by default,
+return `0` (pass), `1` (confirmed failure), or `2` (unproven/environmental), and
+emit machine-readable `next_actions`. It must check internal links, plan status
+vocabulary, skill structure and references, command existence, forbidden stale
+paths, and staged PII/secret indicators. Introduce it first as an explicit local
+command; wire pre-commit/CI only after fixtures prove it stable.
+
 ## Validation and exit
 
 - Authority hierarchy and task startup/Git/subagent rules exist in `AGENTS.md`.
@@ -169,6 +215,7 @@ verify a fresh clone. The existing rewrite mirror is not an instruction to push.
 
 ## Exclusions
 
-No skill creation, Django scaffolding, Git commit/push, history rewrite, remote
-action, host reconfiguration, historical-file deletion, or real-data migration in
-this plan.
+No new product skill, Django scaffolding, Git push, history rewrite, remote
+publication, host reconfiguration, historical-file deletion, or real-data
+migration in this plan. A reviewed documentation/tooling checkpoint commit is
+permitted under the exact-path Git workflow above.

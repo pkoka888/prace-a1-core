@@ -30,7 +30,9 @@ the first usable increment and must not wait for later module activation.
 - Keep durable project files under `/var/www/prace-v-nemecku.tvoje.info`; distinguish tracked source from gitignored real-data/runtime directories.
 - Reconcile `A1_PRIVATE_DIR` with the actual protected inputs and verify canonical commands.
 - Separate source/history cleanup, runtime-data relocation, and product implementation into independent changes.
-- Track capacity, service accounts, permissions, monitoring, and optional backup work as a non-blocking readiness backlog.
+- Execute Plan K's capacity, shared edge-path, service-account, monitoring, and
+  recovery gates. Synthetic design may continue in parallel, but real-data
+  activation requires the capacity threshold and tested backup/restore proof.
 - Establish Plan L's authority, agent/subagent, skill, validation, historical-doc,
   and Git workflow before new application work.
 
@@ -88,7 +90,9 @@ evidence, and public-growth choices are ready for their own gated increments.
 ## M5 — Controlled real-data pilot
 
 - Pass the activation gate in `docs/security/real-data-rules.md`, migrate approved legacy data, and complete Jan/operator onboarding, incident procedure, and training.
-- Record the accepted durability risk while backups are not configured; optional backups remain a separate operational decision.
+- Produce an encrypted application-consistent backup, pass integrity checks, and
+  complete an isolated restore with application-level validation before enabling
+  any new real-data portal upload.
 - Enable real documents only after explicit operator approval.
 
 **Exit:** Jan manages real employees, placements, and A1 cases in the portal; access and changes are auditable; operational feedback is resolved or prioritized.
@@ -109,9 +113,8 @@ specialist gates, synthetic/real acceptance evidence, rollout, and rollback plan
 
 ## Plan sequence
 
-- **Current execution:** Plans E, F, G, H, J, and L.
-- **After the operating-model checkpoint:** Plans M, N, O, P, Q, and R.
-- **Non-blocking operational backlog:** Plan K.
+- **Current execution:** Plans E, F, G, H, J, K, L, and Q.
+- **After the operating-model checkpoint:** Plans M, N, O, P, and R.
 - **Reviewed/historical input:** Plan D and every 2026-08-11 plan.
 
 The authoritative paths and normalized statuses are maintained in

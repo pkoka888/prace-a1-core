@@ -99,12 +99,14 @@ Original `django-q` and MinIO are not candidates.
 
 Nginx must never serve the project root or runtime directories directly. Django authorizes a file request; Nginx serves it only through an `internal` location using `X-Accel-Redirect`.
 
-The native PostgreSQL service may retain its system-managed database directory; it remains part of the product deployment but should not be forced into the Git checkout. If encrypted off-server backups are later enabled, they are necessarily outside the server/project.
+The native PostgreSQL service may retain its system-managed database directory;
+it remains part of the product deployment but should not be forced into the Git
+checkout. Encrypted off-server backups are necessarily outside the server/project.
 
-Backups are not required for initial implementation or pilot activation. This is
-an accepted risk that gitignored documents and database records may be
-irrecoverable; Git protects tracked source history only. Ad-hoc PII backup copies
-remain prohibited.
+Backups are not required for synthetic implementation, but a tested encrypted
+backup and isolated restore are mandatory before pilot activation with real data.
+Git protects tracked source history only; it does not protect runtime documents or
+PostgreSQL. Ad-hoc PII backup copies remain prohibited.
 
 **Decision:** [ ] Accept structure  [ ] Change — note: __________
 
@@ -301,7 +303,9 @@ new real-data portal use.
   publicly served, logged, tested, documented, or sent whole to external models.
 - The default retention review is 90 days; an administrator deletes, records a
   justified extension, or applies a documented hold.
-- Capacity and optional backups are operational tasks, not implementation gates.
+- Capacity and backup work do not block synthetic implementation. Plan K's
+  capacity threshold and backup/restore proof are mandatory activation gates for
+  real data.
 
 **Decision:** [x] Confirmed by Pavel
 
