@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://prace-v-nemecku.tvoje.info/research/query-packs/collector-proposal-input-1.0.schema.json",
+  "title": "Plan AC deterministic collector proposal input 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format_version",
+    "run_id",
+    "execution_instance_id",
+    "collector",
+    "capture",
+    "decisions"
+  ],
+  "properties": {
+    "format_version": {"const": "collector-proposal-input-1.0"},
+    "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,79}$"},
+    "execution_instance_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,127}$"},
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collector_id", "provider", "model", "identity_verification", "tools"],
+      "properties": {
+        "collector_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "provider": {"type": ["string", "null"], "minLength": 1, "maxLength": 160},
+        "model": {"type": ["string", "null"], "minLength": 1, "maxLength": 160},
+        "identity_verification": {"const": "unverified"},
+        "tools": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "version"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1, "maxLength": 100},
+              "version": {"type": "string", "minLength": 1, "maxLength": 100}
+            }
+          }
+        }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "completed_at", "manifests"],
+      "properties": {
+        "started_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "manifests": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {"$ref": "#/definitions/capture_manifest_binding"}
+        }
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {"$ref": "#/definitions/decision"}
+    }
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "safe_ref": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    },
+    "capture_manifest_ref": {
+      "type": "string",
+      "pattern": "^research/acquisition/source-captures/[a-z0-9][a-z0-9._-]*/manifest\\.json$"
+    },
+    "capture_manifest_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "byte_sha256", "semantic_sha256"],
+      "properties": {
+        "path": {"$ref": "#/definitions/capture_manifest_ref"},
+        "byte_sha256": {"$ref": "#/definitions/sha256"},
+        "semantic_sha256": {"$ref": "#/definitions/sha256"}
+      }
+    },
+    "capture_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capture_manifest_ref", "capture_result_id"],
+      "properties": {
+        "capture_manifest_ref": {"$ref": "#/definitions/capture_manifest_ref"},
+        "capture_result_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"}
+      }
+    },
+    "captured_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capture_manifest_ref",
+        "capture_result_id",
+        "lexical_anchor",
+        "excerpt_span",
+        "supporting_text"
+      ],
+      "properties": {
+        "capture_manifest_ref": {"$ref": "#/definitions/capture_manifest_ref"},
+        "capture_result_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"},
+        "lexical_anchor": {"type": "string", "minLength": 8, "maxLength": 160},
+        "excerpt_span": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"type": "integer", "minimum": 0}
+        },
+        "supporting_text": {"type": "string", "minLength": 1, "maxLength": 500},
+        "value": {}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "field_id",
+        "decision",
+        "captured_evidence",
+        "unproven_capture_refs",
+        "reason"
+      ],
+      "properties": {
+        "entity_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "field_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "decision": {"enum": ["supports", "does_not_establish", "conflict"]},
+        "captured_evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/definitions/captured_evidence"}
+        },
+        "unproven_capture_refs": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"$ref": "#/definitions/capture_ref"}
+        },
+        "reason": {"type": "string", "minLength": 8, "maxLength": 1000}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"decision": {"const": "supports"}}},
+          "then": {
+            "properties": {
+              "captured_evidence": {"minItems": 1},
+              "unproven_capture_refs": {"maxItems": 0}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"decision": {"const": "conflict"}}},
+          "then": {
+            "properties": {
+              "captured_evidence": {"minItems": 2},
+              "unproven_capture_refs": {"maxItems": 0}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "fixture_version": "synthetic-mini-pilot-config-1.0",
+  "authority": "synthetic_fixture_verified",
+  "network_allowed": false,
+  "models_allowed": false,
+  "market_claims_allowed": false,
+  "slot_policy": "complete-exact-plan-ac-v1.1-roster"
+}

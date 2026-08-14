@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/source-capture-result-1.1.schema.json",
+  "title": "Plan AC query-pack-bound public source capture result v1.1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "run_id", "mode", "query_pack_version", "query_pack_hash", "request_sha256", "results", "summary"],
+  "properties": {
+    "schema_version": {"const": "source-capture-result-1.1"},
+    "run_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"},
+    "mode": {"enum": ["fixture", "live"]},
+    "query_pack_version": {"const": "1.1.0"},
+    "query_pack_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "request_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "results": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/definitions/result"}},
+    "summary": {"type": "object", "additionalProperties": false, "required": ["captured", "unproven", "invalid"], "properties": {
+      "captured": {"type": "integer", "minimum": 0}, "unproven": {"type": "integer", "minimum": 0}, "invalid": {"type": "integer", "minimum": 0}
+    }}
+  },
+  "definitions": {
+    "field_target": {"type": "object", "additionalProperties": false, "required": ["entity_id", "field_id"], "properties": {
+      "entity_id": {"type": "string"}, "field_id": {"type": "string"}
+    }},
+    "excerpt": {"type": "object", "additionalProperties": false, "required": ["selector", "terms", "matched_terms", "span", "sha256", "characters", "truncated", "path"], "properties": {
+      "selector": {"const": "term-window"}, "terms": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+      "matched_terms": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+      "span": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0}},
+      "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "characters": {"type": "integer", "minimum": 1, "maximum": 500},
+      "truncated": {"type": "boolean"}, "path": {"type": "string", "pattern": "^excerpts/[a-z0-9][a-z0-9._-]{0,79}\\.txt$"}
+    }},
+    "captured": {"type": "object", "additionalProperties": false, "required": ["id", "requested_url", "field_targets", "state", "reason", "final_url", "redirect_chain", "requested_method", "performed_methods", "http_status", "retrieved_at", "content_type", "response_sha256", "response_bytes", "excerpt"], "properties": {
+      "id": {"type": "string"}, "requested_url": {"type": "string", "format": "uri", "pattern": "^https://"}, "field_targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/field_target"}, "uniqueItems": true},
+      "state": {"const": "captured"}, "reason": {"type": "null"}, "final_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+      "redirect_chain": {"type": "array", "maxItems": 5, "items": {"type": "object", "additionalProperties": false, "required": ["status", "from", "to"], "properties": {"status": {"enum": [301,302,303,307,308]}, "from": {"type": "string"}, "to": {"type": "string"}}}},
+      "requested_method": {"enum": ["HEAD", "GET"]}, "performed_methods": {"type": "array", "minItems": 1, "maxItems": 6, "items": {"enum": ["HEAD", "GET"]}},
+      "http_status": {"type": "integer", "minimum": 200, "maximum": 399}, "retrieved_at": {"type": "string", "format": "date-time"},
+      "content_type": {"type": ["string", "null"]}, "response_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+      "response_bytes": {"type": "integer", "minimum": 0, "maximum": 2000000}, "excerpt": {"oneOf": [{"$ref": "#/definitions/excerpt"}, {"type": "null"}]}
+    }},
+    "not_captured": {"type": "object", "additionalProperties": false, "required": ["id", "requested_url", "field_targets", "state", "reason"], "properties": {
+      "id": {"type": "string"}, "requested_url": {"type": "string", "format": "uri", "pattern": "^https://"}, "field_targets": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/field_target"}, "uniqueItems": true},
+      "state": {"enum": ["unproven", "invalid"]}, "reason": {"type": "string", "minLength": 1}
+    }},
+    "result": {"oneOf": [{"$ref": "#/definitions/captured"}, {"$ref": "#/definitions/not_captured"}]}
+  }
+}

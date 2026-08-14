@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Plan AC controlled collector protocol 1.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "query_pack_version", "query_pack_hash", "scope", "collection_method", "source_priority", "evidence_contract", "execution_contract", "authority_contract", "config_digest"],
+  "properties": {
+    "protocol_version": {"const": "1.1.0"},
+    "query_pack_version": {"const": "1.1.0"},
+    "query_pack_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["lanes", "entity_count", "required_slot_count", "public_sources_only", "real_or_private_data_allowed"],
+      "properties": {
+        "lanes": {"const": ["oss", "czech_products"]},
+        "entity_count": {"const": 20}, "required_slot_count": {"const": 230},
+        "public_sources_only": {"const": true}, "real_or_private_data_allowed": {"const": false}
+      }
+    },
+    "collection_method": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "source_priority": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "evidence_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["one_or_more_field_owned_records_per_result", "public_https_only", "allowed_root_enforced", "field_specific_locator_required", "retrieval_time_inside_run_interval", "response_body_hash_required", "exact_excerpt_span_required", "operator_review_required_for_acceptance"],
+      "properties": {
+        "one_or_more_field_owned_records_per_result": {"const": true},
+        "public_https_only": {"const": true}, "allowed_root_enforced": {"const": true},
+        "field_specific_locator_required": {"const": true}, "retrieval_time_inside_run_interval": {"const": true},
+        "response_body_hash_required": {"const": true}, "exact_excerpt_span_required": {"const": true},
+        "operator_review_required_for_acceptance": {"const": true}
+      }
+    },
+    "execution_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["same_protocol_digest_for_controlled_pair", "distinct_run_id", "distinct_execution_instance_id", "collector_identity_must_be_truthful", "operator_attestation_is_separate", "paid_api_fallback_allowed", "canonical_or_prior_run_inputs_allowed"],
+      "properties": {
+        "same_protocol_digest_for_controlled_pair": {"const": true}, "distinct_run_id": {"const": true},
+        "distinct_execution_instance_id": {"const": true}, "collector_identity_must_be_truthful": {"const": true},
+        "operator_attestation_is_separate": {"const": true}, "paid_api_fallback_allowed": {"const": false},
+        "canonical_or_prior_run_inputs_allowed": {"const": false}
+      }
+    },
+    "authority_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["default_classification", "exit_zero_classifications", "collector_can_self_attest"],
+      "properties": {
+        "default_classification": {"const": "collector_proposed"},
+        "exit_zero_classifications": {"const": ["synthetic_fixture_verified", "operator_verified"]},
+        "collector_can_self_attest": {"const": false}
+      }
+    },
+    "config_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

@@ -1,0 +1,254 @@
+{
+  "normalization_version": "1.0.0",
+  "hash_algorithm": "sha256-canonical-json-without-ruleset_hash",
+  "ruleset_hash": "7505ac4b1007b654bd2fbf9595383f766be3fabc292600b984e7264ea4460672",
+  "authority": "proposal-only-operator-review-required",
+  "query_pack_binding": {
+    "path": "research/query-packs/plan-ac-core-1.1.json",
+    "query_pack_version": "1.1.0",
+    "query_pack_hash": "69ea1e988271dafaaea0ea84cc75e6eac8ad7c884ec4f66212ce57a3a68a3819",
+    "byte_sha256": "db652791b73e327bbc2047c369b9c8c71d424505898945d02cd000e9cc07151f"
+  },
+  "proposal_contract": {
+    "schema_path": "research/query-packs/field-normalization-proposal-1.0.schema.json",
+    "proposal_version": "1.0.0",
+    "schema_byte_sha256": "7a4e6357e466267d911e259fc9c20f4b4d6cd6e8f27101f913f5f70609f0bb49"
+  },
+  "spdx_allowlist": {
+    "version": "plan-ac-spdx-subset-1.0",
+    "identifiers": ["Apache-2.0", "GPL-2.0-only", "GPL-3.0-only", "MIT", "MPL-2.0"]
+  },
+  "coverage": {
+    "coverage_mode": "sparse",
+    "covered_fields": {
+      "oss_invoice": ["license_spdx", "invoice_extraction_level"],
+      "czech_invoice_software": ["public_api", "pricing", "accounting_system_ids", "export_format_ids"]
+    },
+    "uncovered_fields": {
+      "oss_invoice": ["czech_ocr_support_level", "local_execution", "structured_output_ids", "latest_release_date", "github_stars", "business_use_evidence_level", "pricing"],
+      "czech_invoice_software": ["received_invoice_extraction", "file_export", "named_accounting_integration", "field_correction_before_export", "approval_gate_before_export", "issued_invoice_creation", "issued_invoice_dispatch", "automated_intake", "connector_or_sync", "target_customer_segments"]
+    }
+  },
+  "normalization_profiles": {
+    "exact_trim": ["unicode_nfkc", "trim"],
+    "text_casefold": ["unicode_nfkc", "casefold", "collapse_whitespace", "trim"]
+  },
+  "rules": [
+    {
+      "id": "spdx-exact-identity",
+      "scope": {
+        "lane": "oss_invoice",
+        "entity_ids": ["oss-deepdoctection", "oss-docling", "oss-doctr", "oss-easyocr", "oss-invoice2data", "oss-ocrmypdf", "oss-paddleocr", "oss-paperless-ngx", "oss-tesseract", "oss-unstructured"],
+        "field_id": "license_spdx"
+      },
+      "input": {
+        "normalization_profile": "exact_trim",
+        "match_mode": "exact_value",
+        "values": ["Apache-2.0", "GPL-2.0-only", "GPL-3.0-only", "MIT", "MPL-2.0"]
+      },
+      "output": {"kind": "mapping_function", "name": "identity_exact", "result_type": "string"},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["en"],
+      "requires_operator_review": true,
+      "notes": "Only an exact SPDX token is preserved; the rule does not infer licence compatibility or legal effect."
+    },
+    {
+      "id": "public-api-positive-phrases",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "public_api"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["public api", "veřejné api", "veřejné aplikační rozhraní"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": true},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true,
+      "notes": "Presence of the exact phrase proposes true; access conditions and product identity still require evidence review."
+    },
+    {
+      "id": "public-api-negative-phrases",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "public_api"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["api není dostupné", "bez veřejného api", "no public api"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": false},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true,
+      "notes": "An exact negative statement proposes false and must not override conflicting evidence."
+    },
+    {
+      "id": "invoice-extraction-native",
+      "scope": {
+        "lane": "oss_invoice",
+        "entity_ids": ["oss-deepdoctection", "oss-docling", "oss-doctr", "oss-easyocr", "oss-invoice2data", "oss-ocrmypdf", "oss-paddleocr", "oss-paperless-ngx", "oss-tesseract", "oss-unstructured"],
+        "field_id": "invoice_extraction_level"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["native invoice field extraction", "nativní extrakce polí faktury"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": "native_invoice_fields"},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "invoice-extraction-template-rule",
+      "scope": {
+        "lane": "oss_invoice",
+        "entity_ids": ["oss-deepdoctection", "oss-docling", "oss-doctr", "oss-easyocr", "oss-invoice2data", "oss-ocrmypdf", "oss-paddleocr", "oss-paperless-ngx", "oss-tesseract", "oss-unstructured"],
+        "field_id": "invoice_extraction_level"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["invoice fields by templates", "invoice fields by rules", "pole faktury podle šablon"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": "template_or_rule_invoice_fields"},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "invoice-extraction-generic-structure",
+      "scope": {
+        "lane": "oss_invoice",
+        "entity_ids": ["oss-deepdoctection", "oss-docling", "oss-doctr", "oss-easyocr", "oss-invoice2data", "oss-ocrmypdf", "oss-paddleocr", "oss-paperless-ngx", "oss-tesseract", "oss-unstructured"],
+        "field_id": "invoice_extraction_level"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["generic document structure", "obecná struktura dokumentu"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": "generic_document_structure"},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "invoice-extraction-none-documented",
+      "scope": {
+        "lane": "oss_invoice",
+        "entity_ids": ["oss-deepdoctection", "oss-docling", "oss-doctr", "oss-easyocr", "oss-invoice2data", "oss-ocrmypdf", "oss-paddleocr", "oss-paperless-ngx", "oss-tesseract", "oss-unstructured"],
+        "field_id": "invoice_extraction_level"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["no invoice extraction documented", "extrakce faktur není dokumentována"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": "none_documented"},
+      "enumeration_behavior": "scalar_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "czech-pricing-currency-czk",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "pricing"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["czk", "kč"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": "CZK"},
+      "enumeration_behavior": "pricing_component_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true,
+      "required_pricing_context": {
+        "vat_status": ["included", "excluded", "not_disclosed"],
+        "billing_period": ["one_time", "monthly", "annual", "other"],
+        "unit": ["document", "invoice", "user", "organization", "flat_rate", "other"]
+      },
+      "notes": "This proposes only the currency component; it is invalid without explicit VAT treatment, billing period, and charged unit."
+    },
+    {
+      "id": "fakturoid-accounting-product-aliases",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-fakturoid"],
+        "field_id": "accounting_system_ids"
+      },
+      "input": {
+        "normalization_profile": "text_casefold",
+        "match_mode": "exact_value",
+        "values": ["fakturoid", "fakturoid.cz"]
+      },
+      "output": {"kind": "fixed_typed_value", "value": "fakturoid"},
+      "enumeration_behavior": "append_unique_partial_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true,
+      "notes": "Product aliases do not establish that another product integrates with Fakturoid; entity and claim evidence remain required."
+    },
+    {
+      "id": "export-format-csv",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "export_format_ids"
+      },
+      "input": {"normalization_profile": "text_casefold", "match_mode": "exact_value", "values": ["csv", "comma-separated values"]},
+      "output": {"kind": "fixed_typed_value", "value": "csv"},
+      "enumeration_behavior": "append_unique_partial_proposal",
+      "source_languages": ["en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "export-format-xlsx",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "export_format_ids"
+      },
+      "input": {"normalization_profile": "text_casefold", "match_mode": "exact_value", "values": ["excel xlsx", "xlsx"]},
+      "output": {"kind": "fixed_typed_value", "value": "xlsx"},
+      "enumeration_behavior": "append_unique_partial_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "export-format-isdoc",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "export_format_ids"
+      },
+      "input": {"normalization_profile": "text_casefold", "match_mode": "exact_value", "values": ["isdoc", "isdoc 6"]},
+      "output": {"kind": "fixed_typed_value", "value": "isdoc"},
+      "enumeration_behavior": "append_unique_partial_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true
+    },
+    {
+      "id": "export-format-xml-json-gpc-pdf",
+      "scope": {
+        "lane": "czech_invoice_software",
+        "entity_ids": ["vendor-alice-redque", "vendor-cteni-faktur", "vendor-digitoo", "vendor-fakturoid", "vendor-idoklad", "vendor-raya", "vendor-updesk", "vendor-uctorobot", "vendor-vytezovna", "vendor-wflow"],
+        "field_id": "export_format_ids"
+      },
+      "input": {"normalization_profile": "text_casefold", "match_mode": "anchored_regex", "patterns": ["^(gpc|json|pdf|xml)$"]},
+      "output": {"kind": "mapping_function", "name": "identity_exact", "result_type": "string"},
+      "enumeration_behavior": "append_unique_partial_proposal",
+      "source_languages": ["cs", "en"],
+      "requires_operator_review": true,
+      "notes": "The exact lower-case controlled identifier is preserved; no format is inferred from a generic export claim."
+    }
+  ]
+}

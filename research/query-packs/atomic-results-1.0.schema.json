@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://prace-v-nemecku.tvoje.info/research/query-packs/atomic-results-1.0.schema.json",
+  "title": "Plan AC normalized atomic research results",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "query_pack_version", "query_pack_hash", "run_id", "as_of", "results", "evidence"],
+  "properties": {
+    "format_version": {"const": "atomic-results-1.0"},
+    "query_pack_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "query_pack_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "run_id": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "format": "date"},
+    "results": {"type": "array", "items": {"$ref": "#/definitions/result"}},
+    "evidence": {"type": "array", "items": {"$ref": "#/definitions/evidence"}}
+  },
+  "definitions": {
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "lane", "field_id", "result_status", "value", "evidence_refs", "verification_status", "applicability", "pricing_status"],
+      "properties": {
+        "entity_id": {"type": "string", "minLength": 1},
+        "lane": {"enum": ["oss_invoice", "czech_invoice_software"]},
+        "field_id": {"type": "string", "minLength": 1},
+        "result_status": {"type": "string"},
+        "value": {"type": ["boolean", "integer", "number", "string", "array", "null"], "items": {"type": "string"}},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "verification_status": {"type": "string"},
+        "applicability": {"type": "string"},
+        "pricing_status": {"type": ["string", "null"]},
+        "notes": {"type": "string"}
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "entity_id", "field_id", "url", "evidence_class", "verification_status", "retrieved_at"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "entity_id": {"type": "string", "minLength": 1},
+        "field_id": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "evidence_class": {"type": "string"},
+        "verification_status": {"type": "string"},
+        "retrieved_at": {"type": "string", "format": "date"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,297 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/research-model-1.0.json",
+  "title": "Research Model Schema v1.0",
+  "type": "object",
+  "required": ["schema_version", "run_id", "run_date", "entities", "status", "cohort_targets", "current_counts", "completeness", "validation"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Research model schema version"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+-[a-z0-9-]+$",
+      "description": "Unique immutable research run identifier"
+    },
+    "run_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this research run was executed"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["collecting", "schema-valid", "complete", "verified", "accepted"],
+      "description": "Current run status"
+    },
+    "cohort_targets": {
+      "type": "object",
+      "properties": {
+        "czech_invoice_software": { "type": "integer", "minimum": 10 },
+        "czech_accounting_firms": { "type": "integer", "minimum": 10 },
+        "czech_individual": { "type": "integer", "minimum": 10 },
+        "oss_invoice": { "type": "integer", "minimum": 10 },
+        "studies_comprehensive": { "type": "integer", "minimum": 10 }
+      },
+      "description": "Minimum cohort counts per research subgroup"
+    },
+    "current_counts": {
+      "type": "object",
+      "properties": {
+        "czech_invoice_software": { "type": "integer", "minimum": 0 },
+        "czech_accounting_firms": { "type": "integer", "minimum": 0 },
+        "czech_individual": { "type": "integer", "minimum": 0 },
+        "oss_invoice": { "type": "integer", "minimum": 0 },
+        "studies_comprehensive": { "type": "integer", "minimum": 0 }
+      },
+      "description": "Current record counts per cohort"
+    },
+    "completeness": {
+      "type": "object",
+      "properties": {
+        "structural": { "type": "boolean", "description": "Schema validation passed" },
+        "cohort_quotas": { "type": "boolean", "description": "Minimum cohort counts met" },
+        "evidence_linkage": { "type": "boolean", "description": "Every material feature/price/metric has evidence" },
+        "scoring": { "type": "boolean", "description": "Deterministic scoring from documented inputs" }
+      },
+      "description": "Completeness check results"
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "structural_pass": { "type": "boolean" },
+        "completeness_status": {
+          "type": "string",
+          "enum": ["pass", "fail", "unproven"]
+        },
+        "error_details": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Details of any validation failures"
+        }
+      },
+      "description": "Validation gate results"
+    },
+    "entities": {
+      "type": "array",
+      "description": "Market entities with multi-valued segments",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "title", "cohort", "source_links", "last_verified"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+-[a-z0-9-]+$",
+            "description": "Unique identifier (e.g., 'invoice-soft-freshbooks-cz')"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["vendor_software", "accounting_firm", "individual_provider", "oss_project", "study_comparison", "research_framework"],
+            "description": "Entity type"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable name"
+          },
+          "cohort": {
+            "type": "string",
+            "enum": ["czech_invoice_software", "czech_accounting_firms", "czech_individual", "oss_invoice", "studies_comprehensive"],
+            "description": "Cohort membership"
+          },
+          "geography": {
+            "type": "string",
+            "enum": ["czech Republic", "germany", "czech Republic + germany", "global", "unknown"]
+          },
+          "target_customer": {
+            "type": "string",
+            "enum": ["OSVČ", "malopodnikatel", "profi", "accountant_firm", "enterprise", "multi-jurisdiction", "unknown"]
+          },
+          "source_links": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1,
+            "description": "Authoritative source URLs (primary only)"
+          },
+          "last_verified": {
+            "type": "string",
+            "format": "date",
+            "description": "Date of last evidence verification"
+          },
+          "evidence_states": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Types of evidence used (provisional, primary-source-verified, operator-verified, specialist-verified)"
+          },
+          "offerings": {
+            "type": "object",
+            "properties": {
+              "received_invoice_processing": { "type": "boolean" },
+              "issued_invoice_generation": { "type": "boolean" },
+              "automated_approvals": { "type": "boolean" },
+              "extraction_accuracy": { "type": "number", "minimum": 0, "maximum": 100 },
+              "accounting_proposals": { "type": "boolean" },
+              "payment_integration": { "type": "boolean" },
+              "matching_automation": { "type": "boolean" },
+              "archive_compliance": { "type": "boolean" },
+              "audit_trail": { "type": "boolean" }
+            },
+            "description": "Invoice and accounting capabilities"
+          },
+          "integration_models": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Integration model identifiers"
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["field", "value", "evidence_url", "confidence"],
+              "additionalProperties": false,
+              "properties": {
+                "field": { "type": "string" },
+                "value": { "type": ["string", "number", "boolean", "null"] },
+                "evidence_url": { "type": "string", "minLength": 1, "format": "uri" },
+                "confidence": {
+                  "type": "string",
+                  "enum": ["verified", "unverified", "not_reliably_exposed", "assumed", "unproven"]
+                },
+                "notes": { "type": "string" }
+              }
+            },
+            "description": "Independent claim records with evidence linkage"
+          },
+          "scores": {
+            "type": "object",
+            "properties": {
+              "source_authority": { "type": "number", "minimum": 0, "maximum": 100 },
+              "recency": { "type": "number", "minimum": 0, "maximum": 100 },
+              "corroboration": { "type": "number", "minimum": 0, "maximum": 100 },
+              "completeness": { "type": "number", "minimum": 0, "maximum": 100 },
+              "accounting_fit": { "type": "number", "minimum": 0, "maximum": 100 },
+              "overall": { "type": "number", "minimum": 0, "maximum": 100 }
+            },
+            "description": "Deterministic scoring dimensions"
+          },
+          "practical_business_use": {
+            "type": "string",
+            "enum": ["confirmed", "likely", "unlikely", "unproven", "unknown"],
+            "description": "Practical business use grade"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "description": "Independent evidence and claim records",
+      "items": {
+        "type": "object",
+        "required": ["claim_field", "canonical_url", "publisher", "source_type", "retrieval_date", "confidence", "corroboration_status"],
+        "additionalProperties": false,
+        "properties": {
+          "claim_field": { "type": "string", "minLength": 1, "description": "The specific claim being validated" },
+          "canonical_url": { "type": "string", "minLength": 1, "format": "uri", "description": "Authoritative source URL" },
+          "publisher": { "type": "string", "minLength": 1, "description": "Source publisher or organization" },
+          "source_type": {
+            "type": "string",
+            "enum": ["vendor_documentation", "official_api", "research_report", "academic_paper", "comparison_blog", "github_repo", "spec", "policy", "legal_text", "synthetic_test", "other"],
+            "description": "Type of source document"
+          },
+          "publication_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Original publication date if known"
+          },
+          "retrieval_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date the evidence was retrieved"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["verified", "high", "medium", "low", "unverified", "not_reliably_exposed"],
+            "description": "Confidence level in the evidence"
+          },
+          "corroboration_status": {
+            "type": "string",
+            "enum": ["corroborated", "partial", "single_source", "contradicted", "not_attempted"],
+            "description": "Whether evidence is corroborated by other sources"
+          },
+          "notes": { "type": "string", "minLength": 1, "description": "Additional notes" }
+        }
+      }
+    },
+    "github_metrics": {
+      "type": "object",
+      "properties": {
+        "capture_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When GitHub metrics were captured"
+        },
+        "release_metadata": {
+          "type": "object",
+          "properties": {
+            "tag_name": { "type": "string" },
+            "release_name": { "type": "string" },
+            "published_at": { "type": "string", "format": "date-time" }
+          },
+          "description": "Release/activity metadata"
+        },
+        "activity_metadata": {
+          "type": "object",
+          "properties": {
+            "last_push": { "type": "string", "format": "date-time" },
+            "commit_count": { "type": "integer", "minimum": 0 },
+            "contributor_count": { "type": "integer", "minimum": 0 }
+          },
+          "description": "Release/activity metadata"
+        },
+        "license": {
+          "type": "string",
+          "description": "License caveats - see LICENSE file"
+        },
+        "activity_caveats": { "type": "string", "description": "Rate limit, API availability, or other caveats" }
+      },
+      "description": "GitHub metrics with capture timestamp, release/activity metadata, and license caveats"
+    },
+    "minimum_cohort_counts": {
+      "type": "object",
+      "properties": {
+        "czech_invoice_software": { "type": "integer", "minimum": 10 },
+        "czech_accounting_firms": { "type": "integer", "minimum": 10 },
+        "czech_individual": { "type": "integer", "minimum": 10 },
+        "oss_invoice": { "type": "integer", "minimum": 10 },
+        "studies_comprehensive": { "type": "integer", "minimum": 10 }
+      },
+      "description": "Minimum cohort counts per research subgroup"
+    },
+    "reviewer_verification": {
+      "type": "object",
+      "properties": {
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "review_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of reviewer verification"
+        },
+        "verified_entities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Entity IDs verified by reviewer"
+        },
+        "verified_features": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Material features verified by reviewer"
+        }
+      },
+      "description": "Reviewer verification records"
+    }
+  }
+}

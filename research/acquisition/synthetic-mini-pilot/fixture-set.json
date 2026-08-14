@@ -1,0 +1,60 @@
+{
+  "fixture_set_version": "1.0.0",
+  "synthetic_marker": "SYNTHETIC_PLAN_AC_MINI_PILOT_DO_NOT_USE_AS_MARKET_EVIDENCE",
+  "evidence_scope": "synthetic_fixture_only_not_market_evidence",
+  "query_pack_hash": "69ea1e988271dafaaea0ea84cc75e6eac8ad7c884ec4f66212ce57a3a68a3819",
+  "protocol_config_digest": "93911210a90f9a8d1d3e26f46a30043041e8c5c627616cea3f34c28b554724da",
+  "fixture_set_hash": "236e6fc3bc6f1ec78c8e7b36cbc41aa25a186e2f93851b6ad84a1a62af442e05",
+  "retrieved_at": "2026-08-14T12:00:00Z",
+  "sources": [
+    {"entity_id":"oss-deepdoctection","source_id":"fixture-oss-deepdoctection","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-docling","source_id":"fixture-oss-docling","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-doctr","source_id":"fixture-oss-doctr","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-easyocr","source_id":"fixture-oss-easyocr","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-invoice2data","source_id":"fixture-oss-invoice2data","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-ocrmypdf","source_id":"fixture-oss-ocrmypdf","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-paddleocr","source_id":"fixture-oss-paddleocr","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-paperless-ngx","source_id":"fixture-oss-paperless-ngx","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-tesseract","source_id":"fixture-oss-tesseract","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"oss-unstructured","source_id":"fixture-oss-unstructured","body_text":"synthetic support detail supports true MIT native documented native invoice fields json 2026-08-14 101 named customer or deployment public custom"},
+    {"entity_id":"vendor-alice-redque","source_id":"fixture-vendor-alice-redque","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-cteni-faktur","source_id":"fixture-vendor-cteni-faktur","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-digitoo","source_id":"fixture-vendor-digitoo","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-fakturoid","source_id":"fixture-vendor-fakturoid","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-idoklad","source_id":"fixture-vendor-idoklad","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-raya","source_id":"fixture-vendor-raya","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-updesk","source_id":"fixture-vendor-updesk","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-uctorobot","source_id":"fixture-vendor-uctorobot","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-vytezovna","source_id":"fixture-vendor-vytezovna","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"},
+    {"entity_id":"vendor-wflow","source_id":"fixture-vendor-wflow","body_text":"synthetic support detail supports true pohoda csv smb public custom received invoice export integration correction approval issued dispatch api intake connector"}
+  ],
+  "decision_templates": {
+    "oss_invoice": [
+      {"field_id":"license_spdx","support_status":"proven","value":"MIT","locator":"synthetic support detail","query_term":"MIT"},
+      {"field_id":"czech_ocr_support_level","support_status":"proven","value":"native_documented","locator":"synthetic support detail","query_term":"native documented"},
+      {"field_id":"invoice_extraction_level","support_status":"proven","value":"native_invoice_fields","locator":"synthetic support detail","query_term":"native invoice fields"},
+      {"field_id":"local_execution","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"supports true"},
+      {"field_id":"structured_output_ids","support_status":"proven","value":["json"],"locator":"synthetic support detail","query_term":"json"},
+      {"field_id":"latest_release_date","support_status":"proven","value":"2026-08-14","locator":"synthetic support detail","query_term":"2026-08-14"},
+      {"field_id":"github_stars","support_status":"proven","value":101,"locator":"synthetic support detail","query_term":"101"},
+      {"field_id":"business_use_evidence_level","support_status":"proven","value":"named_customer_or_deployment","locator":"synthetic support detail","query_term":"named customer or deployment"},
+      {"field_id":"pricing","support_status":"proven","value":{"disclosure_status":"public_custom","currency":null,"vat_status":"not_disclosed","billing_period":"not_disclosed","unit":"custom","tiers":[],"notes":"Synthetic fixture only"},"locator":"synthetic support detail","query_term":"public custom"}
+    ],
+    "czech_invoice_software": [
+      {"field_id":"received_invoice_extraction","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"received invoice"},
+      {"field_id":"file_export","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"export"},
+      {"field_id":"named_accounting_integration","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"integration"},
+      {"field_id":"field_correction_before_export","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"correction"},
+      {"field_id":"approval_gate_before_export","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"approval"},
+      {"field_id":"issued_invoice_creation","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"issued"},
+      {"field_id":"issued_invoice_dispatch","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"dispatch"},
+      {"field_id":"accounting_system_ids","support_status":"proven","value":["pohoda"],"locator":"synthetic support detail","query_term":"pohoda"},
+      {"field_id":"export_format_ids","support_status":"proven","value":["csv"],"locator":"synthetic support detail","query_term":"csv"},
+      {"field_id":"public_api","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"api"},
+      {"field_id":"automated_intake","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"intake"},
+      {"field_id":"connector_or_sync","support_status":"proven","value":true,"locator":"synthetic support detail","query_term":"connector"},
+      {"field_id":"target_customer_segments","support_status":"proven","value":["smb"],"locator":"synthetic support detail","query_term":"smb"},
+      {"field_id":"pricing","support_status":"proven","value":{"disclosure_status":"public_custom","currency":null,"vat_status":"not_disclosed","billing_period":"not_disclosed","unit":"custom","tiers":[],"notes":"Synthetic fixture only"},"locator":"synthetic support detail","query_term":"public custom"}
+    ]
+  }
+}

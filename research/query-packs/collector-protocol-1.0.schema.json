@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Plan AC controlled collector protocol 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "query_pack_version", "query_pack_hash", "scope", "collection_method", "source_priority", "evidence_contract", "execution_contract", "config_digest"],
+  "properties": {
+    "protocol_version": {"const": "1.0.0"},
+    "query_pack_version": {"const": "1.1.0"},
+    "query_pack_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["lanes", "entity_count", "required_slot_count", "public_sources_only", "real_or_private_data_allowed"],
+      "properties": {
+        "lanes": {"const": ["oss", "czech_products"]},
+        "entity_count": {"const": 20},
+        "required_slot_count": {"const": 230},
+        "public_sources_only": {"const": true},
+        "real_or_private_data_allowed": {"const": false}
+      }
+    },
+    "collection_method": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "source_priority": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "evidence_contract": {"type": "object", "additionalProperties": {"type": "boolean"}, "minProperties": 1},
+    "execution_contract": {"type": "object", "additionalProperties": {"type": "boolean"}, "minProperties": 1},
+    "config_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

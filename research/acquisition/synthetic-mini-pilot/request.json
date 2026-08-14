@@ -1,0 +1,266 @@
+{
+  "schema_version": "source-capture-1.0",
+  "run_id": "synthetic-mini-v1",
+  "requests": [
+    {
+      "id": "oss-deepdoctection",
+      "url": "https://github.com/deepdoctection/deepdoctection",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-deepdoctection",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-docling",
+      "url": "https://github.com/docling-project/docling",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-docling",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-doctr",
+      "url": "https://github.com/mindee/doctr",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-doctr",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-easyocr",
+      "url": "https://github.com/JaidedAI/EasyOCR",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-easyocr",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-invoice2data",
+      "url": "https://github.com/invoice-x/invoice2data",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-invoice2data",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-ocrmypdf",
+      "url": "https://github.com/ocrmypdf/OCRmyPDF",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-ocrmypdf",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-paddleocr",
+      "url": "https://github.com/PaddlePaddle/PaddleOCR",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-paddleocr",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-paperless-ngx",
+      "url": "https://github.com/paperless-ngx/paperless-ngx",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-paperless-ngx",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-tesseract",
+      "url": "https://github.com/tesseract-ocr/tesseract",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-tesseract",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "oss-unstructured",
+      "url": "https://github.com/Unstructured-IO/unstructured",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for oss-unstructured",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-alice-redque",
+      "url": "https://alice.redque.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-alice-redque",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-cteni-faktur",
+      "url": "https://ctenifaktur.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-cteni-faktur",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-digitoo",
+      "url": "https://www.digitoo.ai/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-digitoo",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-fakturoid",
+      "url": "https://www.fakturoid.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-fakturoid",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-idoklad",
+      "url": "https://www.idoklad.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-idoklad",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-raya",
+      "url": "https://www.raya.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-raya",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-updesk",
+      "url": "https://updesk.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-updesk",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-uctorobot",
+      "url": "https://www.uctorobot.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-uctorobot",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-vytezovna",
+      "url": "https://vytezovna.cz/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-vytezovna",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    },
+    {
+      "id": "vendor-wflow",
+      "url": "https://www.wflow.com/",
+      "method": "GET",
+      "excerpt": {
+        "claim_target": "synthetic typed field fixture for vendor-wflow",
+        "selector": "term-window",
+        "terms": [
+          "synthetic fixture"
+        ],
+        "max_chars": 500
+      }
+    }
+  ]
+}

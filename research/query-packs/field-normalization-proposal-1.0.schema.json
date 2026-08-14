@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://prace-v-nemecku.tvoje.info/research/query-packs/field-normalization-proposal-1.0.schema.json",
+  "title": "Plan AC field-normalization review proposal v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposal_version", "status", "authority", "operator_review_required",
+    "ruleset_version", "ruleset_hash", "query_pack_hash", "rule_id",
+    "lane", "entity_id", "field_id", "raw_value_sha256",
+    "evidence_locator", "proposed_value", "enumeration_behavior"
+  ],
+  "properties": {
+    "proposal_version": {"const": "1.0.0"},
+    "status": {"const": "awaiting_operator_review"},
+    "authority": {"const": "proposal-only-non-authoritative"},
+    "operator_review_required": {"const": true},
+    "ruleset_version": {"const": "1.0.0"},
+    "ruleset_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "query_pack_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "rule_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "lane": {"enum": ["oss_invoice", "czech_invoice_software"]},
+    "entity_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "field_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "raw_value_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidence_locator": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "source_url", "locator", "context_sha256"],
+      "properties": {
+        "evidence_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+        "source_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "locator": {"type": "string", "minLength": 1, "maxLength": 500},
+        "context_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "proposed_value": {"type": ["boolean", "string"]},
+    "enumeration_behavior": {
+      "enum": ["scalar_proposal", "append_unique_partial_proposal", "pricing_component_proposal"]
+    },
+    "pricing_context": {
+      "type": "object", "additionalProperties": false,
+      "required": ["vat_status", "billing_period", "unit"],
+      "properties": {
+        "vat_status": {"enum": ["included", "excluded", "not_disclosed"]},
+        "billing_period": {"enum": ["one_time", "monthly", "annual", "other"]},
+        "unit": {"enum": ["document", "invoice", "user", "organization", "flat_rate", "other"]}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"enumeration_behavior": {"const": "pricing_component_proposal"}}},
+      "then": {"required": ["pricing_context"]},
+      "else": {"not": {"required": ["pricing_context"]}}
+    }
+  ]
+}

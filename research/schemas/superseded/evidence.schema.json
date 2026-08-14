@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/research-evidence-1.0.json",
+  "title": "Research Evidence Schema",
+  "type": "object",
+  "required": ["claim_field", "canonical_url", "publisher", "source_type", "retrieval_date", "confidence", "corroboration_status"],
+  "additionalProperties": false,
+  "properties": {
+    "claim_field": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The specific claim being validated"
+    },
+    "canonical_url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Authoritative source URL"
+    },
+    "publisher": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Source publisher or organization"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": ["vendor_documentation", "official_api", "research_report", "academic_paper", "comparison_blog", "github_repo", "spec", "policy", "legal_text", "synthetic_test", "other"],
+      "description": "Type of source document"
+    },
+    "publication_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Original publication date if known"
+    },
+    "retrieval_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the evidence was retrieved"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["verified", "high", "medium", "low", "unverified", "not_reliably_exposed"],
+      "description": "Confidence level in the evidence"
+    },
+    "corroboration_status": {
+      "type": "string",
+      "enum": ["corroborated", "partial", "single_source", "contradicted", "not_attempted"],
+      "description": "Whether evidence is corroborated by other sources"
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

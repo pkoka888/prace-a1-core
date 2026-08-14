@@ -1,0 +1,68 @@
+{
+  "query_pack_version": "1.0.0",
+  "result_format_version": "atomic-results-1.0",
+  "query_pack_hash": "8aadc23e77a9d3b59728858edeab08c51c04766fee4f8daf345147eb98f896e7",
+  "hash_algorithm": "sha256-canonical-json-without-query_pack_hash",
+  "vocabularies": {
+    "result_status": ["proven", "unproven", "conflicted", "not_applicable"],
+    "evidence_class": ["official_primary", "official_secondary", "independent_primary", "independent_secondary", "repository_metadata"],
+    "verification_status": ["verified", "unverified", "unreachable", "invalid"],
+    "applicability": ["direct", "component", "workflow", "unknown", "not_applicable"],
+    "pricing_status": ["public_exact", "public_from", "public_custom", "not_publicly_disclosed", "not_reliably_exposed", "not_applicable", "unproven"]
+  },
+  "lanes": {
+    "oss_invoice": {
+      "description": "Open-source invoice and document-processing candidates; popularity is not capability evidence.",
+      "expected_entity_ids": [
+        "oss-deepdoctection",
+        "oss-docling",
+        "oss-doctr",
+        "oss-easyocr",
+        "oss-invoice2data",
+        "oss-ocrmypdf",
+        "oss-paddleocr",
+        "oss-paperless-ngx",
+        "oss-tesseract",
+        "oss-unstructured"
+      ],
+      "fields": [
+        {"id": "canonical_repository", "question": "What is the canonical project repository URL?", "importance": "critical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "license_spdx", "question": "What SPDX licence identifier is evidenced by the repository?", "importance": "critical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "czech_ocr_support", "question": "Is Czech-language OCR directly supported?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "invoice_field_extraction", "question": "Does the project directly extract structured invoice fields?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "local_self_hosting", "question": "Can the relevant processing path run locally or self-hosted?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "structured_outputs", "question": "Which documented structured output formats are available?", "importance": "noncritical", "value_type": "string_list", "comparison_rule": "normalized_set", "evidence_required": true},
+        {"id": "latest_release_date", "question": "What is the latest release date at the run as-of date?", "importance": "noncritical", "value_type": "date", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "github_stars", "question": "What is the GitHub star count at capture time?", "importance": "noncritical", "value_type": "integer", "comparison_rule": "numeric_snapshot", "evidence_required": true},
+        {"id": "practical_business_use", "question": "Is practical business use directly evidenced, only a component/workflow inference, or unproven?", "importance": "noncritical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "pricing", "question": "What public pricing disclosure applies to the evaluated offering?", "importance": "pricing", "value_type": "string", "comparison_rule": "pricing", "evidence_required": true}
+      ]
+    },
+    "czech_invoice_software": {
+      "description": "Czech commercial invoice-automation products, evaluated from public evidence as of the run date.",
+      "expected_entity_ids": [
+        "vendor-alice-redque",
+        "vendor-cteni-faktur",
+        "vendor-digitoo",
+        "vendor-fakturoid",
+        "vendor-idoklad",
+        "vendor-raya",
+        "vendor-updesk",
+        "vendor-uctorobot",
+        "vendor-vytezovna",
+        "vendor-wflow"
+      ],
+      "fields": [
+        {"id": "canonical_product_url", "question": "What is the canonical product URL for this exact entity?", "importance": "critical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "received_invoice_automation", "question": "Does the product automate received-invoice capture or extraction?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "accounting_export", "question": "Does the product provide an evidenced export or integration to accounting software?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "human_review_workflow", "question": "Is a human correction or approval workflow documented?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "issued_invoice_automation", "question": "Does the product automate issued-invoice creation or dispatch?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "accounting_systems", "question": "Which accounting systems are explicitly supported?", "importance": "noncritical", "value_type": "string_list", "comparison_rule": "normalized_set", "evidence_required": true},
+        {"id": "api_or_automation", "question": "Is an API or another machine-to-machine automation interface documented?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "target_customer", "question": "Which customer segment is explicitly targeted?", "importance": "noncritical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true},
+        {"id": "pricing", "question": "What public price or custom-pricing status applies, including unit and VAT treatment when disclosed?", "importance": "pricing", "value_type": "string", "comparison_rule": "pricing", "evidence_required": true}
+      ]
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "protocol_version": "1.0.0",
+  "query_pack_version": "1.1.0",
+  "query_pack_hash": "69ea1e988271dafaaea0ea84cc75e6eac8ad7c884ec4f66212ce57a3a68a3819",
+  "scope": {
+    "lanes": ["oss", "czech_products"],
+    "entity_count": 20,
+    "required_slot_count": 230,
+    "public_sources_only": true,
+    "real_or_private_data_allowed": false
+  },
+  "collection_method": [
+    "Load and validate the exact frozen query pack before collection.",
+    "For every entity and field, inspect only the entity's allowed official source roots before considering the field unproven.",
+    "Retrieve each distinct source once per run where possible and record its actual retrieval timestamp.",
+    "Record a field-specific section, heading, selector, API property, or bounded passage locator; navigation labels and search snippets alone cannot prove a claim.",
+    "Use proven only when the cited locator directly supports the normalized value for that entity and field.",
+    "Use unproven when the bounded official-source inspection does not establish the atom; do not infer false or not-disclosed from absence.",
+    "Use conflicted only with two distinct verified source URLs and explicit opposing source notes.",
+    "Use not_applicable only where the query pack allows it.",
+    "For pricing, populate structured facts only when currency, VAT state, billing/unit context, and at least one qualifying tier are supported; otherwise preserve supported partial context in the evidence note and mark the field unproven.",
+    "Validate schema, roster, field coverage, evidence ownership, source roots, timestamps, and pack binding before publication."
+  ],
+  "source_priority": [
+    "official API or release metadata",
+    "official product/pricing/integration documentation",
+    "official repository metadata and README",
+    "explicitly allowed independent evidence when the query pack permits it"
+  ],
+  "evidence_contract": {
+    "one_or_more_field_owned_records_per_result": true,
+    "public_https_only": true,
+    "allowed_root_enforced": true,
+    "field_specific_locator_required": true,
+    "retrieval_time_inside_run_interval": true,
+    "response_body_hash_required": false,
+    "operator_review_required_for_acceptance": true
+  },
+  "execution_contract": {
+    "same_protocol_digest_for_controlled_pair": true,
+    "distinct_run_id": true,
+    "distinct_execution_instance_id": true,
+    "collector_identity_must_be_truthful": true,
+    "operator_attestation_is_separate": true,
+    "paid_api_fallback_allowed": false,
+    "canonical_or_prior_run_inputs_allowed": false
+  },
+  "config_digest": "5e7f6068904c19a64d71812120aee4f0f53e58289b617049b2fe86b4ab052caf"
+}

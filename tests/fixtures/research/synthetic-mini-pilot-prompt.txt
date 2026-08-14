@@ -1,0 +1,5 @@
+SYNTHETIC FIXTURE ONLY — NOT MARKET EVIDENCE
+
+For every frozen Plan AC v1.1 entity-field slot, inspect only the bound
+synthetic capture for that entity. Emit the typed fixture value defined by the
+test configuration. Do not infer any real product capability or market claim.

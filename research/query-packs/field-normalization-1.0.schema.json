@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://prace-v-nemecku.tvoje.info/research/query-packs/field-normalization-1.0.schema.json",
+  "title": "Plan AC deterministic field-normalization proposal rules v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "normalization_version", "hash_algorithm", "ruleset_hash", "authority",
+    "query_pack_binding", "proposal_contract", "spdx_allowlist", "coverage",
+    "normalization_profiles", "rules"
+  ],
+  "properties": {
+    "normalization_version": {"const": "1.0.0"},
+    "hash_algorithm": {"const": "sha256-canonical-json-without-ruleset_hash"},
+    "ruleset_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "authority": {"const": "proposal-only-operator-review-required"},
+    "spdx_allowlist": {
+      "type": "object", "additionalProperties": false,
+      "required": ["version", "identifiers"],
+      "properties": {
+        "version": {"const": "plan-ac-spdx-subset-1.0"},
+        "identifiers": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9.-]*(?:-only|-or-later)?$"}
+        }
+      }
+    },
+    "coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["coverage_mode", "covered_fields", "uncovered_fields"],
+      "properties": {
+        "coverage_mode": {"const": "sparse"},
+        "covered_fields": {"$ref": "#/definitions/lane_field_partition"},
+        "uncovered_fields": {"$ref": "#/definitions/lane_field_partition"}
+      }
+    },
+    "query_pack_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "query_pack_version", "query_pack_hash", "byte_sha256"],
+      "properties": {
+        "path": {"const": "research/query-packs/plan-ac-core-1.1.json"},
+        "query_pack_version": {"const": "1.1.0"},
+        "query_pack_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "byte_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "proposal_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_path", "proposal_version", "schema_byte_sha256"],
+      "properties": {
+        "schema_path": {"const": "research/query-packs/field-normalization-proposal-1.0.schema.json"},
+        "proposal_version": {"const": "1.0.0"},
+        "schema_byte_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "normalization_profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exact_trim", "text_casefold"],
+      "properties": {
+        "exact_trim": {"const": ["unicode_nfkc", "trim"]},
+        "text_casefold": {"const": ["unicode_nfkc", "casefold", "collapse_whitespace", "trim"]}
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/definitions/rule"}
+    }
+  },
+  "definitions": {
+    "lane_field_partition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["oss_invoice", "czech_invoice_software"],
+      "properties": {
+        "oss_invoice": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}},
+        "czech_invoice_software": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "entity_ids", "field_id"],
+      "properties": {
+        "lane": {"enum": ["oss_invoice", "czech_invoice_software"]},
+        "entity_ids": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}
+        },
+        "field_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["normalization_profile", "match_mode"],
+      "properties": {
+        "normalization_profile": {"enum": ["exact_trim", "text_casefold"]},
+        "match_mode": {"enum": ["exact_value", "anchored_regex"]},
+        "values": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 128}
+        },
+        "patterns": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 3, "maxLength": 128}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"match_mode": {"const": "exact_value"}}},
+          "then": {"required": ["values"], "not": {"required": ["patterns"]}}
+        },
+        {
+          "if": {"properties": {"match_mode": {"const": "anchored_regex"}}},
+          "then": {"required": ["patterns"], "not": {"required": ["values"]}}
+        }
+      ]
+    },
+    "output": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": {"const": "fixed_typed_value"},
+            "value": {"type": ["boolean", "string"]}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["kind", "name", "result_type"],
+          "properties": {
+            "kind": {"const": "mapping_function"},
+            "name": {"enum": ["identity_exact"]},
+            "result_type": {"const": "string"}
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "scope", "input", "output", "enumeration_behavior",
+        "source_languages", "requires_operator_review"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+        "scope": {"$ref": "#/definitions/scope"},
+        "input": {"$ref": "#/definitions/input"},
+        "output": {"$ref": "#/definitions/output"},
+        "enumeration_behavior": {
+          "enum": ["scalar_proposal", "append_unique_partial_proposal", "pricing_component_proposal"]
+        },
+        "source_languages": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"enum": ["cs", "en"]}
+        },
+        "requires_operator_review": {"const": true},
+        "required_pricing_context": {"$ref": "#/definitions/pricing_context_contract"},
+        "notes": {"type": "string", "minLength": 1}
+      }
+    },
+    "pricing_context_contract": {
+      "type": "object", "additionalProperties": false,
+      "required": ["vat_status", "billing_period", "unit"],
+      "properties": {
+        "vat_status": {"const": ["included", "excluded", "not_disclosed"]},
+        "billing_period": {"const": ["one_time", "monthly", "annual", "other"]},
+        "unit": {"const": ["document", "invoice", "user", "organization", "flat_rate", "other"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "query_pack_version": "1.1.0",
+  "result_format_version": "atomic-results-1.1",
+  "query_pack_hash": "69ea1e988271dafaaea0ea84cc75e6eac8ad7c884ec4f66212ce57a3a68a3819",
+  "hash_algorithm": "sha256-canonical-json-without-query_pack_hash",
+  "source_policy_version": "plan-ac-official-first-1.1",
+  "capture_window": {
+    "starts_at": "2026-08-14T00:00:00Z",
+    "ends_at": "2026-08-14T23:59:59Z"
+  },
+  "vocabularies": {
+    "result_status": ["proven", "unproven", "conflicted", "not_applicable"],
+    "evidence_class": ["official_primary", "official_secondary", "independent_primary", "independent_secondary", "repository_metadata"],
+    "verification_status": ["verified", "unverified", "unreachable", "invalid"],
+    "applicability": ["direct", "component", "workflow", "unknown", "not_applicable"],
+    "enumeration_scope": ["complete_for_frozen_sources", "partial", "not_applicable"],
+    "claim_confidence": ["source_verified_self_reported", "independently_corroborated", "repository_metadata_verified", "unproven", "conflicted", "not_applicable"]
+  },
+  "lanes": {
+    "oss_invoice": {
+      "description": "Frozen open-source invoice/document-processing roster. Canonical roots identify entities; feature pages belong in evidence.",
+      "entities": [
+        {"id": "oss-deepdoctection", "canonical_root_url": "https://github.com/deepdoctection/deepdoctection", "allowed_official_source_roots": ["https://github.com/deepdoctection/deepdoctection", "https://api.github.com/repos/deepdoctection/deepdoctection", "https://raw.githubusercontent.com/deepdoctection/deepdoctection/"]},
+        {"id": "oss-docling", "canonical_root_url": "https://github.com/docling-project/docling", "allowed_official_source_roots": ["https://github.com/docling-project/docling", "https://api.github.com/repos/docling-project/docling", "https://raw.githubusercontent.com/docling-project/docling/", "https://docling-project.github.io/docling/"]},
+        {"id": "oss-doctr", "canonical_root_url": "https://github.com/mindee/doctr", "allowed_official_source_roots": ["https://github.com/mindee/doctr", "https://api.github.com/repos/mindee/doctr", "https://raw.githubusercontent.com/mindee/doctr/", "https://mindee.github.io/doctr/"]},
+        {"id": "oss-easyocr", "canonical_root_url": "https://github.com/JaidedAI/EasyOCR", "allowed_official_source_roots": ["https://github.com/JaidedAI/EasyOCR", "https://api.github.com/repos/JaidedAI/EasyOCR", "https://raw.githubusercontent.com/JaidedAI/EasyOCR/"]},
+        {"id": "oss-invoice2data", "canonical_root_url": "https://github.com/invoice-x/invoice2data", "allowed_official_source_roots": ["https://github.com/invoice-x/invoice2data", "https://api.github.com/repos/invoice-x/invoice2data", "https://raw.githubusercontent.com/invoice-x/invoice2data/"]},
+        {"id": "oss-ocrmypdf", "canonical_root_url": "https://github.com/ocrmypdf/OCRmyPDF", "allowed_official_source_roots": ["https://github.com/ocrmypdf/OCRmyPDF", "https://api.github.com/repos/ocrmypdf/OCRmyPDF", "https://raw.githubusercontent.com/ocrmypdf/OCRmyPDF/", "https://ocrmypdf.readthedocs.io/"]},
+        {"id": "oss-paddleocr", "canonical_root_url": "https://github.com/PaddlePaddle/PaddleOCR", "allowed_official_source_roots": ["https://github.com/PaddlePaddle/PaddleOCR", "https://api.github.com/repos/PaddlePaddle/PaddleOCR", "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/", "https://www.paddleocr.ai/"]},
+        {"id": "oss-paperless-ngx", "canonical_root_url": "https://github.com/paperless-ngx/paperless-ngx", "allowed_official_source_roots": ["https://github.com/paperless-ngx/paperless-ngx", "https://api.github.com/repos/paperless-ngx/paperless-ngx", "https://raw.githubusercontent.com/paperless-ngx/paperless-ngx/", "https://docs.paperless-ngx.com/"]},
+        {"id": "oss-tesseract", "canonical_root_url": "https://github.com/tesseract-ocr/tesseract", "allowed_official_source_roots": ["https://github.com/tesseract-ocr/tesseract", "https://api.github.com/repos/tesseract-ocr/tesseract", "https://raw.githubusercontent.com/tesseract-ocr/tesseract/", "https://tesseract-ocr.github.io/"]},
+        {"id": "oss-unstructured", "canonical_root_url": "https://github.com/Unstructured-IO/unstructured", "allowed_official_source_roots": ["https://github.com/Unstructured-IO/unstructured", "https://api.github.com/repos/Unstructured-IO/unstructured", "https://raw.githubusercontent.com/Unstructured-IO/unstructured/", "https://docs.unstructured.io/"]}
+      ],
+      "fields": [
+        {"id": "license_spdx", "question": "What SPDX licence identifier does the canonical repository evidence?", "importance": "critical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "czech_ocr_support_level", "question": "At which documented boundary is Czech OCR available?", "importance": "critical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false, "allowed_values": ["native_documented", "bundled_backend_documented", "optional_backend_documented", "unsupported_documented"]},
+        {"id": "invoice_extraction_level", "question": "At which documented boundary are structured invoice fields extracted?", "importance": "critical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false, "allowed_values": ["native_invoice_fields", "template_or_rule_invoice_fields", "generic_document_structure", "none_documented"]},
+        {"id": "local_execution", "question": "Can the relevant evaluated processing path run locally or self-hosted?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "structured_output_ids", "question": "Which controlled output identifiers are explicitly documented by the frozen official sources?", "importance": "noncritical", "value_type": "string_list", "comparison_rule": "normalized_set", "evidence_required": true, "not_applicable_allowed": false, "requires_enumeration_scope": true, "allowed_values": ["alto_xml", "csv", "docx", "hocr", "html", "json", "markdown", "page_xml", "pdf", "pdfa", "python_objects", "text", "tsv", "xml", "other"]},
+        {"id": "latest_release_date", "question": "What published_at calendar date does GitHub's official latest-release endpoint report at capture time?", "importance": "noncritical", "value_type": "date", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": true},
+        {"id": "github_stars", "question": "What stargazers_count does GitHub's repository endpoint report at the exact capture timestamp?", "importance": "noncritical", "value_type": "integer", "comparison_rule": "snapshot", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "business_use_evidence_level", "question": "What level of practical business-use evidence is documented?", "importance": "noncritical", "value_type": "string", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false, "allowed_values": ["named_customer_or_deployment", "documented_invoice_workflow", "component_only", "none_documented"]},
+        {"id": "pricing", "question": "What structured public-pricing disclosure applies to this repository artifact?", "importance": "pricing", "value_type": "pricing", "comparison_rule": "pricing", "evidence_required": true, "not_applicable_allowed": true}
+      ]
+    },
+    "czech_invoice_software": {
+      "description": "Frozen Czech commercial product roster. Capabilities refer to the named product, not generic vendor claims.",
+      "entities": [
+        {"id": "vendor-alice-redque", "canonical_root_url": "https://alice.redque.cz/", "allowed_official_source_roots": ["https://alice.redque.cz/", "https://www.redque.cz/"]},
+        {"id": "vendor-cteni-faktur", "canonical_root_url": "https://ctenifaktur.cz/", "allowed_official_source_roots": ["https://ctenifaktur.cz/"]},
+        {"id": "vendor-digitoo", "canonical_root_url": "https://www.digitoo.ai/", "allowed_official_source_roots": ["https://www.digitoo.ai/", "https://help.digitoo.ai/"]},
+        {"id": "vendor-fakturoid", "canonical_root_url": "https://www.fakturoid.cz/", "allowed_official_source_roots": ["https://www.fakturoid.cz/", "https://www.fakturoid.cz/api/"]},
+        {"id": "vendor-idoklad", "canonical_root_url": "https://www.idoklad.cz/", "allowed_official_source_roots": ["https://www.idoklad.cz/", "https://api.idoklad.cz/", "https://help.idoklad.cz/"]},
+        {"id": "vendor-raya", "canonical_root_url": "https://www.raya.cz/", "allowed_official_source_roots": ["https://www.raya.cz/"]},
+        {"id": "vendor-updesk", "canonical_root_url": "https://updesk.cz/", "allowed_official_source_roots": ["https://updesk.cz/"]},
+        {"id": "vendor-uctorobot", "canonical_root_url": "https://www.uctorobot.cz/", "allowed_official_source_roots": ["https://www.uctorobot.cz/", "https://app.uctorobot.cz/api/v1/docs"]},
+        {"id": "vendor-vytezovna", "canonical_root_url": "https://vytezovna.cz/", "allowed_official_source_roots": ["https://vytezovna.cz/"]},
+        {"id": "vendor-wflow", "canonical_root_url": "https://www.wflow.com/", "allowed_official_source_roots": ["https://www.wflow.com/", "https://help.wflow.com/"]}
+      ],
+      "fields": [
+        {"id": "received_invoice_extraction", "question": "Does the product extract fields from received invoices?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "file_export", "question": "Does the product export invoice/accounting data in a documented file format?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "named_accounting_integration", "question": "Does the product document an integration with at least one named accounting system?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "field_correction_before_export", "question": "Can a human inspect and correct extracted fields before downstream export?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "approval_gate_before_export", "question": "Is an explicit human approval transition required or available before downstream export?", "importance": "critical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "issued_invoice_creation", "question": "Does the product create issued invoices?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "issued_invoice_dispatch", "question": "Does the product automate dispatch of issued invoices?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "accounting_system_ids", "question": "Which controlled accounting-system identifiers are explicitly named in the frozen official sources?", "importance": "noncritical", "value_type": "string_list", "comparison_rule": "normalized_set", "evidence_required": true, "not_applicable_allowed": false, "requires_enumeration_scope": true, "allowed_values": ["6k", "abra_flexi", "abra_flores", "abra_gen", "altus_vario", "datev", "duel", "ekonom", "eso9", "fakturoid", "harmonik", "helios", "idoklad", "iucto", "k2", "keloc", "microsoft_business_central", "money_s3", "money_s4", "money_s5", "mpohoda", "mrp", "omega_kros", "pohoda", "premier", "prytanis", "qi", "sap", "slimoffice", "stereo_kastner", "superfaktura", "ucto", "uol", "other"]},
+        {"id": "export_format_ids", "question": "Which controlled export-format identifiers are explicitly named in the frozen official sources?", "importance": "noncritical", "value_type": "string_list", "comparison_rule": "normalized_set", "evidence_required": true, "not_applicable_allowed": false, "requires_enumeration_scope": true, "allowed_values": ["csv", "gpc", "isdoc", "json", "pdf", "xml", "xlsx", "other"]},
+        {"id": "public_api", "question": "Is a machine-consumable public or customer API documented?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "automated_intake", "question": "Is automated document intake such as email ingestion documented?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "connector_or_sync", "question": "Is an automated connector or synchronization path documented?", "importance": "noncritical", "value_type": "boolean", "comparison_rule": "exact", "evidence_required": true, "not_applicable_allowed": false},
+        {"id": "target_customer_segments", "question": "Which controlled customer segments are explicitly targeted?", "importance": "noncritical", "value_type": "string_list", "comparison_rule": "normalized_set", "evidence_required": true, "not_applicable_allowed": false, "requires_enumeration_scope": true, "allowed_values": ["sole_trader", "smb", "enterprise", "accounting_firm", "accountant", "finance_team", "developer_partner"]},
+        {"id": "pricing", "question": "What structured public price or custom-pricing disclosure applies, including VAT, unit and billing period?", "importance": "pricing", "value_type": "pricing", "comparison_rule": "pricing", "evidence_required": true, "not_applicable_allowed": false}
+      ]
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.2",
+  "run_id": "research-ac-fixture-2026-08-14-invalid",
+  "as_of": "2026-08-14",
+  "collector_version": "1.0.0",
+  "query_version": "1.0.0",
+  "schema_version_tool": "1.2",
+  "tool_versions": {"python": "3.13", "jsonschema": "4.x"},
+  "run_status": "accepted",
+  "failure_state": null,
+  "cohort_targets": {
+    "czech_invoice_software": 10,
+    "czech_accounting_firms": 10,
+    "czech_individual": 10,
+    "oss_invoice": 10,
+    "studies_comprehensive": 10
+  },
+  "entities": [
+    {
+      "id": "oss-docling",
+      "kind": "oss_project",
+      "title": "Docling",
+      "cohort": "oss_invoice",
+      "geography": "global",
+      "target_customer": "enterprise",
+      "source_links": ["https://github.com/docling-project/docling"],
+      "last_verified": "2026-08-14",
+      "offerings": {
+        "received_invoice_processing": {"state": "confirmed", "evidence_ref": "ev-missing"},
+        "issued_invoice_generation": {"state": "unknown"}
+      },
+      "pricing": {"public_status": "not_publicly_disclosed"},
+      "claims": [
+        {"field": "czech_text_accuracy", "value": "95%", "evidence_ref": "ev-missing", "confidence": "verified", "notes": null}
+      ],
+      "github_metrics": {"repo": "docling-project/docling", "stars": 5000, "forks": 450, "license": "MIT", "fetch_status": "success"},
+      "scores": {"source_authority": 80, "recency": 90, "corroboration": 80, "completeness": 75, "accounting_fit": 70, "overall": 79, "calculated": false}
+    }
+  ],
+  "evidence": [],
+  "reviews": []
+}

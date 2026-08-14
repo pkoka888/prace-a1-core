@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/research-model-1.2.json",
+  "title": "Research Model Schema v1.2 (frozen)",
+  "type": "object",
+  "required": [
+    "schema_version", "run_id", "as_of", "collector_version",
+    "run_status", "cohort_targets", "entities", "evidence", "reviews",
+    "tool_versions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "enum": ["1.2"] },
+    "run_id": { "type": "string", "pattern": "^[a-z0-9]+-[a-z0-9-]+$" },
+    "as_of": { "type": "string", "format": "date" },
+    "collector_version": { "type": "string", "minLength": 1 },
+    "query_version": { "type": "string", "minLength": 1 },
+    "schema_version_tool": { "type": "string", "enum": ["1.2"] },
+    "tool_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "python": { "type": "string" },
+        "jsonschema": { "type": "string" }
+      },
+      "required": ["python", "jsonschema"]
+    },
+    "run_status": {
+      "type": "string",
+      "enum": ["collecting", "schema_valid", "complete", "verified", "accepted"]
+    },
+    "failure_state": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string" },
+        "detail": { "type": "string" },
+        "at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "cohort_targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "czech_invoice_software": { "type": "integer", "minimum": 10 },
+        "czech_accounting_firms": { "type": "integer", "minimum": 10 },
+        "czech_individual": { "type": "integer", "minimum": 10 },
+        "oss_invoice": { "type": "integer", "minimum": 10 },
+        "studies_comprehensive": { "type": "integer", "minimum": 10 }
+      },
+      "required": [
+        "czech_invoice_software", "czech_accounting_firms", "czech_individual",
+        "oss_invoice", "studies_comprehensive"
+      ]
+    },
+    "entities": { "type": "array", "items": { "$ref": "#/definitions/entity" } },
+    "evidence": { "type": "array", "items": { "$ref": "#/definitions/evidence" } },
+    "reviews": { "type": "array", "items": { "$ref": "#/definitions/review" } }
+  },
+  "definitions": {
+    "entity": {
+      "type": "object",
+      "required": ["id", "kind", "title", "cohort", "source_links", "last_verified", "offerings", "pricing", "claims", "github_metrics", "scores"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9]+-[a-z0-9-]+$" },
+        "kind": { "type": "string", "enum": ["vendor_software", "accounting_firm", "individual_provider", "oss_project", "study_comparison", "research_framework"] },
+        "title": { "type": "string", "minLength": 1 },
+        "cohort": { "type": "string", "enum": ["czech_invoice_software", "czech_accounting_firms", "czech_individual", "oss_invoice", "studies_comprehensive"] },
+        "geography": { "type": "string", "enum": ["czech Republic", "germany", "czech Republic + germany", "global", "unknown"] },
+        "target_customer": { "type": "string", "enum": ["OSVČ", "malopodnikatel", "profi", "accountant_firm", "enterprise", "multi-jurisdiction", "unknown"] },
+        "source_links": { "type": "array", "items": { "type": "string", "pattern": "^https?://" }, "minItems": 1 },
+        "last_verified": { "type": "string", "format": "date" },
+        "offerings": { "$ref": "#/definitions/offerings" },
+        "pricing": { "$ref": "#/definitions/pricing" },
+        "claims": { "type": "array", "items": { "$ref": "#/definitions/claim" } },
+        "github_metrics": { "$ref": "#/definitions/github_metrics" },
+        "scores": { "$ref": "#/definitions/scores" },
+        "practical_business_use": { "type": "string", "enum": ["confirmed", "likely", "unlikely", "unproven", "unknown"] }
+      }
+    },
+    "offerings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["received_invoice_processing", "issued_invoice_generation"],
+      "properties": {
+        "received_invoice_processing": { "$ref": "#/definitions/capability" },
+        "issued_invoice_generation": { "$ref": "#/definitions/capability" },
+        "automated_approvals": { "$ref": "#/definitions/capability" },
+        "extraction_accuracy": { "$ref": "#/definitions/capability" },
+        "accounting_proposals": { "$ref": "#/definitions/capability" },
+        "payment_integration": { "$ref": "#/definitions/capability" },
+        "matching_automation": { "$ref": "#/definitions/capability" },
+        "archive_compliance": { "$ref": "#/definitions/capability" },
+        "audit_trail": { "$ref": "#/definitions/capability" },
+        "integration_models": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": { "type": "string", "enum": ["confirmed", "proposed", "unknown"] },
+        "evidence_ref": { "type": ["string", "null"] },
+        "value": { "type": ["number", "string", "null"] }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_status"],
+      "properties": {
+        "public_status": { "type": "string", "enum": ["public", "quote_only", "not_publicly_disclosed", "not_reliably_exposed", "unknown"] },
+        "currency": { "type": "string", "enum": ["EUR", "CZK", "USD", "GBP", "multiple", "unknown"] },
+        "vat_treatment": { "type": "string", "enum": ["incl", "excl", "not_applicable", "unknown"] },
+        "pricing_url": { "type": ["string", "null"], "pattern": "^https?://" },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "users": { "type": "string" },
+              "monthly_price": { "type": "number" },
+              "annual_price": { "type": "number" },
+              "evidence_ref": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "observation_date": { "type": "string", "format": "date" }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "required": ["field", "value", "evidence_ref", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "value": { "type": ["string", "number", "boolean", "null"] },
+        "evidence_ref": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "string", "enum": ["verified", "unverified", "not_reliably_exposed", "assumed", "unproven"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["id", "entity_id", "claim_field", "canonical_url", "publisher", "source_type", "retrieval_date", "confidence", "corroboration_status"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^ev-[a-z0-9-]+$" },
+        "entity_id": { "type": "string", "pattern": "^[a-z0-9]+-[a-z0-9-]+$" },
+        "claim_field": { "type": "string", "minLength": 1 },
+        "canonical_url": { "type": "string", "pattern": "^https?://" },
+        "publisher": { "type": "string", "minLength": 1 },
+        "source_type": { "type": "string", "enum": ["vendor_documentation", "official_api", "research_report", "academic_paper", "comparison_blog", "github_repo", "spec", "policy", "legal_text", "synthetic_test", "other"] },
+        "publication_date": { "type": "string", "format": "date" },
+        "retrieval_date": { "type": "string", "format": "date" },
+        "confidence": { "type": "string", "enum": ["verified", "high", "medium", "low", "unverified", "not_reliably_exposed"] },
+        "corroboration_status": { "type": "string", "enum": ["corroborated", "partial", "single_source", "contradicted", "not_attempted"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "github_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": ["string", "null"] },
+        "capture_timestamp": { "type": ["string", "null"], "format": "date-time" },
+        "stars": { "type": ["integer", "null"], "minimum": 0 },
+        "forks": { "type": ["integer", "null"], "minimum": 0 },
+        "license": { "type": ["string", "null"] },
+        "latest_release": { "type": ["string", "null"] },
+        "last_push": { "type": ["string", "null"], "format": "date-time" },
+        "activity_caveats": { "type": ["string", "null"] },
+        "fetch_status": { "type": "string", "enum": ["success", "rate_limited", "unavailable", "not_found", "error", "unproven"] }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_authority", "recency", "corroboration", "completeness", "accounting_fit", "overall"],
+      "properties": {
+        "source_authority": { "$ref": "#/definitions/score_value" },
+        "recency": { "$ref": "#/definitions/score_value" },
+        "corroboration": { "$ref": "#/definitions/score_value" },
+        "completeness": { "$ref": "#/definitions/score_value" },
+        "accounting_fit": { "$ref": "#/definitions/score_value" },
+        "overall": { "$ref": "#/definitions/score_value" },
+        "calculated": { "type": "boolean" },
+        "calculated_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "score_value": {
+      "oneOf": [
+        { "type": "number", "minimum": 0, "maximum": 100 },
+        { "const": "unproven" }
+      ]
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "review_date", "verified_entities", "verified_features"],
+      "properties": {
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "review_date": { "type": "string", "format": "date" },
+        "verified_entities": { "type": "array", "items": { "type": "string" } },
+        "verified_features": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

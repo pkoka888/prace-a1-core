@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/research-offerings-1.0.json",
+  "title": "Research Offerings Schema",
+  "type": "object",
+  "required": ["entity_id", "capabilities", "deployment", "pricing"],
+  "additionalProperties": false,
+  "properties": {
+    "entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "References parent entity id"
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["invoice_direction", "target_segments"],
+      "properties": {
+        "invoice_direction": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["received", "issued", "both"] }
+        },
+        "target_segments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "extraction_methods": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["ocr", "ml", "template", "manual", "api", "unknown"] }
+        },
+        "tax_fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "vat_handling": {
+          "type": "string",
+          "enum": ["eu-vat-rates", "czech-specific", "german-specific", "manual", "unknown"]
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["model", "hosting"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["saas", "self_hosted", "hybrid", "desktop", "mobile", "unknown"]
+        },
+        "hosting": {
+          "type": "string",
+          "enum": ["cloud", "on_premises", "managed", "unknown"]
+        },
+        "integrations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "required": ["public_status"],
+      "properties": {
+        "public_status": {
+          "type": "string",
+          "enum": ["public", "quote_only", "not_publicly_disclosed", "unknown"]
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["EUR", "CZK", "USD", "GBP", "multiple", "unknown"]
+        },
+        "vat_treatment": {
+          "type": "string",
+          "enum": ["incl", "excl", "not_applicable", "unknown"]
+        },
+        "pricing_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "users": { "type": "string" },
+              "monthly_price": { "type": "number" },
+              "annual_price": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "repository_metrics": {
+      "type": "object",
+      "properties": {
+        "stars": { "type": "integer", "minimum": 0 },
+        "forks": { "type": "integer", "minimum": 0 },
+        "license": { "type": "string" },
+        "latest_release": { "type": "string" },
+        "last_push": { "type": "string", "format": "date-time" },
+        "activity_caveats": { "type": "string" }
+      }
+    },
+    "observation_date": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}

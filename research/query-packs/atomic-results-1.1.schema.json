@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://prace-v-nemecku.tvoje.info/research/query-packs/atomic-results-1.1.schema.json",
+  "title": "Plan AC normalized atomic research results v1.1",
+  "type": "object", "additionalProperties": false,
+  "required": ["format_version", "query_pack_version", "query_pack_hash", "run_id", "as_of", "provenance", "results", "evidence"],
+  "properties": {
+    "format_version": {"const": "atomic-results-1.1"},
+    "query_pack_version": {"const": "1.1.0"},
+    "query_pack_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "run_id": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "format": "date"},
+    "provenance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["collector_id", "collector_kind", "execution_instance_id", "identity_verification", "config_digest", "collection_method", "source_policy_version", "started_at", "completed_at"],
+      "properties": {
+        "collector_id": {"type": "string", "minLength": 1},
+        "collector_kind": {"enum": ["human", "agent", "automation"]},
+        "execution_instance_id": {"type": "string", "minLength": 1},
+        "identity_verification": {"enum": ["operator_attested", "unverified"]},
+        "config_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "collection_method": {"enum": ["manual", "agent_assisted", "automated", "hybrid"]},
+        "source_policy_version": {"type": "string", "minLength": 1},
+        "started_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "provider": {"type": "string"},
+        "model": {"type": "string"}
+      }
+    },
+    "results": {"type": "array", "items": {"$ref": "#/definitions/result"}},
+    "evidence": {"type": "array", "items": {"$ref": "#/definitions/evidence"}}
+  },
+  "definitions": {
+    "pricing": {
+      "type": "object", "additionalProperties": false,
+      "required": ["disclosure_status", "currency", "vat_status", "billing_period", "unit", "tiers"],
+      "properties": {
+        "disclosure_status": {"enum": ["public_exact", "public_from", "public_custom", "not_publicly_disclosed", "not_reliably_exposed"]},
+        "currency": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
+        "vat_status": {"enum": ["included", "excluded", "not_registered", "not_disclosed", "not_applicable"]},
+        "billing_period": {"enum": ["month", "year", "one_time", "usage", "mixed", "not_disclosed", "not_applicable"]},
+        "unit": {"enum": ["document", "extraction", "user", "organisation", "subscription", "custom", "not_disclosed", "not_applicable"]},
+        "tiers": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["name", "amount", "included_units", "overage_amount"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "amount": {"type": ["number", "null"], "minimum": 0},
+              "included_units": {"type": ["integer", "null"], "minimum": 0},
+              "overage_amount": {"type": ["number", "null"], "minimum": 0}
+            }
+          }
+        },
+        "notes": {"type": "string"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"disclosure_status": {"enum": ["public_exact", "public_from"]}}},
+          "then": {
+            "properties": {
+              "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+              "tiers": {"minItems": 1}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"disclosure_status": {"enum": ["public_custom", "not_publicly_disclosed", "not_reliably_exposed"]}}},
+          "then": {
+            "properties": {
+              "currency": {"type": "null"},
+              "tiers": {"maxItems": 0}
+            }
+          }
+        }
+      ]
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "lane", "field_id", "result_status", "value", "evidence_refs", "verification_status", "applicability", "enumeration_scope", "claim_confidence"],
+      "properties": {
+        "entity_id": {"type": "string", "minLength": 1},
+        "lane": {"enum": ["oss_invoice", "czech_invoice_software"]},
+        "field_id": {"type": "string", "minLength": 1},
+        "result_status": {"enum": ["proven", "unproven", "conflicted", "not_applicable"]},
+        "value": {"oneOf": [{"type": "boolean"}, {"type": "integer"}, {"type": "string"}, {"type": "array", "items": {"type": "string"}}, {"$ref": "#/definitions/pricing"}, {"type": "null"}]},
+        "evidence_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "verification_status": {"enum": ["verified", "unverified", "unreachable", "invalid"]},
+        "applicability": {"enum": ["direct", "component", "workflow", "unknown", "not_applicable"]},
+        "enumeration_scope": {"enum": ["complete_for_frozen_sources", "partial", "not_applicable"]},
+        "claim_confidence": {"enum": ["source_verified_self_reported", "independently_corroborated", "repository_metadata_verified", "unproven", "conflicted", "not_applicable"]},
+        "captured_at": {"type": "string", "format": "date-time"},
+        "notes": {"type": "string"}
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "entity_id", "field_id", "url", "evidence_class", "verification_status", "retrieved_at"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "entity_id": {"type": "string", "minLength": 1},
+        "field_id": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "evidence_class": {"enum": ["official_primary", "official_secondary", "independent_primary", "independent_secondary", "repository_metadata"]},
+        "verification_status": {"enum": ["verified", "unverified", "unreachable", "invalid"]},
+        "retrieved_at": {"type": "string", "format": "date-time"},
+        "locator": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

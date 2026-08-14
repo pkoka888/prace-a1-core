@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/research-entity-1.0.json",
+  "title": "Research Entity Schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "kind", "title", "cohort", "source_links", "last_verified"],
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-z0-9]+-[a-z0-9-]+$",
+        "description": "Unique identifier (e.g., 'invoice-soft-freshbooks-cz')"
+      },
+      "kind": {
+        "type": "string",
+        "enum": ["vendor_software", "accounting_firm", "individual_provider", "oss_project", "study_comparison", "research_framework"],
+        "description": "Entity type"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Human-readable name"
+      },
+      "cohort": {
+        "type": "string",
+        "enum": ["czech_invoice_software", "czech_accounting_firms", "czech_individual", "oss_invoice", "studies_comprehensive"],
+        "description": "Cohort membership"
+      },
+      "geography": {
+        "type": "string",
+        "enum": ["czech Republic", "germany", "czech Republic + germany", "global", "unknown"]
+      },
+      "target_customer": {
+        "type": "string",
+        "enum": ["OSVČ", "malopodnikatel", "profi", "accountant_firm", "enterprise", "multi-jurisdiction", "unknown"]
+      },
+      "source_links": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 },
+        "minItems": 1,
+        "description": "Authoritative source URLs (primary only)"
+      },
+      "last_verified": {
+        "type": "string",
+        "format": "date",
+        "description": "Date of last evidence verification"
+      },
+      "evidence_states": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Types of evidence used (primary-source-verified, operator-verified, synthetic-tested)"
+      },
+      "offerings": {
+        "type": "object",
+        "properties": {
+          "received_invoice_processing": { "type": "boolean" },
+          "issued_invoice_generation": { "type": "boolean" },
+          "automated_approvals": { "type": "boolean" },
+          "extraction_accuracy": { "type": "number", "minimum": 0, "maximum": 100 },
+          "accounting_proposals": { "type": "boolean" },
+          "payment_integration": { "type": "boolean" },
+          "matching_automation": { "type": "boolean" },
+          "archive_compliance": { "type": "boolean" },
+          "audit_trail": { "type": "boolean" }
+        }
+      },
+      "integration_models": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "claims": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["field", "value", "evidence_url", "confidence"],
+          "additionalProperties": false,
+          "properties": {
+            "field": { "type": "string" },
+            "value": { "type": ["string", "number", "boolean", "null"] },
+            "evidence_url": { "type": "string", "minLength": 1 },
+            "confidence": { "type": "string", "enum": ["verified", "unverified", "not_reliably_exposed", "assumed"] },
+            "notes": { "type": "string" }
+          }
+        }
+      },
+      "scores": {
+        "type": "object",
+        "properties": {
+          "source_authority": { "type": "number", "minimum": 0, "maximum": 100 },
+          "recency": { "type": "number", "minimum": 0, "maximum": 100 },
+          "corroboration": { "type": "number", "minimum": 0, "maximum": 100 },
+          "completeness": { "type": "number", "minimum": 0, "maximum": 100 },
+          "accounting_fit": { "type": "number", "minimum": 0, "maximum": 100 },
+          "overall": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.2",
+  "run_id": "research-ac-fixture-2026-08-14-partial",
+  "as_of": "2026-08-14",
+  "collector_version": "1.0.0",
+  "query_version": "1.0.0",
+  "schema_version_tool": "1.2",
+  "tool_versions": {"python": "3.13", "jsonschema": "4.x"},
+  "run_status": "schema_valid",
+  "failure_state": null,
+  "cohort_targets": {
+    "czech_invoice_software": 10,
+    "czech_accounting_firms": 10,
+    "czech_individual": 10,
+    "oss_invoice": 10,
+    "studies_comprehensive": 10
+  },
+  "entities": [
+    {
+      "id": "oss-docling",
+      "kind": "oss_project",
+      "title": "Docling",
+      "cohort": "oss_invoice",
+      "geography": "global",
+      "target_customer": "enterprise",
+      "source_links": ["https://github.com/docling-project/docling"],
+      "last_verified": "2026-08-14",
+      "offerings": {
+        "received_invoice_processing": {"state": "confirmed", "evidence_ref": "ev-1"},
+        "issued_invoice_generation": {"state": "unknown", "evidence_ref": null},
+        "automated_approvals": {"state": "unknown"},
+        "extraction_accuracy": {"state": "unknown"},
+        "accounting_proposals": {"state": "confirmed", "evidence_ref": "ev-1"},
+        "payment_integration": {"state": "unknown"},
+        "matching_automation": {"state": "unknown"},
+        "archive_compliance": {"state": "confirmed", "evidence_ref": "ev-1"},
+        "audit_trail": {"state": "confirmed", "evidence_ref": "ev-1"},
+        "integration_models": ["api", "library"]
+      },
+      "pricing": {
+        "public_status": "not_publicly_disclosed",
+        "currency": "unknown",
+        "vat_treatment": "unknown",
+        "pricing_url": null,
+        "tiers": [],
+        "observation_date": "2026-08-14"
+      },
+      "claims": [
+        {"field": "czech_text_accuracy", "value": "95%", "evidence_ref": "ev-1", "confidence": "verified", "notes": null}
+      ],
+      "github_metrics": {
+        "repo": "docling-project/docling",
+        "capture_timestamp": "2026-08-14T10:00:00Z",
+        "stars": 5000,
+        "forks": 450,
+        "license": "MIT",
+        "latest_release": "v1.0.0",
+        "last_push": "2026-08-10T12:00:00Z",
+        "activity_caveats": null,
+        "fetch_status": "success"
+      },
+      "scores": {
+        "source_authority": 80, "recency": 90, "corroboration": 80,
+        "completeness": 75, "accounting_fit": 70, "overall": 79,
+        "calculated": true, "calculated_at": "2026-08-14T10:05:00Z"
+      },
+      "practical_business_use": "likely"
+    },
+    {
+      "id": "vendor-fakturoid",
+      "kind": "vendor_software",
+      "title": "Fakturoid",
+      "cohort": "czech_invoice_software",
+      "geography": "czech Republic",
+      "target_customer": "OSVČ",
+      "source_links": ["https://fakturoid.cz"],
+      "last_verified": "2026-08-14",
+      "offerings": {
+        "received_invoice_processing": {"state": "unknown"},
+        "issued_invoice_generation": {"state": "confirmed", "evidence_ref": "ev-2"},
+        "automated_approvals": {"state": "confirmed", "evidence_ref": "ev-2"},
+        "extraction_accuracy": {"state": "unknown"},
+        "accounting_proposals": {"state": "confirmed", "evidence_ref": "ev-2"},
+        "payment_integration": {"state": "confirmed", "evidence_ref": "ev-2"},
+        "matching_automation": {"state": "unknown"},
+        "archive_compliance": {"state": "confirmed", "evidence_ref": "ev-2"},
+        "audit_trail": {"state": "confirmed", "evidence_ref": "ev-2"},
+        "integration_models": ["api", "e-mail"]
+      },
+      "pricing": {
+        "public_status": "public",
+        "currency": "CZK",
+        "vat_treatment": "excl",
+        "pricing_url": "https://fakturoid.cz/cenik",
+        "tiers": [{"name": "Start", "users": "1", "monthly_price": 490, "annual_price": 4900, "evidence_ref": "ev-2"}],
+        "observation_date": "2026-08-14"
+      },
+      "claims": [
+        {"field": "pricing_monthly_czk", "value": 490, "evidence_ref": "ev-2", "confidence": "verified", "notes": null}
+      ],
+      "github_metrics": {
+        "repo": null,
+        "capture_timestamp": null,
+        "stars": null,
+        "forks": null,
+        "license": null,
+        "latest_release": null,
+        "last_push": null,
+        "activity_caveats": "not_a_repo",
+        "fetch_status": "not_found"
+      },
+      "scores": {
+        "source_authority": 85, "recency": 88, "corroboration": 85,
+        "completeness": 80, "accounting_fit": 90, "overall": 86,
+        "calculated": true, "calculated_at": "2026-08-14T10:05:00Z"
+      },
+      "practical_business_use": "confirmed"
+    }
+  ],
+  "evidence": [
+    {"id": "ev-1", "entity_id": "oss-docling", "claim_field": "czech_text_accuracy", "canonical_url": "https://github.com/docling-project/docling/blob/main/docs/czech.md", "publisher": "Docling", "source_type": "github_repo", "publication_date": "2026-01-01", "retrieval_date": "2026-08-14", "confidence": "verified", "corroboration_status": "corroborated", "notes": null},
+    {"id": "ev-2", "entity_id": "vendor-fakturoid", "claim_field": "pricing_monthly_czk", "canonical_url": "https://fakturoid.cz/cenik", "publisher": "Fakturoid", "source_type": "vendor_documentation", "publication_date": "2026-01-01", "retrieval_date": "2026-08-14", "confidence": "verified", "corroboration_status": "single_source", "notes": null}
+  ],
+  "reviews": [
+    {"reviewer_id": "kilo-primary", "review_date": "2026-08-14", "verified_entities": ["oss-docling", "vendor-fakturoid"], "verified_features": ["czech_text_accuracy", "pricing_monthly_czk"]}
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Atomic research audit errata 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["record_version", "authority", "status", "created_at", "query_pack_hash", "target_bindings", "findings", "notes"],
+  "properties": {
+    "record_version": {"const": "1.0"},
+    "authority": {"const": "non_authoritative_audit_errata"},
+    "status": {"const": "pending_operator_review"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "query_pack_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "target_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^research/acquisition/[A-Za-z0-9._/-]+\\.json$"},
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["runs", "entity_id", "field_id", "finding", "required_disposition"],
+        "properties": {
+          "runs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]*$"}},
+          "entity_id": {"type": "string", "minLength": 1},
+          "field_id": {"type": "string", "minLength": 1},
+          "finding": {"type": "string", "minLength": 1},
+          "required_disposition": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "notes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}

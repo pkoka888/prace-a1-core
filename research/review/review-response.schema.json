@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/research-review-response-1.0.json",
+  "title": "Plan AC operator review response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["response_version", "authority", "queue_binding", "responses"],
+  "properties": {
+    "response_version": {"const": "1.0"},
+    "authority": {"const": "non_authoritative_operator_review_response"},
+    "queue_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "queue_version"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "queue_version": {"const": "1.1"}
+      }
+    },
+    "responses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id", "reviewer_id", "reviewed_at", "verdict", "notes",
+          "replacement_source_url"
+        ],
+        "properties": {
+          "task_id": {"type": "string", "minLength": 1},
+          "reviewer_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$"},
+          "reviewed_at": {"type": "string", "format": "date-time"},
+          "verdict": {
+            "enum": ["confirmed", "rejected", "uncertain", "conflicted", "replacement_proposed"]
+          },
+          "notes": {"type": ["string", "null"], "maxLength": 4000},
+          "replacement_source_url": {"type": ["string", "null"], "pattern": "^https://"}
+        }
+      }
+    }
+  }
+}
