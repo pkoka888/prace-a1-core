@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-14T04:46:40+02:00",
+  "scope": {
+    "root": "<repo>",
+    "active_dirs": [
+      ".agents",
+      ".opencode",
+      ".kilo",
+      ".cline",
+      ".codex",
+      ".claude",
+      ".clinerules",
+      ".kilocode"
+    ],
+    "excluded": [
+      ".history-remediation",
+      "a1",
+      "scans",
+      "evidence",
+      "ocr",
+      "data",
+      "output"
+    ]
+  },
+  "directories": [
+    {
+      "path": ".agents",
+      "exists": true,
+      "tracked_entries": 5,
+      "mode": "0o2775",
+      "group_writable": true
+    },
+    {
+      "path": ".opencode",
+      "exists": true,
+      "tracked_entries": 0,
+      "mode": "0o2775",
+      "group_writable": true
+    },
+    {
+      "path": ".kilo",
+      "exists": true,
+      "tracked_entries": 1,
+      "mode": "0o2775",
+      "group_writable": true
+    },
+    {
+      "path": ".cline",
+      "exists": false,
+      "tracked_entries": 0,
+      "mode": null,
+      "group_writable": false
+    },
+    {
+      "path": ".codex",
+      "exists": false,
+      "tracked_entries": 0,
+      "mode": null,
+      "group_writable": false
+    },
+    {
+      "path": ".claude",
+      "exists": false,
+      "tracked_entries": 0,
+      "mode": null,
+      "group_writable": false
+    },
+    {
+      "path": ".clinerules",
+      "exists": false,
+      "tracked_entries": 0,
+      "mode": null,
+      "group_writable": false
+    },
+    {
+      "path": ".kilocode",
+      "exists": false,
+      "tracked_entries": 0,
+      "mode": null,
+      "group_writable": false
+    }
+  ],
+  "skills": [
+    {
+      "path": ".agents/skills/a1-pdf-production/SKILL.md",
+      "name": "a1-pdf-production",
+      "description_present": true,
+      "tracked": true,
+      "relative_links": [
+        {
+          "target": "references/field-policy.md",
+          "exists": true
+        },
+        {
+          "target": "references/visual-qa.schema.json",
+          "exists": true
+        },
+        {
+          "target": "references/mcp-contract.md",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [
+        {
+          "path": ".agents/skills/a1-pdf-production/agents/openai.yaml",
+          "valid_shallow_contract": true,
+          "errors": []
+        }
+      ],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/market-research-evidence/SKILL.md",
+      "name": "market-research-evidence",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "../../../AGENTS.md",
+          "exists": true
+        },
+        {
+          "target": "../../../plans/2026-08-13-plan-ac-accounting-automation-research.md",
+          "exists": true
+        },
+        {
+          "target": "../../../plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    }
+  ],
+  "runtime": {
+    "opencode_skill_discovery": {
+      "status": "succeeded",
+      "skills": [
+        {
+          "name": "customize-opencode",
+          "location": "<built-in>"
+        },
+        {
+          "name": "market-research-evidence",
+          "location": "<repo>/.opencode/skills/market-research-evidence/SKILL.md"
+        },
+        {
+          "name": "a1-pdf-production",
+          "location": "<repo>/.agents/skills/a1-pdf-production/SKILL.md"
+        }
+      ]
+    },
+    "kilo_active_config": {
+      "available": true,
+      "exit_code": 1,
+      "diagnostic": "Error: Configuration is invalid at ~/.config/kilo/kilo.jsonc\n↳ Unrecognized keys: \"subagent_model\", \"sandbox\""
+    }
+  },
+  "package_versions": {
+    "opencode": {
+      "dependency": "@opencode-ai/plugin",
+      "declared": "1.18.18",
+      "installed_cli": "1.18.18",
+      "matches": true
+    },
+    "kilo": {
+      "dependency": "@kilocode/plugin",
+      "declared": "7.4.21",
+      "installed_cli": "7.0.50",
+      "matches": false
+    }
+  },
+  "findings": [
+    {
+      "severity": "high",
+      "code": "KILO_GLOBAL_CONFIG_BLOCKS_PROJECT",
+      "title": "Kilo cannot load the active configuration chain.",
+      "evidence": "Error: Configuration is invalid at ~/.config/kilo/kilo.jsonc\n↳ Unrecognized keys: \"subagent_model\", \"sandbox\"",
+      "action": "Repair or migrate the user-level Kilo config first; retain the valid project .kilo/kilo.jsonc."
+    },
+    {
+      "severity": "medium",
+      "code": "KILO_VERSION_SKEW",
+      "title": "Project Kilo plugin and installed Kilo CLI versions differ.",
+      "evidence": "project=7.4.21, cli=7.0.50",
+      "action": "Decide whether the package tracks the extension or CLI; document both explicitly and avoid treating them as one version."
+    },
+    {
+      "severity": "medium",
+      "code": "SKILL_PORTABILITY_GAP",
+      "title": "A reusable skill is stored only in the OpenCode-specific directory.",
+      "evidence": ".opencode/skills/market-research-evidence/SKILL.md",
+      "action": "If cross-tool use is intended, migrate it to .agents/skills after validating discovery in each target CLI; do not duplicate two writable copies."
+    },
+    {
+      "severity": "medium",
+      "code": "UNTRACKED_AGENT_ASSET",
+      "title": "One or more active agent skills are untracked.",
+      "evidence": ".opencode/skills/market-research-evidence/SKILL.md",
+      "action": "Review for secrets and scope, then intentionally track or explicitly ignore each asset; never wildcard-stage."
+    },
+    {
+      "severity": "low",
+      "code": "GROUP_WRITABLE_AGENT_DIRS",
+      "title": "Active agent/config directories are group-writable.",
+      "evidence": ".agents, .opencode, .kilo",
+      "action": "Confirm the repository group is an intentional trust boundary; agent instructions are executable policy and should not be writable by unintended accounts."
+    },
+    {
+      "severity": "info",
+      "code": "SENSITIVE_HISTORY_EXCLUDED",
+      "title": "Sensitive historical agent-directory copies were excluded.",
+      "evidence": ".history-remediation contains candidate/fresh-clone agent directories and is sensitive by repository policy.",
+      "action": "Keep it ignored and out of generated reports; compare only through an explicitly authorized remediation workflow."
+    },
+    {
+      "severity": "info",
+      "code": "ABSENT_TOOL_DIRS",
+      "title": "Some tool-specific project directories are absent.",
+      "evidence": ".cline, .codex, .claude, .clinerules, .kilocode",
+      "action": "Absence is not a defect unless a documented project-specific integration is required; prefer shared AGENTS.md and .agents/skills where supported."
+    }
+  ],
+  "summary": {
+    "high": 1,
+    "medium": 3,
+    "low": 1,
+    "info": 2
+  }
+}

@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-14T04:16:33+02:00",
+  "generator": "scripts/verify_cli_claims.py",
+  "policy": {
+    "read_only": true,
+    "network_requests_by_verifier": false,
+    "subprocess_network_isolation": false,
+    "agent_tasks": false,
+    "credential_contents": false,
+    "raw_config_values": false
+  },
+  "model_assistance": {
+    "enabled": false,
+    "authority": "advisory_only",
+    "activation": "explicit_operator_opt_in",
+    "purpose": [
+      "Propose official-documentation search queries for unresolved claims.",
+      "Classify already-sanitized evidence into a strict candidate schema.",
+      "Identify contradictions for deterministic or human follow-up."
+    ],
+    "never": [
+      "Execute CLI commands or modify configuration.",
+      "Turn missing evidence into a VERIFIED or CONTRADICTED verdict.",
+      "Read credential files, raw configuration values, sessions, prompts, or A1/employee data.",
+      "Replace runtime probes, schemas, official sources, or human approval."
+    ],
+    "sampling": {
+      "temperature": 0.0,
+      "temperature_rule": "Use 0.0 or the provider's lowest supported value only when the selected model accepts temperature.",
+      "reasoning_effort": {
+        "extraction": "low",
+        "conflict_analysis": "medium"
+      },
+      "reasoning_rule": "For reasoning models, prefer an explicit reasoning-effort evaluation over assuming temperature is supported or sufficient.",
+      "top_p": null,
+      "top_p_rule": "Do not tune top_p and temperature together.",
+      "material_claim_samples": 2,
+      "sample_rule": "For material unresolved claims, compare two independent advisory outputs; disagreement remains NOT_TESTED."
+    },
+    "output_contract": {
+      "format": "json",
+      "required_fields": [
+        "claim_id",
+        "candidate_status",
+        "evidence_ids",
+        "uncertainty",
+        "next_probe"
+      ],
+      "allowed_candidate_statuses": [
+        "SUPPORTED",
+        "UNSUPPORTED",
+        "AMBIGUOUS"
+      ],
+      "forbidden_statuses": [
+        "VERIFIED_RUNTIME",
+        "CONTRADICTED"
+      ]
+    },
+    "cost_and_privacy": {
+      "external_calls_default": "disabled",
+      "allowed_cost": "verified_free_only",
+      "openrouter_model_suffix": ":free",
+      "paid_fallback": false,
+      "input": "sanitized evidence excerpts and public documentation only"
+    }
+  },
+  "products": [
+    {
+      "id": "opencode",
+      "label": "OpenCode",
+      "binary": "opencode",
+      "installed": true,
+      "binary_path": "~/.opencode/bin/opencode",
+      "version": "1.18.18",
+      "help_available": true,
+      "probes": [
+        {
+          "id": "paths",
+          "status": "completed",
+          "exit_code": 0,
+          "excerpt": "home       ~\ndata       ~/.local/share/opencode\nbin        ~/.cache/opencode/bin\nlog        ~/.local/share/opencode/log\nrepos      ~/.local/share/opencode/repos\ncache      ~/.cache/opencode\nconfig     ~/.config/opencode\nstate      ~/.local/state/opencode\ntmp        /tmp/opencode"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "paths",
+          "command": "opencode debug paths",
+          "format": "text",
+          "purpose": "Discover effective data/config/cache roots without reading config values.",
+          "executed": true,
+          "status": "succeeded"
+        },
+        {
+          "id": "resolved_config",
+          "command": "opencode debug config",
+          "format": "json",
+          "purpose": "Native resolved configuration.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "May contain provider options, tokens, headers, or other secrets."
+        },
+        {
+          "id": "skills",
+          "command": "opencode debug skill",
+          "format": "json",
+          "purpose": "Native skill inventory.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Includes full skill bodies and may expose private instructions."
+        },
+        {
+          "id": "session_export",
+          "command": "opencode export <session-id>",
+          "format": "json",
+          "purpose": "Native session export.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Requires a session ID and exports conversation/code content."
+        }
+      ]
+    },
+    {
+      "id": "cline",
+      "label": "Cline",
+      "binary": "cline",
+      "installed": true,
+      "binary_path": "~/.npm-global/bin/cline",
+      "version": "2.8.1",
+      "help_available": true,
+      "probes": [],
+      "native_outputs": [
+        {
+          "id": "task_json",
+          "command": "cline --json <prompt>",
+          "format": "jsonl",
+          "purpose": "Machine-readable task event stream.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Runs an agent task and may incur cost or modify files."
+        },
+        {
+          "id": "config",
+          "command": "cline config",
+          "format": "text",
+          "purpose": "Show current configuration.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "May expose provider or authentication configuration."
+        }
+      ]
+    },
+    {
+      "id": "codex",
+      "label": "Codex",
+      "binary": "codex",
+      "installed": true,
+      "binary_path": "~/.local/bin/codex",
+      "version": "codex-cli 0.147.0",
+      "help_available": true,
+      "probes": [
+        {
+          "id": "doctor",
+          "status": "completed",
+          "exit_code": 1,
+          "valid_json": true,
+          "json_shape": {
+            "type": "object",
+            "keys": [
+              "checks",
+              "codexVersion",
+              "generatedAt",
+              "overallStatus",
+              "schemaVersion"
+            ],
+            "redacted_key_count": 0
+          }
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "doctor",
+          "command": "codex doctor --json",
+          "format": "json",
+          "purpose": "Redacted native installation/config/auth health report.",
+          "executed": true,
+          "status": "completed_with_findings"
+        },
+        {
+          "id": "exec_json",
+          "command": "codex exec --json <prompt>",
+          "format": "jsonl",
+          "purpose": "Machine-readable non-interactive agent events.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Runs an agent task and may incur cost or modify files."
+        }
+      ]
+    },
+    {
+      "id": "hermes",
+      "label": "Hermes Agent",
+      "binary": "hermes",
+      "installed": true,
+      "binary_path": "~/.local/bin/hermes",
+      "version": "Hermes Agent v0.14.0 (2026.5.16)",
+      "help_available": true,
+      "probes": [
+        {
+          "id": "config_path",
+          "status": "completed",
+          "exit_code": 0,
+          "excerpt": "~/.hermes/config.yaml"
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "config_path",
+          "command": "hermes config path",
+          "format": "text",
+          "purpose": "Discover the selected configuration path.",
+          "executed": true,
+          "status": "succeeded"
+        },
+        {
+          "id": "config_check",
+          "command": "hermes config check",
+          "format": "text",
+          "purpose": "Validate configuration completeness.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Reports which credential environment variables are present."
+        },
+        {
+          "id": "dump",
+          "command": "hermes dump",
+          "format": "text",
+          "purpose": "Support/debug setup report.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Support dumps may contain sensitive system metadata."
+        }
+      ]
+    },
+    {
+      "id": "kilo",
+      "label": "Kilo CLI",
+      "binary": "kilo",
+      "installed": true,
+      "binary_path": "~/.kilo/bin/kilo",
+      "version": "7.0.50",
+      "help_available": true,
+      "probes": [
+        {
+          "id": "paths",
+          "status": "completed",
+          "exit_code": 1,
+          "excerpt": "Error: Configuration is invalid at ~/.config/kilo/kilo.jsonc\n↳ Unrecognized keys: \"subagent_model\", \"sandbox\""
+        }
+      ],
+      "native_outputs": [
+        {
+          "id": "paths",
+          "command": "kilo debug paths",
+          "format": "text",
+          "purpose": "Discover effective data/config/cache roots without reading config values.",
+          "executed": true,
+          "status": "failed"
+        },
+        {
+          "id": "resolved_config",
+          "command": "kilo debug config",
+          "format": "json",
+          "purpose": "Native resolved configuration.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "May contain provider options, tokens, headers, or other secrets."
+        },
+        {
+          "id": "skills",
+          "command": "kilo debug skill",
+          "format": "json",
+          "purpose": "Native skill inventory.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Includes full skill bodies and may expose private instructions."
+        },
+        {
+          "id": "session_export",
+          "command": "kilo export <session-id>",
+          "format": "json",
+          "purpose": "Native session export.",
+          "executed": false,
+          "status": "skipped_by_policy",
+          "reason": "Requires a session ID and exports conversation/code content."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "opencode_auto_flag",
+      "product": "opencode",
+      "statement": "OpenCode provides a native --auto permission-approval flag.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains '--auto'."
+    },
+    {
+      "id": "opencode_run_command",
+      "product": "opencode",
+      "statement": "OpenCode provides a separate non-interactive run command.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains 'opencode run'."
+    },
+    {
+      "id": "opencode_config_root",
+      "product": "opencode",
+      "statement": "OpenCode reports ~/.config/opencode as its effective configuration root.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Native diagnostic contains 'config     ~/.config/opencode'."
+    },
+    {
+      "id": "cline_yolo_flag",
+      "product": "cline",
+      "statement": "Cline provides a --yolo flag.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains '--yolo'."
+    },
+    {
+      "id": "cline_json_output",
+      "product": "cline",
+      "statement": "Cline can emit task messages as JSON.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains '--json'."
+    },
+    {
+      "id": "codex_bypass_flag",
+      "product": "codex",
+      "statement": "Codex exposes the dangerously-bypass-approvals-and-sandbox flag.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains '--dangerously-bypass-approvals-and-sandbox'."
+    },
+    {
+      "id": "codex_doctor_json",
+      "product": "codex",
+      "statement": "Codex doctor supports a redacted JSON report.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Native command returned valid JSON."
+    },
+    {
+      "id": "hermes_yolo_flag",
+      "product": "hermes",
+      "statement": "Hermes provides its own --yolo flag.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains '--yolo'."
+    },
+    {
+      "id": "kilo_run_command",
+      "product": "kilo",
+      "statement": "Kilo provides its own run command.",
+      "status": "VERIFIED_RUNTIME",
+      "evidence": "Built-in help contains 'kilo run'."
+    },
+    {
+      "id": "kilo_config_valid",
+      "product": "kilo",
+      "statement": "Kilo can load the active configuration successfully.",
+      "status": "CONTRADICTED",
+      "evidence": "Native diagnostic exited 1; see its sanitized diagnostic."
+    },
+    {
+      "id": "kilo_inherits_hermes",
+      "product": "kilo",
+      "statement": "Kilo inherits its backend or approval behavior from Hermes.",
+      "status": "NOT_TESTED",
+      "evidence": "No safe runtime command can prove an implementation-inheritance relationship; source or official architectural evidence is required."
+    }
+  ],
+  "summary": {
+    "VERIFIED_RUNTIME": 9,
+    "CONTRADICTED": 1,
+    "NOT_TESTED": 1
+  }
+}
