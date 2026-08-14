@@ -154,9 +154,12 @@ verify a fresh clone. The existing rewrite mirror is not an instruction to push.
 
 Treat tooling as executable product surface, not as a collection to preserve by
 default. The project currently has one tracked project skill
-(`.agents/skills/a1-pdf-production`), `AGENTS.md`, and a schema-only Kilo config;
-it does not have a project-local OpenCode command/rule/workflow framework. Do not
-copy the fleet repository's much larger framework into this repository.
+(`.agents/skills/a1-pdf-production`), `AGENTS.md`, and a schema-only Kilo config; it
+does not have a project-local OpenCode command/rule/workflow framework. Do not
+copy the fleet repository's much larger framework into this repository. A
+Plan AC experimental skill is authorized under this plan until both Pilot 1 and
+Pilot 2 pass; it becomes operational only after the two repeatable pilot runs
+below pass.
 
 For every agent, skill, rule, workflow, command, script, hook, and tool config:
 
@@ -196,6 +199,18 @@ vocabulary, skill structure and references, command existence, forbidden stale
 paths, and staged PII/secret indicators. Introduce it first as an explicit local
 command; wire pre-commit/CI only after fixtures prove it stable.
 
+### CLI verification ownership
+
+Plan L owns the deterministic CLI capability registry and verifier under
+`config/cli_verification_claims.json`, `scripts/verify_cli_claims.py`, and
+`cli-docs-update/current-verification.{json,md}`. Dated investigations in
+`cli-docs-update/` are historical evidence inputs; the generated current report
+is a derived view, not policy. Runtime/config verification is model-free and
+fail-closed: models may only assist with explicitly opted-in, sanitized evidence
+extraction or ambiguity review and may not assign verification verdicts. Missing
+binaries, timeouts, skipped required probes, or incomplete evidence remain
+`unproven` and must not satisfy an acceptance checkpoint.
+
 ## Validation and exit
 
 - Authority hierarchy and task startup/Git/subagent rules exist in `AGENTS.md`.
@@ -208,8 +223,8 @@ command; wire pre-commit/CI only after fixtures prove it stable.
 - Run Plan M's deterministic planning validator once it exists; until then, use
   read-only local checks for Markdown links and bare paths, plan/index coherence,
   decision sources/approvers, stale active paths, and PII/secret indicators.
-- A separate, explicit documentation commit can be staged without A1 code/config
-  changes or ignored real-data paths.
+- **Plan L remains active until the minimal planning catalog, deterministic validator,
+  historical-document checks, and documentation checkpoint pass.**
 - Any such commit stages an explicit reviewed path list only and excludes A1
   code/config, runtime/real data, outputs, and unrelated worktree changes.
 
@@ -219,3 +234,24 @@ No new product skill, Django scaffolding, Git push, history rewrite, remote
 publication, host reconfiguration, historical-file deletion, or real-data
 migration in this plan. A reviewed documentation/tooling checkpoint commit is
 permitted under the exact-path Git workflow above.
+
+## Planning-tooling checkpoint (2026-08-13)
+
+Concrete completed evidence for the operating-model and validation checkpoint:
+
+- `planning/catalog.schema.json` (JSON Schema draft-07, strict `additionalProperties: false`, dependency objects with typed `gate`).
+- `planning/catalog.json` contains the validator-required milestones, plans,
+  decisions, lanes, and necessary superseded/historical items and validates
+  against the schema. The validator output is authoritative for the live item
+  count; narrative documents do not freeze that derived number.
+- `scripts/validate_planning.py` implements the named governance checks (the validator is the authoritative source of the live count — run `--json`). Current checks: schema validity, exact required-ID coverage, duplicate IDs, controlled vocabularies, owners/approvers/gates/evidence, accepted no placeholder evidence, dependency existence, self-dependencies, gate-aware cycle rules, plan header/index/catalog coherence, decision register/catalog coherence, accepted-decision approver/date/evidence, accepted decision_state approver/date/evidence, actual source-link existence, Markdown relative-link validation, historical/superseded policy, referenced command/file existence, skill metadata and one-level references (covers both `.agents/skills` and `.opencode/skills`), active plans claimed in INDEX, specialist-gate dependency targets, forbidden stale paths and prototype-source links, staged forbidden-path and PII/secret indicators. It uses `--root` for every filesystem lookup, emits deterministic `--json` with `next_actions` (each `when`/`command`/`purpose`/`severity`), and uses exit codes 0/1/2 (missing `jsonschema` → 2, invalid schema/catalog → 1, proven pass → 0). It never prints staged content.
+- `scripts/generate_planning_asset.py` emits `docs/prototypes/roadmap-portal/planning-data.js` (the single derived source of status truth for the cockpit; works under `file://`).
+- `tests/test_validate_planning.py` covers the valid catalog, every required-ID, invalid schema, broken JSON, missing catalog, missing `jsonschema`, duplicate/self/missing IDs, invalid vocabulary and dependency gate, prohibited vs allowed (evidence-only) cycles, plan/header/index and decision mismatches, accepted-decision gaps, broken source and Markdown links, historical/executable/successor policy, missing referenced file, malformed skill reference, forbidden stale and prototype-without-authority links, unsafe staged paths, deterministic JSON and `next_actions`, and the cockpit asset.
+
+Result on the authorized workspace: all checks pass (exit 0, deterministic JSON;
+the live check and test totals are produced by the commands and must not be
+hard-coded here). The A1 authority/source-path drift was reconciled on 2026-08-14
+across `AGENTS.md`, the canonical operator README, and the A1 skill/reference,
+without accessing private inputs. **Plan L stays active** until the complete
+documentation checkpoint, CLI contradictions, and experimental research-skill
+gates are reviewed; resolving the A1 wording alone does not accept Plan L.

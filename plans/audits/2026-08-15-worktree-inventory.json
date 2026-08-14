@@ -1,0 +1,2746 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-14T23:10:43.553483+00:00",
+  "repository": "/var/www/prace-v-nemecku.tvoje.info",
+  "head": "32ac85e6bc913adc0445dad72a79d64f34e65da6",
+  "accepted_checkpoint": "c01aa2b",
+  "commits_after_checkpoint": [
+    "32ac85e6bc913adc0445dad72a79d64f34e65da6\tadd reproducible CLI and agent audits",
+    "4a8c0b1f7181c3ace631f391c10a738da29b9333\tfeat: Plan Q remediation and policy updates",
+    "ba06e050fb78e961f93199e26d098c450a0dfa17\tdocs: classify deferred OCR validator",
+    "3352ddef6256657828254c44dbfcfd203024d9e2\tdocs: record sanitized sysadmin readiness evidence"
+  ],
+  "dirty_path_count": 336,
+  "classified_path_count": 336,
+  "eligible_path_count": 154,
+  "quarantined_path_count": 182,
+  "problems": [],
+  "package_receipts": [
+    {
+      "package": "governance_truth",
+      "purpose": "Authority, roadmap, decisions, plan statuses, and truth audit.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "AGENTS.md",
+        "docs/decisions/ADR-001-jan-portal-architecture.md",
+        "docs/decisions/decision-register.md",
+        "docs/operations/repository-history-remediation.md",
+        "docs/operations/sysadmin-readiness-2026-08-12.md",
+        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md",
+        "plans/2026-08-12-plan-h-ux-ui-and-copy-research.md",
+        "plans/2026-08-12-plan-l-agent-operating-model.md",
+        "plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md",
+        "plans/2026-08-12-plan-o-database-and-transaction-architecture.md",
+        "plans/2026-08-12-plan-p-payroll-and-finance-architecture.md",
+        "plans/2026-08-12-plan-q-repository-history-reference-privacy.md",
+        "plans/2026-08-13-plan-ac-accounting-automation-research.md",
+        "plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md",
+        "plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md",
+        "plans/INDEX.md",
+        "plans/audits/2026-08-15-repository-truth-audit.md",
+        "plans/audits/2026-08-15-worktree-inventory.json",
+        "prd.md",
+        "roadmap.md"
+      ],
+      "path_count": 20,
+      "tracked_path_count": 15,
+      "untracked_path_count": 5,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python scripts/validate_planning.py"
+      ],
+      "dependencies": [],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert only this package after checking later plan references.",
+      "intended_commit": "docs: reconcile repository governance and planning truth"
+    },
+    {
+      "package": "repository_documentation",
+      "purpose": "Actual research-stage repository and protected-data boundaries.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "README.md"
+      ],
+      "path_count": 1,
+      "tracked_path_count": 0,
+      "untracked_path_count": 1,
+      "privacy_review": "pass",
+      "checks": [
+        "git diff --check"
+      ],
+      "dependencies": [
+        "governance_truth"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert documentation without changing runtime or private data.",
+      "intended_commit": "docs: add research-stage repository guide"
+    },
+    {
+      "package": "planning_cockpit",
+      "purpose": "Planning catalog, validator, and derived visual assets.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "docs/prototypes/roadmap-portal/README.md",
+        "docs/prototypes/roadmap-portal/app.js",
+        "docs/prototypes/roadmap-portal/index.html",
+        "docs/prototypes/roadmap-portal/planning-data.js",
+        "docs/prototypes/roadmap-portal/styles.css",
+        "planning/catalog.json",
+        "planning/catalog.schema.json",
+        "plans/2026-08-12-plan-m-visual-planning-cockpit.md",
+        "scripts/generate_planning_asset.py",
+        "scripts/validate_planning.py",
+        "tests/fixtures/planning/broken_markdown.md",
+        "tests/fixtures/planning/empty_catalog.json",
+        "tests/fixtures/planning/valid_catalog.json",
+        "tests/test_validate_planning.py"
+      ],
+      "path_count": 14,
+      "tracked_path_count": 5,
+      "untracked_path_count": 9,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python scripts/validate_planning.py",
+        "venv/bin/python -m pytest tests/test_validate_planning.py -q"
+      ],
+      "dependencies": [
+        "governance_truth"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert generator, validator, catalog, and derived assets together.",
+      "intended_commit": "feat: validate planning catalog and cockpit assets"
+    },
+    {
+      "package": "cli_agent_tooling",
+      "purpose": "Sanitized CLI and agent verification tooling and reports.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "cli-docs-update/README.md",
+        "cli-docs-update/current-agent-dir-audit.json",
+        "cli-docs-update/current-agent-dir-audit.md",
+        "cli-docs-update/current-verification.json",
+        "cli-docs-update/current-verification.md",
+        "config/cli_verification_claims.schema.json",
+        "docs/operations/agent-tooling-ledger.md",
+        "scripts/verify_cli_claims.py",
+        "tests/test_verify_cli_claims.py"
+      ],
+      "path_count": 9,
+      "tracked_path_count": 7,
+      "untracked_path_count": 2,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python -m pytest tests/test_verify_cli_claims.py -q"
+      ],
+      "dependencies": [
+        "governance_truth"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert code, schema, tests, and generated reports together.",
+      "intended_commit": "test: reconcile CLI verification tooling"
+    },
+    {
+      "package": "plan_ad_invoice_contracts",
+      "purpose": "Public/synthetic in-memory invoice boundary proof only.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "src/invoice_ingestion/__init__.py",
+        "src/invoice_ingestion/contracts.py",
+        "tests/test_invoice_ingestion_contract.py"
+      ],
+      "path_count": 3,
+      "tracked_path_count": 0,
+      "untracked_path_count": 3,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q"
+      ],
+      "dependencies": [
+        "DEC-015 before persistence/adapters, production implementation, or Plan AD acceptance"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert contracts and synthetic tests together.",
+      "intended_commit": "test: add synthetic invoice ingestion contracts"
+    },
+    {
+      "package": "plan_ac_integrity",
+      "purpose": "Provisional public/synthetic research contracts and Integrity 1.3 tooling.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "research/acquisition/synthetic-mini-pilot/README.md",
+        "research/acquisition/synthetic-mini-pilot/fixture-set.json",
+        "research/acquisition/synthetic-mini-pilot/fixture-set.schema.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-deepdoctection.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-docling.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-doctr.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-easyocr.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-invoice2data.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-ocrmypdf.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-paddleocr.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-paperless-ngx.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-tesseract.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/oss-unstructured.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-alice-redque.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-cteni-faktur.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-digitoo.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-fakturoid.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-idoklad.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-raya.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-uctorobot.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-updesk.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-vytezovna.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/vendor-wflow.json",
+        "research/acquisition/synthetic-mini-pilot/request.json",
+        "research/query-packs/README.md",
+        "research/query-packs/atomic-errata-1.0.schema.json",
+        "research/query-packs/atomic-query-pack-1.1.schema.json",
+        "research/query-packs/atomic-query-pack.schema.json",
+        "research/query-packs/atomic-results-1.0.schema.json",
+        "research/query-packs/atomic-results-1.1.schema.json",
+        "research/query-packs/collector-execution-1.1.schema.json",
+        "research/query-packs/collector-execution-1.2.schema.json",
+        "research/query-packs/collector-proposal-input-1.0.schema.json",
+        "research/query-packs/collector-proposal-input-1.1.schema.json",
+        "research/query-packs/collector-protocol-1.0.schema.json",
+        "research/query-packs/collector-protocol-1.1.schema.json",
+        "research/query-packs/field-decision-fixtures-1.0.json",
+        "research/query-packs/field-decision-fixtures-1.0.schema.json",
+        "research/query-packs/field-normalization-1.0.json",
+        "research/query-packs/field-normalization-1.0.schema.json",
+        "research/query-packs/field-normalization-proposal-1.0.schema.json",
+        "research/query-packs/plan-ac-collector-protocol-1.0.json",
+        "research/query-packs/plan-ac-collector-protocol-1.1.json",
+        "research/query-packs/plan-ac-core-1.0.json",
+        "research/query-packs/plan-ac-core-1.1.json",
+        "research/query-packs/source-capture-1.0.schema.json",
+        "research/query-packs/source-capture-1.1.schema.json",
+        "research/query-packs/source-capture-result-1.0.schema.json",
+        "research/query-packs/source-capture-result-1.1.schema.json",
+        "research/review/README.md",
+        "research/review/operator-review.template.json",
+        "research/review/review-queue.schema.json",
+        "research/review/review-response.schema.json",
+        "research/schemas/research-model-1.2.json",
+        "research/schemas/superseded/entity.schema.json",
+        "research/schemas/superseded/evidence.schema.json",
+        "research/schemas/superseded/offerings.schema.json",
+        "research/schemas/superseded/research-model-1.0.json",
+        "research/schemas/superseded/research-model-1.1.json",
+        "scripts/benchmark_groundtruth.py",
+        "scripts/capture_research_sources.py",
+        "scripts/check_evidence_url.py",
+        "scripts/check_research_completeness.py",
+        "scripts/collect_market_evidence.py",
+        "scripts/compare_research_runs.py",
+        "scripts/create_synthetic_benchmark.py",
+        "scripts/evaluate_research_field_fixtures.py",
+        "scripts/generate_research_review_queue.py",
+        "scripts/normalize_datasets.py",
+        "scripts/run_collector_fixture.py",
+        "scripts/run_collector_proposals.py",
+        "scripts/run_collector_proposals_v12.py",
+        "scripts/score_research_results.py",
+        "scripts/validate_collector_execution.py",
+        "scripts/validate_collector_execution_v12.py",
+        "scripts/validate_field_normalization.py",
+        "scripts/validate_research_review_response.py",
+        "scripts/validate_research_schema.py",
+        "tests/_research_tmp.py",
+        "tests/fixtures/research/envelope_empty.json",
+        "tests/fixtures/research/envelope_invalid_accepted.json",
+        "tests/fixtures/research/envelope_partial.json",
+        "tests/fixtures/research/synthetic-mini-pilot-config.json",
+        "tests/fixtures/research/synthetic-mini-pilot-prompt.txt",
+        "tests/test_capture_research_sources.py",
+        "tests/test_collector_execution.py",
+        "tests/test_collector_v12.py",
+        "tests/test_compare_research_runs.py",
+        "tests/test_evidence_url.py",
+        "tests/test_field_decision_fixtures.py",
+        "tests/test_field_normalization.py",
+        "tests/test_gate1_security.py",
+        "tests/test_research_isolation.py",
+        "tests/test_research_review_queue.py",
+        "tests/test_research_tooling.py",
+        "tests/test_run_collector_fixture.py",
+        "tests/test_run_collector_proposals.py"
+      ],
+      "path_count": 97,
+      "tracked_path_count": 0,
+      "untracked_path_count": 97,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python -m pytest tests/test_capture_research_sources.py tests/test_collector_execution.py tests/test_collector_v12.py tests/test_field_normalization.py -q"
+      ],
+      "dependencies": [
+        "Integrity 1.3 freeze before successor artifact",
+        "Plan L approval before skill activation"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert tooling and synthetic fixtures; never promote provisional evidence.",
+      "intended_commit": "test: add provisional plan-ac research contracts"
+    },
+    {
+      "package": "plan_ac_quarantine_metadata",
+      "purpose": "Record the exact stale v2 state without committing quarantined artifacts.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "plans/audits/2026-08-15-synthetic-mini-v2-status.json",
+        "tests/test_plan_ac_quarantine.py"
+      ],
+      "path_count": 2,
+      "tracked_path_count": 0,
+      "untracked_path_count": 2,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python -m pytest tests/test_plan_ac_quarantine.py -q"
+      ],
+      "dependencies": [
+        "Stale v2 artifacts remain quarantined and unchanged"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert status and regression assertion together; do not mutate v2 artifacts.",
+      "intended_commit": "test: quarantine stale plan-ac synthetic checkpoint"
+    },
+    {
+      "package": "a1_policy",
+      "purpose": "Fail-closed A1 policy documentation; no real-data operation.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        ".agents/skills/a1-pdf-production/SKILL.md",
+        ".agents/skills/a1-pdf-production/references/field-policy.md",
+        "plans/2026-08-12-plan-r-a1-production-stabilization.md",
+        "readme-employees-to-a1-form.md"
+      ],
+      "path_count": 4,
+      "tracked_path_count": 4,
+      "untracked_path_count": 0,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py -q"
+      ],
+      "dependencies": [
+        "Private CSV seven-field update before regeneration"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert policy only and preserve existing private outputs.",
+      "intended_commit": "docs: reconcile fail-closed A1 policy"
+    },
+    {
+      "package": "infrastructure_git_workflow",
+      "purpose": "Local repository workflow validation before remote or CI activation.",
+      "eligible_for_staging": true,
+      "exact_paths": [
+        "change-packages.yml",
+        "docs/operations/gitlab-integration.md",
+        "scripts/validate_change_packages.py",
+        "tests/test_validate_change_packages.py"
+      ],
+      "path_count": 4,
+      "tracked_path_count": 0,
+      "untracked_path_count": 4,
+      "privacy_review": "pass",
+      "checks": [
+        "venv/bin/python -m pytest tests/test_validate_change_packages.py -q",
+        "venv/bin/python scripts/validate_change_packages.py --json"
+      ],
+      "dependencies": [
+        "All dirty paths classified",
+        "Explicit approval before remote mutation"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "Revert local workflow files; this package never changes remotes.",
+      "intended_commit": "test: add fail-closed change-package validation"
+    },
+    {
+      "package": "quarantined_research_artifacts",
+      "purpose": "Live, generated, benchmark, OCR, review, backup, or unreviewed research artifacts.",
+      "eligible_for_staging": false,
+      "exact_paths": [
+        ".opencode/skills/market-research-evidence/SKILL.md",
+        "research/acquisition/atomic-run-a-2026-08-14.json",
+        "research/acquisition/atomic-run-b-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-errata-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-c-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-d-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-e-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-f-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-g-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-h-2026-08-14.json",
+        "research/acquisition/atomic-v1.1-run-i-2026-08-14.json",
+        "research/acquisition/collector-executions/live-mini-2026-08-14.json",
+        "research/acquisition/collector-executions/synthetic-mini-v1.json",
+        "research/acquisition/collector-proposals/live-mini-2026-08-14.json",
+        "research/acquisition/live-mini-pilot/README.md",
+        "research/acquisition/live-mini-pilot/request.json",
+        "research/acquisition/raw/czech_accounting_firms.json",
+        "research/acquisition/raw/czech_individual.json",
+        "research/acquisition/raw/czech_invoice_software.json",
+        "research/acquisition/raw/oss_invoice.json",
+        "research/acquisition/raw/studies_comprehensive.json",
+        "research/acquisition/repeat-2026-08-14/czech_accounting_firms.json",
+        "research/acquisition/repeat-2026-08-14/czech_individual.json",
+        "research/acquisition/repeat-2026-08-14/czech_invoice_software.json",
+        "research/acquisition/repeat-2026-08-14/oss_invoice.json",
+        "research/acquisition/repeat-2026-08-14/studies_comprehensive.json",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/oss-docling-license.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/oss-invoice2data-extraction.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/oss-invoice2data-license.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-fakturoid-export-integration.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-fakturoid-pricing.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-fakturoid-public-api.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-uctorobot-extraction.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-uctorobot-pricing.txt",
+        "research/acquisition/source-captures/live-mini-2026-08-14/manifest.json",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-deepdoctection.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-docling.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-doctr.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-easyocr.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-invoice2data.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-ocrmypdf.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-paddleocr.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-paperless-ngx.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-tesseract.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-unstructured.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-alice-redque.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-cteni-faktur.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-digitoo.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-fakturoid.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-idoklad.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-raya.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-uctorobot.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-updesk.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-vytezovna.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-wflow.txt",
+        "research/acquisition/source-captures/synthetic-mini-v1/manifest.json",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-deepdoctection.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-docling.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-doctr.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-easyocr.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-invoice2data.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-ocrmypdf.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-paddleocr.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-paperless-ngx.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-tesseract.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-unstructured.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-alice-redque.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-cteni-faktur.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-digitoo.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-fakturoid.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-idoklad.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-raya.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-uctorobot.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-updesk.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-vytezovna.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-wflow.txt",
+        "research/acquisition/source-captures/synthetic-mini-v2/manifest.json",
+        "research/acquisition/synthetic-mini-pilot/manifest.json",
+        "research/acquisition/synthetic-mini-pilot/manifest.json.bak",
+        "research/acquisition/synthetic-mini-pilot/runs/synthetic-mini-v2/execution.json",
+        "research/benchmark-experimental/README.md",
+        "research/benchmark-experimental/STATUS.json",
+        "research/benchmark-experimental/comparative-runs/IMPORT_CONTRACT.md",
+        "research/benchmark-experimental/comparative-runs/README.md",
+        "research/benchmark-experimental/comparative-runs/gemini-deep-research/run-manifest.template.json",
+        "research/benchmark-experimental/comparative-runs/notebooklm-control/run-manifest.template.json",
+        "research/benchmark-experimental/comparative-runs/openai-deep-research/run-manifest.template.json",
+        "research/benchmark-experimental/comparative-runs/perplexity-research/run-manifest.template.json",
+        "research/benchmark-experimental/comparative-runs/run-manifest.schema.json",
+        "research/benchmark-experimental/comparative-runs/run-manifest.template.json",
+        "research/benchmark-experimental/gold-answers/merged-answers.json",
+        "research/benchmark-experimental/holdout.json",
+        "research/benchmark-experimental/questions.json",
+        "research/benchmark-experimental/reviewers/agreements.json",
+        "research/benchmark-experimental/reviewers/reviewer-a.json",
+        "research/benchmark-experimental/reviewers/reviewer-b.json",
+        "research/benchmark-experimental/reviewers/reviewer-c.json",
+        "research/benchmark-experimental/run_project_skill.py",
+        "research/benchmark-experimental/schemas/benchmark_corpus_schema.json",
+        "research/benchmark-experimental/schemas/evidence_schema.json",
+        "research/benchmark-experimental/schemas/review_schema.json",
+        "research/benchmark-experimental/schemas/score_report_schema.json",
+        "research/benchmark-experimental/schemas/system_results_schema.json",
+        "research/benchmark-experimental/scoring/results-template.json",
+        "research/benchmark-experimental/scoring/rubric.json",
+        "research/benchmark-experimental/sealed_holdout.json",
+        "research/benchmark-experimental/validate_and_score.py",
+        "research/benchmark-experimental/validate_benchmark_structure.py",
+        "research/pilot/README.md",
+        "research/processed/atomic-reproducibility-report.json",
+        "research/processed/atomic-v1.1-f-g-reproducibility-report.json",
+        "research/processed/atomic-v1.1-h-i-reproducibility-report.json",
+        "research/processed/atomic-v1.1-reproducibility-report.json",
+        "research/processed/completeness_report.json",
+        "research/processed/entities.json",
+        "research/processed/entities.normalized.json",
+        "research/processed/entities.scored.json",
+        "research/processed/evidence_checks-all-live.json",
+        "research/processed/evidence_checks-pilot-live.json",
+        "research/processed/evidence_checks-pilot.json",
+        "research/processed/evidence_checks.json",
+        "research/processed/field-replay.json",
+        "research/processed/model-advisory-hy3-run-2026-08-14.json",
+        "research/processed/model-advisory-run-2026-08-14.json",
+        "research/processed/normalization_report.json",
+        "research/processed/reproducibility-report.json",
+        "research/processed/scores.json",
+        "research/review/atomic-run-a-queue.json",
+        "research/review/atomic-run-b-queue.json",
+        "research/review/atomic-v1.1-run-e-queue.json",
+        "research/review/atomic-v1.1-run-f-queue.json",
+        "research/review/atomic-v1.1-run-g-queue.json",
+        "research/review/atomic-v1.1-run-h-queue.json",
+        "research/review/atomic-v1.1-run-i-queue.json",
+        "research/review/queue.json",
+        "research/synthetic/artifact_manifest.json",
+        "research/synthetic/artifacts/INV-000/clean.pdf",
+        "research/synthetic/artifacts/INV-001/clean.pdf",
+        "research/synthetic/artifacts/INV-002/clean.pdf",
+        "research/synthetic/artifacts/INV-003/clean.pdf",
+        "research/synthetic/artifacts/INV-004/clean.pdf",
+        "research/synthetic/artifacts/INV-005/clean.pdf",
+        "research/synthetic/artifacts/INV-006/clean.pdf",
+        "research/synthetic/artifacts/INV-007/clean.pdf",
+        "research/synthetic/artifacts/INV-008/clean.pdf",
+        "research/synthetic/artifacts/INV-009/clean.pdf",
+        "research/synthetic/artifacts/INV-010/clean.pdf",
+        "research/synthetic/artifacts/INV-011/clean.pdf",
+        "research/synthetic/artifacts/INV-012/clean.pdf",
+        "research/synthetic/artifacts/INV-013/clean.pdf",
+        "research/synthetic/artifacts/INV-014/clean.pdf",
+        "research/synthetic/artifacts/INV-015/clean.pdf",
+        "research/synthetic/artifacts/INV-016/clean.pdf",
+        "research/synthetic/artifacts/INV-017/clean.pdf",
+        "research/synthetic/artifacts/INV-018/clean.pdf",
+        "research/synthetic/artifacts/INV-019/clean.pdf",
+        "research/synthetic/artifacts/INV-020/clean.pdf",
+        "research/synthetic/artifacts/INV-021/clean.pdf",
+        "research/synthetic/artifacts/INV-022/clean.pdf",
+        "research/synthetic/artifacts/INV-023/clean.pdf",
+        "research/synthetic/benchmark_results.json",
+        "research/synthetic/ground_truth.json",
+        "research/synthetic/invoices.json",
+        "scripts/run_ocr_benchmark.py",
+        "tests/test_benchmark_experimental.py"
+      ],
+      "path_count": 165,
+      "tracked_path_count": 0,
+      "untracked_path_count": 165,
+      "privacy_review": "pass",
+      "checks": [],
+      "dependencies": [
+        "Separate provenance and privacy review"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "No automated mutation or deletion is permitted.",
+      "intended_commit": null
+    },
+    {
+      "package": "quarantined_unrelated",
+      "purpose": "Artifacts outside the authorized update scope.",
+      "eligible_for_staging": false,
+      "exact_paths": [
+        ".kilo/kilo.jsonc",
+        "cli-docs-update/2026-08-14-comprehensive-cli-investigation.json",
+        "cli-docs-update/2026-08-14-documentation-comparison.json",
+        "cli-docs-update/2026-08-14-summary.md",
+        "cli-docs-update/2026-08-14-workflow-update.md",
+        "cli-docs-update/VERIFICATION_REPORT_2026-08-14.md",
+        "cli-docs-update/VERIFIED-CI-CLI-DOCS-2026-08-14.md",
+        "docs/operations/shell-environment-audit-2026-08-14.md",
+        "docs/prototypes/2026-08-13-google-ai-studio-frontend-review.md",
+        "docs/prototypes/research-cockpit/index.html",
+        "docs/prototypes/research-cockpit/pilot-1-2.html",
+        "docs/prototypes/research-cockpit/pilot-all.html",
+        "práce-v-německu.zip",
+        "public-site/index.html",
+        "readme-researches-frameworks.md",
+        "scripts/generate_research_cockpit.py",
+        "scripts/validate_ocr_proposals.py"
+      ],
+      "path_count": 17,
+      "tracked_path_count": 1,
+      "untracked_path_count": 16,
+      "privacy_review": "pass",
+      "checks": [],
+      "dependencies": [
+        "Separate explicit approval"
+      ],
+      "excluded_paths": [
+        "a1/",
+        "scans/",
+        "evidence/",
+        "ocr/",
+        "data/",
+        "employees/scans/",
+        "output/",
+        "runtime/portal/",
+        "secrets/",
+        ".env",
+        ".history-remediation/",
+        "private/",
+        "reports/"
+      ],
+      "rollback": "No automated mutation or deletion is permitted.",
+      "intended_commit": null
+    }
+  ],
+  "entries": [
+    {
+      "path": ".agents/skills/a1-pdf-production/SKILL.md",
+      "package": "a1_policy",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": ".agents/skills/a1-pdf-production/references/field-policy.md",
+      "package": "a1_policy",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": ".kilo/kilo.jsonc",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": ".opencode/skills/market-research-evidence/SKILL.md",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "AGENTS.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "README.md",
+      "package": "repository_documentation",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "change-packages.yml",
+      "package": "infrastructure_git_workflow",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/2026-08-14-comprehensive-cli-investigation.json",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/2026-08-14-documentation-comparison.json",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/2026-08-14-summary.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/2026-08-14-workflow-update.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/README.md",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/VERIFICATION_REPORT_2026-08-14.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/VERIFIED-CI-CLI-DOCS-2026-08-14.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/current-agent-dir-audit.json",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/current-agent-dir-audit.md",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/current-verification.json",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "cli-docs-update/current-verification.md",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "config/cli_verification_claims.schema.json",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/decisions/ADR-001-jan-portal-architecture.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/decisions/decision-register.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/operations/agent-tooling-ledger.md",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/operations/gitlab-integration.md",
+      "package": "infrastructure_git_workflow",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/operations/repository-history-remediation.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/operations/shell-environment-audit-2026-08-14.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/operations/sysadmin-readiness-2026-08-12.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/2026-08-13-google-ai-studio-frontend-review.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/research-cockpit/index.html",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/research-cockpit/pilot-1-2.html",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/research-cockpit/pilot-all.html",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/roadmap-portal/README.md",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/roadmap-portal/app.js",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/roadmap-portal/index.html",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/roadmap-portal/planning-data.js",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "docs/prototypes/roadmap-portal/styles.css",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "planning/catalog.json",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "planning/catalog.schema.json",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-h-ux-ui-and-copy-research.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-l-agent-operating-model.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-m-visual-planning-cockpit.md",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-o-database-and-transaction-architecture.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-p-payroll-and-finance-architecture.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-q-repository-history-reference-privacy.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-12-plan-r-a1-production-stabilization.md",
+      "package": "a1_policy",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-13-plan-ac-accounting-automation-research.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/INDEX.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/audits/2026-08-15-repository-truth-audit.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/audits/2026-08-15-synthetic-mini-v2-status.json",
+      "package": "plan_ac_quarantine_metadata",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "plans/audits/2026-08-15-worktree-inventory.json",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "prd.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "práce-v-německu.zip",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "public-site/index.html",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "readme-employees-to-a1-form.md",
+      "package": "a1_policy",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "readme-researches-frameworks.md",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-run-a-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-run-b-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-errata-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-c-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-d-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-e-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-f-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-g-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-h-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-i-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/collector-executions/live-mini-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/collector-executions/synthetic-mini-v1.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/collector-proposals/live-mini-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/live-mini-pilot/README.md",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/live-mini-pilot/request.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/raw/czech_accounting_firms.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/raw/czech_individual.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/raw/czech_invoice_software.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/raw/oss_invoice.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/raw/studies_comprehensive.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/repeat-2026-08-14/czech_accounting_firms.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/repeat-2026-08-14/czech_individual.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/repeat-2026-08-14/czech_invoice_software.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/repeat-2026-08-14/oss_invoice.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/repeat-2026-08-14/studies_comprehensive.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/oss-docling-license.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/oss-invoice2data-extraction.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/oss-invoice2data-license.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-fakturoid-export-integration.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-fakturoid-pricing.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-fakturoid-public-api.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-uctorobot-extraction.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/excerpts/vendor-uctorobot-pricing.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/live-mini-2026-08-14/manifest.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-deepdoctection.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-docling.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-doctr.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-easyocr.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-invoice2data.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-ocrmypdf.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-paddleocr.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-paperless-ngx.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-tesseract.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/oss-unstructured.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-alice-redque.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-cteni-faktur.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-digitoo.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-fakturoid.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-idoklad.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-raya.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-uctorobot.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-updesk.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-vytezovna.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/excerpts/vendor-wflow.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v1/manifest.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-deepdoctection.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-docling.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-doctr.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-easyocr.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-invoice2data.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-ocrmypdf.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-paddleocr.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-paperless-ngx.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-tesseract.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-oss-unstructured.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-alice-redque.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-cteni-faktur.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-digitoo.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-fakturoid.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-idoklad.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-raya.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-uctorobot.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-updesk.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-vytezovna.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/excerpts/fixture-vendor-wflow.txt",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/source-captures/synthetic-mini-v2/manifest.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/README.md",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixture-set.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixture-set.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-deepdoctection.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-docling.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-doctr.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-easyocr.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-invoice2data.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-ocrmypdf.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-paddleocr.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-paperless-ngx.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-tesseract.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/oss-unstructured.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-alice-redque.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-cteni-faktur.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-digitoo.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-fakturoid.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-idoklad.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-raya.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-uctorobot.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-updesk.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-vytezovna.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/fixtures/vendor-wflow.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/manifest.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/manifest.json.bak",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/request.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/acquisition/synthetic-mini-pilot/runs/synthetic-mini-v2/execution.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/README.md",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/STATUS.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/IMPORT_CONTRACT.md",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/README.md",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/gemini-deep-research/run-manifest.template.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/notebooklm-control/run-manifest.template.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/openai-deep-research/run-manifest.template.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/perplexity-research/run-manifest.template.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/run-manifest.schema.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/comparative-runs/run-manifest.template.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/gold-answers/merged-answers.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/holdout.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/questions.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/reviewers/agreements.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/reviewers/reviewer-a.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/reviewers/reviewer-b.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/reviewers/reviewer-c.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/run_project_skill.py",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/schemas/benchmark_corpus_schema.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/schemas/evidence_schema.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/schemas/review_schema.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/schemas/score_report_schema.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/schemas/system_results_schema.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/scoring/results-template.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/scoring/rubric.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/sealed_holdout.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/validate_and_score.py",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/benchmark-experimental/validate_benchmark_structure.py",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/pilot/README.md",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/atomic-reproducibility-report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/atomic-v1.1-f-g-reproducibility-report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/atomic-v1.1-h-i-reproducibility-report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/atomic-v1.1-reproducibility-report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/completeness_report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/entities.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/entities.normalized.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/entities.scored.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/evidence_checks-all-live.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/evidence_checks-pilot-live.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/evidence_checks-pilot.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/evidence_checks.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/field-replay.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/model-advisory-hy3-run-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/model-advisory-run-2026-08-14.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/normalization_report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/reproducibility-report.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/processed/scores.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/README.md",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/atomic-errata-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/atomic-query-pack-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/atomic-query-pack.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/atomic-results-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/atomic-results-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/collector-execution-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/collector-execution-1.2.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/collector-proposal-input-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/collector-proposal-input-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/collector-protocol-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/collector-protocol-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/field-decision-fixtures-1.0.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/field-decision-fixtures-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/field-normalization-1.0.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/field-normalization-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/field-normalization-proposal-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/plan-ac-collector-protocol-1.0.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/plan-ac-collector-protocol-1.1.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/plan-ac-core-1.0.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/plan-ac-core-1.1.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/source-capture-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/source-capture-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/source-capture-result-1.0.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/query-packs/source-capture-result-1.1.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/README.md",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-run-a-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-run-b-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-v1.1-run-e-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-v1.1-run-f-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-v1.1-run-g-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-v1.1-run-h-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/atomic-v1.1-run-i-queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/operator-review.template.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/queue.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/review-queue.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/review/review-response.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/schemas/research-model-1.2.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/schemas/superseded/entity.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/schemas/superseded/evidence.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/schemas/superseded/offerings.schema.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/schemas/superseded/research-model-1.0.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/schemas/superseded/research-model-1.1.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifact_manifest.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-000/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-001/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-002/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-003/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-004/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-005/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-006/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-007/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-008/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-009/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-010/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-011/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-012/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-013/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-014/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-015/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-016/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-017/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-018/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-019/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-020/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-021/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-022/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/artifacts/INV-023/clean.pdf",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/benchmark_results.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/ground_truth.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "research/synthetic/invoices.json",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "roadmap.md",
+      "package": "governance_truth",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/benchmark_groundtruth.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/capture_research_sources.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/check_evidence_url.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/check_research_completeness.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/collect_market_evidence.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/compare_research_runs.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/create_synthetic_benchmark.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/evaluate_research_field_fixtures.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/generate_planning_asset.py",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/generate_research_cockpit.py",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/generate_research_review_queue.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/normalize_datasets.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/run_collector_fixture.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/run_collector_proposals.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/run_collector_proposals_v12.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/run_ocr_benchmark.py",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/score_research_results.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_change_packages.py",
+      "package": "infrastructure_git_workflow",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_collector_execution.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_collector_execution_v12.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_field_normalization.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_ocr_proposals.py",
+      "package": "quarantined_unrelated",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_planning.py",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_research_review_response.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/validate_research_schema.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "scripts/verify_cli_claims.py",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "src/invoice_ingestion/__init__.py",
+      "package": "plan_ad_invoice_contracts",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "src/invoice_ingestion/contracts.py",
+      "package": "plan_ad_invoice_contracts",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/_research_tmp.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/planning/broken_markdown.md",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/planning/empty_catalog.json",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/planning/valid_catalog.json",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/research/envelope_empty.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/research/envelope_invalid_accepted.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/research/envelope_partial.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/research/synthetic-mini-pilot-config.json",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/fixtures/research/synthetic-mini-pilot-prompt.txt",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_benchmark_experimental.py",
+      "package": "quarantined_research_artifacts",
+      "eligible_for_staging": false,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_capture_research_sources.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_collector_execution.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_collector_v12.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_compare_research_runs.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_evidence_url.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_field_decision_fixtures.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_field_normalization.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_gate1_security.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_invoice_ingestion_contract.py",
+      "package": "plan_ad_invoice_contracts",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_plan_ac_quarantine.py",
+      "package": "plan_ac_quarantine_metadata",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_research_isolation.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_research_review_queue.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_research_tooling.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_run_collector_fixture.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_run_collector_proposals.py",
+      "package": "plan_ac_integrity",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_validate_change_packages.py",
+      "package": "infrastructure_git_workflow",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_validate_planning.py",
+      "package": "planning_cockpit",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    },
+    {
+      "path": "tests/test_verify_cli_claims.py",
+      "package": "cli_agent_tooling",
+      "eligible_for_staging": true,
+      "privacy_indicators": []
+    }
+  ]
+}

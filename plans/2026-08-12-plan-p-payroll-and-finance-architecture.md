@@ -1,9 +1,12 @@
 # Plan P — Czech/German Payroll and Operational Finance Architecture
 
-**Status:** planned
-**Prerequisite:** Plan N role/data discovery; coordinated with Plan O
+**Status:** active
+**Prerequisite:** Coordinated with Plans N/O. Research and synthetic design proceed
+now; ADR-003 acceptance requires the relevant N/O catalog.
 **Milestone:** M1B design; later certified implementation
 **Owner:** product engineering + Czech/German payroll specialists
+**Lane:** Parallel non-blocking M1B research/design; payroll implementation and
+authoritative calculations specialist-gated
 
 ## Objective
 

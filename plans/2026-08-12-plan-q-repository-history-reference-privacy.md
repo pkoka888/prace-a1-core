@@ -1,74 +1,63 @@
 # Plan Q — Repository History, Reference, and Privacy Remediation
 
-**Status:** active
+**Status:** accepted
 **Milestone:** M0
 **Owner:** primary agent; Pavel approves exact remote/destructive actions
 
 ## Objective
 
-Produce a verified, reversible procedure and repository inventory before any
-history replacement, archival, cleanup, or remote publication. This plan does not
-itself authorize a force-push, deletion, external-file move, or remote change.
+Reconcile and accept the verified sanitized publication while preserving explicit
+authorization boundaries for local PII-bearing recovery objects, archival,
+deletion, garbage collection, and any later remote publication.
 
 ## Reconciled execution context — 2026-08-13
 
 - The 2026-08-12 SHA/no-push snapshot below is superseded. A sanitized checkpoint
   `c01aa2b` was published to both remote branches before this reconciliation; do
   not plan from the former `2250845` premise.
-- The working branch at reconciliation is
-  `feat/prace-readiness-plan-2026-08-13` at `ba06e05`, ahead of the published
-  sanitized checkpoint. Re-resolve all local and remote refs immediately before
-  any later publication; these values are evidence, not an authorization.
+- The accepted sanitized baseline is `c01aa2b`. The current planning branch and
+  its remote are later descendants; re-resolve all refs before any future action.
 - Remote visibility remains private. The branch-protection/ruleset API previously
   returned a free-plan 403, so server-side protection must not be assumed.
-- The working tree is mixed and dirty: governance/planning, A1 code/config/tests,
-  historical/reference material, and untracked documents are present together.
-- Reachable objects still contain OP/ZP scans, generated A1 PDFs, employee JSON,
-  OCR results, and reports. Deleting them at later tips did not remove exposure
-  from history; a normal all-ref Git bundle would duplicate that PII.
-- No common private-key, AWS access-key, GitHub token, or password-assignment hit
-  was found in the initial path-only scan. Generic `sk-`/`OPENAI_API_KEY` hits were
-  false positives in the PDF template and policy prose; this is not a substitute
-  for an approved full secret scanner.
+- Published refs and the fresh-clone tree were verified against the sanitized
+  checkpoint. PII-bearing history remains only in local pre-rewrite/rollback refs,
+  reflogs, and unreachable objects; an all-ref bundle would duplicate that PII.
+- A checksum-verified Gitleaks scan with a positive-control canary reported no
+  findings in the candidate or fresh-clone trees. Protected evidence remains in
+  the gitignored remediation workspace.
 - Existing pre-rewrite and rollback refs remain local retention assets. Inventory
   their exact object IDs and expiry before garbage collection; never publish them
   as branches or tags. `git fsck`/reflog evidence must be refreshed before any
   retention or GC decision.
 - A full project-scope check covered 72 Markdown files with zero broken relative
   links. The earlier 48-file result was a valid active-document subset only.
-- `scripts/inventory_repository.py` still maps the removed
-  `private/a1_final_review.csv`; correct it to the `A1_PRIVATE_DIR` contract in the
-  separate A1 code/config/test checkpoint, not in this governance commit.
+- `scripts/inventory_repository.py` now records the `A1_PRIVATE_DIR` contract.
 
-## Work
+## Completed checkpoint
 
-1. Resolve exact local/remote refs, upstreams, protected branches, collaborators,
-   and the intended sanitized tip tree. Define which source tree is authoritative.
-2. Inventory suspected PII/secret exposure by path and reachable Git object without
-   copying sensitive values into reports. Run full-object scans, not tip-only scans.
-3. Define the replacement/rewrite toolchain, exact refspecs, rollback refs,
-   collaborator coordination, maintenance window, and narrow `--force-with-lease`
-   command. Obtain separate approval for those exact targets before execution.
-4. Compare the intended tip tree byte-for-byte with the approved sanitized source,
-   scan all rewritten objects, and specify a fresh-clone verification from the
-   remote after publication.
-5. Audit Markdown links and repository-relative bare paths, tracked/ignored privacy
+1. Published refs were replaced with sanitized checkpoint `c01aa2b` and verified
+   by fresh clone, intended-tree comparison, full-object path scans, Gitleaks, and
+   a positive-control canary.
+2. The private repository, published refs, default branch, and absence of published
+   rollback/pre-rewrite refs were independently checked.
+3. DEC-014 records Pavel's acceptance of the sanitized baseline.
+
+## Separately gated follow-up
+
+1. Audit Markdown links and repository-relative bare paths, tracked/ignored privacy
    boundaries, `.gitignore`, dead scripts/configs, and all consumers/tests before
    moving or deleting any historical material.
-6. Inventory legacy rewrite/backup material under `/home/pavel/...` read-only. It
+2. Inventory legacy home-directory rewrite/backup material read-only. It
    is not project authority and must not be used for future work.
-7. If a replacement workspace is later required, create it protected and
+3. If a replacement workspace is later required, create it protected and
    gitignored under this project root, keep it only for the approved procedure, and
    remove it only with explicit destructive-action approval.
-8. After the audit, propose an archive manifest and a `paddleocr` subdirectory in
+4. After the audit, propose an archive manifest and a `paddleocr` subdirectory in
    the future documentation archive; preserve existing non-executable banners until the
    separately approved move. Never create a root `archive/` to satisfy stale text.
-9. Merge unique verified facts from the untracked readiness/unblock reports into
-   canonical plans or the decision register. Those handoff files are evidence, not
-   authority, and must not be committed merely because they exist.
-10. Record the already-executed sanitized checkpoint in the decision register,
-    including actor/approval evidence if recoverable, resulting refs, scan
-    evidence, and remaining rollback-ref retention/GC decision.
+5. Keep future publication, rollback, retention, reflog expiry, pruning, garbage
+   collection, and deletion subject to separate exact approval.
+6. **Completed 2026-08-13:** The sibling workspace `/var/www/prace-v-nemecku.tvoje.info` was inventoried, semantically compared, and deleted under Pavel's explicit instruction alone (not under Plan Q authorization). The tvoje.info catalog/validator are authoritative; tvoje.info is no longer accessible. No four-file SHA-256 inventory was preserved from the cleanup; this is explicitly noted.
 
 ## Deliverables
 
@@ -93,5 +82,6 @@ consumer/privacy disposition. No further push or GC is implied.
 
 ## Exclusions
 
-No commit, push, force-push, history rewrite, branch/remote/visibility change,
-external-file relocation, archive move, or deletion without separate exact approval.
+Acceptance closes the publication checkpoint only. It authorizes no commit, push,
+history rewrite, branch/remote/visibility change, recovery-ref deletion, reflog
+expiry, garbage collection, external-file relocation, archive move, or deletion.

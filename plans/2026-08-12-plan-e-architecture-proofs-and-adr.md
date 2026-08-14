@@ -32,6 +32,11 @@ Convert the provisional Django direction into a measured, reproducible architect
 
 ADR-001 must state selected packages and versions, deployment topology, storage/backend choice, trust boundaries, data flow, alternatives rejected, evidence, operational costs, upgrade policy, rollback path, and unresolved risks. Use declared scoring weights: workflow fit 20%, security/privacy 20%, maintainability 15%, delivery speed 15%, operations 10%, integration 10%, cost 5%, migration/exit 5%. A critical authorization, maintenance, licensing, recovery, or privacy failure rejects a candidate regardless of score; run speed- and cost-doubled sensitivity checks.
 
+The [Google AI Studio frontend review](../docs/prototypes/2026-08-13-google-ai-studio-frontend-review.md)
+is provisional comparison evidence only. Its export was rejected for direct import;
+ADR-001 must still decide between Django templates/HTMX and a Next.js frontend
+with an explicit Django API and operational boundary.
+
 ## Exit gate
 
 - Proof results are reproducible from synthetic fixtures.

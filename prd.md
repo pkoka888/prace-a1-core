@@ -29,9 +29,9 @@ and historical research inputs. Stable current facts are:
   background/layout → staged provisional package.
 - The current cohort contract is exactly 11 unique people, 11 three-page PDFs,
   and 33 hash-bound previews. These artifacts remain operator-review material.
-- The repository is in an unpublished transition. Plan L owns the documentation
-  checkpoint and Plan Q owns reference/privacy and history-remediation procedure;
-  volatile worktree counts are evidence snapshots, not product requirements.
+- The sanitized repository checkpoint is published and accepted. Plan L owns the
+  documentation checkpoint; Plan Q's destructive local-retention follow-up remains
+  separately gated. Volatile worktree counts are evidence, not requirements.
 - Earlier broad research plans are reviewed/historical inputs. Current discovery
   and design ownership is split across the active and planned plans in
   [`plans/INDEX.md`](plans/INDEX.md).
@@ -82,6 +82,17 @@ to identity documents.
 
 Release 1A implementation readiness is the M1A scaffolding gate. Broader N/O work,
 Plan P, ADR-003, and later-module design continue in M1B and do not delay 1A.
+
+Plan AD (invoice ingestion and reviewed export) is **outside Release 1A**. Its
+bounded outcome is a privacy-conscious ingestion/review/export boundary:
+
+`protected scan/PDF → OCR/layout proposals → deterministic validation → human review → immutable DB-ready invoice version → versioned Slauf CSV export`
+
+Plan AD explicitly excludes authoritative bookkeeping, tax/VAT calculation,
+tax-authority filing, payments, and direct writes to accounting systems; it
+requires Czech/German accounting-specialist sign-off (specialist-gate) before
+implementation, and its Slauf CSV columns are frozen only from an official import
+specification or a sanitized synthetic example approved by the accountant.
 
 Before scaffolding, the Release 1A catalog must freeze the bounded roles,
 permissions, fields, reports, field necessity, authoritative sources, data states,
@@ -183,8 +194,8 @@ not settled by this draft.
 ## 8. Security, privacy, and compliance requirements
 
 - EU-hosted production data by default; verify every processor and transfer.
-- Encrypt transport, databases, and object storage; if backups are separately
-  authorized, encrypt them too. Keep secrets outside source control and rotate them.
+- Encrypt transport, databases, object storage, and approved backups. Keep secrets
+  outside source control and rotate them.
 - Least-privilege RBAC plus organization/record scoping and explicit document
   access. German partners must never see unrelated candidates.
 - Malware/type/size validation, quarantine, private object storage, short-lived
@@ -207,11 +218,11 @@ not settled by this draft.
 - Responsive WCAG-oriented UI, keyboard operability and clear error recovery.
 - Idempotent integrations and background jobs, retry/dead-letter handling, health
   monitoring and correlation IDs.
-- Controlled Jan pilot: the owner may explicitly accept the documented no-backup
-  durability risk; no agent silently enables or creates ad-hoc backups.
-- Later production/public release: record an explicit durability decision, RPO/RTO,
-  and supporting recovery evidence before launch. Backups are enabled only by a
-  separate authorized design and must then have a tested restore procedure.
+- Before new real-data portal activation, produce an encrypted,
+  application-consistent backup and pass integrity and isolated application-level
+  restore checks. Record RPO/RTO, retention, key custody, and alert ownership.
+- No agent creates ad-hoc backups or duplicate PII copies; backup implementation
+  remains a sysadmin-owned, explicitly authorized infrastructure operation.
 - Separate development/staging/production environments and synthetic test data.
 - Exportable operational data and storage abstraction to limit vendor lock-in.
 - Performance targets, availability SLOs, retention periods and scale assumptions

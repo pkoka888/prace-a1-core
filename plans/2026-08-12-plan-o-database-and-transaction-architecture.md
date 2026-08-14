@@ -1,7 +1,9 @@
 # Plan O — Database, Query, Index, and Transaction Architecture
 
 **Status:** planned
-**Prerequisite:** Plan N role/data catalog; Plan E architecture proofs
+**Prerequisite:** Plan N's Release 1A catalog and Plan E proofs are required before
+ADR-002 acceptance. Logical modeling, query discovery, and synthetic transaction
+design proceed concurrently.
 **Milestone:** M1A–M1B
 **Owner:** product engineering
 
@@ -10,11 +12,14 @@
 Produce a decision-complete logical and physical PostgreSQL design before Django
 models are scaffolded.
 
-## Work
+## Release 1A slice — critical path
 
-- First deliver the Release 1A ERD, query-driven indexes, transaction boundaries,
-  deletion graph, migration dry run, reconciliation report, concurrency tests, and
-  ADR-002; expand later modules afterward.
+- Complete the Release 1A ERD, dictionary, query/index catalog, transaction and
+  permission matrices, deletion graph, migration dry run and reconciliation
+  design, synthetic concurrency tests, and ADR-002 evidence; expand later modules
+  afterward.
+
+## Broader platform slice — parallel, non-blocking
 
 - Define bounded modules and ownership for identity, organizations, recruitment,
   workforce, planning/time, documents/OCR, A1, payroll, operational finance, and
@@ -38,3 +43,4 @@ models are scaffolded.
 The Release 1A slice is approved for M1A before broader expansion. ERD, data dictionary, state diagrams, query/index catalog, transaction matrix,
 permission matrix, migration map, and synthetic concurrency/security tests are
 approved. No index lacks a query and no authoritative field lacks provenance.
+Release 1A data slice is approved first; broader M1B expansion follows.

@@ -34,7 +34,7 @@ windows require coordination with the sysadmin and other service owners.
 | Email/alerts | No working alert-delivery path was demonstrated | Select and test a relay/contact path when pilot notifications require it |
 | Malware scanning | No scanner integration was demonstrated | Treat as measured deployment hardening; never expose uploads publicly |
 | Service isolation | No dedicated project service identity was demonstrated | Create least-privilege non-login identities and protected directories before deployment |
-| Backups | No project backup is enabled | Preserve the accepted controlled-pilot risk; make an explicit durability decision before later production/public release |
+| Backups | Encrypted application-consistent backup design required | Before new real-data portal activation, implement the authorized encrypted, application-consistent backup design and demonstrate an isolated file/database restore with retention, key custody, RPO/RTO, and failure-alert ownership. No ad-hoc PII copies or unsupervised infrastructure changes are permitted. |
 
 Installed libraries support the canonical Python A1 workflow. Ghostscript remains
 an additional parser/validation gate where the workflow calls for it; its presence
@@ -75,9 +75,9 @@ without a separate retention decision and exact approval.
    enabling document uploads.
 7. Record patching, recovery, release rollback, certificate-renewal, and incident
    procedures in the deployment as-built report.
-8. Keep the controlled pilot's no-backup limitation explicit. If backups are later
-   authorized, require encryption, database/file consistency, retention, failure
-   alerts, and a demonstrated restore.
+8. Before new real-data portal activation, implement the authorized encrypted,
+   application-consistent backup design and demonstrate an isolated file/database
+   restore with retention, key custody, RPO/RTO, and failure-alert ownership.
 
 ## Gates and boundaries
 

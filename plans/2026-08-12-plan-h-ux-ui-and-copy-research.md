@@ -16,6 +16,10 @@ Define a calm, efficient Jan/operator portal experience and evidence-backed Czec
 - Produce low-fidelity desktop and mobile wireframes and test them with Jan and the operator using synthetic data.
 - Define navigation, information hierarchy, status vocabulary, form/error/recovery behavior, keyboard/focus behavior, contrast, responsive targets, and WCAG-oriented acceptance checks.
 - Define Czech-first language and precise formal German partner language; validate terminology with users and keep official-certificate claims out of product copy.
+- Use the sanitized interaction patterns identified by the
+  [Google AI Studio frontend review](../docs/prototypes/2026-08-13-google-ai-studio-frontend-review.md)
+  as provisional wireframe input only. Recreate them with fictional data; do not
+  import the archive, its fixtures, dependencies, API layer, or architecture.
 
 ## Deliverables
 
