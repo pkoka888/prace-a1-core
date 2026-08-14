@@ -2,8 +2,8 @@
 
 ## Authority and provenance
 
-- Identity fields come from `$A1_PRIVATE_DIR/a1/review.csv`, backed by the named scans and operator transcription. The removed `private/a1_final_review.csv` path must not be reintroduced.
-- Pavel Kašpar and Rudolf Kotľár are additional current provisional records in `config/a1_provisional.json`.
+- Identity and cohort fields come only from `$A1_PRIVATE_DIR/a1/review.csv` and `$A1_PRIVATE_DIR/a1/cohort.json`, backed by the named protected sources and operator transcription. The removed `private/a1_final_review.csv` path must not be reintroduced.
+- `config/a1_provisional.json` supplies non-personal provisional policy and placeholders only; it must never supply a person's identity or cohort membership.
 - Office name, address, code, source URL, and current contact come from the selected JSON profile in `config/institutions/`.
 - Activity, certificate ID, certificate period, issue date, and signatory remain provisional until authoritative OSSZ evidence and operator approval exist.
 - Every transformed value must be traceable to its source file and source hash.
@@ -11,7 +11,7 @@
 ## Text
 
 - Preserve Czech and Slovak diacritics.
-- Display personal names in natural case, for example `Pavel Kašpar` and `Rudolf Kotľár`; do not force source uppercase into the PDF.
+- Display personal names in natural case, for example the synthetic names `Jan Novák` and `Eva Horáková`; do not force source uppercase into the PDF.
 - Apply Czech address casing without changing abbreviations, house numbers, postal codes, or legal spelling.
 - Keep `DE, CZ` exactly where the provisional activity territory is required.
 - Fit by choosing a documented field-specific font size within limits. Never cover the template with a white text box, erase a colored rule, or silently truncate content.

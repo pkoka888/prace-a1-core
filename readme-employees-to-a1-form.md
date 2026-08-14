@@ -7,8 +7,10 @@ from reviewed employee data. It is for an authorized operator. It does not issue
 an A1 certificate and cannot promote provisional data without authoritative OSSZ
 evidence and `validated_by_user=1`.
 
-The intended cohort is nine reviewed CSV rows plus two explicit records in
-`config/a1_provisional.json`, resolving to 11 unique employee IDs. Current
+The intended cohort resolves only from `$A1_PRIVATE_DIR/a1/review.csv` plus
+`$A1_PRIVATE_DIR/a1/cohort.json`, with 11 unique employee IDs required by the
+current validation contract. `config/a1_provisional.json` contains non-personal
+provisional policy/placeholders and is not an identity source. Current
 regeneration is deliberately blocked because the private CSV predates the seven
 explicit Section 4 employment columns now required by the renderer. Preserve the
 existing provisional package, but do not describe it as reproducible until the
@@ -19,7 +21,8 @@ operator reviews and adds those columns.
 ```mermaid
 flowchart LR
     CSV[$A1_PRIVATE_DIR/a1/review.csv: 9 reviewed rows] --> Compose[generate_provisional_a1.py]
-    Extra[config/a1_provisional.json: 2 additional records and placeholder policy] --> Compose
+    Cohort[$A1_PRIVATE_DIR/a1/cohort.json: protected cohort additions] --> Compose
+    Policy[config/a1_provisional.json: non-personal provisional policy/placeholders] --> Compose
     Profiles[config/institutions/*.json] --> Compose
     Compose --> Helpers[finalize_a1.py validation and profile helpers]
     Helpers --> Core[a1_core.py]
@@ -66,6 +69,7 @@ publisher:
 ```bash
 venv/bin/python scripts/generate_provisional_a1.py \
   --review $A1_PRIVATE_DIR/a1/review.csv \
+  --cohort $A1_PRIVATE_DIR/a1/cohort.json \
   --profiles config/institutions \
   --config config/a1_provisional.json \
   --output output/provisional
@@ -92,6 +96,7 @@ venv/bin/python scripts/a1_quality_gate.py validate \
   --preview-dir output/provisional-previews \
   --config config/a1_provisional.json \
   --review $A1_PRIVATE_DIR/a1/review.csv \
+  --cohort $A1_PRIVATE_DIR/a1/cohort.json \
   --background templates/a1_background.pdf \
   --layout config/a1_layout.json \
   --report output/provisional/qa_report.json \
@@ -126,9 +131,8 @@ venv/bin/python scripts/finalize_a1.py readiness \
 
 Final promotion is allowed only when every row has authoritative activity,
 certificate and signatory sources; certificate review and PDF approval are YES;
-`validated_by_user=1`; and visual QA is current. The two additional provisional
-people must enter the reviewed authoritative input before they can use the final
-path.
+`validated_by_user=1`; and visual QA is current. Every protected cohort addition
+must enter the reviewed authoritative input before it can use the final path.
 
 ## Field policy
 
@@ -149,7 +153,8 @@ path.
 | Path | Meaning |
 |---|---|
 | `$A1_PRIVATE_DIR/a1/review.csv` | Private scan-reviewed identities and operator decisions |
-| `config/a1_provisional.json` | Two extra records plus provisional dates/IDs/activity policy |
+| `$A1_PRIVATE_DIR/a1/cohort.json` | Protected current cohort additions and issuance values |
+| `config/a1_provisional.json` | Non-personal provisional dates/IDs/activity policy and placeholders; never identities |
 | `config/institutions/` | Source-dated OSSZ profiles and provisional office contacts |
 | `config/institution.json` | Legacy/default-only finalize helper input; never substitutes for the reviewed row's active `config/institutions/<profile>.json` profile |
 | `$A1_PRIVATE_DIR/a1/employees_normalized.json` | Private reconciliation reference; does not override later reviewed corrections |
@@ -179,7 +184,7 @@ path.
 
 | Problem | Response |
 |---|---|
-| Cohort mismatch | Reconcile the nine reviewed rows and two configured additions; require 11 unique IDs |
+| Cohort mismatch | Reconcile the protected reviewed CSV and protected cohort additions; require the current validation contract of 11 unique IDs |
 | Missing institution profile | Add/verify the exact `institution_profile`; do not use another office |
 | Stale preview/hash | Re-run `render`, then `validate`; do not copy old QA files |
 | Template damage/clipping | Fix canonical background/layout/core and regenerate every affected PDF |

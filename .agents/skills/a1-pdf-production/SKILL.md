@@ -9,7 +9,7 @@ description: Generate, recover, inspect, and visually validate Czech A1 provisio
 
 1. Read the repository `AGENTS.md` and [field-policy.md](references/field-policy.md).
 2. Inspect `git status`; preserve unrelated and historical work.
-3. Treat `$A1_PRIVATE_DIR/a1/review.csv` plus `config/a1_provisional.json` as the current provisional cohort. Require 11 unique people unless those sources intentionally change together. Operational inputs resolve only through `A1_PRIVATE_DIR`; set it to the repository root so the in-repo gitignored `a1/`, `scans/`, `evidence/`, and `ocr/` directories serve as inputs (see `AGENTS.md`). There is no tracked fallback, and canonical commands fail closed when `A1_PRIVATE_DIR` is unset.
+3. Resolve the current provisional cohort only from `$A1_PRIVATE_DIR/a1/review.csv` plus `$A1_PRIVATE_DIR/a1/cohort.json`. Require the current documented validation contract of 11 unique people unless the protected authoritative inputs and higher-level policy intentionally change together. `config/a1_provisional.json` contains non-personal provisional policy/placeholders only and is never an identity source. Operational inputs resolve only through `A1_PRIVATE_DIR`; set it to the repository root so the in-repo gitignored `a1/`, `scans/`, `evidence/`, and `ocr/` directories serve as inputs (see `AGENTS.md`). There is no tracked fallback, and canonical commands fail closed when `A1_PRIVATE_DIR` is unset.
 4. Use `config/institutions/` for office profiles. Never derive issuance fields by copying another person's completed form.
 5. Treat scans, CSV rows, PDFs, previews, and extracted text as PII. Keep them local unless the repository policy explicitly permits a minimal redacted external-model crop.
 

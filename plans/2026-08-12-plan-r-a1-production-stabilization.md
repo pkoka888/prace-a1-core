@@ -1,14 +1,26 @@
 # Plan R — A1 Production Stabilization and Reproducibility
 
-**Status:** planned
+**Status:** blocked
 **Milestone:** A1 operations; separate from portal scaffolding and Git history
 **Owner:** primary A1 production agent using `a1-pdf-production`
+**Lane:** Separate operational lane — must not share commits or real-data operations with portal, governance, or history work
 
 ## Objective
 
 Restore a reproducible canonical provisional package and close deterministic A1
 validation gaps without copying issuance data, weakening approval gates, or mixing
 the work with portal scaffolding or repository-history remediation.
+
+## Current operational blocker
+
+Provisional regeneration is currently blocked (verified 2026-08-14): the private
+`$A1_PRIVATE_DIR/a1/review.csv` predates the seven Section 4 employment columns the
+renderer (`scripts/a1_core.py`) now requires, so `generate_provisional_a1.py` cannot
+rebuild the cohort from authorized sources. The preserved package is 5 PDFs / 15
+previews, not the canonical 11 / 33, so item 1 below is not yet achievable. Do not
+describe `output/provisional/` as reproducible and do not weaken the gate until the
+operator adds those columns to the reviewed CSV. No agent may fabricate or copy
+issuance data to close the gap.
 
 ## Work
 
