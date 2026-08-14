@@ -1,7 +1,8 @@
 # Plan M — Generated Visual Planning Cockpit
 
-**Status:** planned
-**Prerequisite:** Plan L accepted
+**Status:** active
+**Prerequisite:** Plan L governance baseline exists. Plan L acceptance is required
+for this plan's exit, not for synthetic catalog and validator work to begin.
 **Milestone:** M1 and continuous
 **Owner:** product design + engineering
 
@@ -11,6 +12,9 @@ Make the repository-controlled prototype the visual front door to planning while
 keeping Markdown policies, decisions, roadmap, PRD, and plans authoritative.
 
 ## Work
+
+- Deliver the minimal Release 1A catalog, source linker, dependency/status
+  validator, and whole-platform shell before expanding the visual views.
 
 - Define a versioned structured catalog with fields `id`, `kind`, `title`, `owner`,
   `approver`, `milestone`, `status`, `decision_state`, `evidence_state`,
@@ -49,3 +53,17 @@ keeping Markdown policies, decisions, roadmap, PRD, and plans authoritative.
 
 Only after repeated successful updates should a `planning-cockpit` skill be
 created to operate the stable commands.
+
+## Planning-tooling checkpoint (2026-08-13)
+
+Minimal Release 1A slice delivered and validated:
+
+- Catalog schema (`planning/catalog.schema.json`), versioned catalog (`planning/catalog.json`, 45 required IDs), deterministic validator (`scripts/validate_planning.py`, named checks — see the validator's `--json` for the live count, exit 0/1/2, deterministic `--json` with `next_actions`), and a generated cockpit asset (`docs/prototypes/roadmap-portal/planning-data.js`) consumed by a new "Plánovací katalog" tab that shows Now/Parallel/Gated lanes, the Release 1A path, plan/decision state, missing-gate visibility, and historical/non-executable state.
+- The prototype remains a derived, synthetic presentation; Markdown plans and the
+  decision register remain authoritative, while the catalog is their validated
+  derived index. The asset regenerates deterministically, supports a read-only
+  `--check`, and is covered by `tests/test_validate_planning.py`.
+
+**Plan M is `active`**, not accepted/completed. The minimal slice is operational;
+broader cockpit views, accessibility/screenshot review, repeated update evidence,
+and the later planning-cockpit skill gate remain open.

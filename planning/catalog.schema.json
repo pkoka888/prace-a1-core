@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tvoje.info/schemas/planning-catalog-1.0.json",
+  "title": "Planning Catalog Schema (draft-07)",
+  "type": "object",
+  "required": ["schema_version", "generated_or_reviewed_at", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Catalog schema version"
+    },
+    "generated_or_reviewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the catalog was generated or last reviewed (ISO-8601)"
+    },
+    "items": {
+      "type": "array",
+      "description": "Catalog entries (plans, decisions, milestones, lanes, checkpoints)",
+      "items": { "$ref": "#/definitions/catalog_item" }
+    }
+  },
+  "definitions": {
+    "dependency": {
+      "type": "object",
+      "required": ["id", "gate"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Referenced catalog item id"
+        },
+        "gate": {
+          "type": "string",
+          "enum": [
+            "may-begin",
+            "may-be-accepted",
+            "may-be-implemented",
+            "activation-gate",
+            "specialist-gate",
+            "separate-exact-approval",
+            "evidence-only"
+          ],
+          "description": "Typed gate relationship"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Concise human-readable reason for the dependency"
+        }
+      }
+    },
+    "catalog_item": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "owner",
+        "milestone",
+        "status",
+        "decision_state",
+        "evidence_state",
+        "dependencies",
+        "risks",
+        "quality_gates",
+        "source_links",
+        "exit_evidence",
+        "last_reviewed",
+        "executable",
+        "successor"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "description": "Unique identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["plan", "decision", "roadmap_milestone", "lane", "checkpoint"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approver": {
+          "type": ["string", "null"]
+        },
+        "milestone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "active",
+            "blocked",
+            "awaiting-review",
+            "accepted",
+            "completed",
+            "superseded",
+            "historical",
+            "archived"
+          ]
+        },
+        "decision_state": {
+          "type": "string",
+          "enum": [
+            "proposed-default",
+            "variant-selection-required",
+            "prototype-required",
+            "awaiting-pavel",
+            "awaiting-jan",
+            "accepted",
+            "rejected",
+            "superseded",
+            "not-applicable"
+          ]
+        },
+        "evidence_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "provisional",
+            "synthetic-tested",
+            "primary-source-verified",
+            "operator-verified",
+            "specialist-verified"
+          ]
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/dependency" }
+        },
+        "risks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "quality_gates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "source_links": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        },
+        "exit_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "last_reviewed": {
+          "type": "string",
+          "format": "date"
+        },
+        "executable": {
+          "type": "boolean"
+        },
+        "successor": {
+          "type": ["string", "null"]
+        },
+        "decision_date": {
+          "type": ["string", "null"]
+        },
+        "decision_evidence": {
+          "type": ["string", "null"]
+        },
+        "referenced_files": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "referenced_commands": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -20,6 +20,7 @@
     <button class="mode-tab active" data-mode="roadmap">Vizuální roadmapa</button>
     <button class="mode-tab" data-mode="portal">Janův portál</button>
     <button class="mode-tab" data-mode="decisions">Rozhodnutí</button>
+    <button class="mode-tab" data-mode="catalog">Plánovací katalog</button>
   </nav>
 
   <main id="content">
@@ -167,8 +168,23 @@
         <section><header class="blocked-head">! Jediná brána reálných dat</header><article><b>Pravidla reálných dat</b><p>Účel každého příjmu, přístup podle organizace, potvrzení OCR, audit, 90denní retenční kontrola, řízený výmaz a zákaz celých dokumentů u externích modelů.</p></article><article><b>Nezastavuje implementaci</b><p>Syntetický Django základ, UX a A1 integrace pokračují ihned.</p></article></section>
       </div>
     </section>
+
+    <section class="mode" id="mode-catalog">
+      <div class="page-head"><div><p class="eyebrow">PLÁNOVACÍ KATALOG</p><h1>Jedna odvozená pravda o stavu</h1><p>Data v tomto panelu generuje <code>scripts/generate_planning_asset.py</code> z <code>planning/catalog.json</code> a ověřuje <code>scripts/validate_planning.py</code>. Markdown plány a rozhodnutí zůstávají autoritativní.</p></div><div class="status-pill"><span></span> <span id="catalog-generated"></span></div></div>
+      <div class="view-switch" role="tablist" aria-label="Pohled katalogu">
+        <button class="view-button active" data-catalog-view="lanes">Teď / Paralelně / Brána</button>
+        <button class="view-button" data-catalog-view="plans">Plány</button>
+        <button class="view-button" data-catalog-view="decisions">Rozhodnutí</button>
+        <button class="view-button" data-catalog-view="flags">Chybějící brány / historie</button>
+      </div>
+      <div class="catalog-view active" id="catalog-lanes"></div>
+      <div class="catalog-view" id="catalog-plans"></div>
+      <div class="catalog-view" id="catalog-decisions"></div>
+      <div class="catalog-view" id="catalog-flags"></div>
+    </section>
   </main>
   <footer class="site-footer">Prototyp je pouze vizuální pomůcka. Neobsahuje skutečné osoby ani dokumenty.</footer>
+  <script src="planning-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
