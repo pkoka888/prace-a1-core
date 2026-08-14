@@ -15,11 +15,14 @@ It reads `config/cli_verification_claims.json` and atomically generates:
 - `cli-docs-update/current-verification.json`
 - `cli-docs-update/current-verification.md`
 
-The verifier is deliberately read-only. It runs version/help commands and a
+The registry is validated against
+`config/cli_verification_claims.schema.json`, including product/probe/claim
+references. The verifier is deliberately read-only. It runs version/help commands and a
 small allowlist of safe diagnostics. It does not run agent prompts, read auth
 files, export sessions, call model APIs, update tools, or retain raw config
-values. Native outputs that may contain secrets or private content are listed
-in the report but skipped.
+values. Subprocesses receive only an allowlist of basic execution variables;
+provider and credential variables are not inherited. Native outputs that may
+contain secrets or private content are listed in the report but skipped.
 
 ## Agents and models
 
@@ -45,11 +48,20 @@ Use a narrower run while developing:
 python3 scripts/verify_cli_claims.py --product codex --product opencode
 ```
 
-Use check mode in CI or a pre-commit workflow. It writes nothing and exits 1
-when a tested claim is contradicted, 2 for invalid invocation, and 0 otherwise:
+Use check mode in CI or a pre-commit workflow. It writes nothing. Exit `0`
+means all selected claims are proven, `1` means the registry/invocation is
+invalid or a claim is contradicted, and `2` means a required result is
+unproven (including missing binaries, timeouts, or policy-skipped probes):
 
 ```bash
 python3 scripts/verify_cli_claims.py --check
+```
+
+Add `--require-complete` when the checkpoint also requires every selected
+binary to provide successful version and help discovery:
+
+```bash
+python3 scripts/verify_cli_claims.py --check --require-complete
 ```
 
 Audit the project's active agent/config directories separately:

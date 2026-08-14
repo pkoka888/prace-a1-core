@@ -1,6 +1,6 @@
 # Current agent-directory audit
 
-Generated: `2026-08-14T04:46:40+02:00`
+Generated: `2026-08-14T12:18:48+02:00`
 
 > Read-only audit of active project agent/config directories. Sensitive historical and operational-data directories were excluded.
 

@@ -18,15 +18,71 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft7Validator, FormatChecker
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "config" / "cli_verification_claims.json"
+DEFAULT_REGISTRY_SCHEMA = ROOT / "config" / "cli_verification_claims.schema.json"
 DEFAULT_JSON = ROOT / "cli-docs-update" / "current-verification.json"
 DEFAULT_MARKDOWN = ROOT / "cli-docs-update" / "current-verification.md"
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 SECRET_RE = re.compile(
     r"(?i)(api[-_]?key|access[-_]?token|auth(?:orization)?|bearer|client[-_]?secret|password|cookie)"
 )
+
+
+class RegistryError(ValueError):
+    """The registry is malformed or has invalid cross-references."""
+
+
+def load_registry(path: Path, schema_path: Path) -> dict[str, Any]:
+    try:
+        registry = json.loads(path.read_text(encoding="utf-8"))
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RegistryError(str(exc)) from exc
+    errors = sorted(
+        Draft7Validator(schema, format_checker=FormatChecker()).iter_errors(registry),
+        key=lambda error: list(error.absolute_path),
+    )
+    if errors:
+        error = errors[0]
+        location = ".".join(str(part) for part in error.absolute_path) or "<root>"
+        raise RegistryError(f"{location}: {error.message}")
+    validate_registry_references(registry)
+    return registry
+
+
+def validate_registry_references(registry: dict[str, Any]) -> None:
+    product_ids = [item["id"] for item in registry["products"]]
+    claim_ids = [item["id"] for item in registry["claims"]]
+    if len(product_ids) != len(set(product_ids)):
+        raise RegistryError("duplicate product id")
+    if len(claim_ids) != len(set(claim_ids)):
+        raise RegistryError("duplicate claim id")
+    probes_by_product: dict[str, set[str]] = {}
+    for product in registry["products"]:
+        probe_ids = [probe["id"] for probe in product["safe_probes"]]
+        if len(probe_ids) != len(set(probe_ids)):
+            raise RegistryError(f"duplicate probe id for product {product['id']!r}")
+        probes_by_product[product["id"]] = set(probe_ids)
+    for claim in registry["claims"]:
+        product_id = claim["product"]
+        if product_id not in probes_by_product:
+            raise RegistryError(f"claim {claim['id']!r} references unknown product {product_id!r}")
+        if claim["source"] == "probe" and claim["probe"] not in probes_by_product[product_id]:
+            raise RegistryError(
+                f"claim {claim['id']!r} references unknown probe {claim['probe']!r} for {product_id!r}"
+            )
+
+
+def subprocess_environment() -> dict[str, str]:
+    """Allow only execution essentials; never pass provider or credential variables."""
+    allowed = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME")
+    environment = {key: os.environ[key] for key in allowed if key in os.environ}
+    environment.update({"NO_COLOR": "1", "TERM": "dumb", "CI": "1"})
+    return environment
 
 
 def clean_text(value: str, root: Path) -> str:
@@ -67,7 +123,7 @@ def run_command(binary: str, args: list[str], cwd: Path, timeout: float) -> dict
             text=True,
             timeout=timeout,
             check=False,
-            env={**os.environ, "NO_COLOR": "1", "TERM": "dumb"},
+            env=subprocess_environment(),
         )
     except subprocess.TimeoutExpired:
         return {"status": "timeout", "exit_code": None, "stdout": "", "stderr": ""}
@@ -339,6 +395,21 @@ def build_report(registry: dict[str, Any], root: Path, timeout: float, selected:
     }
 
 
+def report_exit_code(report: dict[str, Any], require_complete: bool = False) -> int:
+    """1 is invalid/contradicted; 2 is unavailable or otherwise unproven."""
+    if report["summary"]["CONTRADICTED"]:
+        return 1
+    if report["summary"]["NOT_TESTED"]:
+        return 2
+    if require_complete:
+        for product in report["products"]:
+            if not product["installed"] or not product["version"] or not product["help_available"]:
+                return 2
+            if any(item["status"] not in {"succeeded", "completed_with_findings", "skipped_by_policy"} for item in product["native_outputs"]):
+                return 2
+    return 0
+
+
 def write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.tmp")
@@ -349,29 +420,39 @@ def write_text(path: Path, content: str) -> None:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
+    parser.add_argument("--registry-schema", type=Path, default=DEFAULT_REGISTRY_SCHEMA)
     parser.add_argument("--output-json", type=Path, default=DEFAULT_JSON)
     parser.add_argument("--output-markdown", type=Path, default=DEFAULT_MARKDOWN)
     parser.add_argument("--product", action="append", default=[], help="Limit to a product ID; repeatable.")
     parser.add_argument("--timeout", type=float, default=15.0, help="Per-command timeout in seconds.")
     parser.add_argument("--check", action="store_true", help="Do not write; fail if any tested claim is contradicted.")
+    parser.add_argument(
+        "--require-complete",
+        action="store_true",
+        help="Also require installed binaries plus successful version/help discovery for selected products.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    registry = json.loads(args.registry.read_text(encoding="utf-8"))
+    try:
+        registry = load_registry(args.registry, args.registry_schema)
+    except RegistryError as exc:
+        print(f"invalid registry: {exc}", file=sys.stderr)
+        return 1
     known = {item["id"] for item in registry["products"]}
     unknown = set(args.product) - known
     if unknown:
         print(f"unknown product(s): {', '.join(sorted(unknown))}", file=sys.stderr)
-        return 2
+        return 1
     report = build_report(registry, ROOT, args.timeout, set(args.product))
     if not args.check:
         write_text(args.output_json, json.dumps(report, ensure_ascii=False, indent=2) + "\n")
         write_text(args.output_markdown, markdown_report(report))
         print(args.output_json)
         print(args.output_markdown)
-    return 1 if report["summary"]["CONTRADICTED"] else 0
+    return report_exit_code(report, args.require_complete)
 
 
 if __name__ == "__main__":
