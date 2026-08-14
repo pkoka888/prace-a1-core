@@ -29,14 +29,14 @@ inventory classifies every dirty path once and the containment validator passes.
 - **Feature Flags**: Not applicable (no web application)
 - **i18n**: Partial Czech language support in research evidence collection
 - **Accessibility**: Not applicable (no web application)
-- **Tests**: 
+- **Tests**:
   - Research tooling: 32/32 PASSED
   - Invoice ingestion contracts: 23/23 PASSED
   - Collector fixtures: 7/7 PASSED
   - Collector execution: 21/21 PASSED
   - CLI verification: Functional (verify_cli_claims.py)
   - Planning validation: 22/22 PASSED
-- **CI/Build Hooks**: 
+- **CI/Build Hooks**:
   - pytest configuration exists (pytest.ini)
   - No web build hooks (no web application)
 - **Dead/Stub Code**: No blanket conclusion was established; experimental,
@@ -46,30 +46,30 @@ inventory classifies every dirty path once and the containment validator passes.
 - **Migrations**: None (no database implemented)
 - **Edge Functions**: None
 - **RLS**: Not applicable (no database)
-- **Auth**: 
+- **Auth**:
   - Research in Plan E (comparing django-allauth[mfa] and django-two-factor-auth)
   - No implementation yet
 - **CORS**: Not applicable (no web application)
-- **Secrets/Config Expectations**: 
+- **Secrets/Config Expectations**:
   - A1_PRIVATE_DIR environment variable required for A1 operations
   - CLI tools have built-in secret detection (SECRET_RE in verify_cli_claims.py)
 - **Nginx Examples**: None
 - **Supabase Health**: Not applicable (no Supabase integration)
-- **Deployment Topology**: 
+- **Deployment Topology**:
   - Plan E specifies: Django 5.2 LTS, Python 3.13, PostgreSQL, systemd, native Nginx and native PostgreSQL
   - Currently not implemented
 
 ### Product, Operations, and Planning
 - **Pavel-direct decision**: Pavel is approver for most decisions (see decision register)
-- **Marketplace**: 
+- **Marketplace**:
   - Plan G (German market research) is active
   - Plan I (Marketing and business validation) is superseded
   - Plan D (Product research) is superseded
-- **Operator blockers**: 
+- **Operator blockers**:
   - Plan R (A1 production) is blocked: missing 7 Section 4 employment columns in private CSV
   - Plan AD requires DEC-015 (accounting-specialist acceptance)
 - **Marketing readiness**: Research phase only (Plan G active)
-- **Milestone gates**: 
+- **Milestone gates**:
   - M0: Repository organization (in progress with Plan AE)
   - M1A: Discovery/architecture proofs (several plans active)
   - M1B: Research completion (several plans targeting this)
