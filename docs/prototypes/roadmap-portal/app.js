@@ -108,3 +108,52 @@ selectAll('[data-catalog-view]').forEach((button) => button.addEventListener('cl
 }));
 
 renderCatalog();
+
+function renderApprovals() {
+  const data = window.APPROVAL_REGISTER;
+  const dashboard = select('#approval-dashboard');
+  if (!data || !dashboard) return;
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  dashboard.innerHTML = (data.records || []).map((record) => {
+    const passed = (record.checks || []).filter((item) => ['passed', 'not-required'].includes(item.status)).length;
+    const choices = (record.choices || []).map((choice) => '<li><span class="approval-mark">' + (choice.approval === 'approved' ? '✓' : '◌') + '</span><div><b>' + esc(choice.label) + '</b><small>' + esc(choice.selected) + '</small></div><em>' + esc(choice.approval) + '</em></li>').join('');
+    const checks = (record.checks || []).map((check) => '<li class="check-' + esc(check.status) + '"><span>' + (check.status === 'passed' ? '✓' : '○') + '</span><div><b>' + esc(check.label) + '</b><small>' + esc(check.evidence || 'Evidence zatím nepřiložena') + '</small></div><em>' + esc(check.status) + '</em></li>').join('');
+    return '<article class="approval-card"><header><div><p>' + esc(record.id) + '</p><h2>' + esc(record.title) + '</h2></div><span class="approval-state ' + esc(record.human_decision) + '">' + (record.human_decision === 'approved' ? '✓ Schváleno' : esc(record.human_decision)) + '</span></header>'
+      + '<p class="approval-scope">' + esc(record.scope) + '</p><div class="approval-meta"><span><b>Schválil</b>' + esc(record.approver) + '</span><span><b>Datum</b>' + esc(record.approved_at || '—') + '</span><span><b>Validace</b>' + passed + '/' + (record.checks || []).length + '</span></div><label class="review-confirm"><input type="checkbox" data-review-id="' + esc(record.id) + '"> Potvrzuji zobrazené volby a rozsah rozhodnutí</label>'
+      + '<div class="approval-grid"><section><h3>Schválené volby</h3><ul>' + choices + '</ul></section><section><h3>Technické kontroly</h3><ul>' + checks + '</ul></section></div>'
+      + '<footer><div class="gate-status ' + esc(record.implementation_gate) + '"><b>Implementace: ' + esc(record.implementation_gate) + '</b><span>' + esc(record.implementation_gate_reason || '') + '</span></div><div class="gate-status ' + esc(record.activation_gate) + '"><b>Reálná data: ' + esc(record.activation_gate) + '</b><span>' + esc(record.activation_gate_reason || '') + '</span></div></footer></article>';
+  }).join('');
+}
+
+const exportApproval = select('#export-approval');
+if (exportApproval) exportApproval.addEventListener('click', () => {
+  const reviewer = select('#approval-reviewer').value.trim();
+  const reviewedAt = select('#approval-review-date').value;
+  const confirmed = selectAll('[data-review-id]:checked').map((item) => item.dataset.reviewId);
+  if (!reviewer || !reviewedAt || confirmed.length === 0) {
+    select('#approval-export-status').textContent = ' Vyplňte schvalovatele, datum a označte alespoň jednu kartu.';
+    return;
+  }
+  const payload = {schema_version: '1.0', receipt_type: 'human-approval-review', exported_at: new Date().toISOString(), reviewer, reviewed_at: reviewedAt, note: select('#approval-review-note').value.trim() || null, confirmed_records: confirmed, records: window.APPROVAL_REGISTER.records.filter((record) => confirmed.includes(record.id))};
+  const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], {type: 'application/json'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'approval-receipt.json';
+  link.click();
+  URL.revokeObjectURL(link.href);
+  select('#approval-export-status').textContent = ' Doklad exportován; registr se automaticky nemění.';
+});
+
+renderApprovals();
+
+const exportJanPhase1 = select('#export-jan-phase1');
+if (exportJanPhase1) exportJanPhase1.addEventListener('click', () => {
+  const area = select('#jan-exception-area').value;
+  const note = select('#jan-exception-note').value.trim();
+  const defaultsAccepted = select('#jan-approve-defaults').checked;
+  if (area && !note) { select('#jan-phase1-status').textContent = ' Popište výjimku bez osobních údajů.'; return; }
+  const payload = {schema_version: '1.0', receipt_type: 'jan-phase-1-exception', defaults_accepted: defaultsAccepted, exception: area ? {area, note} : null, source: 'docs/release-1a/unblock-review-packet.md'};
+  const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], {type: 'application/json'});
+  const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'jan-phase-1-exception.json'; link.click(); URL.revokeObjectURL(link.href);
+  select('#jan-phase1-status').textContent = area ? ' Výjimka exportována.' : ' Potvrzení bez výjimky exportováno.';
+});

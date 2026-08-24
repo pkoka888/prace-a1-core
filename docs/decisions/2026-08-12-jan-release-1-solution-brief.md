@@ -1,10 +1,16 @@
 # Jan Release 1 — Proposed Solution and Decision Brief
 
-**Status:** Proposed defaults for Pavel/Jan review
+**Status:** Recommended defaults adopted for synthetic design; exception-only Pavel/Jan review remains
 **Date:** 2026-08-12
 **Project root:** `/var/www/prace-v-nemecku.tvoje.info`
 
-This document prepares the likely best solution before asking Pavel or Jan. Select a recommendation, select a variant, or add a note. Unanswered items use the recommended default for synthetic proofs. New real-data portal uploads remain disabled only until the activation gate in `docs/security/real-data-rules.md` passes.
+This document prepares the likely best solution before asking Pavel or Jan.
+Unanswered items use the recommended default for synthetic proofs, catalogs,
+wireframes, and acceptance-test preparation. Pavel or Jan need only record an
+exception where the default is operationally wrong. A working default is not a
+human approval, does not settle an unknown real-world fact, and does not
+authorize scaffolding, deployment, or real-data use. New real-data portal uploads
+remain disabled until every gate in `docs/security/real-data-rules.md` passes.
 
 ## 1. Product boundary
 
@@ -273,23 +279,33 @@ Terminal alternatives: withdrawn, rejected, expired, cancelled. Generated packag
 
 **Decision:** [ ] Accept state vocabulary  [ ] Change — note: __________
 
-## 10. Decisions that still need Pavel/Jan confirmation
+## 10. Working defaults and facts that still need Pavel/Jan confirmation
 
-Research recommends defaults; these are operational facts only Pavel/Jan can settle.
+These defaults unblock synthetic Release 1A work now. Before the real-data pilot,
+Jan/operator confirms that they match actual work and records only exceptions.
+
+**State legend:** `confirmed` = existing recorded human decision;
+`prototype-approved default` = approved by delegated instruction for synthetic
+prototype work, with real operational exceptions still reviewable; `unverified
+fact` = must be supplied or observed before pilot use.
 
 1. Jan relationship: **confirmed organization administrator**; Pavel is also administrator/operator.
 2. Identity approval: **confirmed uploader may correct and confirm OCR values**; approval is attributed to the logged-in user.
-3. Original scans: **recommended controlled logged viewing/download for assigned workers; bulk export operator-only**.
-4. Workplaces/assignments: **recommended Jan edits within his scope**.
-5. Overlaps: **recommended allow with warnings**.
-6. First worker profile: **recommended implement the currently evidenced self-employed flow first while modeling employee separately**.
-7. Submission: **recommended manual external submission recording only**.
-8. Primary device: **recommended desktop-first with mobile upload/quick review**.
-9. Language: **recommended Czech default, per-user preference, German enabled when partner workflows begin**.
+3. Original scans — **prototype-approved default:** controlled logged in-browser viewing for assigned records; explicit-purpose download only; no bulk document export in Release 1A. A later operator export requires a named purpose, least-privilege permission, step-up confirmation, bounded selection, audit, and secure expiry.
+4. Workplaces/assignments — **prototype-approved default:** Jan or a delegated assignment editor may edit within organization scope. Preserve history, reject stale concurrent edits, and mark affected prepared A1 packages stale; never silently rewrite an approved snapshot.
+5. Overlaps — **confirmed:** allow with warnings; ambiguous A1 periods still block preparation.
+6. First worker profile — **prototype-approved default:** use the currently evidenced self-employed flow for the first synthetic vertical slice while modeling employee separately. **Unverified fact:** Jan must identify the first real pilot cohort/profile; the system must not infer one profile from another.
+7. Submission — **prototype-approved default:** manual external submission and official-response recording only. Store actor, time, channel, external reference, evidence hash/version, and status; never label a prepared package as submitted or official without the separate recorded event/evidence.
+8. Primary device — **prototype-approved default:** desktop-first full review, with responsive mobile upload and quick review. **Unverified fact:** actual device/browser constraints must be observed during the four synthetic journeys.
+9. Language — **prototype-approved default:** Czech source/default and per-user preference; German UI remains inactive until a named reviewer validates terminology and completeness for partner workflows.
 
-10. Delegation: **confirmed Jan may create an administration employee with approval rights**.
+10. Delegation — **confirmed:** Jan may create an administration employee with approval rights. **Prototype-approved default:** implement named, revocable, effective-dated role grants with MFA and audit; no shared accounts, implicit full-admin cloning, or cross-organization access.
 
-**Approval method:** tick accepted defaults above or annotate only the items that should change.
+**Approval method:** review the short
+[Release 1A unblock and review packet](../release-1a/unblock-review-packet.md)
+and annotate only operational exceptions. Required-field and terminology changes
+must name the affected workflow/profile; observed journey findings must name the
+scenario and blocking step.
 
 ## 11. Real-data policy
 

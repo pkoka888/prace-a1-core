@@ -42,43 +42,43 @@ window.PLANNING_CATALOG = {
     },
     {
       "approver": "Pavel",
-      "date": null,
+      "date": "2026-08-17",
       "id": "DEC-006",
-      "state": "proposed-default",
-      "status": "active",
+      "state": "accepted",
+      "status": "accepted",
       "title": "Django modular-monolith baseline"
     },
     {
       "approver": "Pavel",
-      "date": null,
+      "date": "2026-08-17",
       "id": "DEC-007",
-      "state": "prototype-required",
-      "status": "active",
-      "title": "MFA package"
+      "state": "accepted",
+      "status": "accepted",
+      "title": "django-allauth[mfa] with mandatory privileged-role TOTP"
     },
     {
       "approver": "Pavel",
-      "date": null,
+      "date": "2026-08-17",
       "id": "DEC-008",
-      "state": "prototype-required",
-      "status": "active",
-      "title": "Background queue package"
+      "state": "accepted",
+      "status": "accepted",
+      "title": "django-q2 ORM-broker background queue"
     },
     {
       "approver": "Pavel/sysadmin",
-      "date": null,
+      "date": "2026-08-17",
       "id": "DEC-009",
-      "state": "prototype-required",
-      "status": "active",
-      "title": "Protected storage implementation"
+      "state": "accepted",
+      "status": "accepted",
+      "title": "Encrypted filesystem with authorized Nginx internal delivery"
     },
     {
       "approver": "Pavel",
-      "date": null,
+      "date": "2026-08-17",
       "id": "DEC-010",
-      "state": "prototype-required",
-      "status": "active",
-      "title": "Audit package and project-owned event boundary"
+      "state": "accepted",
+      "status": "accepted",
+      "title": "Project-owned append-only AuditEvent boundary"
     },
     {
       "approver": "Pavel",
@@ -92,7 +92,7 @@ window.PLANNING_CATALOG = {
       "approver": "Pavel",
       "date": null,
       "id": "DEC-012",
-      "state": "awaiting-pavel",
+      "state": "prototype-required",
       "status": "active",
       "title": "Activate new real-data portal use"
     },
@@ -129,7 +129,7 @@ window.PLANNING_CATALOG = {
       "title": "GitLab secondary backup and CI activation with GitHub authoritative"
     }
   ],
-  "generated_or_reviewed_at": "2026-08-13T13:28:00Z",
+  "generated_or_reviewed_at": "2026-08-16T00:00:00Z",
   "historical_or_superseded": [
     {
       "id": "B",
@@ -328,6 +328,63 @@ window.PLANNING_CATALOG = {
       "title": "Plan AE — Repository Workflow, Dual Remotes, and CI Automation"
     },
     {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "AF",
+      "milestone": "M0–M1A",
+      "owner": "primary agent; Codex integrates and accepts",
+      "sources": [
+        "plans/2026-08-15-plan-af-free-model-evaluation.md",
+        "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md",
+        "docs/research/2026-08-15-free-model-provider-comparison.md",
+        "plans/INDEX.md"
+      ],
+      "status": "active",
+      "title": "Plan AF — Bounded Codex-Led Free-Model Evaluation"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": false,
+      "id": "AF2",
+      "milestone": "M0–M1A",
+      "owner": "primary agent; Codex integrates and accepts",
+      "sources": [
+        "plans/2026-08-15-plan-af2-free-model-trace-repair.md",
+        "plans/2026-08-15-plan-af-free-model-evaluation.md",
+        "plans/INDEX.md"
+      ],
+      "status": "blocked",
+      "title": "Plan AF2 — Exact-Manifest Trace Protocol Repair"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "AF2.1",
+      "milestone": "M0–M1A",
+      "owner": "primary agent; Codex integrates and accepts",
+      "sources": [
+        "plans/2026-08-15-plan-af2.1-evidence-integrity-repair.md",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md",
+        "plans/INDEX.md"
+      ],
+      "status": "active",
+      "title": "Plan AF2.1 — Evidence-Integrity Repair"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "AF2.2",
+      "milestone": "M0–M1A",
+      "owner": "primary agent; Codex integrates and accepts",
+      "sources": [
+        "plans/2026-08-16-plan-af2.2-luna-capsule-isolation.md",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md",
+        "plans/INDEX.md"
+      ],
+      "status": "active",
+      "title": "Plan AF2.2 — Luna Exact-Read Adapter and Capsule Isolation"
+    },
+    {
       "decision_state": "not-applicable",
       "executable": false,
       "id": "B",
@@ -378,7 +435,7 @@ window.PLANNING_CATALOG = {
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "status": "active",
+      "status": "completed",
       "title": "Plan E — Architecture Proofs and ADR-001"
     },
     {
@@ -502,7 +559,22 @@ window.PLANNING_CATALOG = {
     },
     {
       "decision_state": "prototype-required",
-      "executable": false,
+      "executable": true,
+      "id": "M2P",
+      "milestone": "M2",
+      "owner": "product engineering + product design",
+      "sources": [
+        "plans/2026-08-17-plan-m2-functional-prototype-sprint.md",
+        "roadmap.md",
+        "plans/INDEX.md",
+        "planning/approvals.json"
+      ],
+      "status": "active",
+      "title": "Plan M2 — Functional Release 1A Prototype Sprint"
+    },
+    {
+      "decision_state": "accepted",
+      "executable": true,
       "id": "N",
       "milestone": "M1A–M1B",
       "owner": "product owner + domain research",
@@ -512,12 +584,12 @@ window.PLANNING_CATALOG = {
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "status": "planned",
+      "status": "active",
       "title": "Plan N — Release 1A Role and Data Discovery"
     },
     {
-      "decision_state": "prototype-required",
-      "executable": false,
+      "decision_state": "accepted",
+      "executable": true,
       "id": "O",
       "milestone": "M1A–M1B",
       "owner": "product engineering",
@@ -527,7 +599,7 @@ window.PLANNING_CATALOG = {
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "status": "planned",
+      "status": "active",
       "title": "Plan O — Release 1A Database and Transaction Architecture"
     },
     {

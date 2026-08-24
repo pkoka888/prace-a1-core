@@ -11,6 +11,18 @@ single derived source of status truth; the validator
 ([`scripts/validate_planning.py`](../../../scripts/validate_planning.py)) is the
 gate. Markdown plans and the decision register remain authoritative.
 
+The **Rozhodnutí** tab renders `planning/approvals.json` and separates human
+approval, technical validation, implementation permission, and real-data
+activation. Validate and regenerate it with:
+
+```bash
+./venv/bin/python scripts/validate_approvals.py --json
+./venv/bin/python scripts/generate_approval_asset.py
+```
+
+The browser exports a JSON receipt but cannot silently modify repository
+authority. A receipt must be reviewed, inserted into the register, and validated.
+
 This panel works directly via `file://` (the asset is a plain global, no
 `fetch`/CORS). If your browser restricts local scripts, serve the folder:
 

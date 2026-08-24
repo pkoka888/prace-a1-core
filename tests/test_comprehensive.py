@@ -63,16 +63,13 @@ class TemplateValidationTests(unittest.TestCase):
     def setUp(self):
         self.template_path = ROOT / "templates" / "a1_background.pdf"
         self.layout_path = ROOT / "config" / "a1_layout.json"
-        self.checkbox_coords_path = ROOT / "config" / "a1_checkbox_coords.json"
-        self.field_coords_path = ROOT / "config" / "a1_field_coords.json"
         
-        # Load layout configs
+        # Load unified layout config (fields + checkboxes)
         with open(self.layout_path) as f:
             self.layout = json.load(f)
-        with open(self.checkbox_coords_path) as f:
-            self.checkbox_coords = json.load(f)
-        with open(self.field_coords_path) as f:
-            self.field_coords = json.load(f)
+        # Legacy compatibility: fields and checkboxes are now in a1_layout.json
+        self.field_coords = {"fields": self.layout.get("fields", {})}
+        self.checkbox_coords = {"fields": self.layout.get("checkboxes", {})}
 
     def test_template_has_expected_number_of_fields(self):
         """Verify the template has exactly the expected number of form fields."""

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_or_reviewed_at": "2026-08-13T13:28:00Z",
+  "generated_or_reviewed_at": "2026-08-16T00:00:00Z",
   "items": [
     {
       "risks": [],
@@ -13,9 +13,9 @@
       "last_reviewed": "2026-08-13",
       "executable": true,
       "successor": "M1A",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
+      "approver": "Jan delegated defaults",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "docs/release-1a/unblock-review-packet.md and docs/architecture/release-1a-catalog.json",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "M0",
@@ -104,7 +104,9 @@
       "status": "planned",
       "decision_state": "not-applicable",
       "evidence_state": "none",
-      "dependencies": []
+      "dependencies": [
+        {"id": "M2P", "gate": "may-be-accepted", "reason": "M2 exit requires the functional prototype sprint and Jan J1–J4 observation"}
+      ]
     },
     {
       "risks": [],
@@ -219,8 +221,8 @@
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "exit_evidence": "Synthetic proofs validated; ADR-001 acceptance pending measured proofs",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Eight synthetic checks pass with hash-bound run/verify evidence; production gates remain separate",
+      "last_reviewed": "2026-08-17",
       "executable": true,
       "successor": "M2",
       "approver": null,
@@ -233,10 +235,27 @@
       "title": "Plan E — Architecture Proofs and ADR-001",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
+      "status": "completed",
       "decision_state": "prototype-required",
       "evidence_state": "synthetic-tested",
-      "dependencies": []
+      "dependencies": [],
+      "risks": [],
+      "quality_gates": [],
+      "source_links": [
+        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md",
+        "AGENTS.md",
+        "roadmap.md",
+        "plans/INDEX.md"
+      ],
+      "exit_evidence": "Eight synthetic checks pass with hash-bound run/verify evidence; production gates remain separate",
+      "last_reviewed": "2026-08-17",
+      "executable": true,
+      "successor": "M2",
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "referenced_files": [],
+      "referenced_commands": []
     },
     {
       "risks": [],
@@ -488,13 +507,13 @@
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "exit_evidence": "Release 1A catalog first; broader discovery afterward",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
+      "exit_evidence": "Release 1A synthetic M2 catalog frozen; exception-only operational review remains",
+      "last_reviewed": "2026-08-17",
+      "executable": true,
       "successor": "M2",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
+      "approver": "Jan delegated defaults",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "docs/release-1a/unblock-review-packet.md and docs/architecture/release-1a-catalog.json",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "N",
@@ -502,14 +521,14 @@
       "title": "Plan N — Release 1A Role and Data Discovery",
       "owner": "product owner + domain research",
       "milestone": "M1A–M1B",
-      "status": "planned",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "active",
+      "decision_state": "accepted",
+      "evidence_state": "synthetic-tested",
       "dependencies": [
         {
           "id": "L",
           "gate": "evidence-only",
-          "reason": "Catalog/validator work may begin; N exit requires L acceptance"
+          "reason": "Operational L/M baseline permits synthetic work; broader exits remain"
         },
         {
           "id": "O",
@@ -527,13 +546,13 @@
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "exit_evidence": "Release 1A data architecture and ADR-002 first",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
+      "exit_evidence": "Minimum synthetic M2 data contract and ADR-002 accepted; broader physical design continues",
+      "last_reviewed": "2026-08-17",
+      "executable": true,
       "successor": "M2",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
+      "approver": "Pavel/Jan delegated defaults",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "docs/decisions/ADR-002-release-1a-data-and-transactions.md",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "O",
@@ -541,20 +560,64 @@
       "title": "Plan O — Release 1A Database and Transaction Architecture",
       "owner": "product engineering",
       "milestone": "M1A–M1B",
-      "status": "planned",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "active",
+      "decision_state": "accepted",
+      "evidence_state": "synthetic-tested",
       "dependencies": [
         {
           "id": "L",
           "gate": "evidence-only",
-          "reason": "Data architecture depends on operating model catalog"
+          "reason": "Operational L/M baseline permits synthetic logical design"
         },
         {
           "id": "N",
           "gate": "evidence-only",
           "reason": "Database design informed by role discovery"
         }
+      ]
+    },
+    {
+      "risks": [
+        "Starting the scaffold before the automated gate could bake unvalidated tenancy or transaction assumptions into models",
+        "Production-shaped fixtures could be mistaken for authority to use real data"
+      ],
+      "quality_gates": [
+        "All eight ADR-001 checks pass",
+        "Release 1A N/O contract and ADR-002 are accepted",
+        "Jan phase-1 defaults or exceptions are recorded",
+        "Jan completes J1–J4 before M2 exit"
+      ],
+      "source_links": [
+        "plans/2026-08-17-plan-m2-functional-prototype-sprint.md",
+        "roadmap.md",
+        "plans/INDEX.md",
+        "planning/approvals.json"
+      ],
+      "exit_evidence": "Jan completes J1–J4 on a tenant-isolated synthetic Django vertical slice",
+      "last_reviewed": "2026-08-17",
+      "executable": true,
+      "successor": "M3",
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "referenced_files": [
+        "tests/fixtures/release_1a/manifest.json",
+        "scripts/run_architecture_proofs.py"
+      ],
+      "referenced_commands": ["python3"],
+      "id": "M2P",
+      "kind": "plan",
+      "title": "Plan M2 — Functional Release 1A Prototype Sprint",
+      "owner": "product engineering + product design",
+      "milestone": "M2",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "dependencies": [
+        {"id": "E", "gate": "may-be-implemented", "reason": "All ADR-001 validation checks must pass before scaffolding"},
+        {"id": "F", "gate": "may-be-implemented", "reason": "Jan phase-1 defaults or exceptions must be recorded"},
+        {"id": "N", "gate": "may-be-implemented", "reason": "Release 1A role, field, source, state, and permission catalog must be frozen"},
+        {"id": "O", "gate": "may-be-implemented", "reason": "Minimum ADR-002 data and transaction contract must be accepted"}
       ]
     },
     {
@@ -832,6 +895,172 @@
     },
     {
       "risks": [
+        "Free endpoints can drift, train on prompts, or violate output/tool contracts",
+        "Worker isolation or credential handling defects could expose unrelated host or repository state"
+      ],
+      "quality_gates": [
+        "Only public synthetic fixtures enter worker workspaces",
+        "Exact zero-cost metadata, default-deny tools, filesystem isolation, event validation, unchanged repository state, and deterministic acceptance tests pass",
+        "Codex independently reviews every candidate receipt before any task-class promotion"
+      ],
+      "source_links": [
+        "plans/2026-08-15-plan-af-free-model-evaluation.md",
+        "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md",
+        "docs/research/2026-08-15-free-model-provider-comparison.md",
+        "plans/INDEX.md"
+      ],
+      "exit_evidence": "Three repeated synthetic trace, review, and code-draft runs per model/control with validated receipts and task-class dispositions",
+      "last_reviewed": "2026-08-15",
+      "executable": true,
+      "successor": null,
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "referenced_files": [
+        "config/free-model-eval/policy.json",
+        "scripts/run_free_model_eval.py",
+        "tests/test_free_model_eval_contracts.py"
+      ],
+      "referenced_commands": ["python3"],
+      "id": "AF",
+      "kind": "plan",
+      "title": "Plan AF — Bounded Codex-Led Free-Model Evaluation",
+      "owner": "primary agent; Codex integrates and accepts",
+      "milestone": "M0–M1A",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "dependencies": [
+        {"id": "L", "gate": "evidence-only", "reason": "Plan L operating rules bound the evaluation; AF cannot accept L"}
+      ]
+    },
+    {
+      "risks": [
+        "Free models may retain default directory-discovery behavior despite an exact manifest",
+        "Diagnostic event persistence must reject prompts, reasoning, credentials, and unknown structures"
+      ],
+      "quality_gates": [
+        "Exact no-tool contract echo passes before each free-model trace",
+        "Only two hash-bound synthetic files are worker-readable and directory reads remain forbidden",
+        "Three trace repetitions pass before task-class candidacy; Luna is gated on a free smoke pass"
+      ],
+      "source_links": [
+        "plans/2026-08-15-plan-af2-free-model-trace-repair.md",
+        "plans/2026-08-15-plan-af-free-model-evaluation.md",
+        "plans/INDEX.md"
+      ],
+      "exit_evidence": "Three exact-manifest trace runs per passing candidate with sanitized diagnostics and independently reviewed receipts",
+      "last_reviewed": "2026-08-15",
+      "executable": false,
+      "successor": "AF2.1",
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "referenced_files": [
+        "config/free-model-eval/policy.json",
+        "scripts/run_free_model_eval.py",
+        "tests/test_free_model_eval_af2_protocol.py"
+      ],
+      "referenced_commands": ["python3"],
+      "id": "AF2",
+      "kind": "plan",
+      "title": "Plan AF2 — Exact-Manifest Trace Protocol Repair",
+      "owner": "primary agent; Codex integrates and accepts",
+      "milestone": "M0–M1A",
+      "status": "blocked",
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "dependencies": [
+        {"id": "AF", "gate": "evidence-only", "reason": "AF2 preserves AF evidence and repairs only the trace interface"},
+        {"id": "L", "gate": "evidence-only", "reason": "AF2 cannot accept Plan L or activate a skill"}
+      ]
+    },
+    {
+      "risks": [
+        "Evidence sanitization can either leak credentials or reject legitimate typed usage metadata",
+        "A weak Codex adapter could make the required control comparison vacuous"
+      ],
+      "quality_gates": [
+        "Real-shaped token usage passes while exact credential shapes fail with stable rules",
+        "Retained sanitized bytes are hash authority and invalid AF2 evidence remains immutable",
+        "Luna requires three exact-read, no-command receipts after a free candidate passes"
+      ],
+      "source_links": [
+        "plans/2026-08-15-plan-af2.1-evidence-integrity-repair.md",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md",
+        "plans/INDEX.md"
+      ],
+      "exit_evidence": "Green offline integrity tests, full suite, planning/package gates, and exact zero-cost compatibility preflight",
+      "last_reviewed": "2026-08-15",
+      "executable": true,
+      "successor": "AF2.2",
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "referenced_files": [
+        "src/free_model_eval/core.py",
+        "src/free_model_eval/engine.py",
+        "tests/test_free_model_eval_af21_integrity.py"
+      ],
+      "referenced_commands": ["python3"],
+      "id": "AF2.1",
+      "kind": "plan",
+      "title": "Plan AF2.1 — Evidence-Integrity Repair",
+      "owner": "primary agent; Codex integrates and accepts",
+      "milestone": "M0–M1A",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "dependencies": [
+        {"id": "AF2", "gate": "may-begin", "reason": "AF2.1 repairs the proven invalid-run harness defect"},
+        {"id": "L", "gate": "evidence-only", "reason": "AF2.1 cannot accept Plan L or activate a skill"}
+      ]
+    },
+    {
+      "risks": [
+        "A codex exec command string could read an unauthorized file before the adapter rejects it",
+        "OS isolation or credential-capsule defects could expose host or repository state"
+      ],
+      "quality_gates": [
+        "Only strictly parsed, completed read-only command_execution items on allowlisted exact relative paths become read evidence",
+        "Bubblewrap capsule exposes only the synthetic workspace with README.md and AGENTS.md; host, repo, Git, MCP, plugins, skills, and external writable dirs are unreachable",
+        "Source-version-pinned recorded Codex-shaped JSONL fixtures and negative/containment tests pass before any live invocation",
+        "Reasoning items remain permitted protocol metadata and are never persisted"
+      ],
+      "source_links": [
+        "plans/2026-08-16-plan-af2.2-luna-capsule-isolation.md",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md",
+        "plans/INDEX.md"
+      ],
+      "exit_evidence": "Strict command_execution read adapter and capsule isolation with recorded fixtures, negative/containment tests, and green planning/package gates",
+      "last_reviewed": "2026-08-16",
+      "executable": true,
+      "successor": null,
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "referenced_files": [
+        "src/free_model_eval/core.py",
+        "src/free_model_eval/engine.py",
+        "tests/test_free_model_eval_af21_integrity.py",
+        "tests/test_free_model_eval_isolation.py"
+      ],
+      "referenced_commands": ["python3"],
+      "id": "AF2.2",
+      "kind": "plan",
+      "title": "Plan AF2.2 — Luna Exact-Read Adapter and Capsule Isolation",
+      "owner": "primary agent; Codex integrates and accepts",
+      "milestone": "M0–M1A",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "dependencies": [
+        {"id": "AF2.1", "gate": "may-begin", "reason": "AF2.2 replaces the false file_read premise with command_execution parsing inside OS isolation"},
+        {"id": "L", "gate": "evidence-only", "reason": "AF2.2 cannot accept Plan L or activate a skill"}
+      ]
+    },
+    {
+      "risks": [
         "Mixed worktree can publish unrelated or sensitive paths without exact classification",
         "Remote or CI activation without explicit approval can leak data or create divergent authority"
       ],
@@ -1063,15 +1292,15 @@
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "ADR-001 proofs pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved ADR-001 architecture direction; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "ADR-001 proofs pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved ADR-001 architecture direction",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-006",
@@ -1079,109 +1308,109 @@
       "title": "Django modular-monolith baseline",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "proposed-default",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Synthetic comparison pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved django-allauth[mfa]; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "Synthetic comparison pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved all ADR-001 selected components",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-007",
       "kind": "decision",
-      "title": "MFA package",
+      "title": "django-allauth[mfa] with mandatory privileged-role TOTP",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Failure/recovery proof pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved django-q2 ORM broker; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "Failure/recovery proof pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved all ADR-001 selected components",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-008",
       "kind": "decision",
-      "title": "Background queue package",
+      "title": "django-q2 ORM-broker background queue",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Authorization/download proof pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved encrypted filesystem and authorized internal delivery; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel/sysadmin",
-      "decision_date": null,
-      "decision_evidence": "Authorization/download proof pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved direction; sysadmin validation pending",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-009",
       "kind": "decision",
-      "title": "Protected storage implementation",
+      "title": "Encrypted filesystem with authorized Nginx internal delivery",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Coverage proof pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved project-owned append-only AuditEvent; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "Coverage proof pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved all ADR-001 selected components",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-010",
       "kind": "decision",
-      "title": "Audit package and project-owned event boundary",
+      "title": "Project-owned append-only AuditEvent boundary",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -1215,13 +1444,13 @@
       "source_links": [
         "docs/security/real-data-rules.md"
       ],
-      "exit_evidence": "Gate evidence incomplete",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Gate evidence incomplete; not ready for approval",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
       "decision_date": null,
-      "decision_evidence": "Gate evidence incomplete",
+      "decision_evidence": "Gate evidence incomplete; not ready for approval",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-012",
@@ -1230,7 +1459,7 @@
       "owner": "product owner",
       "milestone": "M5",
       "status": "active",
-      "decision_state": "awaiting-pavel",
+      "decision_state": "prototype-required",
       "evidence_state": "none",
       "dependencies": []
     },

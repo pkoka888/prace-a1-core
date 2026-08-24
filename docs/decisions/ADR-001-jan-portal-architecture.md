@@ -1,10 +1,11 @@
 # ADR-001 — Jan Portal Architecture
 
-**Status:** proposed (evidence structure in place; proofs awaiting validation)
+**Status:** accepted architecture direction; synthetic technical validation passed
 **Owner:** product engineering
 **Approver:** Pavel
 **Milestone:** M1A
-**Date:** 2026-08-13 (synthetic evidence placeholder)
+**Decision date:** 2026-08-17
+**Machine-readable approval:** [`planning/approvals.json`](../../planning/approvals.json)
 
 ## Context
 
@@ -36,13 +37,12 @@ and the existing A1 engine behind a Django-independent Python interface.
 - [Deployment/rollback](evidence/plan-e/06-deployment-rollback.md)
 - [Cockpit asset](../../docs/prototypes/roadmap-portal/planning-data.js)
 
-## Required evidence before acceptance
+## Validation result
 
-- Synthetic proof results validated (above documents are placeholders)
-- Threat model reviewed by security team
-- Deployment/rollback tested on staging
-- Dependency versions locked in requirements.txt
-- Upgrade path documented
+The eight machine-readable checks pass in the hash-bound architecture manifest;
+the implementation gate is open for the synthetic M2 scaffold. This does not
+claim production staging, host capacity, malware operations, encrypted backup or
+restore evidence. Those remain separate Plan K/activation requirements.
 
 ## Consequences
 
@@ -51,10 +51,16 @@ and the existing A1 engine behind a Django-independent Python interface.
 - Custom audit model (not django-auditlog)
 - Monolithic but organized by Django apps
 
-## Exit gate
+## Implementation gate
 
 Plan E must attach reproducible synthetic proof results, threat model, selected
 versions/licenses, weighted comparison and sensitivity results, application
 observability, deployment rollback proof, dependency review, and unresolved risks.
 
-**Approval:** Pending — synthetic evidence placeholders exist; real measurements await.
+**Human approval:** Accepted by Pavel on 2026-08-17 for Django and every selected
+component above. This approves the architecture direction. It does not assert that
+the checks passed and does not authorize deployment or real-data activation.
+
+**Technical validation:** Passed for the bounded synthetic proof. The approval
+validator and automated M2 scaffold gate report open; deployment and real-data
+activation remain blocked.
