@@ -1,0 +1,1 @@
+"""Disposable proof modules only."""
