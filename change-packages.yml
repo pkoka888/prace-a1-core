@@ -4,7 +4,7 @@
   "packages": {
     "governance_truth": {
       "purpose": "Authority, roadmap, decisions, plan statuses, and truth audit.",
-      "paths": ["AGENTS.md", "roadmap.md", "prd.md", "plans/INDEX.md", "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md", "plans/2026-08-12-plan-h-ux-ui-and-copy-research.md", "plans/2026-08-12-plan-l-agent-operating-model.md", "plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md", "plans/2026-08-12-plan-o-database-and-transaction-architecture.md", "plans/2026-08-12-plan-p-payroll-and-finance-architecture.md", "plans/2026-08-12-plan-q-repository-history-reference-privacy.md", "plans/2026-08-13-plan-ac-accounting-automation-research.md", "plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md", "plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md", "plans/audits/2026-08-15-repository-truth-audit.md", "plans/audits/2026-08-15-worktree-inventory.json", "docs/decisions/", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md"],
+      "paths": ["AGENTS.md", "roadmap.md", "prd.md", "plans/INDEX.md", "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md", "plans/2026-08-12-plan-h-ux-ui-and-copy-research.md", "plans/2026-08-12-plan-l-agent-operating-model.md", "plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md", "plans/2026-08-12-plan-o-database-and-transaction-architecture.md", "plans/2026-08-12-plan-p-payroll-and-finance-architecture.md", "plans/2026-08-12-plan-q-repository-history-reference-privacy.md", "plans/2026-08-13-plan-ac-accounting-automation-research.md", "plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md", "plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md", "plans/audits/2026-08-15-repository-truth-audit.md", "plans/audits/2026-08-15-worktree-inventory.json", "docs/decisions/", "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md", "CHANGELOG.md", "PROJECT_AUDIT_REPORT.md"],
       "checks": ["venv/bin/python scripts/validate_planning.py"],
       "dependencies": [],
       "rollback": "Revert only this package after checking later plan references."
@@ -12,7 +12,7 @@
     },
     "repository_documentation": {
       "purpose": "Actual research-stage repository and protected-data boundaries.",
-      "paths": ["README.md"],
+      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md"],
       "checks": ["git diff --check"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert documentation without changing runtime or private data."
@@ -44,7 +44,7 @@
     },
     "plan_ac_integrity": {
       "purpose": "Provisional public/synthetic research contracts and Integrity 1.3 tooling.",
-      "paths": ["research/query-packs/", "research/schemas/", "research/acquisition/synthetic-mini-pilot/README.md", "research/acquisition/synthetic-mini-pilot/fixture-set.json", "research/acquisition/synthetic-mini-pilot/fixture-set.schema.json", "research/acquisition/synthetic-mini-pilot/fixtures/", "research/acquisition/synthetic-mini-pilot/request.json", "research/review/README.md", "research/review/operator-review.template.json", "research/review/review-queue.schema.json", "research/review/review-response.schema.json", "scripts/benchmark_groundtruth.py", "scripts/capture_research_sources.py", "scripts/check_evidence_url.py", "scripts/check_research_completeness.py", "scripts/collect_market_evidence.py", "scripts/compare_research_runs.py", "scripts/create_synthetic_benchmark.py", "scripts/evaluate_research_field_fixtures.py", "scripts/generate_research_review_queue.py", "scripts/normalize_datasets.py", "scripts/run_collector_fixture.py", "scripts/run_collector_proposals.py", "scripts/run_collector_proposals_v12.py", "scripts/score_research_results.py", "scripts/validate_collector_execution.py", "scripts/validate_collector_execution_v12.py", "scripts/validate_field_normalization.py", "scripts/validate_research_review_response.py", "scripts/validate_research_schema.py", "tests/_research_tmp.py", "tests/fixtures/research/", "tests/test_capture_research_sources.py", "tests/test_collector_execution.py", "tests/test_collector_v12.py", "tests/test_compare_research_runs.py", "tests/test_evidence_url.py", "tests/test_field_decision_fixtures.py", "tests/test_field_normalization.py", "tests/test_gate1_security.py", "tests/test_research_isolation.py", "tests/test_research_review_queue.py", "tests/test_research_tooling.py", "tests/test_run_collector_fixture.py", "tests/test_run_collector_proposals.py"],
+      "paths": ["research/query-packs/", "research/schemas/", "research/acquisition/synthetic-mini-pilot/README.md", "research/acquisition/synthetic-mini-pilot/fixture-set.json", "research/acquisition/synthetic-mini-pilot/fixture-set.schema.json", "research/acquisition/synthetic-mini-pilot/fixtures/", "research/acquisition/synthetic-mini-pilot/request.json", "research/review/README.md", "research/review/operator-review.template.json", "research/review/review-queue.schema.json", "research/review/review-response.schema.json", "scripts/benchmark_groundtruth.py", "scripts/capture_research_sources.py", "scripts/check_evidence_url.py", "scripts/check_research_completeness.py", "scripts/collect_market_evidence.py", "scripts/compare_research_runs.py", "scripts/create_synthetic_benchmark.py", "scripts/evaluate_research_field_fixtures.py", "scripts/generate_research_review_queue.py", "scripts/normalize_datasets.py", "scripts/run_collector_fixture.py", "scripts/run_collector_proposals.py", "scripts/score_research_results.py", "scripts/validate_collector_execution.py", "scripts/validate_field_normalization.py", "scripts/validate_research_review_response.py", "scripts/validate_research_schema.py", "tests/_research_tmp.py", "tests/fixtures/research/", "tests/test_capture_research_sources.py", "tests/test_collector_execution.py", "tests/test_compare_research_runs.py", "tests/test_evidence_url.py", "tests/test_field_decision_fixtures.py", "tests/test_field_normalization.py", "tests/test_gate1_security.py", "tests/test_research_isolation.py", "tests/test_research_review_queue.py", "tests/test_research_tooling.py", "tests/test_run_collector_fixture.py", "tests/test_run_collector_proposals.py", "docs/research/2026-08-19-open-decisions-research.md", "docs/research/2026-08-19-mock-review-csv.csv", "docs/operations/collect-plan-k-evidence.sh"],
       "checks": ["venv/bin/python -m pytest tests/test_capture_research_sources.py tests/test_collector_execution.py tests/test_collector_v12.py tests/test_field_normalization.py -q"],
       "dependencies": ["Integrity 1.3 freeze before successor artifact", "Plan L approval before skill activation"],
       "rollback": "Revert tooling and synthetic fixtures; never promote provisional evidence."
@@ -68,20 +68,36 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Local repository workflow validation before remote or CI activation.",
-      "paths": ["change-packages.yml", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md"],
+      "paths": ["change-packages.yml", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml"],
       "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py -q", "venv/bin/python scripts/validate_change_packages.py --json"],
       "dependencies": ["All dirty paths classified", "Explicit approval before remote mutation"],
       "rollback": "Revert local workflow files; this package never changes remotes."
       ,"intended_commit": "test: add fail-closed change-package validation"
     },
+    "free_model_evaluation": {
+      "purpose": "Synthetic-only bounded evaluation of named free OpenCode models with Codex control and deterministic safety gates.",
+      "paths": [".gitignore", "pytest.ini", ".opencode/agents/free-eval-read.md", ".opencode/agents/free-eval-code-draft.md", ".opencode/agents/free-eval-contract-echo.md", "config/free-model-eval/", "src/free_model_eval/", "scripts/run_free_model_eval.py", "tests/fixtures/free_model_eval/", "tests/test_free_model_eval_contracts.py", "tests/test_free_model_eval_events.py", "tests/test_free_model_eval_isolation.py", "tests/test_free_model_eval_preflight.py", "tests/test_free_model_eval_scoring.py", "tests/test_free_model_eval_af2_protocol.py", "tests/test_free_model_eval_af21_integrity.py", "docs/research/templates/free-model-eval-report.md", "docs/research/2026-08-15-af2-free-model-trace-review-report.md", "plans/2026-08-15-plan-af-free-model-evaluation.md", "plans/2026-08-15-plan-af2-free-model-trace-repair.md", "plans/2026-08-15-plan-af2.1-evidence-integrity-repair.md"],
+      "checks": ["venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py tests/test_free_model_eval_af2_protocol.py tests/test_free_model_eval_af21_integrity.py -q", "venv/bin/python scripts/run_free_model_eval.py verify-fixtures --policy config/free-model-eval/policy.json"],
+      "dependencies": ["Plan L operating rules", "Exact zero-cost preflight before live synthetic calls"],
+      "rollback": "Revert Plan AF tracked files together; remove only validated ignored runtime/free-model-eval run children.",
+      "intended_commit": "test: add bounded free-model evaluation harness"
+    },
     "quarantined_research_artifacts": {
       "purpose": "Live, generated, benchmark, OCR, review, backup, or unreviewed research artifacts.",
       "eligible_for_staging": false,
-      "paths": [".opencode/skills/market-research-evidence/", "research/acquisition/collector-executions/", "research/acquisition/collector-proposals/", "research/acquisition/live-mini-pilot/", "research/acquisition/raw/", "research/acquisition/repeat-2026-08-14/", "research/acquisition/source-captures/live-mini-2026-08-14/", "research/acquisition/source-captures/synthetic-mini-v1/", "research/acquisition/source-captures/synthetic-mini-v2/", "research/acquisition/synthetic-mini-pilot/manifest.json", "research/acquisition/synthetic-mini-pilot/manifest.json.bak", "research/acquisition/synthetic-mini-pilot/runs/", "research/benchmark-experimental/", "research/pilot/", "research/processed/", "research/review/queue.json", "research/synthetic/", "scripts/run_ocr_benchmark.py", "tests/test_benchmark_experimental.py"],
+      "paths": [".opencode/skills/market-research-evidence/", "research/acquisition/collector-executions/", "research/acquisition/collector-proposals/", "research/acquisition/live-mini-pilot/", "research/acquisition/raw/", "research/acquisition/repeat-2026-08-14/", "research/acquisition/source-captures/live-mini-2026-08-14/", "research/acquisition/source-captures/synthetic-mini-v1/", "research/acquisition/source-captures/synthetic-mini-v2/", "research/acquisition/synthetic-mini-pilot/manifest.json", "research/acquisition/synthetic-mini-pilot/manifest.json.bak", "research/acquisition/synthetic-mini-pilot/runs/", "research/benchmark-experimental/", "research/pilot/", "research/processed/", "research/review/queue.json", "research/synthetic/", "scripts/run_ocr_benchmark.py", "tests/test_benchmark_experimental.py", "scripts/run_collector_proposals_v12.py", "scripts/validate_collector_execution_v12.py", "tests/test_collector_v12.py"],
       "prefixes": ["research/acquisition/atomic-", "research/review/atomic-"],
       "checks": [],
       "dependencies": ["Separate provenance and privacy review"],
       "rollback": "No automated mutation or deletion is permitted."
+    },
+    "legacy_cleanup": {
+      "purpose": "Remove tracked legacy artifacts identified in 2026-08-19 audit.",
+      "paths": ["scripts/a1_core.py.backup", "portal/settings.py.bak", "config/a1_field_coords.json", "config/a1_checkbox_coords.json", "config/a1_field_map.json"],
+      "checks": ["git diff --check", "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py -q"],
+      "dependencies": ["Plan R CSV update before A1 regeneration"],
+      "rollback": "Restore deleted files from git history.",
+      "intended_commit": "chore: remove legacy A1 configs and script backups"
     },
     "quarantined_unrelated": {
       "purpose": "Artifacts outside the authorized update scope.",

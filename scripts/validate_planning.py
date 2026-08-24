@@ -56,7 +56,7 @@ REQUIRED_IDS = [
     # Milestones
     "M0", "M1A", "M1B", "M2", "M3", "M4", "M5", "M6",
     # Plans
-    "E", "F", "G", "H", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "AC", "AD", "AE",
+    "E", "F", "G", "H", "J", "K", "L", "M", "M2P", "N", "O", "P", "Q", "R", "AC", "AD", "AE", "AF", "AF2", "AF2.1", "AF2.2",
     # Decisions
     "DEC-001", "DEC-002", "DEC-003", "DEC-004", "DEC-005", "DEC-006",
     "DEC-007", "DEC-008", "DEC-009", "DEC-010", "DEC-011", "DEC-012",
@@ -193,7 +193,7 @@ def parse_index_statuses(root: Path) -> dict:
     if not idx.is_file():
         return {}
     out = {}
-    pat = re.compile(r"\[Plan ([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\b[^\]]*\]\(([^)]+)\)\s*\|\s*(\w+)")
+    pat = re.compile(r"\[Plan ([A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)\b[^\]]*\]\(([^)]+)\)\s*\|\s*(\w+)")
     for line in idx.read_text(encoding="utf-8").splitlines():
         m = pat.search(line)
         if m:
@@ -610,7 +610,13 @@ def check_active_plan_index_presence(catalog, root):
         if item.get("status") not in ("active", "awaiting-review", "accepted"):
             continue
         iid = item.get("id")
-        if ("Plan %s" % iid) not in text and ("plan-%s" % iid.lower()) not in text.lower():
+        # A catalog ID may deliberately disambiguate a plan from a milestone
+        # (M2P versus milestone M2). In that case, the authoritative source
+        # link in INDEX is an unambiguous claim even when the human title is
+        # "Plan M2".
+        source_links = item.get("source_links", []) or []
+        source_claimed = any(strip_link_target(link) in text for link in source_links)
+        if not source_claimed and ("Plan %s" % iid) not in text and ("plan-%s" % iid.lower()) not in text.lower():
             problems.append("%s: active plan not claimed in INDEX" % iid)
     if problems:
         return False, "; ".join(problems[:8])
@@ -689,6 +695,43 @@ def check_staged_forbidden_and_pii(catalog, root):
     return True, "no forbidden/staged PII or secret paths"
 
 
+def check_prototype_start_gate(catalog, root):
+    by_id = {item.get("id"): item for item in catalog.get("items", [])}
+    sprint = by_id.get("M2P")
+    if not sprint:
+        return False, "M2P prototype sprint missing"
+    approvals_path = root / "planning/approvals.json"
+    if not approvals_path.is_file():
+        return False, "approval register missing"
+    approvals = json.loads(approvals_path.read_text(encoding="utf-8"))
+    adr = next((record for record in approvals.get("records", []) if record.get("id") == "ADR-001"), None)
+    if not adr:
+        return False, "ADR-001 approval record missing"
+    if sprint.get("executable"):
+        if adr.get("validation") != "passed" or adr.get("implementation_gate") != "open":
+            return False, "M2P executable before ADR-001 validation gate opens"
+        if any(by_id.get(item, {}).get("decision_state") != "accepted" for item in ("N", "O")):
+            return False, "M2P executable before N/O Release 1A slice acceptance"
+    return True, "M2P preparation active; scaffold remains bound to machine-readable gates"
+
+
+def check_approval_asset_and_provenance(catalog, root):
+    approvals_path = root / "planning/approvals.json"
+    asset_path = root / "docs/prototypes/roadmap-portal/approval-data.js"
+    provenance_path = root / "docs/mock-data-provenance.md"
+    if not approvals_path.is_file() or not asset_path.is_file() or not provenance_path.is_file():
+        return False, "approval asset or provenance contract missing"
+    approvals = json.loads(approvals_path.read_text(encoding="utf-8"))
+    expected = "window.APPROVAL_REGISTER = " + json.dumps(approvals, ensure_ascii=False, indent=2, sort_keys=True) + ";\n"
+    if asset_path.read_text(encoding="utf-8") != expected:
+        return False, "approval asset is stale"
+    provenance = provenance_path.read_text(encoding="utf-8")
+    forbidden = "create a separate `tests/fixtures/production/` directory"
+    if forbidden in provenance:
+        return False, "provenance suggests tracked production fixtures"
+    return True, "approval asset current; provenance prohibits tracked real-data fixtures"
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -715,6 +758,8 @@ def build_checks(catalog, root, jsonschema, schema):
         ("active plans claimed in INDEX", lambda: check_active_plan_index_presence(catalog, root)),
         ("specialist-gate dependency targets", lambda: check_specialist_gates(catalog)),
         ("forbidden stale paths and prototype-source links", lambda: check_forbidden_stale_and_prototype(catalog)),
+        ("prototype-start gate consistency", lambda: check_prototype_start_gate(catalog, root)),
+        ("approval asset and fixture provenance", lambda: check_approval_asset_and_provenance(catalog, root)),
         ("staged forbidden-path and PII/secret indicators", lambda: check_staged_forbidden_and_pii(catalog, root)),
     ]
 

@@ -50,7 +50,8 @@ def copy_repo(root: Path):
         if not path.is_file():
             continue
         rel = path.relative_to(REPO)
-        if any(part in IGNORE_DIRS for part in rel.parts):
+        synthetic_plan_e_evidence = rel.parts[:4] == ("docs", "decisions", "evidence", "plan-e")
+        if any(part in IGNORE_DIRS for part in rel.parts) and not synthetic_plan_e_evidence:
             continue
         if rel.name in IGNORE_FILES:
             continue
@@ -134,7 +135,17 @@ def test_valid_full_catalog_json(root):
 def test_exact_required_ids_coverage():
     ids = {i["id"] for i in load_valid()["items"]}
     assert ids == set(vp.REQUIRED_IDS)
-    assert len(vp.REQUIRED_IDS) == 48  # AD/AE plans + DEC-015/DEC-016
+    assert len(vp.REQUIRED_IDS) == 53  # Includes the M2 prototype plan, distinct from milestone M2.
+
+
+def test_index_parser_distinguishes_dotted_successor_ids(tmp_path):
+    plans=tmp_path/"plans"; plans.mkdir()
+    (plans/"INDEX.md").write_text(
+        "| [Plan AF2 — old](af2.md) | blocked |\n"
+        "| [Plan AF2.1 — repair](af21.md) | active |\n",
+        encoding="utf-8",
+    )
+    assert vp.parse_index_statuses(tmp_path)=={"AF2":"blocked","AF2.1":"active"}
 
 
 def test_each_required_id_present_individually():

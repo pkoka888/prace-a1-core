@@ -7,5 +7,12 @@ pypdf==6.15.0
 pytest==9.1.1
 reportlab==5.0.0
 
+# Release 1A synthetic architecture proofs and bounded M2 prototype.
+Django==5.2.17
+django-allauth[mfa]==65.19.1
+django-q2==1.11.0
+psycopg[binary]==3.3.4
+cryptography==50.0.0
+
 # Scan/OCR workflow. Keep local-first; external model use is optional and policy-gated.
 rapidocr==3.9.2
