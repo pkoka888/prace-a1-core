@@ -67,3 +67,6 @@ Minimal Release 1A slice delivered and validated:
 **Plan M is `active`**, not accepted/completed. The minimal slice is operational;
 broader cockpit views, accessibility/screenshot review, repeated update evidence,
 and the later planning-cockpit skill gate remain open.
+
+Plan AF appears only as a parallel tooling-evidence item. Its evaluation results
+do not satisfy Plan M's accessibility, screenshot, or repeated-use exit gates.

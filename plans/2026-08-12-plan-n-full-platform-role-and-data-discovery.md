@@ -1,8 +1,9 @@
 # Plan N — Full-Platform Role, Workflow, and Data Discovery
 
-**Status:** planned
-**Prerequisite:** Plan M provides the visual shell before Plan N acceptance;
-research, catalog drafting, and synthetic flows proceed concurrently.
+**Status:** active
+**Prerequisite:** The operational Plan L/M baseline is sufficient for synthetic
+Release 1A catalog work. Plan M's broader exit and Jan's operational validation
+remain required before Plan N acceptance, not before drafting and proof work.
 **Milestone:** M1A–M1B
 **Owner:** product owner + domain research
 
@@ -17,6 +18,10 @@ workflow as the first deployable increment.
 - Freeze the Jan/operator role, permission, field, report, data-necessity,
   authoritative-source, data-quality-state, and acceptance catalog required by
   M1A; broader platform discovery continues afterward.
+- The synthetic M2 slice is frozen in
+  `docs/architecture/release-1a-catalog.json` using the delegated recommended
+  defaults. The document's exception-only list preserves unresolved operational
+  facts for Jan; broader Plan N remains active.
 
 ## Broader platform slice — parallel, non-blocking
 

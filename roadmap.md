@@ -1,8 +1,8 @@
 # Product Roadmap — Jan Pilot to Recruitment Platform
 
 **Status:** Authoritative
-**Date:** 2026-08-12
-**Current stage:** M0 repository organization and M1 discovery/architecture proofs
+**Date:** 2026-08-19
+**Current stage:** M0 repository organization, M1 discovery/architecture proofs, M2 scaffold gate open
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
@@ -17,10 +17,12 @@ the first usable increment and must not wait for later module activation.
 
 | Category | Work |
 |---|---|
-| **Now** | Stabilize and classify the mixed worktree; finish the Plan L operating-model and minimal Plan M planning checkpoint. |
-| **Next on Release 1A** | Complete F/E/H, freeze the Release 1A slices of N/O, then present ADR-001/002 for acceptance. |
-| **Parallel** | Plan K infrastructure work; G/J/P research; Plan AC offline Integrity 1.3 repair; Plan AD public/synthetic contract design. |
-| **Gated** | N/O implementation waits for the L/M checkpoint; Plan R waits for seven protected CSV columns; AD persistence/adapters, production implementation, and Plan AD acceptance wait for DEC-015; portal scaffolding waits for M1A; GitLab activation, deployment, real data, publication, and destructive history work require their explicit gates. |
+| **Now** | M2 vertical slice **implemented + code reviewed** (2026-08-19): all J1–J4 journeys built in `portal/release1a/` (forms, views, templates, HTMX, tenant isolation, audit, TOTP enforcement). 10 review bugs fixed, 5 regression tests added — **495 tests pass**. Remaining: Jan observation of J1–J4 journeys. |
+| **Next on Release 1A** | Complete runnable Czech-first J1–J4 screens; observe Jan/operator journeys; collect operational exceptions. |
+| **Parallel** | Plan K infrastructure (capacity, backup/restore evidence); G/J/P research; Plan AC Integrity 1.3 repair + Pilot 1/2; Plan AD synthetic contract; Plan AF bounded free-model eval (AF2.1/2.2 repair). |
+| **Gated** | N/O production impl waits for M1A; **Plan R completed** (2026-08-20) — 11 PDFs/33 previews generated, QA passed; visual review & backup cleanup pending. AD persistence/AD acceptance waits DEC-015; portal scaffolding proceeds in M2 (synthetic only); GitLab/CI (Plan AE/DEC-016) requires explicit approval; real data, publication, history rewrite require separate gates. |
+| **Cleanup (this cycle)** | Delete `scripts/a1_core.py.backup`, `portal/settings.py.bak`; remove 3 legacy config files (`a1_field_coords.json`, `a1_checkbox_coords.json`, `a1_field_map.json`); keep `config/a1_provisional.json` as active provisional-policy config (per AGENTS.md, not legacy); resolve v12 research script duplicates; inventory 15 `output/provisional.backup-*` dirs per Plan R; mark historical plans with headers. |
+| **Immediate TODOs (R-01/R-02/R-03)** | ✅ **COMPLETED 2026-08-20**: R-01 (7 cols added), R-02 (2 people added), R-03 (doc_ids→/2026/). Canonical: 11 PDFs, 33 previews, QA passed. Visual review & backup cleanup pending. |
 
 ## Delivery increments
 
@@ -81,28 +83,36 @@ market evidence are ready for separately gated increments.
 
 ## M2 — Build the shared synthetic foundation
 
-- Scaffold the accepted Django architecture, PostgreSQL schema, templates/HTMX UI,
-  localization, organization memberships, audit foundation, protected-storage
-  interface, and background jobs.
-- Deploy development/staging with synthetic fixtures only.
+- Execute the bounded [functional prototype sprint](plans/2026-08-17-plan-m2-functional-prototype-sprint.md)
+  after its machine-readable start gate opens. The gate opened on 2026-08-17 and
+  the initial synthetic scaffold/vertical domain path is present under `portal/`.
+- Build mandatory TOTP, organization-scoped workers, synthetic document/OCR
+  review, assignment overlap behavior, A1 readiness trigger, protected delivery,
+  background recovery, and non-content audit as one thin vertical slice.
+- Use production-shaped synthetic fixtures only; real backend values arrive later
+  through configuration, migrations, or authorized intake—not fixture replacement.
 
-**Exit:** mandatory TOTP, tenant isolation, deployment checks, and core synthetic
-workflows pass.
+**Status (2026-08-19):** the vertical slice is implemented in `portal/release1a/`
+(forms, views, templates, HTMX, tenant isolation, audit, TOTP enforcement) and
+code-reviewed; 10 review bugs fixed with 5 regression tests. Full suite: 495 passed.
+Remaining for exit: Jan observes J1–J4 with synthetic data in the supported browser;
+mandatory TOTP, tenant isolation, audit, retry/idempotency, protected download,
+and accessibility checks pass.
 
-## M3 — Employee, document, OCR, and assignment workflow
+## M3 — Employee, document, OCR, and assignment completeness
 
-- Implement worker records, document quarantine, local OCR proposals, human
-  review, workplaces, assignments, current-placement calculation, missing-data
-  tasks, and operator oversight.
+- Expand the M2 slice across document/profile variants, correction and recovery
+  paths, queues, current-placement calculation, missing-data tasks, exceptions,
+  retention/deletion behavior, and operator oversight.
 
 **Exit:** Jan and operator complete accepted synthetic journeys without scripts or
 direct filesystem handling.
 
-## M4 — A1 preparation
+## M4 — Deterministic A1 completion and hardening
 
-- Integrate the existing fail-closed A1 engine as an internal package.
-- Create A1 cases from reviewed worker and assignment data; expose validation,
-  generation, preview, review, artifacts, and status history.
+- Complete the existing fail-closed A1 engine integration with validation,
+  generation, previews, immutable snapshots/artifacts, approval, staleness,
+  recovery, failure reporting, and status history.
 - Preserve the distinction between prepared applications and official certificates.
 
 **Exit:** accepted synthetic profiles pass deterministic generation and all
@@ -132,14 +142,15 @@ failure/approval states.
 
 ## Plan sequence
 
-- **Critical M0/M1A:** worktree stabilization → Plan L/M checkpoint → E/F/H → N-1A/O-1A → ADR-001/002 acceptance.
-- **Parallel infrastructure:** Plan K plus GitLab runner preparation.
-- **Parallel non-blocking research:** G/J/P and broader N/O.
-- **Plan AC integrity lane:** Integrity 1.3 and synthetic replay first; live capture remains blocked.
-- **Plan AD lane:** in-memory proof may proceed; persistence, fiscal behavior, Slauf mapping, and acceptance remain DEC-015-gated.
-- **Separate A1 lane:** Plan R remains blocked on the seven missing Section 4 columns; preserve the existing provisional package.
-- **Quarantined lane:** benchmark ranking, OCR proposal validator, ZIP, and unreviewed operational artifacts.
-- **Accepted checkpoint:** Q. Retention, reflog expiry, garbage collection, deletion, and later publication remain separate decisions.
-- **Historical input:** D and all 2026-08-11 plans.
+- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟡 (vertical slice implemented + code reviewed 2026-08-19; awaiting Jan J1–J4 observation). Broader Plan L/M exits do not block this synthetic path.
+- **Parallel infrastructure:** Plan K 🟡 (capacity/backup evidence incomplete) + GitLab runner prep (Plan AE/DEC-016 gated).
+- **Parallel non-blocking research:** G/J/P 🟡 + broader N/O 🟡.
+- **Plan AC integrity lane:** Integrity 1.3 🟡 + synthetic replay 🟡; Pilot 1/2 required before skill activation; live capture blocked.
+- **Plan AD lane:** in-memory proof ✅; persistence, fiscal behavior, Slauf mapping, acceptance wait DEC-015.
+- **Plan AF/AF2 tooling lane:** AF2 🔴 blocked by invalid harness; AF2.1 🟡 evidence-integrity repair; AF2.2 🟡 Luna capsule isolation; no skill activation, protected data, LiteLLM, or publication authority.
+- **Separate A1 lane:** Plan R 🔴 blocked — CSV needs 7 Section 4 columns + 2 missing people; preserve existing provisional package.
+- **Quarantined lane:** benchmark ranking, OCR proposal validator, ZIP, unreviewed operational artifacts; v12 research scripts need classification.
+- **Accepted checkpoint:** Q ✅ (sanitized checkpoint `c01aa2b` accepted). Retention, reflog expiry, GC, deletion, publication remain separate decisions.
+- **Historical input:** D and all 2026-08-11 plans — mark with headers per Plan L.
 
 Authoritative paths and statuses are maintained in [`plans/INDEX.md`](plans/INDEX.md).

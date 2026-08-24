@@ -223,8 +223,12 @@ binaries, timeouts, skipped required probes, or incomplete evidence remain
 - Run Plan M's deterministic planning validator once it exists; until then, use
   read-only local checks for Markdown links and bare paths, plan/index coherence,
   decision sources/approvers, stale active paths, and PII/secret indicators.
-- **Plan L remains active until the minimal planning catalog, deterministic validator,
-  historical-document checks, and documentation checkpoint pass.**
+- **Plan L remains active for its broader exit**, including unresolved CLI,
+  historical-document, and experimental-skill review. Its operational governance
+  baseline and minimal planning catalog/validator are sufficient and do not block
+  Release 1A synthetic work.
+- Plan AF may supply bounded synthetic evidence for free-worker routing, but it
+  cannot accept Plan L or activate an autonomous worker/skill by itself.
 - Any such commit stages an explicit reviewed path list only and excludes A1
   code/config, runtime/real data, outputs, and unrelated worktree changes.
 

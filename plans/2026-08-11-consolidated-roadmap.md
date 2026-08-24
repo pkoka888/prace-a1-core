@@ -1,3 +1,10 @@
+---
+status: historical
+superseded_by: ../roadmap.md
+date: 2026-08-11
+note: "Historical — superseded by roadmap.md (2026-08-12). Do not execute."
+---
+
 # Consolidated Roadmap — A1 Stabilization to Recruitment Platform
 
 > **Status: Superseded on 2026-08-12.** Retained as historical context. The authoritative execution roadmap is [`../roadmap.md`](../roadmap.md); active bounded work is indexed in [`INDEX.md`](INDEX.md).

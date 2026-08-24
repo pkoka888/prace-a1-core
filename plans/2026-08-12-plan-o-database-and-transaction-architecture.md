@@ -1,9 +1,9 @@
 # Plan O — Database, Query, Index, and Transaction Architecture
 
-**Status:** planned
+**Status:** active
 **Prerequisite:** Plan N's Release 1A catalog and Plan E proofs are required before
-ADR-002 acceptance. Logical modeling, query discovery, and synthetic transaction
-design proceed concurrently.
+ADR-002 acceptance. The operational Plan L/M baseline is sufficient for logical
+modeling, query discovery, and synthetic transaction design to proceed now.
 **Milestone:** M1A–M1B
 **Owner:** product engineering
 
@@ -18,6 +18,9 @@ models are scaffolded.
   permission matrices, deletion graph, migration dry run and reconciliation
   design, synthetic concurrency tests, and ADR-002 evidence; expand later modules
   afterward.
+- The minimum synthetic M2 contract and acceptance checks are accepted in
+  `docs/decisions/ADR-002-release-1a-data-and-transactions.md`; broader physical
+  PostgreSQL measurement and Plan O discovery remain active.
 
 ## Broader platform slice — parallel, non-blocking
 

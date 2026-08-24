@@ -8,6 +8,11 @@
 
 Define the real Jan/operator workflow and Release 1 acceptance criteria before modeling or implementing it.
 
+The operational Plan L governance baseline and minimal Plan M catalog are
+sufficient for decision-brief, scenario, traceability, catalog, and wireframe
+work. Jan/operator validation is an exit gate for operational facts and pilot
+fitness, not a reason to pause synthetic preparation.
+
 ## Discovery
 
 - Before asking Jan or the operator, research applicable domain, workflow, security, accessibility, and A1 practices using bounded lower-cost research agents where available. The primary agent validates evidence and repository fit.
@@ -37,3 +42,12 @@ Jan and operator approve or annotate the prepared workflows, roles, required inf
 ## Exclusions
 
 No UI implementation, public jobs/candidates, pricing decision, legal conclusions, real-data migration, or automatic A1 eligibility decision.
+
+## Recommended-default rule
+
+Until Jan records an exception, synthetic proofs use the defaults in the
+[solution brief](../docs/decisions/2026-08-12-jan-release-1-solution-brief.md)
+and the [Release 1A unblock and review packet](../docs/release-1a/unblock-review-packet.md).
+Defaults do not assert a real operational fact, authorize real data, or satisfy
+the exit gate. They prevent unanswered preference questions from blocking safe,
+reversible design and test work.

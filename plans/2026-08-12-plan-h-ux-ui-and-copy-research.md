@@ -8,6 +8,10 @@
 
 Define a calm, efficient Jan/operator portal experience and evidence-backed Czech/German product voice.
 
+Synthetic wireframes and acceptance scripts may proceed from the operational
+Plan L/M baseline and the recommended defaults in the Release 1A decision brief.
+Observed completion by Jan/operator remains required for this plan's exit.
+
 ## Research and validation
 
 - Research and propose the recommended UX before requesting user decisions. Present alternatives only where they materially affect workflow or architecture, with a textual/wireframe example for each.
