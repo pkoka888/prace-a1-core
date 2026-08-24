@@ -1,0 +1,131 @@
+#!/bin/bash
+# Pre-commit hook for prace-v-nemecku
+# Location: .git/hooks/pre-commit
+# Install: cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#
+# What it does:
+#  1. Blocks PII-bearing paths (forbidden_paths) from being staged
+#  2. Runs package-specific checks via validate_change_packages.py
+#  3. Warns on quarantined packages that require explicit approval
+#
+# To bypass (NOT recommended): git commit --no-verify
+
+set -euo pipefail
+
+echo "=== pre-commit: change package validation ==="
+
+# 1. Block forbidden PII paths from ever being staged
+FORBIDDEN_PATTERNS="a1/|scans/|evidence/|ocr/|data/|employees/scans/|output/|runtime/portal/|secrets/|\.env|\.history-remediation/|private/|reports/"
+
+STAGED=$(git diff --cached --name-only 2>/dev/null || echo "")
+if [[ -n "$STAGED" ]]; then
+    BLOCKED=$(echo "$STAGED" | grep -E "$FORBIDDEN_PATTERNS" || true)
+    if [[ -n "$BLOCKED" ]]; then
+        echo "BLOCKED: Forbidden PII path(s) staged:"
+        echo "$BLOCKED"
+        echo ""
+        echo "Never stage files in these paths. Stage only non-PII files."
+        echo "If you need to stage workflow structure, stage specific files explicitly."
+        exit 1
+    fi
+fi
+
+# 2. No staged files = nothing to validate
+if [[ -z "$STAGED" ]]; then
+    echo "SKIP: No staged files"
+    exit 0
+fi
+
+# 3. Run validate_change_packages.py to classify and get checks
+REPORT=$(python3 scripts/validate_change_packages.py --json 2>/dev/null || echo "{}")
+
+# Extract problems from the report
+PROBLEMS=$(echo "$REPORT" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    problems = data.get('problems', [])
+    if problems:
+        for p in problems:
+            print(f'PROBLEM: {p}')
+    else:
+        print('NONE')
+except:
+    print('NONE')
+" 2>/dev/null || echo "NONE")
+
+if [[ "$PROBLEMS" != "NONE" ]] && [[ -n "$PROBLEMS" ]]; then
+    echo "PATH CLASSIFICATION ERRORS:"
+    echo "$PROBLEMS"
+    exit 1
+fi
+
+# 4. Extract package-specific checks and run them
+CHECKS=$(echo "$REPORT" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    entries = data.get('entries', [])
+    packages = {}
+    for e in entries:
+        pkg = e.get('package')
+        if pkg and pkg not in packages:
+            packages[pkg] = True
+    receipts = data.get('package_receipts', [])
+    all_checks = []
+    for r in receipts:
+        if r.get('package') in packages:
+            all_checks.extend(r.get('checks', []))
+    print('|'.join(all_checks) if all_checks else '')
+except:
+    print('')
+" 2>/dev/null || echo "")
+
+if [[ -n "$CHECKS" ]]; then
+    echo "Running package checks..."
+    FAILED=0
+    IFS='|' read -ra CHECK_ARRAY <<< "$CHECKS"
+    for check in "${CHECK_ARRAY[@]}"; do
+        if [[ -z "$check" ]]; then continue; fi
+        echo "  → $check"
+        if ! eval "$check" >/dev/null 2>&1; then
+            echo "  FAILED: $check"
+            FAILED=1
+        else
+            echo "  PASSED"
+        fi
+    done
+
+    if [[ $FAILED -eq 1 ]]; then
+        echo ""
+        echo "COMMIT BLOCKED: One or more package checks failed."
+        echo "Fix failures before committing."
+        exit 1
+    fi
+fi
+
+# 5. Warn on quarantined packages
+QUARANTINED=$(echo "$REPORT" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    entries = data.get('entries', [])
+    packages = {}
+    for e in entries:
+        pkg = e.get('package')
+        if pkg:
+            packages[pkg] = e.get('eligible_for_staging', True)
+    quarantined = [p for p, eligible in packages.items() if not eligible]
+    print(','.join(quarantined) if quarantined else '')
+except:
+    print('')
+" 2>/dev/null || echo "")
+
+if [[ -n "$QUARANTINED" ]]; then
+    echo ""
+    echo "WARNING: Staged files belong to quarantined package(s): $QUARANTINED"
+    echo "These require explicit approval before staging. Commit will be blocked by the package validator."
+fi
+
+echo "=== pre-commit: PASSED ==="
+exit 0
