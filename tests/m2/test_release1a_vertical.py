@@ -1,0 +1,42 @@
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
+import django
+django.setup()
+
+from datetime import date
+import pytest
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.test import TransactionTestCase
+from portal.release1a.models import AuditEvent, Membership, Organization, OcrProposal
+from portal.release1a.services import Forbidden, create_assignment, create_worker, prepare_a1, upload_document
+
+call_command("migrate", verbosity=0, interactive=False)
+
+class Release1AVerticalTests(TransactionTestCase):
+    def setUp(self):
+        self.alpha = Organization.objects.create(key="synthetic-alpha", label="Synthetic Alpha")
+        self.beta = Organization.objects.create(key="synthetic-beta", label="Synthetic Beta")
+        self.user = get_user_model().objects.create_user("synthetic-admin", password="synthetic-only")
+        self.membership = Membership.objects.create(user=self.user, organization=self.alpha, role="jan_planner", mfa_verified=True)
+
+    def test_j1_to_j4_coherent_path_and_non_content_audit(self):
+        worker = create_worker(self.user, self.alpha, given_name="Syntetický", family_name="Pracovník", birth_date=date(1990, 1, 1), activity_profile="employee")
+        document = upload_document(self.user, self.alpha, worker, "fixture.pdf", "application/pdf", b"%PDF-1.4\n%%EOF")
+        assert OcrProposal.objects.get(document=document).proposed_value == "Syntetický návrh"
+        _, overlap = create_assignment(self.user, self.alpha, worker, start=date(2026, 8, 1), end=date(2026, 8, 15), workplace_label="Syntetické pracoviště", activity_label="Test")
+        assert not overlap
+        case = prepare_a1(self.user, self.alpha, worker)
+        assert case.readiness == "ready" and case.prepared_artifact_hash and case.external_status == "not_submitted"
+        assert list(AuditEvent.objects.values_list("event_type", flat=True)) == ["worker.created", "document.uploaded", "assignment.created", "a1.prepared"]
+        assert all("Syntetický" not in event.object_ref for event in AuditEvent.objects.all())
+
+    def test_mandatory_mfa_tenant_denial_overlap_and_a1_ambiguity(self):
+        self.membership.mfa_verified = False; self.membership.save()
+        with pytest.raises(Forbidden): create_worker(self.user, self.alpha, given_name="A", family_name="B", birth_date=date(1990,1,1), activity_profile="employee")
+        self.membership.mfa_verified = True; self.membership.save()
+        worker = create_worker(self.user, self.alpha, given_name="A", family_name="B", birth_date=date(1990,1,1), activity_profile="employee")
+        with pytest.raises(Forbidden): upload_document(self.user, self.beta, worker, "x.pdf", "application/pdf", b"%PDF-1.4")
+        create_assignment(self.user, self.alpha, worker, start=date(2026,8,1), end=date(2026,8,20), workplace_label="A", activity_label="A")
+        _, overlap = create_assignment(self.user, self.alpha, worker, start=date(2026,8,10), end=date(2026,8,30), workplace_label="B", activity_label="B")
+        assert overlap and prepare_a1(self.user, self.alpha, worker).readiness == "blocked"

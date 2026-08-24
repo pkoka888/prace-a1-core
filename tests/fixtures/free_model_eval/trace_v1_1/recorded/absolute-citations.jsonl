@@ -1,0 +1,3 @@
+{"type":"tool_use","part":{"tool":"read","state":{"status":"completed","input":{"filePath":"/workspace/README.md"}}}}
+{"type":"tool_use","part":{"tool":"read","state":{"status":"completed","input":{"filePath":"/workspace/AGENTS.md"}}}}
+{"type":"text","part":{"text":"{\"claims\":[{\"fact\":\"planning-only\",\"path\":\"/workspace/README.md\",\"line\":3,\"quote\":\"planning-only synthetic fixture\"}]}"}}

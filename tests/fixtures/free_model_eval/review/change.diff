@@ -1,0 +1,12 @@
+--- a/path_policy.py
++++ b/path_policy.py
+@@ -1,8 +1,10 @@
+ def within_limit(count: int, limit: int) -> bool:
+-    return count <= limit
++    return count < limit
+ 
+ def safe_child(root, candidate):
+-    return candidate.resolve().is_relative_to(root.resolve())
++    return str(candidate.resolve()).startswith(str(root.resolve()))
++
++# Readability: keep the policy functions small.

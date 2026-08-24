@@ -1,0 +1,44 @@
+[
+  {
+    "id": "org-synthetic-alpha",
+    "name": "TESTOVACÍ s.r.o.",
+    "registration_number": "CZ-00000001",
+    "country": "CZ",
+    "address": {
+      "street": "Ukázková 1",
+      "city": "Praha",
+      "postal_code": "10000",
+      "country": "CZ"
+    },
+    "created_at": "2026-01-15",
+    "_fiction": "Conspicuously synthetic. Not a real company."
+  },
+  {
+    "id": "org-synthetic-beta",
+    "name": "FIKTIVNÍ Bau GmbH",
+    "registration_number": "DE-00000001",
+    "country": "DE",
+    "address": {
+      "street": "Beispielstraße 42",
+      "city": "München",
+      "postal_code": "80331",
+      "country": "DE"
+    },
+    "created_at": "2026-02-01",
+    "_fiction": "Conspicuously synthetic. Not a real company."
+  },
+  {
+    "id": "org-synthetic-gamma",
+    "name": "UKÁZKOVÁ Agentura a.s.",
+    "registration_number": "CZ-00000002",
+    "country": "CZ",
+    "address": {
+      "street": "Příkladná 99",
+      "city": "Brno",
+      "postal_code": "60200",
+      "country": "CZ"
+    },
+    "created_at": "2026-03-10",
+    "_fiction": "Conspicuously synthetic. Not a real company."
+  }
+]

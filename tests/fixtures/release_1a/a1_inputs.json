@@ -1,0 +1,114 @@
+[
+  {
+    "case_id": "A1-SYNTH-001",
+    "organization_id": "org-synthetic-alpha",
+    "worker_id": "worker-synthetic-01",
+    "worker_profile": {
+      "first_name": "TESTOVACÍ",
+      "last_name": "Novotný",
+      "birth_date": "1990-01-01",
+      "birth_number": "9001010007",
+      "_identifier_expectation": "synthetic checksum-valid success case",
+      "nationality": "CZ",
+      "address": {
+        "street": "Ukázková 12",
+        "city": "Praha",
+        "postal_code": "10000",
+        "country": "CZ"
+      },
+      "employment_type": "OSVČ",
+      "id_document": {
+        "type": "občanský průkaz",
+        "number": "SYNTH-OP-001"
+      }
+    },
+    "institution": {
+      "name": "TESTOVACÍ s.r.o.",
+      "registration_number": "CZ-00000001",
+      "address": {
+        "street": "Ukázková 1",
+        "city": "Praha",
+        "postal_code": "10000",
+        "country": "CZ"
+      },
+      "source": "employer.example.invalid"
+    },
+    "assignment": {
+      "workplace": "München Zentrum",
+      "country": "DE",
+      "role": "Elektrikář",
+      "start_date": "2026-08-01",
+      "end_date": "2026-09-15"
+    },
+    "section4_employment": {
+      "activity_type": "vysílání zaměstnance",
+      "employer_country": "CZ",
+      "worker_state": "cz",
+      "legislation_applied": "cz",
+      "partial_exemption": false,
+      "multiple_states": false,
+      "posted_worker": true
+    },
+    "status": "prepared",
+    "prepared_at": "2026-08-10T16:00:00Z",
+    "prepared_by": "user-synthetic-02",
+    "generation_hash": "sha256:aaaa1111bbbb2222cccc3333dddd4444eeee5555ffff66660000aaaabbbbccccdddd",
+    "_fiction": "Conspicuously synthetic A1 case. institution source is example.invalid. Not a real A1 application."
+  },
+  {
+    "case_id": "A1-SYNTH-002",
+    "organization_id": "org-synthetic-alpha",
+    "worker_id": "worker-synthetic-02",
+    "worker_profile": {
+      "first_name": "FIKTIVNÍ",
+      "last_name": "Králová",
+      "birth_date": "1985-06-22",
+      "birth_number": "8562229876",
+      "_identifier_expectation": "synthetic checksum-invalid incomplete-case input",
+      "nationality": "CZ",
+      "address": {
+        "street": "Příkladná 45",
+        "city": "Brno",
+        "postal_code": "60200",
+        "country": "CZ"
+      },
+      "employment_type": "zaměstnanec",
+      "id_document": {
+        "type": "občanský průkaz",
+        "number": "SYNTH-OP-002"
+      }
+    },
+    "institution": {
+      "name": "FIKTIVNÍ Stahl AG",
+      "registration_number": "DE-00000099",
+      "address": {
+        "street": "Schweißstraße 10",
+        "city": "Dresden",
+        "postal_code": "01067",
+        "country": "DE"
+      },
+      "source": "employer-de.example.invalid"
+    },
+    "assignment": {
+      "workplace": "Dresden Projekt",
+      "country": "DE",
+      "role": "Svářeč",
+      "start_date": "2026-08-15",
+      "end_date": "2026-11-30"
+    },
+    "section4_employment": {
+      "activity_type": "vysílání zaměstnance",
+      "employer_country": "CZ",
+      "worker_state": "cz",
+      "legislation_applied": "cz",
+      "partial_exemption": false,
+      "multiple_states": false,
+      "posted_worker": true
+    },
+    "status": "incomplete",
+    "prepared_at": null,
+    "prepared_by": null,
+    "generation_hash": null,
+    "_fiction": "Conspicuously synthetic A1 case with incomplete data. Used to test readiness-gate behavior."
+  }
+]

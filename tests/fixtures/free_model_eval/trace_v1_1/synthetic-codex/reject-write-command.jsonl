@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"t8"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"c1","type":"command_execution","command":"echo synthetic > README.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}

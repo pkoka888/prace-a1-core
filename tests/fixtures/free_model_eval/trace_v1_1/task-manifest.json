@@ -1,0 +1,9 @@
+{
+  "protocol_version": "1.1",
+  "output_schema_version": "1.0",
+  "allowed_paths": ["README.md", "AGENTS.md"],
+  "files": [
+    {"path": "README.md", "sha256": "b09ef9527f26104862af938c5981ae7fda46bccf7e2fe54393353657a6ed5de2"},
+    {"path": "AGENTS.md", "sha256": "5df0f1ba48efe798c015723b89f3ad8e9108afbd1b482a07e786cd9911c29221"}
+  ]
+}

@@ -1,0 +1,107 @@
+[
+  {
+    "id": "job-synthetic-01",
+    "organization_id": "org-synthetic-alpha",
+    "job_type": "ocr_processing",
+    "payload": {
+      "document_id": "doc-synthetic-01",
+      "worker_id": "worker-synthetic-01",
+      "document_type": "občanský průkaz"
+    },
+    "status": "completed",
+    "result": {
+      "proposals_count": 5,
+      "confidence_avg": 0.97,
+      "confirmed": true
+    },
+    "retry_count": 0,
+    "idempotency_key": "ocr-doc-synthetic-01-v1",
+    "created_at": "2026-05-10T14:01:00Z",
+    "started_at": "2026-05-10T14:01:05Z",
+    "completed_at": "2026-05-10T14:01:42Z",
+    "worker_id_executing": "worker-process-001",
+    "_fiction": "Conspicuously synthetic job. Proves completed OCR processing."
+  },
+  {
+    "id": "job-synthetic-02",
+    "organization_id": "org-synthetic-alpha",
+    "job_type": "a1_generation",
+    "payload": {
+      "case_id": "A1-SYNTH-001",
+      "worker_id": "worker-synthetic-01"
+    },
+    "status": "completed",
+    "result": {
+      "pdf_generated": true,
+      "validation_passed": true,
+      "preview_hash": "sha256:bbbb2222cccc3333dddd4444eeee5555ffff66660000aaaabbbbccccdddd0001"
+    },
+    "retry_count": 0,
+    "idempotency_key": "a1-A1-SYNTH-001-v1",
+    "created_at": "2026-08-10T15:59:00Z",
+    "started_at": "2026-08-10T15:59:05Z",
+    "completed_at": "2026-08-10T16:00:12Z",
+    "worker_id_executing": "worker-process-001",
+    "_fiction": "Conspicuously synthetic job. Proves A1 generation boundary."
+  },
+  {
+    "id": "job-synthetic-03",
+    "organization_id": "org-synthetic-alpha",
+    "job_type": "ocr_processing",
+    "payload": {
+      "document_id": "doc-synthetic-02",
+      "worker_id": "worker-synthetic-02",
+      "document_type": "zdravotní pojištění"
+    },
+    "status": "failed",
+    "result": null,
+    "error": "timeout: OCR provider did not respond within 30s",
+    "retry_count": 3,
+    "max_retries": 3,
+    "idempotency_key": "ocr-doc-synthetic-02-v1",
+    "created_at": "2026-05-12T09:01:00Z",
+    "started_at": "2026-05-12T09:01:05Z",
+    "completed_at": null,
+    "worker_id_executing": "worker-process-001",
+    "_fiction": "Conspicuously synthetic failed job. Proves retry/timeout/exhaustion behavior."
+  },
+  {
+    "id": "job-synthetic-04",
+    "organization_id": "org-synthetic-alpha",
+    "job_type": "a1_generation",
+    "payload": {
+      "case_id": "A1-SYNTH-002",
+      "worker_id": "worker-synthetic-02"
+    },
+    "status": "queued",
+    "result": null,
+    "retry_count": 0,
+    "idempotency_key": "a1-A1-SYNTH-002-v1",
+    "created_at": "2026-08-11T10:00:00Z",
+    "started_at": null,
+    "completed_at": null,
+    "worker_id_executing": null,
+    "_fiction": "Conspicuously synthetic queued job. Proves job state management."
+  },
+  {
+    "id": "job-synthetic-05",
+    "organization_id": "org-synthetic-beta",
+    "job_type": "document_export",
+    "payload": {
+      "document_id": "doc-synthetic-05",
+      "requested_by": "user-synthetic-04"
+    },
+    "status": "completed",
+    "result": {
+      "export_path": "/SYNTHETIC/exports/doc-synthetic-05-export.pdf",
+      "file_size": 41984
+    },
+    "retry_count": 0,
+    "idempotency_key": "export-doc-synthetic-05-v1",
+    "created_at": "2026-05-21T08:00:00Z",
+    "started_at": "2026-05-21T08:00:01Z",
+    "completed_at": "2026-05-21T08:00:08Z",
+    "worker_id_executing": "worker-process-002",
+    "_fiction": "Conspicuously synthetic. Different org for tenant-isolation delivery tests."
+  }
+]

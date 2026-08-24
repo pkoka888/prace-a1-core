@@ -1,0 +1,8 @@
+{
+  "required_facts": [
+    {"fact": "planning-only", "path": "README.md", "line": 3, "quote": "planning-only synthetic fixture"},
+    {"fact": "portal-not-implemented", "path": "README.md", "line": 4, "quote": "No production portal is implemented"},
+    {"fact": "synthetic-only", "path": "AGENTS.md", "line": 3, "quote": "Use only fictional records"}
+  ],
+  "required_reads": ["README.md", "AGENTS.md"]
+}

@@ -1,0 +1,172 @@
+"""M2 Sprint tests — View-layer validation for J1–J4 journeys."""
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
+import django
+django.setup()
+
+from datetime import date
+import pytest
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.test import Client, TransactionTestCase
+from portal.release1a.models import (
+    AuditEvent, Membership, Organization, Worker,
+    Document, OcrProposal, Assignment, A1Case
+)
+
+call_command("migrate", verbosity=0, interactive=False)
+
+
+class M2ViewTests(TransactionTestCase):
+    """Test M2 J1–J4 view layer — redirects, CRUD, audit."""
+
+    def setUp(self):
+        self.org_alpha = Organization.objects.create(key="alpha-m2", label="Alpha M2")
+        self.org_beta = Organization.objects.create(key="beta-m2", label="Beta M2")
+        self.user = get_user_model().objects.create_user("m2user", password="test-m2")
+        self.membership = Membership.objects.create(
+            user=self.user, organization=self.org_alpha,
+            role="jan_planner", mfa_verified=True
+        )
+        self.client = Client()
+
+    def test_j1_dashboard_requires_login(self):
+        """J1: Dashboard requires authentication."""
+        response = self.client.get("/")
+        # Should show unauthenticated state (not redirect)
+        self.assertIn(response.status_code, [200, 302])
+        if response.status_code == 200:
+            self.assertContains(response, "Nepřihlášen")
+
+    def test_j1_worker_list_requires_login(self):
+        """J1: Worker list requires login."""
+        response = self.client.get("/workers/")
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+
+    def test_j1_worker_list_authenticated(self):
+        """J1: Worker list shows correctly when authenticated."""
+        self.client.login(username="m2user", password="test-m2")
+        response = self.client.get("/workers/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_j1_worker_create_form_get(self):
+        """J1: Worker create form renders."""
+        self.client.login(username="m2user", password="test-m2")
+        response = self.client.get("/workers/new/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "form")
+
+    def test_j1_worker_create_post_success(self):
+        """J1: Worker create POST creates worker + audit event."""
+        self.client.login(username="m2user", password="test-m2")
+        data = {
+            "family_name": "TestWorker",
+            "given_name": "Jan",
+            "birth_date": "1990-01-01",
+            "activity_profile": "self_employed",
+            "state": "draft",
+        }
+        response = self.client.post("/workers/new/", data, follow=False)
+        # Should redirect on success
+        self.assertEqual(response.status_code, 302)
+        # Worker should exist
+        self.assertTrue(Worker.objects.filter(family_name="TestWorker").exists())
+        # Audit event should be created
+        self.assertTrue(AuditEvent.objects.filter(event_type="worker.created").exists())
+
+    def test_j1_worker_create_post_validation_error(self):
+        """J1: Worker create POST with invalid data shows errors."""
+        self.client.login(username="m2user", password="test-m2")
+        data = {
+            "family_name": "",  # Empty
+            "given_name": "",
+            "birth_date": "",
+            "activity_profile": "",
+            "state": "",
+        }
+        response = self.client.post("/workers/new/", data)
+        # Should re-render form (not redirect)
+        self.assertEqual(response.status_code, 200)
+        # No worker created
+        self.assertEqual(Worker.objects.count(), 0)
+
+    def test_j2_document_upload_requires_login(self):
+        """J2: Document upload requires login."""
+        worker = Worker.objects.create(
+            organization=self.org_alpha,
+            given_name="Test", family_name="Worker",
+            birth_date=date(1990, 1, 1),
+            activity_profile="self_employed",
+        )
+        response = self.client.get(f"/workers/{worker.pk}/documents/upload/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_j3_assignment_create_form_get(self):
+        """J3: Assignment create form renders."""
+        self.client.login(username="m2user", password="test-m2")
+        worker = Worker.objects.create(
+            organization=self.org_alpha,
+            given_name="Test", family_name="Worker",
+            birth_date=date(1990, 1, 1),
+            activity_profile="self_employed",
+        )
+        response = self.client.get(f"/workers/{worker.pk}/assignments/new/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_j4_a1_prepare_form_get(self):
+        """J4: A1 prepare form renders."""
+        self.client.login(username="m2user", password="test-m2")
+        worker = Worker.objects.create(
+            organization=self.org_alpha,
+            given_name="Test", family_name="Worker",
+            birth_date=date(1990, 1, 1),
+            activity_profile="self_employed",
+        )
+        response = self.client.get(f"/workers/{worker.pk}/a1/prepare/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_tenant_isolation_in_views(self):
+        """Tenant isolation: cross-org access returns 404."""
+        self.client.login(username="m2user", password="test-m2")
+        worker_beta = Worker.objects.create(
+            organization=self.org_beta,
+            given_name="Beta", family_name="Worker",
+            birth_date=date(1990, 1, 1),
+            activity_profile="self_employed",
+        )
+        # Alpha user trying to access beta worker detail → 404
+        response = self.client.get(f"/workers/{worker_beta.pk}/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_audit_events_for_j1_j2_j3_j4(self):
+        """AuditEvent records for all J1–J4 actions."""
+        from portal.release1a.services import (
+            create_worker, upload_document, create_assignment, prepare_a1
+        )
+
+        worker = create_worker(
+            self.user, self.org_alpha,
+            given_name="Syntetický", family_name="Pracovník",
+            birth_date=date(1990, 1, 1), activity_profile="self_employed",
+        )
+        document = upload_document(
+            self.user, self.org_alpha, worker,
+            "fixture.pdf", "application/pdf", b"%PDF-1.4\n%%EOF",
+        )
+        _, _ = create_assignment(
+            self.user, self.org_alpha, worker,
+            start=date(2026, 8, 1), end=date(2026, 8, 15),
+            workplace_label="Test", activity_label="Test",
+        )
+        case = prepare_a1(self.user, self.org_alpha, worker)
+
+        # All 4 audit events present
+        event_types = list(AuditEvent.objects.values_list("event_type", flat=True))
+        self.assertIn("worker.created", event_types)
+        self.assertIn("document.uploaded", event_types)
+        self.assertIn("assignment.created", event_types)
+        self.assertIn("a1.prepared", event_types)
+
+        # No sensitive data in audit payloads
+        for event in AuditEvent.objects.all():
+            self.assertNotIn("Syntetický", event.object_ref)

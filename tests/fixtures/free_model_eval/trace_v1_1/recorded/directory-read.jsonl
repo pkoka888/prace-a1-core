@@ -1,0 +1,2 @@
+{"type":"tool_use","part":{"tool":"read","state":{"status":"completed","input":{"filePath":"/workspace"}}}}
+{"type":"text","part":{"text":"{\"claims\":[]}"}}

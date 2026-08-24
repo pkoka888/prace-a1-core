@@ -1,0 +1,8 @@
+{"type":"thread.started","thread_id":"thread-synthetic-cat"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"run-cmd-1","type":"command_execution","command":"cat README.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"run-cmd-1","type":"command_execution","command":"cat README.md","aggregated_output":"# Synthetic Atlas Repository\n\nThis repository is a planning-only synthetic fixture.\nNo production portal is implemented.\nThe first deliverable is a catalog validator.\nStatus is derived from `PLAN.md`.\n","exit_code":0,"status":"completed"}}
+{"type":"item.started","item":{"id":"run-cmd-2","type":"command_execution","command":"cat AGENTS.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"run-cmd-2","type":"command_execution","command":"cat AGENTS.md","aggregated_output":"# Synthetic agent rules\n\nUse only fictional records.\nNever publish without operator approval.\nPLAN.md is the authority for status.\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"msg-1","type":"agent_message","text":"{\"claims\":[{\"fact\":\"planning-only\",\"path\":\"README.md\",\"line\":3,\"quote\":\"planning-only synthetic fixture\"},{\"fact\":\"portal-not-implemented\",\"path\":\"README.md\",\"line\":4,\"quote\":\"No production portal is implemented\"},{\"fact\":\"synthetic-only\",\"path\":\"AGENTS.md\",\"line\":3,\"quote\":\"Use only fictional records\"}]}"}}
+{"type":"turn.completed","usage":{"input_tokens":10,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":5,"reasoning_output_tokens":0}}

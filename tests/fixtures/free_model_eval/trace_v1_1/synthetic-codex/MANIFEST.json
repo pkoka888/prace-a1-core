@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "protocol": "codex-exec-jsonl-0.147",
+  "codex_version": "0.147.0",
+  "codex_commit": "be6e8eac029b183056b7e4402879f15d2c85f61b",
+  "source_path": "codex-rs/exec/src/exec_events.rs",
+  "capture_origin": "synthetic-source-shaped",
+  "event_types": [
+    "thread.started",
+    "turn.started",
+    "turn.completed",
+    "turn.failed",
+    "item.started",
+    "item.updated",
+    "item.completed",
+    "error"
+  ],
+  "item_types": [
+    "agent_message",
+    "reasoning",
+    "command_execution",
+    "file_change",
+    "mcp_tool_call",
+    "collab_tool_call",
+    "web_search",
+    "todo_list",
+    "error"
+  ],
+  "command_statuses": ["in_progress", "completed", "failed", "declined"],
+  "approved_reader_commands": ["cat", "sed"],
+  "note": "Source-shaped synthetic JSONL streams that pin the exact Codex exec event shapes from the pinned source commit. These are NOT wire-captured output from a live Codex run; they prove adapter compatibility with the source schema only. None contain real PII or credentials."
+}

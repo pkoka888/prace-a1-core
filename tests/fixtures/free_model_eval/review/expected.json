@@ -1,0 +1,5 @@
+{
+  "required_findings": ["off-by-one", "unsafe-path-prefix"],
+  "harmless_change": "readability-comment",
+  "max_false_positives": 1
+}

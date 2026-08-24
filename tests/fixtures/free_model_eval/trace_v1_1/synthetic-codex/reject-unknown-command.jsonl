@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"t10"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"c1","type":"command_execution","command":"ls -la","aggregated_output":"","exit_code":null,"status":"in_progress"}}

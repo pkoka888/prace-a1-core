@@ -1,0 +1,57 @@
+[
+  {
+    "id": "user-synthetic-01",
+    "email": "admin@example.invalid",
+    "name": "TESTOVACÍ Administrátor",
+    "role": "admin",
+    "organization_id": "org-synthetic-alpha",
+    "mfa_enrolled": true,
+    "mfa_method": "totp",
+    "is_active": true,
+    "_fiction": "Conspicuously synthetic. Not a real person."
+  },
+  {
+    "id": "user-synthetic-02",
+    "email": "jan@example.invalid",
+    "name": "TESTOVACÍ Jan",
+    "role": "operator",
+    "organization_id": "org-synthetic-alpha",
+    "mfa_enrolled": true,
+    "mfa_method": "totp",
+    "is_active": true,
+    "_fiction": "Conspicuously synthetic. Not a real person."
+  },
+  {
+    "id": "user-synthetic-03",
+    "email": "viewer@example.invalid",
+    "name": "TESTOVACÍ Prohlížeč",
+    "role": "viewer",
+    "organization_id": "org-synthetic-alpha",
+    "mfa_enrolled": false,
+    "mfa_method": null,
+    "is_active": true,
+    "_fiction": "Conspicuously synthetic. Not a real person."
+  },
+  {
+    "id": "user-synthetic-04",
+    "email": "admin-beta@example.invalid",
+    "name": "FIKTIVNÍ Admin Beta",
+    "role": "admin",
+    "organization_id": "org-synthetic-beta",
+    "mfa_enrolled": true,
+    "mfa_method": "totp",
+    "is_active": true,
+    "_fiction": "Conspicuously synthetic. Used to test cross-organization denial."
+  },
+  {
+    "id": "user-synthetic-05",
+    "email": "operator-gamma@example.invalid",
+    "name": "UKÁZKOVÁ Operátorka",
+    "role": "operator",
+    "organization_id": "org-synthetic-gamma",
+    "mfa_enrolled": true,
+    "mfa_method": "totp",
+    "is_active": true,
+    "_fiction": "Conspicuously synthetic. Used to test cross-organization denial."
+  }
+]

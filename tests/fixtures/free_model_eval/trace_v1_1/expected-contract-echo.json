@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "task_id": "trace-opencode-model-placeholder",
+  "allowed_paths": ["README.md", "AGENTS.md"],
+  "output_schema_version": "1.0",
+  "forbidden_actions_acknowledged": true
+}

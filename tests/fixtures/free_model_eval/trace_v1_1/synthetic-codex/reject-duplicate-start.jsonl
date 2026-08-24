@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"t26"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"c1","type":"command_execution","command":"cat README.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.started","item":{"id":"c1","type":"command_execution","command":"cat README.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}

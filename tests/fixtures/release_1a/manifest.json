@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "fixture_set": "release-1a-proof-sprint",
+  "declared_at": "2026-08-17",
+  "purpose": "Synthetic fixtures for Plan E architecture proof sprint. Every value in this set is fictitious.",
+  "fiction_markers": {
+    "person_ids": "test-person-*",
+    "organization_ids": "org-synthetic-*",
+    "document_ids": "doc-synthetic-*",
+    "assignment_ids": "asgn-synthetic-*",
+    "worker_ids": "worker-synthetic-*",
+    "user_ids": "user-synthetic-*",
+    "job_ids": "job-synthetic-*",
+    "institution_sources": "*.example.invalid",
+    "email_domains": "*.example.invalid",
+    "file_paths_contain": "SYNTHETIC",
+    "name_pattern": "TESTOVACÍ / FIKTIVNÍ / UKÁZKOVÁ prefix or clearly fictional Czech names"
+  },
+  "synthetic_data_declaration": [
+    "No value in this manifest or any referenced fixture file is derived from, or resembles, any real person, employer, document, address, identifier, or A1 case.",
+    "Fixture data was authored directly in this file set without reference to a1/, scans/, evidence/, ocr/, data/, employees/, output/, or runtime/portal/ paths.",
+    "This declaration is not proof by itself; run_architecture_proofs.py preflight verifies hashes, schema, fiction markers, references, paths, counts, and negative-case contracts."
+  ],
+  "protected_paths_not_read": [
+    "a1/",
+    "scans/",
+    "evidence/",
+    "ocr/",
+    "data/",
+    "employees/scans/",
+    "output/",
+    "runtime/portal/",
+    "secrets/",
+    ".env"
+  ],
+  "fixture_files": [
+    "organizations.json",
+    "users.json",
+    "workers.json",
+    "documents.json",
+    "assignments.json",
+    "a1_inputs.json",
+    "jobs.json"
+  ],
+  "fixture_hashes": {
+    "organizations.json": "a39d8bc17ffdbe27e893ffb84ebbba130daa47b2b42ea42c921cf2b953323a87",
+    "users.json": "7d5fc6ad6ab295ab5702c292347f182386d98a7d6dff60caf764785a78ca13d4",
+    "workers.json": "27398d7ed36e8e3b39418f9f48f41fb7bf5e6e3ba9b6bf4d76ddd2b7ddec5910",
+    "documents.json": "949a5da794a737c4fdb32f466a6847e5f4709b1ed54a521942fec94241c85cbe",
+    "assignments.json": "7f3bb57f20980888e0e74e0c946ed0fef550686b020ab1c45fc6d6a225fa1e47",
+    "a1_inputs.json": "ee65b65f2f071db6ccfe11acaa1f74202640b312b87fa1757e3992d62bbd452a",
+    "jobs.json": "fe24e64fe7f49a7275cd909746a1df7bfb5e44097a7d3322b2cff0340919513d"
+  },
+  "expected_counts": {
+    "organizations.json": 3,
+    "users.json": 5,
+    "workers.json": 4,
+    "documents.json": 5,
+    "assignments.json": 5,
+    "a1_inputs.json": 2,
+    "jobs.json": 5
+  },
+  "expected_negative_cases": [
+    "disguised executable",
+    "oversize upload",
+    "cross-organization denial",
+    "assignment overlap ambiguity",
+    "incomplete A1 readiness",
+    "failed job retry"
+  ],
+  "environment": {
+    "python_version": "3.13",
+    "platform": "linux",
+    "a1_private_dir": "MUST_NOT_BE_READ_BY_PREFLIGHT"
+  },
+  "evidence_rule": "Generated evidence contains synthetic measurements and hashes only. Never document contents, credentials, host secrets, real paths outside the project, or PII."
+}

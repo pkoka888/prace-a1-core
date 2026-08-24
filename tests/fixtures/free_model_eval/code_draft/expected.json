@@ -1,0 +1,5 @@
+{
+  "editable_paths": ["solution/slugify.py"],
+  "protected_paths": ["tests/test_slugify.py"],
+  "acceptance_command": ["venv/bin/python", "-m", "pytest", "tests/test_slugify.py", "-q"]
+}

@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"t13"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"c1","type":"command_execution","command":"sed -n '1,260p' README.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"c1","type":"command_execution","command":"sed -n '1,260p' README.md","aggregated_output":"","exit_code":2,"status":"completed"}}

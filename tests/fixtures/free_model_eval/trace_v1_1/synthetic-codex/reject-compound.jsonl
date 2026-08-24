@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"t5"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"c1","type":"command_execution","command":"cat README.md && cat AGENTS.md","aggregated_output":"","exit_code":null,"status":"in_progress"}}

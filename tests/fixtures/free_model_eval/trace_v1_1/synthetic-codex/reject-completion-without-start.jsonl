@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"t25"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"c1","type":"command_execution","command":"cat README.md","aggregated_output":"# Synthetic Atlas Repository\n","exit_code":0,"status":"completed"}}

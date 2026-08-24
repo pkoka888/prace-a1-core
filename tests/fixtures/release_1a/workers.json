@@ -1,0 +1,90 @@
+[
+  {
+    "id": "worker-synthetic-01",
+    "organization_id": "org-synthetic-alpha",
+    "first_name": "TESTOVACÍ",
+    "last_name": "Novotný",
+    "birth_date": "1990-01-01",
+    "nationality": "CZ",
+    "personal_id_number": "9001010007",
+    "_identifier_expectation": "synthetic checksum-valid success case",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-OP-001",
+    "address": {
+      "street": "Ukázková 12",
+      "city": "Praha",
+      "postal_code": "10000",
+      "country": "CZ"
+    },
+    "status": "active",
+    "employment_type": "OSVČ",
+    "created_at": "2026-04-01",
+    "_fiction": "Conspicuously synthetic. Not a real person."
+  },
+  {
+    "id": "worker-synthetic-02",
+    "organization_id": "org-synthetic-alpha",
+    "first_name": "FIKTIVNÍ",
+    "last_name": "Králová",
+    "birth_date": "1985-06-22",
+    "nationality": "CZ",
+    "personal_id_number": "8562229876",
+    "_identifier_expectation": "synthetic checksum-invalid rejection case",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-OP-002",
+    "address": {
+      "street": "Příkladná 45",
+      "city": "Brno",
+      "postal_code": "60200",
+      "country": "CZ"
+    },
+    "status": "active",
+    "employment_type": "zaměstnanec",
+    "created_at": "2026-04-15",
+    "_fiction": "Conspicuously synthetic. Not a real person."
+  },
+  {
+    "id": "worker-synthetic-03",
+    "organization_id": "org-synthetic-beta",
+    "first_name": "UKÁZKOVÝ",
+    "last_name": "Müller",
+    "birth_date": "1992-03-08",
+    "nationality": "DE",
+    "personal_id_number": "DE-SYNTH-080392",
+    "_identifier_expectation": "synthetic non-Czech format; Czech checksum not applicable",
+    "id_document_type": "Personalausweis",
+    "id_document_number": "SYNTH-PA-003",
+    "address": {
+      "street": "Beispielstraße 7",
+      "city": "Berlin",
+      "postal_code": "10115",
+      "country": "DE"
+    },
+    "status": "active",
+    "employment_type": "zaměstnanec",
+    "created_at": "2026-05-01",
+    "_fiction": "Conspicuously synthetic. Not a real person. Different org for tenant-isolation tests."
+  },
+  {
+    "id": "worker-synthetic-04",
+    "organization_id": "org-synthetic-alpha",
+    "first_name": "TESTOVACÍ",
+    "last_name": "Dvořák",
+    "birth_date": "1988-11-30",
+    "nationality": "CZ",
+    "personal_id_number": "8811300003",
+    "_identifier_expectation": "synthetic checksum-valid inactive-worker case",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-OP-004",
+    "address": {
+      "street": "Fiktivní 88",
+      "city": "Ostrava",
+      "postal_code": "70200",
+      "country": "CZ"
+    },
+    "status": "inactive",
+    "employment_type": "OSVČ",
+    "created_at": "2026-03-01",
+    "_fiction": "Conspicuously synthetic. Used for stale/inactive worker tests."
+  }
+]
