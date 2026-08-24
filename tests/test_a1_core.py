@@ -184,8 +184,8 @@ class A1CoreUnitTests(unittest.TestCase):
         self.assertFalse(actual["no_fixed_address"])
 
     def test_missing_explicit_employment_fields_fail_closed(self):
-        employee = complete_employee()
-        employee["employment"] = {"kind": "self_employed"}
+        employee = complete_employee("employee_multi_state")
+        employee["employment"] = {"kind": "posted"}
         with self.assertRaisesRegex(A1ValidationError, "employment.employer_id"):
             build_form_data(employee, synthetic_institution())
 

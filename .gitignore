@@ -29,13 +29,14 @@ logs/
 # In-repo operational A1 inputs (PII-bearing, gitignored, never commit)
 # These are the relocated A1_PRIVATE_DIR contents, kept inside the repo and
 # excluded from version control. Set A1_PRIVATE_DIR to the repo root to use them.
-a1/
+./a1/
 scans/
 evidence/
 ocr/
 
 # Protected portal runtime and secrets (real data, never commit)
 runtime/portal/
+runtime/free-model-eval/
 secrets/
 
 # Protected, disposable Plan Q history-rewrite workspace; may temporarily contain
@@ -87,7 +88,12 @@ employees/scans/ocr_results_stepfun.json
 # n8n workflow exports (may contain PII references)
 *.n8n-workflow
 
+# Operational runtime artifacts (never commit)
+db.sqlite3
+server.pid
+
 # NOTE: do NOT add a blanket `*.json` rule here. Policy/configuration and
 # synthetic test fixtures are legitimate tracked JSON. PII-bearing JSON is
 # excluded by the precise paths above (data/, employees/scans/, private/,
 # output/, reports/, archive/**) and must never be committed.
+scans/
