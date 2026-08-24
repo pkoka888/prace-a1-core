@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "review_status": "VERIFIED",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/jihomoravsky-kraj/brno/",
+    "verified_on": "24.08.2026",
+  "current_office_contact": {"name": "Lucie Gašparcová", "role": "vedoucí oddělení – Oddělení OSVČ", "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"},
+  "expected_ossz": "OSSZ Brno",
+  "institution": {
+    "name": "Brněnská správa sociálního zabezpečení",
+    "street": "Veveří",
+    "house_number": "5",
+    "city": "Brno",
+    "postal_code": "602 00",
+    "country_code": "CZ",
+    "code": "613"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "review_status": "VERIFIED",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/ustecky-kraj/decin",
+  "verified_on": "24.08.2026",
+  "current_office_contact": {
+    "name": "",
+    "role": "",
+    "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
+  },
+  "expected_ossz": "OSSZ Děčín",
+  "institution": {
+    "name": "OSSZ Děčín",
+    "street": "Komorova",
+    "house_number": "1155/5",
+    "city": "Děčín",
+    "postal_code": "405 02",
+    "country_code": "CZ",
+    "code": "511"
+  }
+}
