@@ -1,0 +1,115 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">{{ worker.family_name }} {{ worker.given_name }}</h2>
+        <p class="text-gray-600">Detail pracovníka</p>
+    </div>
+    <div class="space-x-2">
+        <a href="{% url 'worker_edit' pk=worker.pk %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" hx-get="{% url 'worker_edit' pk=worker.pk %}" hx-target="#worker-form-modal" hx-swap="innerHTML">Upravit</a>
+        <a href="{% url 'assignment_create' worker_pk=worker.pk %}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Přidat přiřazení</a>
+        <a href="{% url 'document_upload' worker_pk=worker.pk %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Nahrát dokument</a>
+        <a href="{% url 'a1_prepare' worker_pk=worker.pk %}" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">A1 případ</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Základní údaje</h3>
+        <dl class="space-y-3">
+            <div>
+                <dt class="text-sm text-gray-500">Křestní jméno</dt>
+                <dd class="font-medium text-gray-900">{{ worker.given_name }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-500">Příjmení</dt>
+                <dd class="font-medium text-gray-900">{{ worker.family_name }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-500">Datum narození</dt>
+                <dd class="font-medium text-gray-900">{{ worker.birth_date|date:"d.m.Y" }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-500">Profil činnosti</dt>
+                <dd class="font-medium text-gray-900">{{ worker.get_activity_profile_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-500">Stav</dt>
+                <dd class="font-medium text-gray-900">{{ worker.get_state_display }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm text-gray-500">Verze</dt>
+                <dd class="font-medium text-gray-900">{{ worker.version }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6 md:col-span-2">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Přiřazení</h3>
+        {% if assignments %}
+        <div class="space-y-2">
+            {% for assignment in assignments %}
+            <div class="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
+                <div>
+                    <p class="font-medium text-gray-900">{{ assignment.workplace_label }}</p>
+                    <p class="text-sm text-gray-500">{{ assignment.activity_label }} | {{ assignment.start|date:"d.m.Y" }} – {{ assignment.end|date:"d.m.Y" }}</p>
+                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {% if assignment.state == 'planned' %}bg-blue-100 text-blue-800{% elif assignment.state == 'active' %}bg-green-100 text-green-800{% elif assignment.state == 'completed' %}bg-gray-100 text-gray-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">{{ assignment.get_state_display }}</span>
+                </div>
+                <a href="{% url 'assignment_edit' worker_pk=worker.pk pk=assignment.pk %}" class="text-blue-600 hover:text-blue-800 text-sm" hx-get="{% url 'assignment_edit' worker_pk=worker.pk pk=assignment.pk %}" hx-target="#assignment-form-modal" hx-swap="innerHTML">Upravit</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-4">Žádná přiřazení</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Dokumenty</h3>
+            <a href="{% url 'document_upload' worker_pk=worker.pk %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Nahrát</a>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for document in documents %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ document.content_type }}</p>
+                    <p class="text-sm text-gray-500">Stav: {{ document.get_state_display }} | SHA256: {{ document.sha256|truncatechars:16 }}</p>
+                </div>
+                <div class="space-x-2">
+                    <a href="{% url 'document_detail' pk=document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
+                    <a href="{% url 'document_download' pk=document.pk %}" class="text-green-600 hover:text-green-800 text-sm">Stáhnout</a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Žádné dokumenty</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">A1 případy</h3>
+        </div>
+        <div class="divide-y divide-gray-200 p-4">
+            {% for case in a1_cases %}
+            <div class="py-2">
+                <p class="font-medium text-gray-900">A1 případ #{{ case.pk }}</p>
+                <p class="text-sm text-gray-500">Připravenost: {{ case.readiness }} | Externí: {{ case.external_status }}</p>
+                <p class="text-sm text-gray-500">Zdrojový hash: {{ case.source_hash|truncatechars:16 }}</p>
+                {% if case.prepared_artifact_hash %}
+                <p class="text-sm text-gray-500">Artefakt hash: {{ case.prepared_artifact_hash|truncatechars:16 }}</p>
+                {% endif %}
+                <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800 text-sm inline-block mt-1">Detail</a>
+            </div>
+            {% empty %}
+            <p class="text-gray-500 text-center py-4">Žádné A1 případy</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

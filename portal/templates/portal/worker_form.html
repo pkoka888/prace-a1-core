@@ -1,0 +1,78 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">{% if action == "create" %}Nový pracovník{% else %}Upravit pracovníka{% endif %}</h2>
+        <p class="text-gray-600">Vyplňte formulář pro vytvoření nebo úpravu pracovníka</p>
+    </div>
+    <a href="{% url 'worker_list' %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">Zpět na seznam</a>
+</div>
+
+<div class="bg-white rounded-lg shadow p-6 max-w-2xl">
+    <form id="worker-form" hx-post="." hx-target="#worker-form" hx-swap="outerHTML" class="space-y-6">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            {% for error in form.non_field_errors %}
+            <p class="text-red-700 text-sm">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div>
+            <label for="{{ form.family_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.family_name.label }}</label>
+            {{ form.family_name }}
+            {% if form.family_name.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.family_name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.given_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.given_name.label }}</label>
+            {{ form.given_name }}
+            {% if form.given_name.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.given_name.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.birth_date.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.birth_date.label }}</label>
+            {{ form.birth_date }}
+            {% if form.birth_date.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.birth_date.errors.0 }}</p>
+            {% endif %}
+            {% if form.birth_date.help_text %}
+            <p class="mt-1 text-sm text-gray-500">{{ form.birth_date.help_text }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.activity_profile.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.activity_profile.label }}</label>
+            {{ form.activity_profile }}
+            {% if form.activity_profile.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.activity_profile.errors.0 }}</p>
+            {% endif %}
+            {% if form.activity_profile.help_text %}
+            <p class="mt-1 text-sm text-gray-500">{{ form.activity_profile.help_text }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.state.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.state.label }}</label>
+            {{ form.state }}
+            {% if form.state.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.state.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <a href="{% url 'worker_list' %}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">Zrušit</a>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                {% if action == "create" %}Vytvořit{% else %}Uložit{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

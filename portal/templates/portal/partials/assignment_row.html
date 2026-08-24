@@ -1,0 +1,12 @@
+{% load i18n %}
+<div id="assignment-{{ assignment.pk }}" class="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
+    <div>
+        <p class="font-medium text-gray-900">{{ assignment.workplace_label }}</p>
+        <p class="text-sm text-gray-500">{{ assignment.activity_label }} | {{ assignment.start|date:"d.m.Y" }} – {{ assignment.end|date:"d.m.Y" }}</p>
+        <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {% if assignment.state == 'planned' %}bg-blue-100 text-blue-800{% elif assignment.state == 'active' %}bg-green-100 text-green-800{% elif assignment.state == 'completed' %}bg-gray-100 text-gray-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">{{ assignment.get_state_display }}</span>
+        {% if overlap_warning %}
+        <p class="text-xs text-yellow-700 mt-1">⚠ {% trans "Překrývá se s jiným přiřazením — A1 příprava může být zablokována." %}</p>
+        {% endif %}
+    </div>
+    <a href="{% url 'assignment_edit' worker_pk=assignment.worker.pk pk=assignment.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">{% trans "Upravit" %}</a>
+</div>

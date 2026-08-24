@@ -1,0 +1,22 @@
+{% extends "portal/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="max-w-xl mx-auto mt-12">
+    <div class="bg-white rounded-lg shadow p-8">
+        <div class="flex items-start space-x-4">
+            <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
+                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-gray-900 mb-2">{% trans "Smazání nebylo možné" %}</h2>
+                <p class="text-gray-600 mb-4">{{ message }}</p>
+                <p class="text-sm text-gray-500 mb-6">{% trans "Pracovník" %}: <strong>{{ worker.family_name }} {{ worker.given_name }}</strong></p>
+                <a href="{% url 'worker_detail' pk=worker.pk %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{% trans "Zpět na detail pracovníka" %}</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

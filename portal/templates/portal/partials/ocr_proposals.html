@@ -1,0 +1,30 @@
+{% load i18n %}
+<div id="ocr-proposals" class="space-y-4">
+    {% for proposal in proposals %}
+    <div id="ocr-proposal-{{ proposal.pk }}" class="p-4 border rounded-lg {% if proposal.confirmed %}bg-green-50 border-green-200{% else %}bg-gray-50 border-gray-200{% endif %}">
+        <div class="flex items-center justify-between">
+            <div class="flex-1">
+                <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="checkbox" name="confirm_{{ proposal.field_name }}_{{ proposal.pk }}" value="true"
+                           {% if proposal.confirmed %}checked{% endif %}
+                           class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                           {% if proposal.confirmed %}disabled{% endif %}
+                           hx-post="." hx-target="#ocr-proposal-{{ proposal.pk }}" hx-swap="outerHTML"
+                           hx-include="[name='csrfmiddlewaretoken']">
+                    <div>
+                        <p class="font-medium text-gray-900">{{ proposal.field_name }}</p>
+                        <p class="text-sm text-gray-500">{% trans "Návrh" %}: <span class="font-mono">{{ proposal.proposed_value }}</span> | {% trans "Jistota" %}: {{ proposal.confidence|floatformat:2 }}%</p>
+                    </div>
+                </label>
+            </div>
+            {% if proposal.confirmed %}
+            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">{% trans "Potvrzeno" %}</span>
+            {% else %}
+            <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">{% trans "Čeká na potvrzení" %}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <p class="text-gray-500 text-center py-8">{% trans "Žádné OCR návrhy k dispozici" %}</p>
+    {% endfor %}
+</div>

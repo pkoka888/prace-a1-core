@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "free-model-receipt-1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "task_id", "task_class", "runner", "requested_model", "reported_model", "reported_provider", "packet_hash", "fixture_hash", "metadata_hash", "started_at", "finished_at", "duration_ms", "event_hash", "tool_events", "tokens", "reported_cost", "process_exit", "timed_out", "output_valid", "citations_valid", "workspace_before", "workspace_after", "repository_before", "repository_after", "acceptance_passed", "hard_gates", "scores", "total_score", "disposition", "errors", "next_action"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "protocol_version": {"enum": ["1.0", "1.1"]},
+    "repetition": {"type": "integer", "minimum": 1},
+    "attempt": {"type": "integer", "minimum": 1, "maximum": 2},
+    "task_id": {"type": "string"}, "task_class": {"enum": ["trace", "review", "code_draft"]},
+    "runner": {"enum": ["opencode", "codex"]}, "requested_model": {"type": "string"},
+    "reported_model": {"type": ["string", "null"]}, "reported_provider": {"type": ["string", "null"]},
+    "packet_hash": {"$ref": "#/definitions/hash"}, "fixture_hash": {"$ref": "#/definitions/hash"}, "metadata_hash": {"$ref": "#/definitions/hash"},
+    "started_at": {"type": "string"}, "finished_at": {"type": "string"}, "duration_ms": {"type": "integer", "minimum": 0},
+    "event_hash": {"$ref": "#/definitions/hash"}, "tool_events": {"type": "array", "items": {"type": "object"}},
+    "tokens": {"type": "object"}, "reported_cost": {"type": ["number", "null"]}, "process_exit": {"type": "integer"}, "timed_out": {"type": "boolean"},
+    "output_valid": {"type": "boolean"}, "citations_valid": {"type": "boolean"},
+    "workspace_before": {"$ref": "#/definitions/hash"}, "workspace_after": {"$ref": "#/definitions/hash"},
+    "repository_before": {"$ref": "#/definitions/hash"}, "repository_after": {"$ref": "#/definitions/hash"},
+    "acceptance_passed": {"type": "boolean"}, "hard_gates": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "scores": {"type": "object", "additionalProperties": {"type": "number"}}, "total_score": {"type": "number", "minimum": 0, "maximum": 100},
+    "disposition": {"enum": ["candidate", "rejected", "unproven"]}, "errors": {"type": "array", "items": {"type": "string"}}, "next_action": {"type": "string"},
+    "contract_echo": {"type": "object", "additionalProperties": false, "required": ["passed", "event_hash", "output_hash"], "properties": {"passed": {"type": "boolean"}, "event_hash": {"$ref": "#/definitions/hash"}, "output_hash": {"$ref": "#/definitions/hash"}, "diagnostic_retained": {"type":"boolean"}}},
+    "failure_codes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "diagnostic_artifacts_retained": {"type": "boolean"},
+    "sanitized_event_artifact_hash": {"$ref": "#/definitions/hash"},
+    "original_output_hash": {"$ref": "#/definitions/hash"},
+    "normalized_output_hash": {"$ref": "#/definitions/hash"}
+  },
+  "definitions": {"hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

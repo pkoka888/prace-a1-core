@@ -1,0 +1,118 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-semibold text-gray-900">Dashboard</h2>
+    <p class="text-gray-600">Přehled vaší organizace</p>
+</div>
+
+{% if unauthenticated %}
+<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+    <h3 class="text-lg font-medium text-yellow-800 mb-2">Nepřihlášen</h3>
+    <p class="text-yellow-700">Pro přístup k portálu se prosím přihlaste s povinným TOTP.</p>
+    <a href="{% url 'login' %}" class="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Přihlásit se</a>
+</div>
+{% else %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Pracovníci</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ worker_count }}</p>
+            </div>
+        </div>
+        <a href="{% url 'worker_list' %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v13.586a1 1 0 00.293.707l5.414 5.414A1 1 0 0011 22h3z"></path>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Dokumenty</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ document_count }}</p>
+            </div>
+        </div>
+        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2v10a2 2 0 01-2 2H9a2 2 0 01-2-2V5z"></path>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">Přiřazení</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ assignment_count }}</p>
+            </div>
+        </div>
+        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechna →</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center">
+            <div class="flex-shrink-0 bg-orange-100 rounded-lg p-3">
+                <svg class="h-6 w-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+            </div>
+            <div class="ml-4">
+                <p class="text-sm font-medium text-gray-500">A1 případy</p>
+                <p class="text-2xl font-semibold text-gray-900">{{ a1_case_count }}</p>
+            </div>
+        </div>
+        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Poslední pracovníci</h3>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for worker in recent_workers %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ worker.family_name }} {{ worker.given_name }}</p>
+                    <p class="text-sm text-gray-500">{{ worker.birth_date }} | {{ worker.get_activity_profile_display }}</p>
+                </div>
+                <a href="{% url 'worker_detail' pk=worker.pk %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Detail</a>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Žádní pracovníci</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">Poslední A1 případy</h3>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for case in recent_a1_cases %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ case.worker.family_name }} {{ case.worker.given_name }}</p>
+                    <p class="text-sm text-gray-500">Připravenost: {{ case.readiness }} | Externí: {{ case.external_status }}</p>
+                </div>
+                <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Detail</a>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Žádné A1 případy</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

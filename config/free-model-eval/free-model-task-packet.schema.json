@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "free-model-task-packet-1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "protocol_version", "contract_echo_required", "task_id", "task_class", "runner", "model", "reasoning_variant", "prompt_template", "allowed_paths", "file_manifest", "forbidden_paths", "allowed_tools", "allowed_commands", "required_output_schema", "output_schema_version", "timeout_seconds", "max_steps", "privacy_class", "expected_evidence", "acceptance_command", "rollback"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "protocol_version": {"enum": ["1.0", "1.1"]},
+    "contract_echo_required": {"type": "boolean"},
+    "task_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]+$"},
+    "task_class": {"enum": ["trace", "review", "code_draft"]},
+    "runner": {"enum": ["opencode", "codex"]},
+    "model": {"type": "string", "minLength": 3},
+    "reasoning_variant": {"type": ["string", "null"]},
+    "prompt_template": {"type": "string", "minLength": 1},
+    "allowed_paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "file_manifest": {"type": "array", "items": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}}},
+    "forbidden_paths": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+    "allowed_tools": {"type": "array", "items": {"enum": ["read", "edit", "write", "apply_patch"]}, "uniqueItems": true},
+    "allowed_commands": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}},
+    "required_output_schema": {"type": "string"},
+    "output_schema_version": {"const": "1.0"},
+    "timeout_seconds": {"type": "integer", "minimum": 10, "maximum": 300},
+    "max_steps": {"type": "integer", "minimum": 1, "maximum": 20},
+    "privacy_class": {"const": "public-synthetic"},
+    "expected_evidence": {"type": "object"},
+    "acceptance_command": {"type": "array", "items": {"type": "string"}},
+    "rollback": {"type": "string", "minLength": 1}
+  }
+}

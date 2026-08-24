@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "protocol_version": "1.1",
+  "af2_trace_only": true,
+  "contract_echo_timeout_seconds": 45,
+  "contract_echo_max_steps": 2,
+  "contract_echo_max_output_bytes": 8192,
+  "transient_retry_count": 1,
+  "transient_retry_backoff_seconds": 2,
+  "permitted_normalizations": ["utf8-bom", "unicode-nfc", "json-whitespace"],
+  "directory_reads_forbidden": true,
+  "required_opencode_version": "1.18.18",
+  "opencode_binary": "default-underlying-binary",
+  "opencode_auth_source": "default-user-auth-store",
+  "opencode_auth_provider": "free-models",
+  "codex_binary": "default-pinned-standalone",
+  "codex_required_version": "0.147.0",
+  "codex_auth_source": "dedicated-revocable-codex-store",
+  "codex_auth_store": "runtime/free-model-eval/credentials/codex-auth.json",
+  "codex_reader_commands": ["cat", "sed"],
+  "free_models": [
+    "opencode/hy3-free",
+    "opencode/deepseek-v4-flash-free"
+  ],
+  "codex_control": "codex/gpt-5.6-luna",
+  "codex_reasoning_effort": "medium",
+  "minimum_context": 64000,
+  "minimum_output": 16000,
+  "repetitions": 3,
+  "runtime_root": "runtime/free-model-eval",
+  "forbidden_paths": [
+    ".env", ".git", ".history-remediation", "a1", "data", "employees",
+    "evidence", "ocr", "output", "private", "reports", "runtime/portal",
+    "scans", "secrets", "research/acquisition", "research/processed",
+    "research/benchmark-experimental"
+  ],
+  "forbidden_tools": [
+    "bash", "shell", "webfetch", "websearch", "task", "skill", "mcp",
+    "external_directory"
+  ],
+  "allowed_event_types": ["step_start", "step_finish", "tool_use", "text", "error"],
+  "retryable_statuses": [429, 500, 502, 503, 504],
+  "max_final_output_bytes": 65536,
+  "tasks": ["trace", "review", "code_draft"]
+}

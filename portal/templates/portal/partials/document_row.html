@@ -1,0 +1,11 @@
+{% load i18n %}
+<div id="document-{{ document.pk }}" class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+    <div>
+        <p class="font-medium text-gray-900">{{ document.content_type }}</p>
+        <p class="text-sm text-gray-500">{% trans "Stav" %}: {{ document.get_state_display }} | SHA256: {{ document.sha256|truncatechars:16 }}</p>
+    </div>
+    <div class="space-x-2">
+        <a href="{% url 'document_detail' pk=document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">{% trans "Detail" %}</a>
+        <a href="{% url 'document_download' pk=document.pk %}" class="text-green-600 hover:text-green-800 text-sm">{% trans "Stáhnout" %}</a>
+    </div>
+</div>

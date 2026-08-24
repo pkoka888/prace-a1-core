@@ -1,0 +1,60 @@
+{% load i18n %}
+<form id="assignment-form" hx-post="." hx-target="#assignment-form" hx-swap="outerHTML" class="space-y-6">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        {% for error in form.non_field_errors %}
+        <p class="text-red-700 text-sm">{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div>
+        <label for="{{ form.workplace_label.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.workplace_label.label }}</label>
+        {{ form.workplace_label }}
+        {% if form.workplace_label.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.workplace_label.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <div>
+        <label for="{{ form.activity_label.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.activity_label.label }}</label>
+        {{ form.activity_label }}
+        {% if form.activity_label.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.activity_label.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label for="{{ form.start.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.start.label }}</label>
+            {{ form.start }}
+            {% if form.start.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.start.errors.0 }}</p>
+            {% endif %}
+        </div>
+        <div>
+            <label for="{{ form.end.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.end.label }}</label>
+            {{ form.end }}
+            {% if form.end.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.end.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div>
+        <label for="{{ form.state.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.state.label }}</label>
+        {{ form.state }}
+        {% if form.state.errors %}
+        <p class="mt-1 text-sm text-red-600">{{ form.state.errors.0 }}</p>
+        {% endif %}
+    </div>
+
+    {{ form.version }}
+
+    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <a href="{% url 'worker_detail' pk=worker.pk %}" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">{% trans "Zrušit" %}</a>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{% if action == "create" %}{% trans "Vytvořit" %}{% else %}{% trans "Uložit" %}{% endif %}</button>
+    </div>
+</form>

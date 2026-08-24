@@ -1,0 +1,82 @@
+{% load i18n %}
+
+<div class="fixed inset-0 z-50 overflow-y-auto" id="worker-form-modal">
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75" hx-get="{% url 'worker_list' %}" hx-target="#worker-table" hx-swap="outerHTML"></div>
+        <div class="relative bg-white rounded-lg shadow-xl max-w-xl w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    {% if action == "create" %}Nový pracovník{% else %}Upravit pracovníka{% endif %}
+                </h3>
+                <button type="button" class="text-gray-400 hover:text-gray-500" hx-get="{% url 'worker_list' %}" hx-target="#worker-table" hx-swap="outerHTML">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form id="worker-form" hx-post="." hx-target="#worker-form-modal" hx-swap="outerHTML" class="space-y-4">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    {% for error in form.non_field_errors %}
+                    <p class="text-red-700 text-sm">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div>
+                    <label for="{{ form.family_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.family_name.label }}</label>
+                    {{ form.family_name }}
+                    {% if form.family_name.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.family_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.given_name.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.given_name.label }}</label>
+                    {{ form.given_name }}
+                    {% if form.given_name.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.given_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.birth_date.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.birth_date.label }}</label>
+                    {{ form.birth_date }}
+                    {% if form.birth_date.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.birth_date.errors.0 }}</p>
+                    {% endif %}
+                    {% if form.birth_date.help_text %}
+                    <p class="mt-1 text-sm text-gray-500">{{ form.birth_date.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.activity_profile.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.activity_profile.label }}</label>
+                    {{ form.activity_profile }}
+                    {% if form.activity_profile.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.activity_profile.errors.0 }}</p>
+                    {% endif %}
+                    {% if form.activity_profile.help_text %}
+                    <p class="mt-1 text-sm text-gray-500">{{ form.activity_profile.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.state.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.state.label }}</label>
+                    {{ form.state }}
+                    {% if form.state.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ form.state.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                    <button type="button" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" hx-get="{% url 'worker_list' %}" hx-target="#worker-table" hx-swap="outerHTML">Zrušit</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        {% if action == "create" %}Vytvořit{% else %}Uložit{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

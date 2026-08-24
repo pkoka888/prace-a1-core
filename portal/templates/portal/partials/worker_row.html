@@ -1,0 +1,19 @@
+<tr id="worker-{{ worker.pk }}" class="hover:bg-gray-50 transition">
+    <td class="px-6 py-4 whitespace-nowrap">
+        <div class="font-medium text-gray-900">{{ worker.family_name }} {{ worker.given_name }}</div>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ worker.birth_date|date:"d.m.Y" }}</td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="px-2 py-1 text-xs font-medium rounded-full {% if worker.activity_profile == 'self_employed' %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+            {{ worker.get_activity_profile_display }}
+        </span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{{ worker.get_state_display }}</span>
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+        <a href="{% url 'worker_detail' pk=worker.pk %}" class="text-blue-600 hover:text-blue-900" hx-get="{% url 'worker_detail' pk=worker.pk %}" hx-target="#worker-detail-modal" hx-swap="innerHTML">Detail</a>
+        <a href="{% url 'worker_edit' pk=worker.pk %}" class="text-gray-600 hover:text-gray-900" hx-get="{% url 'worker_edit' pk=worker.pk %}" hx-target="#worker-form-modal" hx-swap="innerHTML">Upravit</a>
+        <button hx-delete="{% url 'worker_delete' pk=worker.pk %}" hx-target="#worker-{{ worker.pk }}" hx-swap="outerHTML swap:1s" class="text-red-600 hover:text-red-900" onclick="return confirm('Opravdu smazat?')">Smazat</button>
+    </td>
+</tr>

@@ -1,0 +1,74 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">Pracovníci</h2>
+        <p class="text-gray-600">Správa pracovníků vaší organizace</p>
+    </div>
+    <a href="{% url 'worker_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+        <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        Nový pracovník
+    </a>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200" id="worker-table">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jméno</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Narození</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profil</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stav</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Akce</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200" hx-target="closest tbody" hx-swap="outerHTML swap:1s">
+            {% for worker in page_obj %}
+            <tr id="worker-{{ worker.pk }}" class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-gray-900">{{ worker.family_name }} {{ worker.given_name }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-gray-500">{{ worker.birth_date|date:"d.m.Y" }}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {% if worker.activity_profile == 'self_employed' %}bg-green-100 text-green-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ worker.get_activity_profile_display }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{{ worker.get_state_display }}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <a href="{% url 'worker_detail' pk=worker.pk %}" class="text-blue-600 hover:text-blue-900" hx-get="{% url 'worker_detail' pk=worker.pk %}" hx-target="#worker-detail-modal" hx-swap="innerHTML">Detail</a>
+                    <a href="{% url 'worker_edit' pk=worker.pk %}" class="text-gray-600 hover:text-gray-900" hx-get="{% url 'worker_edit' pk=worker.pk %}" hx-target="#worker-form-modal" hx-swap="innerHTML">Upravit</a>
+                    <button hx-delete="{% url 'worker_delete' pk=worker.pk %}" hx-target="#worker-{{ worker.pk }}" hx-swap="outerHTML swap:1s" class="text-red-600 hover:text-red-900" onclick="return confirm('Opravdu smazat?')">Smazat</button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-500">Žádní pracovníci k zobrazení</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="mt-4 flex items-center justify-center space-x-2">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50" hx-get="?page={{ page_obj.previous_page_number }}" hx-target="#worker-table" hx-swap="outerHTML">Předchozí</a>
+    {% endif %}
+    <span class="px-3 py-2 text-gray-500">Stránka {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50" hx-get="?page={{ page_obj.next_page_number }}" hx-target="#worker-table" hx-swap="outerHTML">Další</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Modals for HTMX -->
+<div id="worker-detail-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" hx-target="this" hx-swap="innerHTML"></div>
+<div id="worker-form-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" hx-target="this" hx-swap="innerHTML"></div>
+
+{% endblock %}

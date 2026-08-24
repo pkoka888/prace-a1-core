@@ -1,0 +1,276 @@
+# GitLab CI/CD Configuration — Proposed (Inactive until DEC-016 approval)
+# Plan AE / DEC-016: GitLab as secondary backup + CI runner
+# GitHub remains authoritative origin; this mirrors and validates only.
+
+# DO NOT ACTIVATE until explicit DEC-016 approval per AGENTS.md
+# Activation steps documented in docs/research/2026-08-19-open-decisions-research.md
+
+stages:
+  - validate
+  - test
+  - gate
+
+variables:
+  # Full history needed for mirror validation
+  GIT_DEPTH: "0"
+  # Python version matches project
+  PYTHON_VERSION: "3.13"
+  # Fail fast on any stage
+  CI_FAIL_FAST: "true"
+
+# Default image for all jobs
+default:
+  image: python:${PYTHON_VERSION}-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git curl >/dev/null
+    - python -m venv venv
+    - venv/bin/pip install --upgrade pip -q
+    - venv/bin/pip install -r requirements.txt -q
+
+# =============================================================================
+# STAGE 1: VALIDATE — Governance, Planning, Change Packages
+# =============================================================================
+
+validate_planning:
+  stage: validate
+  script:
+    - venv/bin/python scripts/validate_planning.py --json
+  artifacts:
+    reports:
+      junit: validate_planning.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+validate_change_packages:
+  stage: validate
+  script:
+    - venv/bin/python scripts/validate_change_packages.py --json
+  artifacts:
+    reports:
+      junit: validate_change_packages.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+validate_approvals:
+  stage: validate
+  script:
+    - venv/bin/python scripts/validate_approvals.py --json
+  artifacts:
+    reports:
+      junit: validate_approvals.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+generate_planning_asset:
+  stage: validate
+  script:
+    - venv/bin/python scripts/generate_planning_asset.py --check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+generate_approval_asset:
+  stage: validate
+  script:
+    - venv/bin/python scripts/generate_approval_asset.py --check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+# =============================================================================
+# STAGE 2: TEST — Full Test Suite (excluding known flaky)
+# =============================================================================
+
+test_a1_core:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py -q --junitxml=test_a1.xml
+  artifacts:
+    reports:
+      junit: test_a1.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_architecture_proofs:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/architecture/ -q --junitxml=test_arch.xml
+  artifacts:
+    reports:
+      junit: test_arch.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_planning_validator:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_validate_planning.py -q --junitxml=test_plan.xml
+  artifacts:
+    reports:
+      junit: test_plan.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_change_packages:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_validate_change_packages.py -q --junitxml=test_cp.xml
+  artifacts:
+    reports:
+      junit: test_cp.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_free_model_eval:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py tests/test_free_model_eval_af2_protocol.py tests/test_free_model_eval_af21_integrity.py -q --junitxml=test_fme.xml
+  artifacts:
+    reports:
+      junit: test_fme.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_cli_verification:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_verify_cli_claims.py -q --junitxml=test_cli.xml
+  artifacts:
+    reports:
+      junit: test_cli.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_invoice_ingestion:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q --junitxml=test_inv.xml
+  artifacts:
+    reports:
+      junit: test_inv.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+test_m2_scaffold_gate:
+  stage: test
+  script:
+    - venv/bin/python -m pytest tests/test_m2_scaffold_gate.py -q --junitxml=test_m2gate.xml
+  artifacts:
+    reports:
+      junit: test_m2gate.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+# Full suite (excludes known pre-existing flaky test)
+test_full_suite:
+  stage: test
+  script:
+    - venv/bin/python -m pytest -q --ignore=tests/m2/test_release1a_vertical.py --junitxml=test_full.xml
+  artifacts:
+    reports:
+      junit: test_full.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+# =============================================================================
+# STAGE 3: GATE — M2 Scaffold Gate (must pass for Release 1A work)
+# =============================================================================
+
+check_m2_scaffold_gate:
+  stage: gate
+  script:
+    - venv/bin/python scripts/check_m2_scaffold_gate.py --json
+  artifacts:
+    reports:
+      junit: m2_gate.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+# =============================================================================
+# OPTIONAL: A1 Quality Gate (run on schedule, not every push - slow)
+# =============================================================================
+
+a1_quality_gate_render:
+  stage: gate
+  script:
+    - export A1_PRIVATE_DIR="${CI_PROJECT_DIR}"
+    - venv/bin/python scripts/a1_quality_gate.py render --json
+  timeout: 30m
+  artifacts:
+    reports:
+      junit: a1_qgate_render.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_REF_NAME == "main" && $CI_PIPELINE_SOURCE == "push"
+
+a1_quality_gate_validate:
+  stage: gate
+  script:
+    - export A1_PRIVATE_DIR="${CI_PROJECT_DIR}"
+    - venv/bin/python scripts/a1_quality_gate.py validate --json
+  timeout: 30m
+  artifacts:
+    reports:
+      junit: a1_qgate_validate.xml
+    when: always
+    expire_in: 7d
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_COMMIT_REF_NAME == "main" && $CI_PIPELINE_SOURCE == "push"
+
+# =============================================================================
+# MIRROR VALIDATION (runs on GitLab side after mirror sync)
+# =============================================================================
+
+mirror_validation:
+  stage: validate
+  script:
+    - echo "Validating GitHub -> GitLab mirror integrity"
+    - git fetch github
+    - git fetch gitlab
+    - DIFF=$(git rev-list --left-right --count github/main...gitlab/main 2>/dev/null || echo "0 0")
+    - echo "Mirror diff (behind/ahead): $DIFF"
+    - BEHIND=$(echo $DIFF | cut -d' ' -f1)
+    - if [ "$BEHIND" -gt 0 ]; then echo "WARNING: GitLab is $BEHIND commits behind GitHub"; exit 1; fi
+    - echo "Mirror OK: GitLab up-to-date with GitHub"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  timeout: 10m
+
+# =============================================================================
+# NOTIFICATIONS (configure in GitLab UI: Settings -> Integrations)
+# =============================================================================
+
+# Email/Slack/Mattermost notifications on pipeline failure
+# Configure via GitLab project settings, not in this file

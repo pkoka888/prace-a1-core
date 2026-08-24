@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "allowed_paths", "output_schema_version", "forbidden_actions_acknowledged"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "task_id": {"type": "string"},
+    "allowed_paths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "output_schema_version": {"const": "1.0"},
+    "forbidden_actions_acknowledged": {"const": true}
+  }
+}
