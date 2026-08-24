@@ -1,0 +1,488 @@
+{
+  "as_of": "2026-08-14",
+  "seed": 20260814,
+  "artifacts": [
+    {
+      "synthetic_id": "INV-000",
+      "variation": "clean_digital",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "0cb29d00a213d361ca86ab647419da0ccb8e90b83b9c8616deb37ed815dad057",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-000/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-001",
+      "variation": "scanned_300dpi",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "rasterize"
+      ],
+      "clean_pdf_hash": "ab2a5138b6eaff0aaae4274e26321fba1992da967ec99ad02cc9d2c13a64e54e",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-001/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-002",
+      "variation": "scanned_200dpi",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 200,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "rasterize"
+      ],
+      "clean_pdf_hash": "ba1c768f98ace1433a9c6913b2f4c9ab7954e65bd901e96980487ad7bf0a419e",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-002/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-003",
+      "variation": "rotated_90",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "rotated_90"
+      ],
+      "clean_pdf_hash": "d70a341f318be7a8dec7826d9da4c0b4c3a33a9465ae9cf0011fcd4668aa03ef",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-003/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-004",
+      "variation": "rotated_180",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "rotated_180"
+      ],
+      "clean_pdf_hash": "ac9d8b85f94c135bc249d07b5dc784bd14bbe7562845432cbfd071e71c19e04a",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-004/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-005",
+      "variation": "blurred",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "blurred"
+      ],
+      "clean_pdf_hash": "a47cb5b96ae561b4846b21f92b475164e09610a34685b854d36ff034718a705f",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-005/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-006",
+      "variation": "compressed",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "compressed"
+      ],
+      "clean_pdf_hash": "33c0ad6efeaa854f3b4855b2020b224252c5f4c17d2c04f0ce222eee8eeb2c2b",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-006/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-007",
+      "variation": "noisy",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "noisy"
+      ],
+      "clean_pdf_hash": "d6900593b6eb9d63e2a650c419c14f1c42ad9550a6c01fde275ccac0957edfa7",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-007/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-008",
+      "variation": "low_contrast",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "low_contrast"
+      ],
+      "clean_pdf_hash": "c30a79174f335f1ab02322a7dd5ac2bc1255bb364eeed7521ea9ae41e0232e1c",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-008/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-009",
+      "variation": "multi_page",
+      "pages": 2,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "97be122e7a5decfe4abcb8d44c6d2f1d713a8d6bd4fd46fdd9eb345e1fea151e",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-009/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-010",
+      "variation": "stamped",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "stamped"
+      ],
+      "clean_pdf_hash": "598e645c92cdc333909db0f6b9e10e5b0c56c8740a69ff2d81dafd37577727e1",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-010/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-011",
+      "variation": "folded",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "folded"
+      ],
+      "clean_pdf_hash": "1a9a6a97191bbdf99d2fb5b4da6d88a8b61a8590826c29dde9a7dd6283d88d6b",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-011/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-012",
+      "variation": "table_heavy",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "extra_tables"
+      ],
+      "clean_pdf_hash": "959104e37faaa849550cf72b4496f679145efa0b9c29a0a65d65bbbd7d060d2f",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-012/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-013",
+      "variation": "missing_ic_dic",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "ed341464040206948eb220934f4883cea1c06f84075a31a0976f3d38431e8f78",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-013/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-014",
+      "variation": "missing_due_date",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "8e2ea3e2a3554d37a42f55f92d5925fa95ab2ca95a91273be9a7a22562a6e2b8",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-014/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-015",
+      "variation": "missing_vs",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "42719113aee72fa7bd65ac63c499583e97b412ef9156ead8d22119b98bdb41ef",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-015/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-016",
+      "variation": "adversarial_instruction",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "ec8daee790e1d5b7dbcedb56fb8f73c6b973a0e22e71b6cdb7608fc2e606c4fc",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-016/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-017",
+      "variation": "foreign_currency",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "74bac651e63475bb5985dae19c9ba032594f4eecb7ee9fd3c21648ea7b704434",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-017/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-018",
+      "variation": "exempt_nonpayer",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "62000fff2c562fb3642860f63ea2373c15a960423c6614ee3a01237f348d7191",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-018/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-019",
+      "variation": "multi_line",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "6ef2246611c55514144e0e467bbc715b2f24e4fdce5ede1500a83fcfbd865246",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-019/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-020",
+      "variation": "historical_rate",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "1fe61cdb548eace394c08e3a03363985dd3844fe67a86afb719f5f5567c57273",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-020/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-021",
+      "variation": "poor_alignment",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "poor_alignment"
+      ],
+      "clean_pdf_hash": "04bdf804c7dcd904d0d1d9f956468f92b7482fe88e63ffad9f6dddc6c2953308",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-021/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-022",
+      "variation": "clean_digital",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [],
+      "clean_pdf_hash": "ad4bdbddaf60c23d3405e91f67df920fb5620eb67ff20a0b6f2048653b0cab78",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-022/clean.pdf"
+      }
+    },
+    {
+      "synthetic_id": "INV-023",
+      "variation": "scanned_300dpi",
+      "pages": 1,
+      "page_size": [
+        595.2755905511812,
+        841.8897637795277
+      ],
+      "dpi": 300,
+      "renderer": "reportlab",
+      "renderer_version": "5.0.0",
+      "generator_version": "1.0.0",
+      "seed": 20260814,
+      "transforms": [
+        "rasterize"
+      ],
+      "clean_pdf_hash": "3bdd72defa7af65098d39b7875317af4d69703bc193b1b38b66aad340e294c34",
+      "artifacts": {
+        "clean_pdf": "research/synthetic/artifacts/INV-023/clean.pdf"
+      }
+    }
+  ]
+}

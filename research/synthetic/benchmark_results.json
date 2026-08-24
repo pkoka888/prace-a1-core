@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.1",
+  "as_of": "2026-08-14",
+  "seed": 20260814,
+  "artifact_count": 24,
+  "engines": {
+    "docling": {
+      "status": "unproven",
+      "reason": "engine not executed in lightweight benchmark pass; actual run requires explicit local authorization",
+      "metrics": null
+    },
+    "paddleocr": {
+      "status": "unproven",
+      "reason": "engine not executed in lightweight benchmark pass; actual run requires explicit local authorization",
+      "metrics": null
+    },
+    "invoice2data": {
+      "status": "unproven",
+      "reason": "engine not executed in lightweight benchmark pass; actual run requires explicit local authorization",
+      "metrics": null
+    },
+    "ocrmypdf_tesseract": {
+      "status": "unproven",
+      "reason": "engine not executed in lightweight benchmark pass; actual run requires explicit local authorization",
+      "metrics": null
+    }
+  },
+  "note": "Engine execution deferred. Actual runs bind to immutable confirmed invoice versions (Plan AD) and record versions/hardware/latency/memory."
+}
