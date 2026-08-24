@@ -1,0 +1,244 @@
+{
+  "comparison_date": "2026-08-14T03:22:30+02:00",
+  "purpose": "Evaluate documentation quality and relevance for each CLI variant across all sources: repos, websites, installed dirs",
+  "evaluation_criteria": [
+    "completeness_of_documentation",
+    "accuracy_of_information",
+    "local_vs_remote_access",
+    "json_config_coverage",
+    "yolo_mode_documentation",
+    "project_config_documentation",
+    "vscode_integration_docs",
+    "skills_system_docs"
+  ],
+
+  "documentation_sources_comparison": {
+    "opencode": {
+      "ranking": 2,
+      "score": 8.5,
+      "sources": {
+        "official_website": {
+          "url": "https://opencode.ai/docs",
+          "quality": "GOOD",
+          "completeness": "High - comprehensive guides, API references",
+          "json_config": "Partially documented",
+          "yolo_mode": "Not applicable (uses run mode)",
+          "accessibility": "REMOTE_ONLY (network blocked in sandbox)"
+        },
+        "installed_local": {
+          "path": "~/.opencode/node_modules/@opencode-ai/",
+          "quality": "FAIR",
+          "completeness": "Partial - SDK and plugin code only",
+          "json_config": "Visible in mcp.json structure",
+          "yolo_mode": "Documented in source as 'run' mode",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE"
+        },
+        "binary_help": {
+          "command": "opencode --help",
+          "quality": "BASIC",
+          "json_config": "Brief mentions only",
+          "yolo_mode": "No specific flag documented",
+          "accessibility": "LOCAL_EXECUTABLE"
+        }
+      },
+      "most_relevant": "opencode --help shows local docs; official website for advanced config, but network blocked",
+      "best_practice": "Use local mcp.json structure and --help for reference; website when network available"
+    },
+
+    "cline": {
+      "ranking": 1,
+      "score": 9.5,
+      "sources": {
+        "official_website": {
+          "url": "https://docs.cline.bot/getting-started/for-new-coders",
+          "quality": "EXCELLENT",
+          "completeness": "Very high - CLI reference, settings, yolo mode",
+          "json_config": "Well documented for settings.json",
+          "yolo_mode": "✅ Clearly documented --yolo flag",
+          "accessibility": "REMOTE_ONLY (network blocked in sandbox)"
+        },
+        "installed_local": {
+          "path": "~/.npm-global/lib/node_modules/cline/",
+          "quality": "EXCELLENT",
+          "completeness": "Full source code with type definitions",
+          "json_config": "Fully visible in cli.mjs and settings schema",
+          "yolo_mode": "✅ Found in compiled JS: '--yolo Enable yolo mode (auto-approve all actions)'",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE",
+          "file_evidence": "cli.mjs contains --yolo flag definition"
+        },
+        "readme": {
+          "path": "~/.npm-global/lib/node_modules/cline/README.md",
+          "quality": "GOOD",
+          "completeness": "Basic intro and links",
+          "accessibility": "LOCAL_EXECUTABLE"
+        }
+      },
+      "most_relevant": "INSTALLED_SOURCE (cli.mjs) - provides actual code-level documentation for JSON configs and --yolo flag",
+      "best_practice": "Primary: cli.mjs source for exact JSON structure; Secondary: docs.cline.bot for conceptual docs"
+    },
+
+    "codex": {
+      "ranking": 3,
+      "score": 8.0,
+      "sources": {
+        "github_repo": {
+          "url": "https://github.com/openai/codex",
+          "quality": "HIGH",
+          "completeness": "Full source, README, CLI docs",
+          "json_config": "TOML format (not JSON, but equivalent)",
+          "yolo_mode": "Documented as --dangerously-bypass-approvals-and-sandbox",
+          "accessibility": "REMOTE_ONLY (network blocked in sandbox)"
+        },
+        "installed_local": {
+          "path": "~/.codex/",
+          "quality": "HIGH",
+          "completeness": "Full runtime config with samples",
+          "json_config": "auth.json, config.toml files present",
+          "yolo_mode": "Available via flags",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE"
+        },
+        "doctor_command": {
+          "command": "codex doctor",
+          "quality": "GOOD",
+          "completeness": "Installation health check",
+          "accessibility": "LOCAL_EXECUTABLE"
+        }
+      },
+      "most_relevant": "INSTALLED_LOCAL (~/.codex/) provides actual working TOML configs; GitHub repo for full docs",
+      "best_practice": "Primary: ~/.codex/config.toml for structure; Secondary: codex doctor for health checks"
+    },
+
+    "hermes": {
+      "ranking": 1,
+      "score": 9.8,
+      "sources": {
+        "local_docs": {
+          "path": "~/.hermes/hermes-agent/website/docs/",
+          "quality": "EXCELLENT",
+          "completeness": "Complete documentation for all features",
+          "json_config": "extensively documented in YAML format",
+          "yolo_mode": "Documented as terminal.auto_mode setting",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE",
+          "key_files": [
+            "docs/user-guide/features/skills.md",
+            "docs/user-guide/features/mcp.md",
+            "docs/user-guide/features/tools.md",
+            "docs/user-guide/features/personality.md"
+          ]
+        },
+        "bundled_code": {
+          "path": "~/.hermes/hermes-agent/",
+          "quality": "EXCELLENT",
+          "completeness": "Full Python source code",
+          "json_config": "config.py shows all YAML structure",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE"
+        },
+        "cli_help": {
+          "command": "hermes --help",
+          "quality": "GOOD",
+          "accessibility": "LOCAL_EXECUTABLE"
+        }
+      },
+      "most_relevant": "LOCAL_DOCS - complete, accessible, comprehensive",
+      "best_practice": "Primary: ~/.hermes/hermes-agent/website/docs/ for conceptual docs; Secondary: source code for implementation"
+    },
+
+    "kilo-code": {
+      "ranking": 1,
+      "score": 9.0,
+      "sources": {
+        "extension_docs": {
+          "path": "~/.vscode-server/extensions/kilocode.kilo-code-7.4.21-linux-x64/docs/",
+          "quality": "EXCELLENT",
+          "completeness": "Full docs for VS Code extension",
+          "json_config": "Documented in opencode-migration-plan.md",
+          "yolo_mode": "Via Hermes backend documentation",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE",
+          "key_files": [
+            "docs/opencode-migration-plan.md",
+            "docs/cli-side/*.md",
+            "docs/agent-behaviour/*.md"
+          ]
+        },
+        "extension_source": {
+          "path": "~/.vscode-server/extensions/kilocode.kilo-code-7.4.21-linux-x64/src/",
+          "quality": "HIGH",
+          "completeness": "TypeScript source for extension",
+          "json_config": "Type definitions show structure",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE"
+        },
+        "global_config": {
+          "path": "~/.config/kilo/kilo.jsonc",
+          "quality": "VERIFIED",
+          "completeness": "Actual working config",
+          "json_config": "Complete structure with permissions",
+          "accessibility": "FULLY_LOCAL_ACCESSIBLE"
+        }
+      },
+      "most_relevant": "EXTENSION_DOCS + ACTUAL_CONFIG (~/.config/kilo/kilo.jsonc)",
+      "best_practice": "Primary: extension docs for concepts; Secondary: actual config file for structure"
+    },
+
+    "pi": {
+      "ranking": 0,
+      "score": 0,
+      "sources": {
+        "investigation": {
+          "method": "search_all_paths",
+          "result": "NOT_FOUND",
+          "paths_checked": [
+            "/usr/local/bin/pi",
+            "~/.local/bin/pi",
+            "pip show pi",
+            "npm list -g | grep pi",
+            "~/.npm-global/lib/node_modules/ | grep pi"
+          ]
+        }
+      },
+      "most_relevant": "N/A - not installed"
+    }
+  },
+
+  "comparison_matrix": {
+    "best_json_documentation": "hermes (local docs) and cline (source code)",
+    "best_yolo_documentation": "cline (clear --yolo flag in source)",
+    "best_project_config_docs": "kilo (opencode-migration-plan.md) and hermes (skills.md)",
+    "most_accessible_docs": "hermes (all local) and kilo (extension docs local)",
+    "best_remote_sources": "cline docs.cline.bot, opencode.ai/docs, GitHub repos"
+  },
+
+  "recommendations": {
+    "for_json_configs": {
+      "opencode": "Use local mcp.json as reference; website for advanced features when accessible",
+      "cline": "Primary: cli.mjs source code for settings.json structure; website for concepts",
+      "codex": "Use ~/.codex/config.toml as reference; TOML not JSON but equivalent",
+      "hermes": "Primary: ~/.hermes/config.yaml (actual file) + skills.md documentation",
+      "kilo": "Primary: ~/.config/kilo/kilo.jsonc (actual file) + extension docs"
+    },
+    "for_yolo_modes": {
+      "cline": "Use documented --yolo flag",
+      "codex": "Use --dangerously-bypass-approvals-and-sandbox (or --approve-for-me)",
+      "hermes": "Configure terminal.auto_mode in config.yaml or use CLI flags",
+      "kilo": "Inherit from Hermes backend settings",
+      "opencode": "Use non-interactive run mode instead of yolo"
+    },
+    "for_skills_systems": {
+      "hermes": "Most comprehensive - see skills.md for SKILL.md format",
+      "cline": "No formal skills system - uses prompts and settings",
+      "opencode": "Implied through node_modules structure, limited documentation",
+      "codex": "Uses plugins defined in config.toml",
+      "kilo": "Markdown-based plans in .kilo/plans/"
+    }
+  },
+
+  "authority_chain": {
+    "rule": "Installed local files > Local documentation > Runtime verification > External docs",
+    "applied_to_each_cli": {
+      "opencode": "~/.opencode/mcp.json > cli --help > website docs",
+      "cline": "cli.mjs source > ~/.cline/settings.json > docs.cline.bot",
+      "codex": "~/.codex/config.toml > cli doctor > github.com/openai/codex",
+      "hermes": "~/.hermes/config.yaml > local website docs > source code",
+      "kilo": "~/.config/kilo/kilo.jsonc > extension docs > source code"
+    }
+  }
+}

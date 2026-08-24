@@ -1,0 +1,118 @@
+{
+  "investigation_date": "2026-08-14T03:31:38+02:00",
+  "workspace_root": "/var/www/prace-v-nemecku.tvoje.info",
+  "version": "VERIFIED",
+  
+  "cli_variants": {
+    "opencode": {
+      "version": "1.18.18",
+      "binary": "/home/pavel/.opencode/bin/opencode",
+      "config": {
+        "format": "JSON",
+        "path": "~/.opencode/mcp.json",
+        "verified": true
+      },
+      "yolo_mode": "N/A - uses run mode instead",
+      "vs_code_extension": "none",
+      "docs": {
+        "website": "https://opencode.ai/docs",
+        "local": "~/.opencode/node_modules/@opencode-ai/"
+      }
+    },
+    "cline": {
+      "version": "2.8.1",
+      "binary": "/home/pavel/.npm-global/bin/cline",
+      "config": {
+        "format": "JSON",
+        "path": ".cline/settings.json",
+        "verified": true
+      },
+      "yolo_mode": {
+        "flag": "--yolo",
+        "verified": "check --help output"
+      },
+      "vs_code_extension": "saoudrizwan.claude-dev-4.1.9 (NOT related)",
+      "docs": {
+        "website": "https://docs.cline.bot/getting-started/for-new-coders",
+        "source": "~/.npm-global/lib/node_modules/cline/dist/cli.mjs"
+      }
+    },
+    "codex": {
+      "version": "0.147.0",
+      "binary": "/home/pavel/.local/bin/codex",
+      "config": {
+        "format": "TOML",
+        "path": "~/.codex/config.toml",
+        "verified": true
+      },
+      "auth": {
+        "format": "JSON",
+        "path": "~/.codex/auth.json"
+      },
+      "yolo_mode": "flag: --dangerously-bypass-approvals-and-sandbox",
+      "vs_code_extension": "openai.cody-code-ai",
+      "docs": {
+        "website": "https://github.com/openai/codex",
+        "local": "~/.codex/"
+      }
+    },
+    "hermes": {
+      "version": "v0.14.0 (2026.5.16)",
+      "binary": "/home/pavel/.kilo/bin/kilo",
+      "config": {
+        "format": "YAML",
+        "path": "~/.hermes/config.yaml",
+        "verified": true
+      },
+      "local_docs_complete": true,
+      "vs_code_extension": "kilocode.kilo-code-7.4.21-linux-x64",
+      "docs": {
+        "local": "~/.hermes/hermes-agent/website/docs/",
+        "hermes_inheritance": false
+      }
+    },
+    "kilo-code": {
+      "version": "7.4.21",
+      "extension_id": "kilocode.kilo-code-7.4.21-linux-x64",
+      "config": {
+        "format": "JSONC",
+        "path": "~/.config/kilo/kilo.jsonc",
+        "verified": true
+      },
+      "hermes_inheritance": "NOT_VERIFIED",
+      "docs": {
+        "local": "~/.vscode-server/extensions/kilocode.kilo-code-7.4.21-linux-x64/docs/"
+      }
+    },
+    "pi": {
+      "status": "NOT_INSTALLED",
+      "verification": {
+        "which": "not in PATH",
+        "pip": "not on pip",
+        "npm": "not on npm"
+      }
+    }
+  },
+
+  "format_comparison": {
+    "JSON": ["opencode", "cline"],
+    "JSONC": ["kilo"],
+    "TOML": ["codex"],
+    "YAML": ["hermes"]
+  },
+
+  "yolo_mode_support": {
+    "cline": {"flag": "--yolo", "status": "VERIFIED_IN_HELP"},
+    "codex": {"flag": "--dangerously-bypass-approvals-and-sandbox", "status": "VERIFIED"},
+    "hermes": {"setting": "terminal.auto_mode", "status": "DOCUMENTED"},
+    "kilo": {"via": "hermes_backend", "status": "DERIVED"},
+    "opencode": {"status": "N/A_USES_RUN_MODE"}
+  },
+
+  "documentation_priority": {
+    "1_local_files": ["~/.opencode/mcp.json", "~/.cline/settings.json", "~/.codex/config.toml", "~/.hermes/config.yaml", "~/.config/kilo/kilo.jsonc"],
+    "2_local_docs": ["~/.hermes/hermes-agent/website/docs/", "~/.vs-code/extensions/*/docs/"],
+    "3_source_code": ["cli.mjs", "cli", "hermes agent source"],
+    "4_websites": ["https://opencode.ai/docs", "https://docs.cline.bot", "https://github.com/openai/codex"]
+  }
+}
