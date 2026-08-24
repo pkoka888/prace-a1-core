@@ -1,0 +1,82 @@
+{
+  "candidate": "all",
+  "checks": [
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_mfa_proof.py -q",
+      "duration_ms": 474.935,
+      "id": "E-MFA",
+      "output_sha256": "8b9044c1bd388710d560ea9f2903a85e49075054ede761c63a9ff029fe8d100d",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_tenant_isolation.py -q",
+      "duration_ms": 453.867,
+      "id": "E-TENANT",
+      "output_sha256": "ea60679e80486d2dd025dd2b21a200bfb76524c9325eccbaf2a64477ec87e5ec",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_job_recovery.py tests/architecture/test_transactions.py -q",
+      "duration_ms": 414.509,
+      "id": "E-JOBS",
+      "output_sha256": "03400fc0d84f85d41603c84cde51940350bcfc3dd8d01d7482e75517825d8468",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_protected_storage.py -q",
+      "duration_ms": 351.23,
+      "id": "E-STORAGE",
+      "output_sha256": "774412243a4dd9109d74cac1e88830db06a136051bbdbb28f78f1755be3ed12a",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_audit_contract.py -q",
+      "duration_ms": 405.526,
+      "id": "E-AUDIT",
+      "output_sha256": "ea60679e80486d2dd025dd2b21a200bfb76524c9325eccbaf2a64477ec87e5ec",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_a1_boundary.py -q",
+      "duration_ms": 424.84,
+      "id": "E-A1",
+      "output_sha256": "ea60679e80486d2dd025dd2b21a200bfb76524c9325eccbaf2a64477ec87e5ec",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_rollback.py -q",
+      "duration_ms": 345.949,
+      "id": "E-DEPS",
+      "output_sha256": "0a92bf2f4f32022509e8ef6e5adb2bea698107939a090c62c855b099fad4e096",
+      "status": "passed"
+    },
+    {
+      "command": "venv/bin/python -m pytest tests/architecture/test_rollback.py tests/architecture/test_job_recovery.py -q",
+      "duration_ms": 389.547,
+      "id": "E-ROLLBACK",
+      "output_sha256": "d54e562b1b92bd01731ae365858c02df2a697800b44d9fb15cd997542bffcf41",
+      "status": "passed"
+    }
+  ],
+  "disposition": "passed",
+  "environment": {
+    "machine": "x86_64",
+    "platform": "Linux-6.12.74+deb13+1-amd64-x86_64-with-glibc2.41",
+    "python": "3.13.5"
+  },
+  "evidence_kind": "synthetic-architecture-proof",
+  "schema_version": "1.0",
+  "source_hashes": {
+    "prototypes/architecture/adr001/proof_contract.py": "21f33c4899fb8b6e701af58b9a2b81cd9da374715ca885695ec2ada16ed40b18",
+    "requirements.txt": "a089926da5b4ee6876926bd5fa9f9f5c1bb4e94651452386edfc790a23ad5e0d",
+    "tests/architecture/test_a1_boundary.py": "f4a41619eb2deb7b29d009e33d053098d04db071e1038d9e99ee7ad315204f26",
+    "tests/architecture/test_audit_contract.py": "530cf43bc2624e414719cc50c17e590adf6efe43459e9781eea15937bdaf4705",
+    "tests/architecture/test_job_recovery.py": "545fdf769f96e62ed44d613dc752852d8525624e69db3f8b83e9f49e54f380f4",
+    "tests/architecture/test_mfa_proof.py": "27ade0994a00090ebe5bdc131cb3794c56376a0a8ee1d3975d4095934f408a40",
+    "tests/architecture/test_protected_storage.py": "ab154013b69ea52399655ea8759c55c7d089915b07fb76f0c7777e1c26a0444b",
+    "tests/architecture/test_rollback.py": "896da4127a1d262d10552e8b4e75ecddfe2a28c768c430d115b3705401d002d2",
+    "tests/architecture/test_tenant_isolation.py": "155ecdb5c798469ae295486dddbd91c0bffc97403d9fe3bed31a9f2684ba3e8b",
+    "tests/architecture/test_transactions.py": "2ef162b996dc0b55beb9353727b06e3f618db16e65ee30d46da1663f7b9d9d4c",
+    "tests/fixtures/release_1a/manifest.json": "5d5c526de13a4aee414e133e065e60e08a983b515f84999096b9abbcc20d47a4"
+  }
+}

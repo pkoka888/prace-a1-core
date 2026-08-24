@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "status": "frozen-for-synthetic-m2",
+  "approved_default_basis": "docs/release-1a/unblock-review-packet.md",
+  "roles": {
+    "jan_planner": ["worker.read", "worker.write", "document.view", "document.download_individual", "document.review", "assignment.write", "a1.prepare"],
+    "operator": ["worker.read", "document.view", "document.review", "assignment.write", "a1.prepare", "a1.approve_prepared"],
+    "privacy_admin": ["membership.manage", "audit.read", "deletion.execute"],
+    "system_worker": ["job.claim", "ocr.propose", "a1.generate"]
+  },
+  "fields": {
+    "worker": ["organization_id", "given_name", "family_name", "birth_date", "activity_profile", "state", "version"],
+    "document": ["organization_id", "worker_id", "opaque_key", "sha256", "content_type", "state", "provenance"],
+    "assignment": ["organization_id", "worker_id", "workplace_label", "activity_label", "start", "end", "state", "version"],
+    "a1_case": ["organization_id", "worker_id", "source_hash", "readiness", "prepared_artifact_hash", "external_status"]
+  },
+  "states": {
+    "worker": ["draft", "active", "paused", "archived"],
+    "document": ["quarantined", "rejected", "proposal_ready", "confirmed", "deleted"],
+    "assignment": ["draft", "planned", "active", "paused", "completed", "cancelled"],
+    "a1": ["blocked", "ready", "preparing", "prepared", "stale", "submitted_manually", "official_response_recorded"]
+  },
+  "activity_profiles": ["employee", "self_employed"],
+  "defaults": {"original_scan_view": "logged_in_browser", "download": "explicit-purpose-individual", "bulk_export": "denied", "submission": "manual_external_event"},
+  "remaining_operational_exceptions": ["first real pilot profile/cohort", "named delegates and actual assignment editors", "observed manual submission terminology", "actual supported device/browser"]
+}

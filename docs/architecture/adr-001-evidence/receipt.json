@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "E-A1": "passed",
+    "E-AUDIT": "passed",
+    "E-DEPS": "passed",
+    "E-JOBS": "passed",
+    "E-MFA": "passed",
+    "E-ROLLBACK": "passed",
+    "E-STORAGE": "passed",
+    "E-TENANT": "passed"
+  },
+  "manifest_sha256": "0cbeda2c4f25144a78cd3fb45a09458701d4706af14a4814d82da48c770ff437"
+}
