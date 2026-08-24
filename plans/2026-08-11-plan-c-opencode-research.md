@@ -1,3 +1,10 @@
+---
+status: historical
+superseded_by: plans/2026-08-15-plan-af-free-model-evaluation.md, plans/2026-08-12-plan-e-architecture-proofs-and-adr.md, plans/2026-08-12-plan-g-german-market-and-competitors.md
+date: 2026-08-11
+note: "Historical — superseded by Plans AF, E, G (2026-08-12/15). Do not execute."
+---
+
 # Plan C — OpenCode: parallel product, market and architecture research
 
 > **Status: Superseded/incomplete.** The requested research package was not completed to this plan's quality bar. Follow-up research is split into Plans E–J in [`INDEX.md`](INDEX.md); reviewed findings are summarized in [`../docs/research/2026-08-12-research-review-and-plan-update-report.md`](../docs/research/2026-08-12-research-review-and-plan-update-report.md).

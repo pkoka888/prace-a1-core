@@ -1,3 +1,10 @@
+---
+status: historical
+superseded_by: plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md
+date: 2026-08-11
+note: "Historical — superseded by Plan AE (2026-08-14). Do not execute."
+---
+
 # Plan B — OpenCode: safe cleanup and production workflow documentation
 
 > **Status: Historical input.** Useful cleanup evidence was completed, but this is no longer an active execution plan. Repository recovery is governed by [`../roadmap.md`](../roadmap.md) M0 and must remain separate from application implementation.

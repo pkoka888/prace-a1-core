@@ -1,3 +1,10 @@
+---
+status: historical
+superseded_by: requirements.txt (rapidocr==3.9.2), scripts/ (local OCR pipeline)
+date: 2026-08-11
+note: "Historical reference — PaddleOCR evaluation superseded by RapidOCR local-first pipeline. Do not execute."
+---
+
 # PaddleOCR Documentation
 
 > **Historical reference — do not execute.** The described PaddleOCR workflow is
