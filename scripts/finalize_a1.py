@@ -33,8 +33,10 @@ PROFILE_BY_OSSZ = {
     "OSSZ Plzeň": "plzen",
     "OSSZ Teplice": "teplice",
     "OSSZ Most": "most",
-    "OSSZ Frýdek-Místek": "frydek-mistek",
+        "OSSZ Frýdek-Místek": "frydek-mistek",
     "OSSZ Nový Jičín": "novy-jicin",
+    "OSSZ Praha": "praha",
+    "OSSZ Brno": "brno",
 }
 CSV_FIELDS = (
     "employee_id", "source_scans", "surname", "given_name", "dob", "birth_place",

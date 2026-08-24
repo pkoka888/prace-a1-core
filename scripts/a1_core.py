@@ -173,11 +173,29 @@ def build_form_data(
     if status_profile not in {"self_employed_multi_state", "employee_multi_state"}:
         raise A1ValidationError(
             f"Missing or unsupported a1.status_profile: {status_profile!r}"
-        )
+            )
     # Enrich residence with address rules
     address_rules = load_json(ROOT / "config" / "address_enrichment.json")
     enriched_residence, _ = enrich_residence(residence, address_rules)
     residence = enriched_residence
+
+    # For the provisional self-employed multi-state profile, the employer is the
+    # person themselves. Derive the Section 4 employer block deterministically from
+    # reviewed source data only (identity number -> employer_id, the person's own
+    # surname/given -> employer_name with the OSVČ marker, residence -> employer
+    # address). This is source-derived, not invented, and matches the existing
+    # cohort output. Explicitly-reviewed employment_* columns take precedence.
+    if status_profile == "self_employed_multi_state":
+        if not employment.get("employer_id"):
+            employment["employer_id"] = person.get("insurance_number", "")
+        if not employment.get("employer_name"):
+            employer_name = f"{person.get('surname', '')} {person.get('given_name', '')}".strip()
+            if employer_name:
+                employment["employer_name"] = f"{employer_name} - OSVČ"
+        for field in ("street", "house_number", "city", "postal_code", "country_code"):
+            if not employment.get(field):
+                employment[field] = residence.get(field, "")
+        employment.setdefault("kind", "self_employed")
 
     document_id = certificate.get("document_id") or certificate.get("document_id_prefix", "")
     institution_profile = str(a1.get("institution_profile", "")).strip()

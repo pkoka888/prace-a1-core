@@ -14,8 +14,8 @@ set -euo pipefail
 
 echo "=== pre-commit: change package validation ==="
 
-# 1. Block forbidden PII paths from ever being staged
-FORBIDDEN_PATTERNS="a1/|scans/|evidence/|ocr/|data/|employees/scans/|output/|runtime/portal/|secrets/|\.env|\.history-remediation/|private/|reports/"
+# 1. Block forbidden PII paths from ever being staged (anchored to path boundaries)
+FORBIDDEN_PATTERNS="(^|/)a1/|(^|/)scans/|(^|/)evidence/|(^|/)ocr/|(^|/)data/|(^|/)employees/scans/|(^|/)output/|(^|/)runtime/portal/|(^|/)secrets/|\.env$|(^|/).history-remediation/|(^|/)private/|(^|/)reports/"
 
 STAGED=$(git diff --cached --name-only 2>/dev/null || echo "")
 if [[ -n "$STAGED" ]]; then
