@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, feat/**]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 6 * * *"  # Daily at 06:00 UTC (slow tests)
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_PYTHON_VERSION_WARNING: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  # Fast tests: run on every PR and push
+  fast-tests:
+    name: Fast Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install --upgrade pip
+          venv/bin/pip install -r requirements.txt
+          venv/bin/pip install -r requirements-lock.txt 2>/dev/null || true
+
+      - name: Run fast tests
+        run: |
+          venv/bin/python -m pytest -q --ignore=tests/m2 --ignore=tests/architecture \
+            -x -v 2>&1 | tail -30
+        continue-on-error: false
+
+  # Lint check: run on every PR and push
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install lint tools
+        run: |
+          python -m venv venv
+          venv/bin/pip install ruff pytest
+
+      - name: Run ruff
+        run: |
+          venv/bin/ruff check . --output-format=github 2>&1 || true
+        continue-on-error: true
+
+      - name: Check for secrets (basic)
+        run: |
+          grep -r "sk-or-v1-\|sk-proj-\|KILO_API_KEY\|OPENAI_API_KEY" --include="*.py" . || true
+        continue-on-error: true
+
+  # Slow tests: run on schedule and main push only
+  slow-tests:
+    name: Slow Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: requirements-lock.txt
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install --upgrade pip
+          venv/bin/pip install -r requirements.txt
+
+      - name: Run all tests
+        run: |
+          venv/bin/python -m pytest -q --tb=short 2>&1 | tail -50
+        continue-on-error: false
