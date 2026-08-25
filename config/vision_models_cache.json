@@ -1,156 +1,688 @@
 {
-  "free_vision": [
-    {
-      "id": "minimax/minimax-m3:free",
-      "context_length": 1048576,
-      "price": 0,
-      "works": true,
-      "answer": "DEMETER",
-      "cost": 0,
-      "has_reasoning": false,
-      "error": null
-    },
-    {
-      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-      "context_length": 256000,
-      "price": 0,
-      "works": true,
-      "answer": "DEMETER",
-      "cost": 0,
-      "has_reasoning": true,
-      "error": null
-    }
-  ],
-  "minimax_vision": [
-    {
-      "id": "minimax/minimax-m3:free",
-      "context_length": 1048576,
-      "price": 0.0,
-      "free": true,
-      "works": true,
-      "answer": "Demeter",
-      "cost": 0,
-      "has_reasoning": false,
-      "error": null
-    },
-    {
-      "id": "minimax/minimax-01",
-      "context_length": 1000192,
-      "price": 2e-07,
-      "free": false,
-      "works": true,
-      "answer": "Demeter.",
-      "cost": 0.001708641,
-      "has_reasoning": false,
-      "error": null
-    },
-    {
-      "id": "minimax/minimax-m3",
-      "context_length": 1048576,
-      "price": 3e-07,
-      "free": false,
-      "works": true,
-      "answer": "DEMETER",
-      "cost": 9.63468e-05,
-      "has_reasoning": true,
-      "error": null
-    }
-  ],
-  "all_free_tested": [
-    {
-      "id": "cohere/north-mini-code:free",
-      "context_length": 256000,
-      "price": 0
-    },
-    {
-      "id": "dots-studio/dots-3-note-preview:free",
-      "context_length": 512000,
-      "price": 0
-    },
-    {
-      "id": "google/gemma-4-26b-a4b-it:free",
-      "context_length": 262144,
-      "price": 0
-    },
-    {
-      "id": "google/gemma-4-31b-it:free",
-      "context_length": 262144,
-      "price": 0
-    },
-    {
-      "id": "liquid/lfm-2.5-2.6b:free",
-      "context_length": 65536,
-      "price": 0
-    },
-    {
-      "id": "minimax/minimax-m2.7:free",
-      "context_length": 196608,
-      "price": 0
-    },
-    {
-      "id": "minimax/minimax-m3:free",
-      "context_length": 1048576,
-      "price": 0,
-      "works": true,
-      "answer": "DEMETER",
-      "cost": 0,
-      "has_reasoning": false,
-      "error": null
-    },
-    {
-      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-      "context_length": 256000,
-      "price": 0,
-      "works": true,
-      "answer": "DEMETER",
-      "cost": 0,
-      "has_reasoning": true,
-      "error": null
-    },
-    {
-      "id": "nvidia/nemotron-3-super-120b-a12b:free",
-      "context_length": 262144,
-      "price": 0
-    },
-    {
-      "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
-      "context_length": 1000000,
-      "price": 0
-    },
-    {
-      "id": "nvidia/nemotron-3.5-content-safety:free",
-      "context_length": 128000,
-      "price": 0
-    },
-    {
-      "id": "nvidia/nemotron-3.5-lightning:free",
-      "context_length": 1000000,
-      "price": 0
-    },
-    {
-      "id": "poolside/laguna-s-2.1:free",
-      "context_length": 262144,
-      "price": 0
-    },
-    {
-      "id": "poolside/laguna-xs-2.1:free",
-      "context_length": 262144,
-      "price": 0
-    },
-    {
-      "id": "thinkingmachines/inkling-small:free",
-      "context_length": 1048576,
-      "price": 0
-    },
-    {
-      "id": "thinkingmachines/inkling:free",
-      "context_length": 1048576,
-      "price": 0
-    },
-    {
-      "id": "z-ai/glm-5.2:free",
-      "context_length": 256000,
-      "price": 0
-    }
-  ]
+  "openrouter": {
+    "free": [
+      {
+        "id": "minimax/minimax-m3:free",
+        "canonical_slug": "minimax/minimax-m3-20260531",
+        "hugging_face_id": "MiniMaxAI/Minimax-M3",
+        "name": "MiniMax: MiniMax M3 (free)",
+        "created": 1780245374,
+        "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+        "context_length": 1048576,
+        "architecture": {
+          "modality": "text+image+video->text",
+          "input_modalities": [
+            "text",
+            "image",
+            "video"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Other",
+          "instruct_type": null
+        },
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "top_provider": {
+          "context_length": 1048576,
+          "max_completion_tokens": null,
+          "is_moderated": false
+        },
+        "per_request_limits": null,
+        "supported_parameters": [
+          "include_reasoning",
+          "max_tokens",
+          "reasoning",
+          "response_format",
+          "seed",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": 1,
+          "top_p": 0.95,
+          "top_k": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "repetition_penalty": null
+        },
+        "supported_voices": null,
+        "knowledge_cutoff": null,
+        "expiration_date": null,
+        "links": {
+          "details": "/api/v1/models/minimax/minimax-m3-20260531/endpoints"
+        },
+        "benchmarks": {
+          "design_arena": [
+            {
+              "arena": "agents",
+              "category": "agenticgamedev",
+              "elo": 1174,
+              "win_rate": 47,
+              "rank": 17
+            },
+            {
+              "arena": "agents",
+              "category": "androidnative",
+              "elo": 1176,
+              "win_rate": 46.6,
+              "rank": 23
+            },
+            {
+              "arena": "agents",
+              "category": "fullstack",
+              "elo": 1225,
+              "win_rate": 50.1,
+              "rank": 16
+            },
+            {
+              "arena": "agents",
+              "category": "htmlslides",
+              "elo": 1184,
+              "win_rate": 45.3,
+              "rank": 12
+            },
+            {
+              "arena": "agents",
+              "category": "mobileapps",
+              "elo": 1213,
+              "win_rate": 48.4,
+              "rank": 14
+            },
+            {
+              "arena": "agents",
+              "category": "python-pptxslides",
+              "elo": 1241,
+              "win_rate": 49.5,
+              "rank": 10
+            },
+            {
+              "arena": "agents",
+              "category": "webapps",
+              "elo": 1230,
+              "win_rate": 48.7,
+              "rank": 18
+            },
+            {
+              "arena": "models",
+              "category": "3d",
+              "elo": 1257,
+              "win_rate": 52.6,
+              "rank": 31
+            },
+            {
+              "arena": "models",
+              "category": "asciiart",
+              "elo": 1187,
+              "win_rate": 47.5,
+              "rank": 25
+            },
+            {
+              "arena": "models",
+              "category": "codecategories",
+              "elo": 1275,
+              "win_rate": 52.9,
+              "rank": 26
+            },
+            {
+              "arena": "models",
+              "category": "dataviz",
+              "elo": 1255,
+              "win_rate": 51.9,
+              "rank": 29
+            },
+            {
+              "arena": "models",
+              "category": "gamedev",
+              "elo": 1247,
+              "win_rate": 47.9,
+              "rank": 34
+            },
+            {
+              "arena": "models",
+              "category": "svg",
+              "elo": 1212,
+              "win_rate": 49.2,
+              "rank": 28
+            },
+            {
+              "arena": "models",
+              "category": "uicomponent",
+              "elo": 1273,
+              "win_rate": 52.7,
+              "rank": 28
+            },
+            {
+              "arena": "models",
+              "category": "website",
+              "elo": 1280,
+              "win_rate": 53.4,
+              "rank": 25
+            }
+          ],
+          "artificial_analysis": {
+            "intelligence_index": 45.4,
+            "coding_index": 58.6,
+            "agentic_index": 36.1
+          }
+        },
+        "reasoning": {
+          "mandatory": false
+        },
+        "works": true,
+        "answer": "DEMETER",
+        "cost": 0,
+        "has_reasoning": false,
+        "error": null
+      },
+      {
+        "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "canonical_slug": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning-20260428",
+        "hugging_face_id": "nvidia/Nemotron-3-Nano-Omni-30B-A3B-Reasoning-BF16",
+        "name": "NVIDIA: Nemotron 3 Nano Omni (free)",
+        "created": 1777393095,
+        "description": "NVIDIA Nemotron\u2122 3 Nano Omni is a 30B-A3B open multimodal model designed to function as a perception and context sub-agent in enterprise agent systems. It accepts text, image, video, and...",
+        "context_length": 256000,
+        "architecture": {
+          "modality": "text+image+audio+video->text",
+          "input_modalities": [
+            "text",
+            "audio",
+            "image",
+            "video"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Other",
+          "instruct_type": null
+        },
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "top_provider": {
+          "context_length": 256000,
+          "max_completion_tokens": 65536,
+          "is_moderated": false
+        },
+        "per_request_limits": null,
+        "supported_parameters": [
+          "include_reasoning",
+          "max_tokens",
+          "reasoning",
+          "seed",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": 0.6,
+          "top_p": 0.95,
+          "top_k": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "repetition_penalty": null
+        },
+        "supported_voices": null,
+        "knowledge_cutoff": null,
+        "expiration_date": null,
+        "links": {
+          "details": "/api/v1/models/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning-20260428/endpoints"
+        },
+        "benchmarks": {
+          "design_arena": [],
+          "artificial_analysis": {
+            "intelligence_index": null,
+            "coding_index": 13.8,
+            "agentic_index": null
+          }
+        },
+        "reasoning": {
+          "mandatory": false,
+          "default_enabled": true,
+          "supports_max_tokens": true
+        },
+        "works": true,
+        "answer": "Demeter",
+        "cost": 0,
+        "has_reasoning": true,
+        "error": null
+      }
+    ],
+    "minimax": [
+      {
+        "id": "minimax/minimax-m3:free",
+        "canonical_slug": "minimax/minimax-m3-20260531",
+        "hugging_face_id": "MiniMaxAI/Minimax-M3",
+        "name": "MiniMax: MiniMax M3 (free)",
+        "created": 1780245374,
+        "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+        "context_length": 1048576,
+        "architecture": {
+          "modality": "text+image+video->text",
+          "input_modalities": [
+            "text",
+            "image",
+            "video"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Other",
+          "instruct_type": null
+        },
+        "pricing": {
+          "prompt": "0",
+          "completion": "0"
+        },
+        "top_provider": {
+          "context_length": 1048576,
+          "max_completion_tokens": null,
+          "is_moderated": false
+        },
+        "per_request_limits": null,
+        "supported_parameters": [
+          "include_reasoning",
+          "max_tokens",
+          "reasoning",
+          "response_format",
+          "seed",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": 1,
+          "top_p": 0.95,
+          "top_k": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "repetition_penalty": null
+        },
+        "supported_voices": null,
+        "knowledge_cutoff": null,
+        "expiration_date": null,
+        "links": {
+          "details": "/api/v1/models/minimax/minimax-m3-20260531/endpoints"
+        },
+        "benchmarks": {
+          "design_arena": [
+            {
+              "arena": "agents",
+              "category": "agenticgamedev",
+              "elo": 1174,
+              "win_rate": 47,
+              "rank": 17
+            },
+            {
+              "arena": "agents",
+              "category": "androidnative",
+              "elo": 1176,
+              "win_rate": 46.6,
+              "rank": 23
+            },
+            {
+              "arena": "agents",
+              "category": "fullstack",
+              "elo": 1225,
+              "win_rate": 50.1,
+              "rank": 16
+            },
+            {
+              "arena": "agents",
+              "category": "htmlslides",
+              "elo": 1184,
+              "win_rate": 45.3,
+              "rank": 12
+            },
+            {
+              "arena": "agents",
+              "category": "mobileapps",
+              "elo": 1213,
+              "win_rate": 48.4,
+              "rank": 14
+            },
+            {
+              "arena": "agents",
+              "category": "python-pptxslides",
+              "elo": 1241,
+              "win_rate": 49.5,
+              "rank": 10
+            },
+            {
+              "arena": "agents",
+              "category": "webapps",
+              "elo": 1230,
+              "win_rate": 48.7,
+              "rank": 18
+            },
+            {
+              "arena": "models",
+              "category": "3d",
+              "elo": 1257,
+              "win_rate": 52.6,
+              "rank": 31
+            },
+            {
+              "arena": "models",
+              "category": "asciiart",
+              "elo": 1187,
+              "win_rate": 47.5,
+              "rank": 25
+            },
+            {
+              "arena": "models",
+              "category": "codecategories",
+              "elo": 1275,
+              "win_rate": 52.9,
+              "rank": 26
+            },
+            {
+              "arena": "models",
+              "category": "dataviz",
+              "elo": 1255,
+              "win_rate": 51.9,
+              "rank": 29
+            },
+            {
+              "arena": "models",
+              "category": "gamedev",
+              "elo": 1247,
+              "win_rate": 47.9,
+              "rank": 34
+            },
+            {
+              "arena": "models",
+              "category": "svg",
+              "elo": 1212,
+              "win_rate": 49.2,
+              "rank": 28
+            },
+            {
+              "arena": "models",
+              "category": "uicomponent",
+              "elo": 1273,
+              "win_rate": 52.7,
+              "rank": 28
+            },
+            {
+              "arena": "models",
+              "category": "website",
+              "elo": 1280,
+              "win_rate": 53.4,
+              "rank": 25
+            }
+          ],
+          "artificial_analysis": {
+            "intelligence_index": 45.4,
+            "coding_index": 58.6,
+            "agentic_index": 36.1
+          }
+        },
+        "reasoning": {
+          "mandatory": false
+        },
+        "works": true,
+        "answer": "Demeter",
+        "cost": 0,
+        "has_reasoning": false,
+        "error": null
+      },
+      {
+        "id": "minimax/minimax-01",
+        "canonical_slug": "minimax/minimax-01",
+        "hugging_face_id": "MiniMaxAI/MiniMax-Text-01",
+        "name": "MiniMax: MiniMax-01",
+        "created": 1736915462,
+        "description": "MiniMax-01 is a combines MiniMax-Text-01 for text generation and MiniMax-VL-01 for image understanding. It has 456 billion parameters, with 45.9 billion parameters activated per inference, and can handle a context...",
+        "context_length": 1000192,
+        "architecture": {
+          "modality": "text+image->text",
+          "input_modalities": [
+            "text",
+            "image"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Other",
+          "instruct_type": null
+        },
+        "pricing": {
+          "prompt": "0.0000002",
+          "completion": "0.0000011"
+        },
+        "top_provider": {
+          "context_length": 1000192,
+          "max_completion_tokens": 1000192,
+          "is_moderated": false
+        },
+        "per_request_limits": null,
+        "supported_parameters": [
+          "max_tokens",
+          "temperature",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": null,
+          "top_p": null,
+          "frequency_penalty": null
+        },
+        "supported_voices": null,
+        "knowledge_cutoff": "2024-03-31",
+        "expiration_date": null,
+        "links": {
+          "details": "/api/v1/models/minimax/minimax-01/endpoints"
+        },
+        "works": true,
+        "answer": "Demeter.",
+        "cost": 0.001708641,
+        "has_reasoning": false,
+        "error": null
+      },
+      {
+        "id": "minimax/minimax-m3",
+        "canonical_slug": "minimax/minimax-m3-20260531",
+        "hugging_face_id": "MiniMaxAI/Minimax-M3",
+        "name": "MiniMax: MiniMax M3",
+        "created": 1780245374,
+        "description": "MiniMax-M3 is a multimodal foundation model from MiniMax. It supports text, image, and video inputs with text output, a 1M-token context window, and is suited for long-horizon agentic work, coding,...",
+        "context_length": 1048576,
+        "architecture": {
+          "modality": "text+image+video->text",
+          "input_modalities": [
+            "text",
+            "image",
+            "video"
+          ],
+          "output_modalities": [
+            "text"
+          ],
+          "tokenizer": "Other",
+          "instruct_type": null
+        },
+        "pricing": {
+          "prompt": "0.0000003",
+          "completion": "0.0000012",
+          "input_cache_read": "0.00000006"
+        },
+        "top_provider": {
+          "context_length": 524288,
+          "max_completion_tokens": 512000,
+          "is_moderated": false
+        },
+        "per_request_limits": null,
+        "supported_parameters": [
+          "frequency_penalty",
+          "include_reasoning",
+          "logit_bias",
+          "logprobs",
+          "max_tokens",
+          "min_p",
+          "presence_penalty",
+          "reasoning",
+          "repetition_penalty",
+          "response_format",
+          "seed",
+          "stop",
+          "structured_outputs",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_k",
+          "top_logprobs",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": 1,
+          "top_p": 0.95,
+          "top_k": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "repetition_penalty": null
+        },
+        "supported_voices": null,
+        "knowledge_cutoff": null,
+        "expiration_date": null,
+        "links": {
+          "details": "/api/v1/models/minimax/minimax-m3-20260531/endpoints"
+        },
+        "benchmarks": {
+          "design_arena": [
+            {
+              "arena": "agents",
+              "category": "agenticgamedev",
+              "elo": 1174,
+              "win_rate": 47,
+              "rank": 17
+            },
+            {
+              "arena": "agents",
+              "category": "androidnative",
+              "elo": 1176,
+              "win_rate": 46.6,
+              "rank": 23
+            },
+            {
+              "arena": "agents",
+              "category": "fullstack",
+              "elo": 1225,
+              "win_rate": 50.1,
+              "rank": 16
+            },
+            {
+              "arena": "agents",
+              "category": "htmlslides",
+              "elo": 1184,
+              "win_rate": 45.3,
+              "rank": 12
+            },
+            {
+              "arena": "agents",
+              "category": "mobileapps",
+              "elo": 1213,
+              "win_rate": 48.4,
+              "rank": 14
+            },
+            {
+              "arena": "agents",
+              "category": "python-pptxslides",
+              "elo": 1241,
+              "win_rate": 49.5,
+              "rank": 10
+            },
+            {
+              "arena": "agents",
+              "category": "webapps",
+              "elo": 1230,
+              "win_rate": 48.7,
+              "rank": 18
+            },
+            {
+              "arena": "models",
+              "category": "3d",
+              "elo": 1257,
+              "win_rate": 52.6,
+              "rank": 31
+            },
+            {
+              "arena": "models",
+              "category": "asciiart",
+              "elo": 1187,
+              "win_rate": 47.5,
+              "rank": 25
+            },
+            {
+              "arena": "models",
+              "category": "codecategories",
+              "elo": 1275,
+              "win_rate": 52.9,
+              "rank": 26
+            },
+            {
+              "arena": "models",
+              "category": "dataviz",
+              "elo": 1255,
+              "win_rate": 51.9,
+              "rank": 29
+            },
+            {
+              "arena": "models",
+              "category": "gamedev",
+              "elo": 1247,
+              "win_rate": 47.9,
+              "rank": 34
+            },
+            {
+              "arena": "models",
+              "category": "svg",
+              "elo": 1212,
+              "win_rate": 49.2,
+              "rank": 28
+            },
+            {
+              "arena": "models",
+              "category": "uicomponent",
+              "elo": 1273,
+              "win_rate": 52.7,
+              "rank": 28
+            },
+            {
+              "arena": "models",
+              "category": "website",
+              "elo": 1280,
+              "win_rate": 53.4,
+              "rank": 25
+            }
+          ],
+          "artificial_analysis": {
+            "intelligence_index": 45.4,
+            "coding_index": 58.6,
+            "agentic_index": 36.1
+          }
+        },
+        "reasoning": {
+          "mandatory": false
+        },
+        "works": true,
+        "answer": "The user is asking me to identify the surname from the identity card in the image. I can see the car",
+        "cost": 8.44668e-05,
+        "has_reasoning": true,
+        "error": null
+      }
+    ]
+  },
+  "kilo": {
+    "models": [],
+    "error": "No KILO_API_KEY"
+  },
+  "discovered_at": "2026-08-25 10:26:05"
 }
