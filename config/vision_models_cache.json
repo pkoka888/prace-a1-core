@@ -1,0 +1,156 @@
+{
+  "free_vision": [
+    {
+      "id": "minimax/minimax-m3:free",
+      "context_length": 1048576,
+      "price": 0,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 0,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "context_length": 256000,
+      "price": 0,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 0,
+      "has_reasoning": true,
+      "error": null
+    }
+  ],
+  "minimax_vision": [
+    {
+      "id": "minimax/minimax-m3:free",
+      "context_length": 1048576,
+      "price": 0.0,
+      "free": true,
+      "works": true,
+      "answer": "Demeter",
+      "cost": 0,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "minimax/minimax-01",
+      "context_length": 1000192,
+      "price": 2e-07,
+      "free": false,
+      "works": true,
+      "answer": "Demeter.",
+      "cost": 0.001708641,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "minimax/minimax-m3",
+      "context_length": 1048576,
+      "price": 3e-07,
+      "free": false,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 9.63468e-05,
+      "has_reasoning": true,
+      "error": null
+    }
+  ],
+  "all_free_tested": [
+    {
+      "id": "cohere/north-mini-code:free",
+      "context_length": 256000,
+      "price": 0
+    },
+    {
+      "id": "dots-studio/dots-3-note-preview:free",
+      "context_length": 512000,
+      "price": 0
+    },
+    {
+      "id": "google/gemma-4-26b-a4b-it:free",
+      "context_length": 262144,
+      "price": 0
+    },
+    {
+      "id": "google/gemma-4-31b-it:free",
+      "context_length": 262144,
+      "price": 0
+    },
+    {
+      "id": "liquid/lfm-2.5-2.6b:free",
+      "context_length": 65536,
+      "price": 0
+    },
+    {
+      "id": "minimax/minimax-m2.7:free",
+      "context_length": 196608,
+      "price": 0
+    },
+    {
+      "id": "minimax/minimax-m3:free",
+      "context_length": 1048576,
+      "price": 0,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 0,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "context_length": 256000,
+      "price": 0,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 0,
+      "has_reasoning": true,
+      "error": null
+    },
+    {
+      "id": "nvidia/nemotron-3-super-120b-a12b:free",
+      "context_length": 262144,
+      "price": 0
+    },
+    {
+      "id": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "context_length": 1000000,
+      "price": 0
+    },
+    {
+      "id": "nvidia/nemotron-3.5-content-safety:free",
+      "context_length": 128000,
+      "price": 0
+    },
+    {
+      "id": "nvidia/nemotron-3.5-lightning:free",
+      "context_length": 1000000,
+      "price": 0
+    },
+    {
+      "id": "poolside/laguna-s-2.1:free",
+      "context_length": 262144,
+      "price": 0
+    },
+    {
+      "id": "poolside/laguna-xs-2.1:free",
+      "context_length": 262144,
+      "price": 0
+    },
+    {
+      "id": "thinkingmachines/inkling-small:free",
+      "context_length": 1048576,
+      "price": 0
+    },
+    {
+      "id": "thinkingmachines/inkling:free",
+      "context_length": 1048576,
+      "price": 0
+    },
+    {
+      "id": "z-ai/glm-5.2:free",
+      "context_length": 256000,
+      "price": 0
+    }
+  ]
+}

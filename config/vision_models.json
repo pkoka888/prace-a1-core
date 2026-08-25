@@ -1,0 +1,92 @@
+{
+  "discovered_at": "2026-08-25 10:15:55",
+  "fallback_chain": [
+    {
+      "model": "minimax/minimax-m3:free",
+      "type": "free",
+      "cost_per_call": 0,
+      "has_reasoning": false,
+      "priority": 0
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "type": "free",
+      "cost_per_call": 0,
+      "has_reasoning": true,
+      "priority": 0
+    },
+    {
+      "model": "minimax/minimax-01",
+      "type": "paid",
+      "cost_per_call": 0.001708641,
+      "price_per_1m": 0.19999999999999998,
+      "has_reasoning": false,
+      "priority": 3
+    },
+    {
+      "model": "minimax/minimax-m3",
+      "type": "paid",
+      "cost_per_call": 9.63468e-05,
+      "price_per_1m": 0.3,
+      "has_reasoning": true,
+      "priority": 3
+    }
+  ],
+  "free_vision_models": [
+    {
+      "id": "minimax/minimax-m3:free",
+      "context_length": 1048576,
+      "price": 0,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 0,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "context_length": 256000,
+      "price": 0,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 0,
+      "has_reasoning": true,
+      "error": null
+    }
+  ],
+  "minimax_vision_models": [
+    {
+      "id": "minimax/minimax-m3:free",
+      "context_length": 1048576,
+      "price": 0.0,
+      "free": true,
+      "works": true,
+      "answer": "Demeter",
+      "cost": 0,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "minimax/minimax-01",
+      "context_length": 1000192,
+      "price": 2e-07,
+      "free": false,
+      "works": true,
+      "answer": "Demeter.",
+      "cost": 0.001708641,
+      "has_reasoning": false,
+      "error": null
+    },
+    {
+      "id": "minimax/minimax-m3",
+      "context_length": 1048576,
+      "price": 3e-07,
+      "free": false,
+      "works": true,
+      "answer": "DEMETER",
+      "cost": 9.63468e-05,
+      "has_reasoning": true,
+      "error": null
+    }
+  ]
+}
