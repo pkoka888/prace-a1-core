@@ -399,7 +399,9 @@ def verify_pdf(
         raise FinalizationError(f"{row['employee_id']}: PDF contains a template placeholder")
     foreign = [
         other["insurance_number"] for other in all_rows
-        if other["employee_id"] != row["employee_id"] and other["insurance_number"] in text
+        if other["employee_id"] != row["employee_id"]
+        and other["insurance_number"]
+        and other["insurance_number"] in text
     ]
     if foreign:
         raise FinalizationError(f"{row['employee_id']}: PDF contains another employee identity")
