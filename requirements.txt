@@ -16,3 +16,4 @@ cryptography==50.0.0
 
 # Scan/OCR workflow. Keep local-first; external model use is optional and policy-gated.
 rapidocr==3.9.2
+onnxruntime>=1.29
