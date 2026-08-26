@@ -94,7 +94,7 @@ def build_provisional_rows(
             issue_date=issue_date,
             signed_by=contact["name"],
         )
-        for field in ("surname", "given_name", "birth_place", "street", "city", "district"):
+        for field in ("surname", "given_name", "birth_place", "street", "city", "district", "employment_name", "employment_street", "employment_city"):
             row[field] = czech_display_case(row.get(field))
         built.append((row, profile, contact))
     document_ids = [item[0]["document_id"] for item in built]

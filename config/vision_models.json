@@ -2,7 +2,7 @@
   "discovered_at": "2026-08-25 10:26:05",
   "providers": {
     "openrouter": true,
-    "kilo": false
+    "kilo": true
   },
   "fallback_chain": [
     {
@@ -10,28 +10,32 @@
       "provider": "openrouter",
       "type": "free",
       "cost_per_call": 0,
-      "has_reasoning": false
+      "has_reasoning": false,
+      "kilo_gateway": true
     },
     {
       "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
       "provider": "openrouter",
       "type": "free",
       "cost_per_call": 0,
-      "has_reasoning": true
+      "has_reasoning": true,
+      "kilo_gateway": true
     },
     {
       "model": "minimax/minimax-m3",
       "provider": "openrouter",
       "type": "paid",
       "cost_per_call": 8.44668e-05,
-      "has_reasoning": true
+      "has_reasoning": true,
+      "kilo_gateway": false
     },
     {
       "model": "minimax/minimax-01",
       "provider": "openrouter",
       "type": "paid",
       "cost_per_call": 0.001708641,
-      "has_reasoning": false
+      "has_reasoning": false,
+      "kilo_gateway": false
     }
   ],
   "openrouter_free_vision": [
@@ -713,5 +717,17 @@
       "error": null
     }
   ],
-  "kilo_free_vision": []
+  "kilo_free_vision": [],
+  "kilo_gateway_models": [
+    {
+      "model": "minimax/minimax-m3:free",
+      "cost": 0,
+      "reasoning": false
+    },
+    {
+      "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "cost": 0,
+      "reasoning": true
+    }
+  ]
 }
