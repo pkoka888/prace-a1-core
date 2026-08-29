@@ -6,7 +6,59 @@ Dates are ISO 8601. Entries are grouped by change package per `change-packages.y
 
 ---
 
-## [Unreleased] — 2026-08-19 Audit-Driven Updates
+## [Unreleased] — 2026-08-29 Audit + Test Realignment
+
+### Fixed — Repository Hygiene
+- `.gitignore` rule `./a1/` replaced with `a1/`. The leading `./` was ineffective in git's path matcher; the PII-bearing `a1/` directory was visible to `git status` and would have been committed by any wildcard `git add`. Verified `a1/`, `scans/`, `evidence/`, `ocr/`, `data/`, `output/`, `employees/scans/`, `.history-remediation/`, `.env` all now properly ignored.
+- `scripts/pre-commit` step 5 promoted from a warning to a hard `exit 1` gate. The previous text claimed quarantined packages would be blocked, but the hook only printed and exited 0, so any `git add` of a `quarantined_research_artifacts` / `quarantined_unrelated` path would still land in history. The new gate intersects `STAGED` paths against `validate_change_packages.py` entries with `eligible_for_staging == false` and refuses the commit with explicit recovery instructions. Verified end-to-end by staging `scripts/validate_collector_execution_v12.py` (quarantined) and observing `exit 1`.
+
+### Restored — Plan AC Integrity
+- `scripts/validate_collector_execution.py` (Plan AC v1.1 collector-execution validator, 543 lines) re-added. The file was inadvertently removed in `ffb5922` alongside unrelated legacy cleanup, but `tests/test_collector_execution.py` references it. Listed in `change-packages.yml` under `plan_ac_integrity` with `eligible_for_staging: true`. The v12 variant (`scripts/validate_collector_execution_v12.py`) remains in `quarantined_research_artifacts` (frozen v1.2 baseline per `PROJECT_AUDIT_REPORT.md` §1.2) and is not staged here.
+- `scripts/pre-commit` and `tests/test_comprehensive.py` added to `a1_policy` and `infrastructure_git_workflow` paths respectively so the validator can classify them when modified.
+
+### Documentation — A1 Truth Reconciliation
+- `AGENTS.md` "Gotcha" updated. The previous text claimed the private CSV "predates the seven Section 4 employment columns the renderer now requires". Audit on 2026-08-29 confirms the CSV actually has all 7 `employment_*` columns (`employment_id`, `employment_name`, `employment_street`, `employment_house_number`, `employment_city`, `employment_postal_code`, `employment_country_code`) and they are accepted by `scripts/a1_quality_gate.py:74-79` and `scripts/finalize_a1.py:261-263`. Regeneration is still blocked, but by per-row certificate, signatory, source-status, and review-flag gaps (`scripts/finalize_a1.py readiness` reports 17/17 employees blocked), not by missing columns.
+- `docs/research/2026-08-19-open-decisions-research.md` R-01 marked superseded with a status banner. R-01 recommended 7 columns named `employer_*` / `activity_nace` / `employment_start` / `employment_type`; the actual implementation reads `employment_*` columns and maps them to the form's `employer_*` fields. `activity_nace`, `employment_start`, `employment_type` are not required by `scripts/a1_core.py:293`. The original R-01 body is preserved for historical traceability.
+
+### Fixed — A1 Test Suite (ShadowGenerationTests regression)
+- `tests/test_comprehensive.py::ShadowGenerationTests` aligned with the OSVČ derivation contract added in commit `db47b26` (`scripts/a1_core.py:188-198`). For `status_profile == self_employed_multi_state`, the renderer derives `employer_id` from `insurance_number`, `employer_name` to `SURNAME GIVEN - OSVČ`, and address fields from residence. The old single-fixture `synthetic-incomplete` test asserted the opposite (records without Section 4 must fail closed), which was correct for `employee_multi_state` but wrong for OSVČ.
+  - Replaced the single OSVČ fixture with two: `synthetic-self-employed-osvc` (verifies the documented derivation) and `synthetic-employee-incomplete` (preserves the fail-closed guarantee with `status_profile = employee_multi_state`).
+  - New test `test_self_employed_multi_state_derives_section_four_from_person` asserts the exact derivation contract.
+  - New test `test_employee_multi_state_without_section_four_fails_closed` preserves fail-closed for non-OSVČ.
+  - `test_verify_only_complete_records_produce_final_certificate_pdfs` updated to expect `complete_count == 1` (OSVČ via derivation), `incomplete_count == 1` (employee_multi_state fails).
+
+### Open Decisions Status — 2026-08-29 Re-check
+- **R-01** ✅ Done. CSV has all 7 `employment_*` columns.
+- **R-02** ✅ Done. `pavel-kaspar` and `rudolf-kotlar` are in `a1/cohort.json` `additional_people` and in the live CSV (17 employees total).
+- **L-01** ✅ Done. Every `plans/*.md` file has a controlled-vocabulary status header (`planned`, `active`, `completed`, `superseded`, `blocked`, `accepted`).
+- **L-02** ✅ Done. All 7 `docs/paddleocr/` files carry a historical banner; `README.md` has full YAML front matter.
+- **AC-01** Decision documented: `scripts/validate_collector_execution_v12.py` wrapper stays quarantined per `PROJECT_AUDIT_REPORT.md` §1.2 (frozen v1.2 baseline); `scripts/run_collector_proposals_v12.py` and `tests/test_collector_v12.py` remain tracked because tests reference them. Inconsistency flagged but left for an explicit Plan AC update.
+- **R-03** Still pending operator approval (deleting `output/provisional.backup-*` directories).
+- **AE-01** Still gated by Plan AE / DEC-016 explicit approval.
+- **K-01** Still pending sysadmin evidence.
+
+### Test Health Baseline — 2026-08-29
+```
+497 passed, 1 skipped, 11 subtests passed in 430s
+```
+
+**All tests pass** (was 495 passed / 2 failed / 1 skipped on 2026-08-29 morning; the 2 failures were the ShadowGenerationTests regression fixed above). Net change: +2 tests (`test_self_employed_multi_state_derives_section_four_from_person`, `test_employee_multi_state_without_section_four_fails_closed`), +20 tests vs. 2026-08-19 baseline (+18 from earlier M2 work not previously in baseline; +2 from this commit).
+
+**A1 Core Tests:** 15 passed
+**A1 Private Tests:** 3 passed
+**A1 Quality Gate Tests:** 7 passed
+**Finalize A1 Tests:** 14 passed
+**Comprehensive (ShadowGen + structural + visual + profile):** 24 passed (was 22 + 2 failed)
+**Plan AC Integrity Tests:** 68 passed (`test_capture_research_sources`, `test_collector_execution`, `test_collector_v12`, `test_field_normalization`)
+**Free Model Eval Tests:** 58 passed
+**M2 / Portal Tests:** 19 passed
+**Architecture Proof Tests:** all passed
+**Planning Validator Tests:** 36 passed
+**Change Package Tests:** 4 passed
+
+---
+
+## [2026-08-19] — Audit-Driven Updates
 
 ### Added — M2 Vertical Slice (portal/release1a/)
 - `forms.py` — 5 forms (Worker, Document, OCR, Assignment, A1Prepare/Approval)
