@@ -68,7 +68,7 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Local repository workflow validation before remote or CI activation.",
-      "paths": ["change-packages.yml", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml"],
+      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml"],
       "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py -q", "venv/bin/python scripts/validate_change_packages.py --json"],
       "dependencies": ["All dirty paths classified", "Explicit approval before remote mutation"],
       "rollback": "Revert local workflow files; this package never changes remotes."
