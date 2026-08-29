@@ -23,6 +23,33 @@
 
 ## R-01: Add 7 Section 4 Employment Columns to a1/review.csv
 
+> **Status (2026-08-29 audit):** R-01 is complete in spirit — the seven Section 4
+> employment columns are present in `$A1_PRIVATE_DIR/a1/review.csv` and accepted
+> by `scripts/a1_quality_gate.py` and `scripts/finalize_a1.py`. **However, the
+> actual CSV column names differ from the recommendation below.** The renderer
+> pipeline (`finalize_a1.py`) reads `employment_*` columns from the CSV and maps
+> them to the form's `employer_*` fields; the names `employer_name`,
+> `employer_address`, `employer_id`, `employer_country`, `activity_nace`,
+> `employment_start`, `employment_type` listed below were never adopted in the
+> CSV. Authoritative column set (added between `status_profile` and the
+> certificate block):
+>
+> | CSV column | Maps to (form) | Notes |
+> |---|---|---|
+> | `employment_id` | `employer_id` | IČO or birth number without slash for OSVČ |
+> | `employment_name` | `employer_name` | Legal entity name; for OSVČ, `SURNAME GIVEN - OSVČ` |
+> | `employment_street` | `street` | |
+> | `employment_house_number` | `house_number` | |
+> | `employment_city` | `city` | |
+> | `employment_postal_code` | `postal_code` | |
+> | `employment_country_code` | `country_code` | ISO 3166-1 alpha-2 |
+>
+> `activity_nace`, `employment_start`, and `employment_type` are **not** required
+> by the current renderer (`scripts/a1_core.py:293`). Operators should not add
+> them unless the renderer is updated to read them. Regeneration remains blocked
+> by per-row certificate, signatory, and review-flag gaps — see AGENTS.md
+> "Gotcha" and `scripts/finalize_a1.py readiness`.
+
 ### Current State
 - **File:** `a1/review.csv` (gitignored, PII)
 - **Rows:** 9 employees
