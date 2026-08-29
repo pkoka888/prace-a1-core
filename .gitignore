@@ -29,7 +29,7 @@ logs/
 # In-repo operational A1 inputs (PII-bearing, gitignored, never commit)
 # These are the relocated A1_PRIVATE_DIR contents, kept inside the repo and
 # excluded from version control. Set A1_PRIVATE_DIR to the repo root to use them.
-./a1/
+a1/
 scans/
 evidence/
 ocr/
