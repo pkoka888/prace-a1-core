@@ -60,8 +60,8 @@
     },
     "a1_policy": {
       "purpose": "Fail-closed A1 policy documentation; no real-data operation.",
-      "paths": [".agents/skills/a1-pdf-production/", "readme-employees-to-a1-form.md", "plans/2026-08-12-plan-r-a1-production-stabilization.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py -q"],
+      "paths": [".agents/skills/a1-pdf-production/", "readme-employees-to-a1-form.md", "plans/2026-08-12-plan-r-a1-production-stabilization.md", "tests/test_comprehensive.py"],
+      "checks": ["venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py -q"],
       "dependencies": ["Private CSV seven-field update before regeneration"],
       "rollback": "Revert policy only and preserve existing private outputs."
       ,"intended_commit": "docs: reconcile fail-closed A1 policy"
