@@ -826,47 +826,95 @@ class VisualTests(unittest.TestCase):
 
 
 class ShadowGenerationTests(unittest.TestCase):
-    """Shadow generation test: process all employee records."""
+    """Shadow generation test: process all employee records.
+
+    Status profiles drive derivation behaviour for Section 4:
+    * ``self_employed_multi_state`` (OSVČ) — ``scripts/a1_core.py:188-198``
+      derives employer_id / employer_name / address from person + residence
+      when explicit employment fields are missing. Section 4 is the OSVČ's
+      own identity, so derivation is the documented contract.
+    * ``employee_multi_state`` — no derivation; Section 4 must come from
+      authoritative employment evidence or the record fails closed.
+
+    The fixtures in ``setUp`` cover both: one OSVČ that exercises derivation,
+    one posted-employee record that still must fail without Section 4.
+    """
 
     def setUp(self):
         self.institution = load_json(ROOT / "config" / "institution.json")
-        self.employees_data = {"employees": [{
-            "id": "synthetic-incomplete",
-            "person": {
-                "surname": "TESTOVÁ", "given_name": "ALENA",
-                "dob": "01.01.1990", "birth_place": "TESTOV",
-                "nationality": "CZ", "insurance_number": "900101/0007", "sex": "F",
+        self.employees_data = {"employees": [
+            {
+                # OSVČ: Section 4 derives from person/residence.
+                "id": "synthetic-self-employed-osvc",
+                "person": {
+                    "surname": "TESTOVÁ", "given_name": "ALENA",
+                    "dob": "01.01.1990", "birth_place": "TESTOV",
+                    "nationality": "CZ", "insurance_number": "900101/0007", "sex": "F",
+                },
+                "residence": {
+                    "street": "BYTOVÁ", "house_number": "1", "city": "TESTOV",
+                    "postal_code": "100 00", "country_code": "CZ",
+                },
+                "employment": {"kind": "self_employed"},
+                "certificate": {
+                    "member_state": "CZ", "document_id": "SYNTHETIC-DOC",
+                    "start_date": "01.01.2026", "end_date": "31.12.2026",
+                },
+                "a1": {"status_profile": "self_employed_multi_state"},
             },
-            "residence": {
-                "street": "BYTOVÁ", "house_number": "1", "city": "TESTOV",
-                "postal_code": "100 00", "country_code": "CZ",
+            {
+                # Posted employee: no derivation; missing Section 4 must fail closed.
+                "id": "synthetic-employee-incomplete",
+                "person": {
+                    "surname": "TESTOVÁ", "given_name": "ALENA",
+                    "dob": "01.01.1990", "birth_place": "TESTOV",
+                    "nationality": "CZ", "insurance_number": "900101/0007", "sex": "F",
+                },
+                "residence": {
+                    "street": "BYTOVÁ", "house_number": "1", "city": "TESTOV",
+                    "postal_code": "100 00", "country_code": "CZ",
+                },
+                "employment": {"kind": "employee"},
+                "certificate": {
+                    "member_state": "CZ", "document_id": "SYNTHETIC-DOC",
+                    "start_date": "01.01.2026", "end_date": "31.12.2026",
+                },
+                "a1": {"status_profile": "employee_multi_state"},
             },
-            "employment": {"kind": "self_employed"},
-            "certificate": {
-                "member_state": "CZ", "document_id": "SYNTHETIC-DOC",
-                "start_date": "01.01.2026", "end_date": "31.12.2026",
-            },
-            "a1": {"status_profile": "self_employed_multi_state"},
-        }]}
+        ]}
 
-    def test_normalized_records_without_section_four_fail_closed(self):
-        """Operational records cannot be completed from identity/residence data."""
-        employees = self.employees_data.get("employees", [])
-        self.assertGreater(len(employees), 0, "Should have employee records to process")
+    def test_self_employed_multi_state_derives_section_four_from_person(self):
+        """OSVČ records derive Section 4 employment from person/residence data."""
+        employees = {e["id"]: e for e in self.employees_data["employees"]}
+        employee = employees["synthetic-self-employed-osvc"]
+        form = build_form_data(employee, self.institution)
+        validate_form_data(form)
 
-        for employee_data in employees:
-            with self.subTest(employee_id=employee_data.get("id")):
-                with self.assertRaisesRegex(A1ValidationError, "employment\\."):
-                    build_form_data(employee_data, self.institution)
+        employment = form["employment"]
+        self.assertEqual(employment["employer_id"], "900101/0007")
+        self.assertEqual(employment["employer_name"], "TESTOVÁ ALENA - OSVČ")
+        self.assertEqual(employment["street"], "BYTOVÁ")
+        self.assertEqual(employment["house_number"], "1")
+        self.assertEqual(employment["city"], "TESTOV")
+        self.assertEqual(employment["postal_code"], "100 00")
+        self.assertEqual(employment["country_code"], "CZ")
+
+    def test_employee_multi_state_without_section_four_fails_closed(self):
+        """Non-OSVČ records without Section 4 employment must fail closed."""
+        employees = {e["id"]: e for e in self.employees_data["employees"]}
+        employee = employees["synthetic-employee-incomplete"]
+        with self.assertRaisesRegex(A1ValidationError, "employment\\."):
+            build_form_data(employee, self.institution)
 
     def test_records_lacking_certificate_metadata_fail_closed(self):
         """Records without authoritative certificate facts must not build a form."""
         employees = self.employees_data.get("employees", [])
         self.assertGreater(len(employees), 0)
-        # Take a copy of the first employee and remove its certificate facts
+        # Take a copy of the first employee (OSVČ) and remove its certificate facts.
+        # OSVČ derivation populates Section 4 from person/residence, but certificate
+        # gaps still fail closed because the certificate defaults are removed too.
         employee = dict(employees[0])
         employee.pop("certificate", None)
-        # Remove the institution certificate defaults so nothing can be assumed
         institution_no_cert = {
             key: value for key, value in self.institution.items() if key != "certificate"
         }
@@ -876,23 +924,23 @@ class ShadowGenerationTests(unittest.TestCase):
             build_form_data(employee, institution_no_cert)
 
     def test_verify_only_complete_records_produce_final_certificate_pdfs(self):
-        """Verify only complete records produce final certificate PDFs."""
+        """Verify only complete records produce final certificate PDFs.
+
+        The OSVČ record passes via Section-4 derivation from person/residence;
+        the employee_multi_state record has no derivation and must fail closed.
+        """
         employees = self.employees_data.get("employees", [])
         self.assertGreater(len(employees), 0)
-        
+
         complete_count = 0
         incomplete_count = 0
-        
+
         for employee_data in employees:
-            # Check if the employee has all required fields for a certificate
-            # We'll check by trying to build form data and seeing if it passes validation
             try:
                 form = build_form_data(employee_data, self.institution)
                 validate_form_data(form)
-                # If we get here, the record is complete
                 complete_count += 1
-                
-                # Additionally, we can check that PDF generation works
+
                 with tempfile.TemporaryDirectory() as temp_dir:
                     output_path = Path(temp_dir) / f"cert_{employee_data['id']}.pdf"
                     generate_a1_pdf(
@@ -901,20 +949,18 @@ class ShadowGenerationTests(unittest.TestCase):
                         ROOT / "config" / "a1_layout.json",
                         output_path,
                     )
-                    self.assertTrue(output_path.exists(), 
+                    self.assertTrue(output_path.exists(),
                                   f"PDF should be generated for complete employee {employee_data['id']}")
-                    
+
             except A1ValidationError:
-                # This record is missing required metadata
                 incomplete_count += 1
-                # We expect that PDF generation would fail or not be called for incomplete records
-                # In our current flow, we validate before generating, so it won't reach PDF generation
-            except Exception as e:
-                # Other errors (like validation in build_form_data) also mean incomplete
+            except Exception:
                 incomplete_count += 1
-        
-        self.assertEqual(0, complete_count)
-        self.assertEqual(len(employees), incomplete_count)
+
+        # OSVČ record passes via derivation (1); employee_multi_state record fails closed (1).
+        self.assertEqual(1, complete_count)
+        self.assertEqual(1, incomplete_count)
+        self.assertEqual(len(employees), complete_count + incomplete_count)
 
 
 if __name__ == '__main__':
