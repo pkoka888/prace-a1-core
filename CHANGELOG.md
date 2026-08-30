@@ -6,6 +6,19 @@ Dates are ISO 8601. Entries are grouped by change package per `change-packages.y
 
 ---
 
+## [Unreleased] — 2026-08-30 Planning Surface Re-model
+
+### Changed — Governance Surface
+- Consolidated 27 dated plan files and the 53-item catalog into 7 plans (`PLAN-INFRA`, `PLAN-WORKERS`, `PLAN-INVOICE`, `PLAN-LEGAL`, `PLAN-A1`, `PLAN-FREE-MODEL`, `PLAN-HISTORY`) and a 34-item `planning/catalog.json`. The dated plan files are preserved under `.archive/plans/` (context only, never executed). Decision state, evidence, approver, and decision-date records are preserved for all `DEC-001`–`DEC-016`; only the source links and dependency targets were repointed (e.g. DEC-013/DEC-016 → `plans/PLAN-INFRA.md`, DEC-014 → `plans/PLAN-A1.md`, DEC-015 → `plans/PLAN-INVOICE.md`).
+- Migrated model mapping (audit §1.3): PLAN-INFRA ← E+L+M+M2P+AE+K+E-01; PLAN-A1 ← R+Q; PLAN-WORKERS ← F+H+N+O; PLAN-INVOICE ← P+AC+AD; PLAN-LEGAL ← G+I+J; PLAN-FREE-MODEL ← AF+AF2+AF2.1+AF2.2; PLAN-HISTORY ← B+C+D+consolidated-roadmap. `PLAN-WORKERS` inherits the Release 1A slice acceptance (decision_state `accepted`, approver/date/evidence set); `PLAN-A1` stays `active`/non-executable because provisional A1 regeneration remains blocked. `PLAN-HISTORY` is `historical`, non-executable, successor `PLAN-INFRA`.
+- `scripts/validate_planning.py` updated in lockstep: `REQUIRED_IDS` 53 → 34, `plan_file_for_item` resolved for `PLAN-*` ids, `check_prototype_start_gate` now keys off `PLAN-INFRA` + `PLAN-WORKERS`. `plans/INDEX.md`, `roadmap.md`, `docs/decisions/decision-register.md`, `.opencode/skills/market-research-evidence/SKILL.md`, `docs/operations/sysadmin-readiness-2026-08-12.md`, `docs/research/2026-08-15-af2-free-model-trace-review-report.md`, `docs/prototypes/roadmap-portal/README.md`, `readme-scan-to-employees.md`, and `change-packages.yml` re-pointed to the consolidated plan files. `docs/plans/TODO_TRACKING.md` archived to `.archive/docs/plans/`.
+- Dated audit/research reports (`GIT_AUDIT_REPORT.md`, `PROJECT_AUDIT_REPORT.md`, `WORKFLOW_FRAMEWORK_REPORT.md`, `docs/research/*`, `docs/codex-planner-report-prototype-priority.md`, `reports/*`) remain dated context and keep their historical file references.
+
+### Changed — Validator Contract
+- Validator check count stays at 24; `plans/INDEX.md` statuses now use the plain controlled-status words the index parser reads, and the six active plans carry `**Status**`/`**Milestone**` headers coherent with the catalog.
+
+---
+
 ## [Unreleased] — 2026-08-29 Audit + Test Realignment
 
 ### Fixed — Repository Hygiene
@@ -129,9 +142,9 @@ Dates are ISO 8601. Entries are grouped by change package per `change-packages.y
 - **.gitlab-ci.yml** — Proposed GitLab CI/CD config (inactive until DEC-016 approval)
 - **docs/operations/collect-plan-k-evidence.sh** — Plan K evidence collection script
 - **Historical headers** added to:
-  - `plans/2026-08-11-consolidated-roadmap.md`
-  - `plans/2026-08-11-plan-b-opencode-cleanup-workflows.md`
-  - `plans/2026-08-11-plan-c-opencode-research.md`
+  - `.archive/plans/2026-08-11-consolidated-roadmap.md`
+  - `.archive/plans/2026-08-11-plan-b-opencode-cleanup-workflows.md`
+  - `.archive/plans/2026-08-11-plan-c-opencode-research.md`
   - `docs/paddleocr/README.md`
 
 ---
@@ -140,7 +153,7 @@ Dates are ISO 8601. Entries are grouped by change package per `change-packages.y
 
 ### Added
 - `scripts/check_m2_scaffold_gate.py` — Machine-readable, fail-closed M2 gate evaluator
-- `plans/2026-08-17-plan-m2-functional-prototype-sprint.md` — M2 sprint plan
+- `.archive/plans/2026-08-17-plan-m2-functional-prototype-sprint.md` — M2 sprint plan (archived 2026-08-30 under PLAN-INFRA)
 - `planning/approvals.json` — ADR-001, ADR-002, REV-001 approval records
 - `docs/architecture/adr-001-evidence/manifest.json` — Hash-bound proof manifest
 - `docs/architecture/release-1a-catalog.json` — Frozen Release 1A catalog

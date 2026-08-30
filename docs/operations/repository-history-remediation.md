@@ -5,7 +5,7 @@
 **Approver for remote action:** Pavel
 **Evidence date:** 2026-08-13
 
-This record implements Plan Q and documents the already-executed sanitized
+This record implements PLAN-A1 (formerly Plan Q) and documents the already-executed sanitized
 publication. Acceptance does not authorize another commit/push, history rewrite,
 recovery-ref deletion, reflog expiry, garbage collection, or visibility change.
 
@@ -127,4 +127,4 @@ The exact command is withheld until live remote state and approved targets exist
 - Any later publication requires freshly resolved refs, leases, scan evidence,
   coordination, and exact remote approval.
 - Historical archive moves or deletions require the reference/privacy disposition
-  described by Plan Q; acceptance of the checkpoint does not approve them.
+  described by PLAN-A1 (formerly Plan Q); acceptance of the checkpoint does not approve them.

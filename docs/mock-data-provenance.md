@@ -46,7 +46,7 @@ Source: `tests/fixtures/release_1a/`
 | `user-synthetic-04` | admin-beta@example.invalid | German partner admin | DEC-012 | ready (synthetic) |
 | `user-synthetic-05` | operator-gamma@example.invalid | Third-org operator | DEC-012 | ready (synthetic) |
 
-**Production note:** Real email addresses. MFA method and role assignments come from Jan's delegation decisions (Plan F/J). No real credentials in fixtures.
+**Production note:** Real email addresses. MFA method and role assignments come from Jan's delegation decisions (PLAN-LEGAL, formerly Plan F/J). No real credentials in fixtures.
 
 ### 1.3 Workers
 
@@ -59,7 +59,7 @@ Source: `tests/fixtures/release_1a/`
 
 Successful Czech identifier cases use deterministic checksum-valid synthetic
 values; rejection cases are explicitly labeled invalid. Real identifiers arrive
-only through authorized application intake after DEC-012. Separately, Plan R is
+only through authorized application intake after DEC-012. Separately, PLAN-A1 is
 blocked on seven Section 4 columns in the existing protected A1 CSV.
 
 ### 1.4 Documents
@@ -90,10 +90,10 @@ blocked on seven Section 4 columns in the existing protected A1 CSV.
 
 | Fixture | Synthetic value | Production replacement | Gate | Status |
 |---|---|---|---|---|
-| `A1-SYNTH-001` | Complete case, prepared, with hash | Real A1 case from `a1/review.csv` | Plan R + DEC-012 | ready (synthetic) |
-| `A1-SYNTH-002` | Incomplete case, no preparation | In-progress real case | Plan R + DEC-012 | ready (synthetic) |
+| `A1-SYNTH-001` | Complete case, prepared, with hash | Real A1 case from `a1/review.csv` | PLAN-A1 + DEC-012 | ready (synthetic) |
+| `A1-SYNTH-002` | Incomplete case, no preparation | In-progress real case | PLAN-A1 + DEC-012 | ready (synthetic) |
 
-**Critical gap:** `section4_employment` fields (activity_type, employer_country, worker_state, legislation_applied, partial_exemption, multiple_states, posted_worker) are the 7 columns missing from the protected CSV. These are the Plan R blocker. Real values must come from authoritative employer/employee sources.
+**Critical gap:** `section4_employment` fields (activity_type, employer_country, worker_state, legislation_applied, partial_exemption, multiple_states, posted_worker) are the 7 columns missing from the protected CSV. These are the PLAN-A1 blocker. Real values must come from authoritative employer/employee sources.
 
 ### 1.7 Jobs
 
@@ -142,13 +142,13 @@ blocked on seven Section 4 columns in the existing protected A1 CSV.
 
 | Blocker | Who provides | When | Gate |
 |---|---|---|---|
-| 7 missing Section 4 employment columns in protected CSV | Jan/Pavel via operator | Before Plan R unblocks | Plan R |
+| 7 missing Section 4 employment columns in protected CSV | Jan/Pavel via operator | Before PLAN-A1 unblocks | PLAN-A1 |
 | Real worker names, IDs, addresses | Jan (cohort list) | Before M5 real-data pilot | DEC-012 |
 | Real company details (name, reg. number, address) | Jan | Before M5 | DEC-012 |
 | Real assignment data (workplace, role, dates, partner) | Jan | Before M5 | DEC-012 |
 | Real document scans | Jan (upload) | During M5 pilot | DEC-012 |
 | Real user accounts and email addresses | Jan | Before M5 | DEC-012 |
-| Real A1 case data (from `a1/review.csv`) | Existing production data | Before M5 | DEC-012 + Plan R |
+| Real A1 case data (from `a1/review.csv`) | Existing production data | Before M5 | DEC-012 + PLAN-A1 |
 | Institution configs (real employer data) | Jan | Before M5 | DEC-012 |
 
 ---

@@ -19,9 +19,9 @@ the first usable increment and must not wait for later module activation.
 |---|---|
 | **Now** | M2 vertical slice **implemented + code reviewed** (2026-08-19): all J1–J4 journeys built in `portal/release1a/` (forms, views, templates, HTMX, tenant isolation, audit, TOTP enforcement). 10 review bugs fixed, 5 regression tests added — **495 tests pass**. Remaining: Jan observation of J1–J4 journeys. |
 | **Next on Release 1A** | Complete runnable Czech-first J1–J4 screens; observe Jan/operator journeys; collect operational exceptions. |
-| **Parallel** | Plan K infrastructure (capacity, backup/restore evidence); G/J/P research; Plan AC Integrity 1.3 repair + Pilot 1/2; Plan AD synthetic contract; Plan AF bounded free-model eval (AF2.1/2.2 repair). |
-| **Gated** | N/O production impl waits for M1A; **Plan R completed** (2026-08-20) — 11 PDFs/33 previews generated, QA passed; visual review & backup cleanup pending. AD persistence/AD acceptance waits DEC-015; portal scaffolding proceeds in M2 (synthetic only); GitLab/CI (Plan AE/DEC-016) requires explicit approval; real data, publication, history rewrite require separate gates. |
-| **Cleanup (this cycle)** | Delete `scripts/a1_core.py.backup`, `portal/settings.py.bak`; remove 3 legacy config files (`a1_field_coords.json`, `a1_checkbox_coords.json`, `a1_field_map.json`); keep `config/a1_provisional.json` as active provisional-policy config (per AGENTS.md, not legacy); resolve v12 research script duplicates; inventory 15 `output/provisional.backup-*` dirs per Plan R; mark historical plans with headers. |
+| **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-LEGAL (G/J) + PLAN-INVOICE (P) research; Plan AC integrity lane (PLAN-INVOICE): Integrity 1.3 repair + Pilot 1/2; PLAN-INVOICE (Plan AD) synthetic contract; PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). |
+| **Gated** | PLAN-WORKERS (N/O) production impl waits for M1A; **PLAN-A1 (Plan R) completed** (2026-08-20) — 11 PDFs/33 previews generated, QA passed; visual review & backup cleanup pending. PLAN-INVOICE (Plan AD) persistence/acceptance waits DEC-015; portal scaffolding proceeds in M2 (synthetic only); GitLab/CI (PLAN-INFRA, formerly Plan AE/DEC-016) requires explicit approval; real data, publication, history rewrite require separate gates. |
+| **Cleanup (this cycle)** | Delete `scripts/a1_core.py.backup`, `portal/settings.py.bak`; remove 3 legacy config files (`a1_field_coords.json`, `a1_checkbox_coords.json`, `a1_field_map.json`); keep `config/a1_provisional.json` as active provisional-policy config (per AGENTS.md, not legacy); resolve v12 research script duplicates; inventory 15 `output/provisional.backup-*` dirs per PLAN-A1; mark historical plans with headers. |
 | **Immediate TODOs (R-01/R-02/R-03)** | ✅ **COMPLETED 2026-08-20**: R-01 (7 cols added), R-02 (2 people added), R-03 (doc_ids→/2026/). Canonical: 11 PDFs, 33 previews, QA passed. Visual review & backup cleanup pending. |
 
 ## Delivery increments
@@ -42,10 +42,10 @@ the first usable increment and must not wait for later module activation.
 - Reconcile `A1_PRIVATE_DIR` with protected inputs and verify canonical commands.
 - Keep governance, A1, portal, runtime-data, infrastructure, and history changes
    independently reviewable.
-- Execute Plan K's capacity, edge-path, monitoring, and recovery gates. Synthetic
+- Execute PLAN-INFRA's capacity, edge-path, monitoring, and recovery gates. Synthetic
    work continues in parallel; activation requires tested backup and restore.
-- Complete Plan L's operating-model and validation checkpoint.
-- Execute Plan AE's repository workflow, dual remotes, and CI automation.
+- Complete PLAN-INFRA's operating-model and validation checkpoint.
+- Execute PLAN-INFRA's repository workflow, dual remotes, and CI automation (formerly Plan AE).
 
 **Exit:** the sanitized checkpoint is accepted; private inputs have one truthful
 location; ownership and implementation paths are unambiguous. Recovery-ref cleanup
@@ -53,8 +53,9 @@ remains separately authorized.
 
 ## M1A — Release 1A implementation readiness
 
-- Complete Plan L and the minimal Plan M catalog, validator, and visual shell.
-- Complete Plans E, F, and H, including accepted workflows, threat model,
+- Complete PLAN-INFRA, including the minimal plan catalog, validator, and visual shell (formerly Plans L/M).
+- Complete the PLAN-INFRA (E), PLAN-LEGAL (F), and PLAN-WORKERS (H) Release 1A outputs,
+  including accepted workflows, threat model,
   localization/accessibility contract, and traceability.
 - Freeze the Release 1A role/data catalog and database/transaction slices of N/O.
 - Prove MFA, organization authorization, jobs, protected downloads, audit events,
@@ -74,7 +75,7 @@ implementation-ready backlog.
 
 ## M1B — Broader platform design
 
-- Continue broader Plans N/O and complete Plan P/ADR-003 in parallel.
+- Continue broader PLAN-WORKERS (N/O) design and complete PLAN-INVOICE (P)/ADR-003 in parallel.
 - Continue market research and later-role prototypes without delaying Release 1A.
 - Keep payroll inactive until independently specialist-certified.
 
@@ -83,7 +84,7 @@ market evidence are ready for separately gated increments.
 
 ## M2 — Build the shared synthetic foundation
 
-- Execute the bounded [functional prototype sprint](plans/2026-08-17-plan-m2-functional-prototype-sprint.md)
+- Execute the bounded [Release 1A foundation and functional prototype preparation](plans/PLAN-INFRA.md)
   after its machine-readable start gate opens. The gate opened on 2026-08-17 and
   the initial synthetic scaffold/vertical domain path is present under `portal/`.
 - Build mandatory TOTP, organization-scoped workers, synthetic document/OCR
@@ -141,6 +142,11 @@ failure/approval states.
 **Exit:** every increment has approved requirements, evidence, rollout, and rollback.
 
 ## Plan sequence
+
+> Mapping note: dated plan letters below correspond to the consolidated plans —
+> E/K/L/M/AE→PLAN-INFRA, R/Q→PLAN-A1, F/H/N/O→PLAN-WORKERS, AC/AD/P→PLAN-INVOICE,
+> G/J/I→PLAN-LEGAL, AF/AF2→PLAN-FREE-MODEL, B/C/D→PLAN-HISTORY. Statuses below are
+> dated records (roadmap dated 2026-08-19); authoritative status lives in `plans/INDEX.md`.
 
 - **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟡 (vertical slice implemented + code reviewed 2026-08-19; awaiting Jan J1–J4 observation). Broader Plan L/M exits do not block this synthetic path.
 - **Parallel infrastructure:** Plan K 🟡 (capacity/backup evidence incomplete) + GitLab runner prep (Plan AE/DEC-016 gated).

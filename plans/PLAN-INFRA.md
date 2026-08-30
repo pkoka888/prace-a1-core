@@ -1,0 +1,72 @@
+# Plan PLAN-INFRA — Architecture, Agent Operating Model, Planning Cockpit, Release 1A Prototype, and Infrastructure
+
+**Status**: active
+**Milestone**: M0–M2
+
+## Purpose
+
+Single governing plan for the foundation and infrastructure of Release 1A:
+architecture proofs and ADR-001, the agent/skill/workflow/Git operating model,
+the generated visual planning cockpit, the bounded functional prototype sprint
+(M2), server62 production readiness, and repository workflow/dual-remote/CI
+automation.
+
+Replaces and consolidates the dated plans:
+
+- `plans/2026-08-12-plan-e-architecture-proofs-and-adr.md`
+- `plans/2026-08-12-plan-l-agent-operating-model.md`
+- `plans/2026-08-12-plan-m-visual-planning-cockpit.md`
+- `plans/2026-08-17-plan-m2-functional-prototype-sprint.md`
+- `plans/2026-08-12-plan-k-server62-readiness.md`
+- `plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md`
+- `plans/2026-08-25-plan-e01-environment-ci-stabilization.md`
+
+The archive of the individual dated plans lives under `.archive/plans/`; the
+tracked source of truth is this file plus [`plans/INDEX.md`](INDEX.md).
+
+## Status and governance
+
+- Status: `active` (foundation is in progress; M0/M1A-facing work continues).
+- Decision state: `prototype-required` — ADR-001 choices are validated, but
+  production/activation gates remain machine-readable and separate.
+- Evidence: `synthetic-tested` — eight hash-bound architecture checks plus
+  catalog/validator tooling are green; operator/sysadmin evidence for server62
+  and GitLab/CI activation is still required.
+
+Dependencies (all recorded in `planning/catalog.json`):
+
+- `DEC-016` with gate `activation-gate` — GitLab/CI activation requires explicit
+  Pavel approval before any remote, credential, runner, or CI mutation.
+- `PLAN-WORKERS` with gate `may-be-implemented` — Release 1A role/data/ADR-002
+  slice acceptance must precede scaffolding of the functional prototype.
+
+## Contents and exit evidence
+
+- **Architecture proofs:** all ADR-001 validation checks pass with hash-bound
+  run/verify evidence; production gates remain separate. See
+  [`ADR-001`](../docs/decisions/ADR-001-jan-portal-architecture.md) and
+  `planning/approvals.json`.
+- **Operating model:** authority hierarchy and task startup/Git/subagent rules
+  exist ([`AGENTS.md`](../AGENTS.md)); deterministic model-free CLI verification
+  is required before any checkpoint is called green.
+- **Planning cockpit:** `planning/catalog.json` + schema, the deterministic
+  renderer/loader, and `scripts/validate_planning.py` are the single validation
+  entry point.
+- **Functional prototype sprint:** Jan completes J1–J4 on a tenant-isolated
+  synthetic vertical slice; the scaffold gate is machine-readable and bound to
+  ADR-001, Release 1A slice acceptance, and Jan phase-1 defaults/exceptions.
+- **server62 readiness:** capacity, repaired edge path, monitoring, mandatory
+  recovery proof, rollback, permissions, and TLS evidence. The authoritative
+  operational requirements live in
+  [`docs/operations/sysadmin-readiness-2026-08-12.md`](../docs/operations/sysadmin-readiness-2026-08-12.md).
+- **Repository workflow / dual remotes / CI:** local exact-path containment and
+  synthetic tests pass; dual-remote and CI activation remain gated by
+  [`DEC-016`](../docs/decisions/decision-register.md) in
+  [`docs/operations/gitlab-integration.md`](../docs/operations/gitlab-integration.md).
+
+## Acceptance
+
+`venv/bin/python scripts/validate_planning.py` passes (24/24), the planning
+asset is current, referenced files/commands resolve, and every external mutation
+(remote, CI, credential, runner, server62 activation) carries its own explicit
+approval record.

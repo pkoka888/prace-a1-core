@@ -269,7 +269,7 @@ the following pass:
 - [ ] full documents cannot be sent to external model providers;
 - [ ] Pavel is configured as the immediate incident contact;
 - [ ] the gate passes with synthetic acceptance fixtures.
-- [ ] Plan K's capacity threshold is satisfied and forecast margin recorded;
+- [ ] PLAN-INFRA's capacity threshold is satisfied and forecast margin recorded;
 - [ ] a fresh encrypted backup passes integrity checks and an isolated restore;
 - [ ] backup key custody, RPO/RTO, retention, and failure alert owner are recorded.
 

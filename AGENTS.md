@@ -93,7 +93,7 @@ Canonical scripts (never use legacy `data/a1_forms/`, `a1_field_coords.json`, `a
   only after repeatable Pilot 1 (OSS tools) and Pilot 2 (Czech products) runs both
   pass Plan AC's evidence, review, safety, and reproducibility gates; passing
   structural validators or the external benchmark alone is insufficient.
-- Do not scaffold the portal, deploy, or activate real data until Plan E (ADR-001) and M1A gates pass. Web integration must preserve provenance, deterministic QA, and human approval gates.
+- Do not scaffold the portal, deploy, or activate real data until PLAN-INFRA (ADR-001; formerly Plan E) and M1A gates pass. Web integration must preserve provenance, deterministic QA, and human approval gates.
 
 
 ## Git remotes

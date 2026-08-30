@@ -1,7 +1,7 @@
 # Sysadmin Readiness Report — server62
 
 **Date:** 2026-08-12
-**Scope:** Repository-safe handoff for Plan K and the current M0–M1A stage.
+**Scope:** Repository-safe handoff for the PLAN-INFRA infrastructure foundation and the current M0–M1A stage.
 **Evidence:** Live host checks performed on 2026-08-12; volatile facts require
 sysadmin re-verification before a production change.
 **Privacy:** This report intentionally excludes credentials, account membership,
@@ -42,7 +42,7 @@ does not replace deterministic PDF and visual verification.
 
 ## Repository-history status
 
-Plan Q remote replacement completed on 2026-08-12 under explicit approval. At
+PLAN-A1 (formerly Plan Q) remote replacement completed on 2026-08-12 under explicit approval. At
 verification time, both published branches and the remote default branch resolved
 to sanitized checkpoint `c01aa2b5139e15518b02b09e1296e1377e034cea`.
 
@@ -61,7 +61,7 @@ rollback refs are not publication sources. Do not push pre-rewrite branches or
 rollback refs. Do not run garbage collection or delete those recovery anchors
 without a separate retention decision and exact approval.
 
-## Plan K actions
+## PLAN-INFRA infrastructure actions
 
 1. Agree a capacity threshold and produce evidence that measured pilot growth fits
    within it; expand storage or safely reclaim space if it does not.
@@ -87,6 +87,6 @@ without a separate retention decision and exact approval.
   activation gate in
   [`docs/security/real-data-rules.md`](../security/real-data-rules.md) passes.
 - Synthetic scaffolding still depends on the M1A gates in [`roadmap.md`](../../roadmap.md),
-  not on completion of all Plan K production work.
+  not on completion of all PLAN-INFRA production work.
 - The authoritative operational requirements and exit gate remain in
-  [`Plan K`](../../plans/2026-08-12-plan-k-server62-readiness.md).
+  [`Plan PLAN-INFRA`](../../plans/PLAN-INFRA.md).

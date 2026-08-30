@@ -29,8 +29,8 @@ and historical research inputs. Stable current facts are:
   background/layout → staged provisional package.
 - The current cohort contract is exactly 11 unique people, 11 three-page PDFs,
   and 33 hash-bound previews. These artifacts remain operator-review material.
-- The sanitized repository checkpoint is published and accepted. Plan L owns the
-  documentation checkpoint; Plan Q's destructive local-retention follow-up remains
+- The sanitized repository checkpoint is published and accepted. PLAN-INFRA owns the
+  documentation checkpoint; PLAN-A1's destructive local-retention follow-up remains
   separately gated. Volatile worktree counts are evidence, not requirements.
 - Earlier broad research plans are reviewed/historical inputs. Current discovery
   and design ownership is split across the active and planned plans in
@@ -80,8 +80,8 @@ to identity documents.
 - A1 case preparation, deterministic generation/QA, approval, and separate
   recording of official authority responses.
 
-Release 1A implementation readiness is the M1A scaffolding gate. Broader N/O work,
-Plan P, ADR-003, and later-module design continue in M1B and do not delay 1A.
+Release 1A implementation readiness is the M1A scaffolding gate. Broader PLAN-WORKERS (N/O) work,
+PLAN-INVOICE (formerly Plan P), ADR-003, and later-module design continue in M1B and do not delay 1A.
 
 Plan AD (invoice ingestion and reviewed export) is **outside Release 1A**. Its
 bounded outcome is a privacy-conscious ingestion/review/export boundary:
@@ -271,10 +271,11 @@ not settled by this draft.
 
 ## 12. Definition of ready for implementation
 
-Release 1A implementation starts when roadmap M1A passes: Plan L's operating model,
-a minimal Plan M shell, Plans E/F/H Release 1A outputs, the Release 1A slices of
-Plans N/O, ADR-001/002, threat model, decision register, acceptance traceability,
-synthetic security/data-flow tests, and an implementation-ready backlog. Plan P,
+Release 1A implementation starts when roadmap M1A passes: PLAN-INFRA's operating model
+and minimal planning shell (formerly Plans L/M), the PLAN-INFRA/PLAN-LEGAL (E/F)/PLAN-WORKERS (H)
+Release 1A outputs, the Release 1A slices of PLAN-WORKERS (N/O), ADR-001/002, threat model,
+decision register, acceptance traceability, synthetic security/data-flow tests, and an
+implementation-ready backlog. PLAN-INVOICE (formerly Plan P),
 ADR-003, broader platform design, and open later-release business questions do not
 block synthetic Release 1A work. New real-data portal use remains separately gated
 by [`docs/security/real-data-rules.md`](docs/security/real-data-rules.md).
