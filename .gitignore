@@ -39,7 +39,7 @@ runtime/portal/
 runtime/free-model-eval/
 secrets/
 
-# Protected, disposable Plan Q history-rewrite workspace; may temporarily contain
+# Protected, disposable PLAN-A1 history-rewrite workspace (formerly Plan Q); may temporarily contain
 # sensitive historical Git objects and must never be staged or published.
 .history-remediation/
 
@@ -66,6 +66,14 @@ output/provisional-previews/
 output/provisional-contact-sheets/
 output/quarantine-*/
 output/provisional.backup-*/
+
+# Local archive: files moved out of the active tree are preserved under
+# .archive/<original-relative-path> per the convention in .archive/README.md.
+# The README itself is the only tracked file in this directory.
+# (Ignore everything inside the dir, then explicitly allow the README — a
+# top-level `.archive/` ignore would also hide the README from git's view.)
+.archive/*
+!.archive/README.md
 output/*.tar.gz
 *.tar.gz
 archive/**/*.png

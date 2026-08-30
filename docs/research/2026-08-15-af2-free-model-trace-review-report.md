@@ -117,7 +117,7 @@ next live run:
 ## Deferred backlog
 
 - **Decided and implemented 2026-08-16:** Option A with preventive OS isolation is
-  selected and [Plan AF2.2](../../plans/2026-08-16-plan-af2.2-luna-capsule-isolation.md)
+  selected and [Plan PLAN-FREE-MODEL](../../plans/PLAN-FREE-MODEL.md)
   is executed. A strict `command_execution` exact-read adapter inside a Bubblewrap
   capsule now handles the Codex control run: synthetic workspace read-only mounted
   with only `README.md`/`AGENTS.md` plus `.output.schema.json`; isolated
