@@ -92,18 +92,18 @@ employer_name,employer_address,employer_id,employer_country,activity_nace,employ
 
 | employee_id | employer_name | employer_address | employer_id | employer_country | activity_nace | employment_start | employment_type |
 |-------------|---------------|------------------|-------------|------------------|---------------|------------------|-----------------|
-| hlavac-renato | HLAVAČ RENATO - OSVČ | SADY PĚTATŘICÁTNÍKŮ 20/7, 301 00 PLZEŇ, CZ | 0204172144 | CZ | 4322 | 01.01.2024 | self_employed |
-| jiri-stembera | ŠTEMBERA JIŘÍ - OSVČ | DUCHCOVSKÁ 2383/70, 415 01 TEPLICE, CZ | 8901072510 | CZ | 4321 | 15.03.2023 | self_employed |
-| jozef-hada | HADA JOSEF - OSVČ | TYRŠE A FÜGNERA 217, 436 03 LITVÍNOV, CZ | 9011052985 | CZ | 4332 | 01.06.2023 | self_employed |
-| jozef-kotlar | KOTLÁR JOZEF - OSVČ | PEKAŘSKÁ 3123, 738 01 FRÝDEK-MÍSTEK, CZ | 0006065378 | CZ | 4322 | 01.02.2024 | self_employed |
-| karel-kotlar | KOTLÁR KAREL - OSVČ | JIČÍNSKÁ 247, 742 58 PŘÍBOR, CZ | 0007055928 | CZ | 4321 | 15.01.2024 | self_employed |
-| petr-gizman | GIZMAN PETR - OSVČ | HUSOVA 217/9, 435 11 LOM, CZ | 0201052973 | CZ | 4329 | 01.04.2024 | self_employed |
-| petr-kalcik | KALČÍK PETR - OSVČ | KARLA ČAPKA 2470/34, 415 01 TEPLICE, CZ | 9412073066 | CZ | 4322 | 01.03.2023 | self_employed |
-| petr-nastin | NASTIŠÍN PETR - OSVČ | SÍDLIŠTĚ 189, 417 23 KOŠŤANY-STŘELNÁ, CZ | 9405223047 | CZ | 4321 | 01.05.2023 | self_employed |
-| robert-danko | DANKO ROBERT - OSVČ | RADNIČNÍ 1148, 738 01 FRÝDEK-MÍSTEK, CZ | 8505265450 | CZ | 4322 | 01.01.2022 | self_employed |
+| synthetic-worker-01 | TESTOVACÍ ADAM - OSVČ | TESTOVACÍ ULICE 1000, 110 00 PRAHA, CZ | 9103140002 | CZ | 4322 | 01.01.2024 | self_employed |
+| synthetic-worker-02 | FIKTIVNÍ BOŘIVOJ - OSVČ | TESTOVACÍ ULICE 1000, 602 00 BRNO, CZ | 9205210003 | CZ | 4321 | 15.03.2023 | self_employed |
+| synthetic-worker-03 | UKÁZKOVÝ CYRIL - OSVČ | TESTOVACÍ ULICE 1000, 301 00 PLZEŇ, CZ | 9307090001 | CZ | 4332 | 01.06.2023 | self_employed |
+| synthetic-worker-04 | DEMONSTRAČNÍ DOBROMIL - OSVČ | TESTOVACÍ ULICE 1000, 702 00 OSTRAVA, CZ | 9401290008 | CZ | 4322 | 01.02.2024 | self_employed |
+| synthetic-worker-05 | CVIČNÝ ERVÍN - OSVČ | TESTOVACÍ ULICE 1000, 779 00 OLOMOUC, CZ | 9511040011 | CZ | 4321 | 15.01.2024 | self_employed |
+| synthetic-worker-06 | PŘÍKLADOVÝ FIAN - OSVČ | TESTOVACÍ ULICE 1000, 460 01 LIBEREC, CZ | 9609170010 | CZ | 4329 | 01.04.2024 | self_employed |
+| synthetic-worker-07 | VZORKOVÝ GORAZD - OSVČ | TESTOVACÍ ULICE 1000, 500 02 HRADEC KRÁLOVÉ, CZ | 9704080001 | CZ | 4322 | 01.03.2023 | self_employed |
+| synthetic-worker-08 | SMYŠLENÝ HORYMÍR - OSVČ | TESTOVACÍ ULICE 1000, 530 02 PARDUBICE, CZ | 9812020009 | CZ | 4321 | 01.05.2023 | self_employed |
+| synthetic-worker-09 | NÁHRADNÍ LUBOR - OSVČ | TESTOVACÍ ULICE 1000, 400 01 ÚSTÍ NAD LABEM, CZ | 9906260001 | CZ | 4322 | 01.01.2022 | self_employed |
 
 **Notes for Operator:**
-- `employer_id`: For OSVČ (self-employed), use birth number without slash (e.g., `0204172144` from `020417/2144`)
+- `employer_id`: For OSVČ (self-employed), use birth number without slash (e.g., `9103140002` from `910314/0002`)
 - `activity_nace`: Use 4-digit NACE Rev.2. Common for construction: 4321 (electrical), 4322 (plumbing/heat/AC), 4329 (other construction installation), 4332 (joinery), 4399 (other specialized)
 - `employment_start`: Estimated from context; adjust to actual start date
 - `employment_type`: All current cohort are `self_employed` (status_profile = `self_employed_multi_state`)
@@ -121,7 +121,7 @@ venv/bin/python scripts/generate_provisional_a1.py --review a1/review.csv --prof
 
 ### Current State
 - **cohort.json** defines 11 people (9 in CSV + 2 in `additional_people`)
-- **Missing from CSV:** `pavel-kaspar`, `rudolf-kotlar`
+- **Missing from CSV:** `synthetic-worker-10`, `synthetic-worker-11`
 - **Both have:** `document_ids`, `issue_dates`, full identity data in `additional_people`
 
 ### Research: Why Cohort.json Has Additional People
@@ -135,38 +135,38 @@ Per `scripts/finalize_a1.py` and `scripts/a1_core.py`:
 
 **Source:** `a1/cohort.json` → `additional_people` array
 
-| Field | pavel-kaspar | rudolf-kotlar |
-|-------|--------------|---------------|
-| employee_id | pavel-kaspar | rudolf-kotlar |
+| Field | synthetic-worker-10 | synthetic-worker-11 |
+|-------|--------------------|--------------------|
+| employee_id | synthetic-worker-10 | synthetic-worker-11 |
 | source_scans | USER_TRANSCRIPTION_2026-08-11 | USER_TRANSCRIPTION_2026-08-11 |
-| surname | Kašpar | Kotľár |
-| given_name | Pavel | Rudolf |
-| dob | 18.08.1983 | 12.06.1981 |
-| birth_place | Teplice v Čechách | Slovensko |
+| surname | ZÁSTUPNÝ | ILUSTRAČNÍ |
+| given_name | MILOŠ | NIKLOJ |
+| dob | 11.10.2000 | 19.02.2001 |
+| birth_place | Karlovy Vary | Opava |
 | nationality | CZ | CZ |
 | sex | M | M |
-| insurance_number | 830818/2828 | 810612/9163 |
-| street | Pražská | Jičínská |
-| house_number | 32 | 247 |
-| city | Bystřany | Příbor |
-| district | Bystřany | Nový Jičín |
-| postal_code | 417 61 | 742 58 |
+| insurance_number | 001011/0001 | 010219/0011 |
+| street | TESTOVACÍ ULICE | TESTOVACÍ ULICE |
+| house_number | 1000 | 1000 |
+| city | Karlovy Vary | Opava |
+| district | Karlovy Vary | Opava |
+| postal_code | 360 01 | 746 01 |
 | country_code | CZ | CZ |
 | status_profile | self_employed_multi_state | self_employed_multi_state |
-| resolved_ossz | OSSZ Teplice | OSSZ Nový Jičín |
-| institution_profile | teplice | novy-jicin |
-| employer_name | KAŠPAR PAVEL - OSVČ | KOTĽÁR RUDOLF - OSVČ |
-| employer_address | PRAŽSKÁ 32, 417 61 BYSTŘANY, CZ | JIČÍNSKÁ 247, 742 58 PŘÍBOR, CZ |
-| employer_id | 8308182828 | 8106129163 |
+| resolved_ossz | OSSZ Karlovy Vary | OSSZ Opava |
+| institution_profile | karlovy-vary | opava |
+| employer_name | ZÁSTUPNÝ MILOŠ - OSVČ | ILUSTRAČNÍ NIKLOJ - OSVČ |
+| employer_address | TESTOVACÍ ULICE 1000, 360 01 KARLOVY VARY, CZ | TESTOVACÍ ULICE 1000, 746 01 OPAVA, CZ |
+| employer_id | 0010110001 | 0102190011 |
 | employer_country | CZ | CZ |
 | activity_nace | 4322 | 4321 |
 | employment_start | 01.01.2024 | 01.01.2024 |
 | employment_type | self_employed | self_employed |
 | activity_name | | |
 | activity_address | | |
-| resolved_ossz | OSSZ Teplice | OSSZ Nový Jičín |
-| institution_profile | teplice | novy-jicin |
-| document_id | N65030S558/2025/DE | N65031S888/2025/DE |
+| resolved_ossz | OSSZ Karlovy Vary | OSSZ Opava |
+| institution_profile | karlovy-vary | opava |
+| document_id | TST0000010/2026/DE | TST0000011/2026/DE |
 | start_date | | |
 | end_date | | |
 | issue_date | 08.06.2026 | 25.05.2026 |
@@ -182,7 +182,7 @@ Per `scripts/finalize_a1.py` and `scripts/a1_core.py`:
 | certificate_source_status | | |
 | signatory_source | | |
 | signatory_source_status | | |
-| comments | USER TRANSCRIPTION: birthplace Teplice v Čechách; identity document verified 2026-08-11; insurer VZP. Nationality and sex require client confirmation. | USER TRANSCRIPTION: identity document verified 2026-08-11. |
+| comments | USER TRANSCRIPTION (synthetic): identity fields are synthetic placeholders; no real identifiers. | USER TRANSCRIPTION (synthetic): identity fields are synthetic placeholders; no real identifiers. |
 
 ### Recommended Action
 
@@ -647,7 +647,7 @@ To be applied to 4 files.
 ## Immediate TODOs (This Sprint)
 
 - [ ] **R-01** Operator adds 7 Section 4 columns to a1/review.csv (mock data provided)
-- [ ] **R-02** Operator adds pavel-kaspar, rudolf-kotlar to a1/review.csv (mock data provided)
+- [ ] **R-02** Operator adds the 2 `additional_people` rows to a1/review.csv (mock data provided)
 - [ ] **R-03** Operator approves backup dir deletion (inventory provided)
 - [ ] **L-01** Add historical headers to 3 plans/2026-08-11-*.md
 - [ ] **L-02** Add historical README to docs/paddleocr/
