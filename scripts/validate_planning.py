@@ -84,12 +84,13 @@ FORBIDDEN_PATH_TOKENS = (
     "credential", "password", "token", "apikey", "api_key",
 )
 
-# Plan governance paths are text-only planning/archive documentation. The
-# forbidden tokens name real-data/runtime directories (e.g. "a1", "evidence")
-# that never live under plans/, while consolidated plan filenames themselves
-# legitimately embed them (PLAN-A1.md, dated-plan archive names). The token
-# guard stays fully active for every other staged path.
-APPROVED_STAGED_PATH_PREFIXES = ("plans/",)
+# Plan governance paths are text-only planning/archive documentation, and the
+# repo-wide `readme-*.md` convention documents pipelines whose names legitimately
+# embed pipeline words (readme-scan-to-employees.md, readme-employees-to-a1-form.md).
+# The forbidden tokens name real-data/runtime directories or secret filenames
+# (e.g. "a1", "evidence", "employees", "payroll") that never live under these
+# documentation paths. The token guard stays fully active for every other staged path.
+APPROVED_STAGED_PATH_PREFIXES = ("plans/", "readme-")
 
 DEFAULT_CATALOG = "planning/catalog.json"
 DEFAULT_SCHEMA = "planning/catalog.schema.json"

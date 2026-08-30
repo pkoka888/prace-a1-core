@@ -393,6 +393,13 @@ def test_staged_plan_governance_paths_allowed(root):
     assert "staged forbidden-path and PII/secret indicators" not in failures(p.stdout)
 
 
+def test_staged_readme_documentation_paths_allowed(root):
+    subprocess.run(["git", "-C", str(root), "add", "readme-scan-to-employees.md"], check=True)
+    p = run(root, json_out=True)
+    assert p.returncode == 0, p.stdout + p.stderr
+    assert "staged forbidden-path and PII/secret indicators" not in failures(p.stdout)
+
+
 # --------------------------------------------------------------------------
 # Cycle logic unit checks
 # --------------------------------------------------------------------------
