@@ -125,8 +125,8 @@ older normalized proposal when its provenance is recorded.
 | `config/address_enrichment.json` | Evidence-backed address reconciliation rules |
 | `$A1_PRIVATE_DIR/a1/employees_normalized.json` | Private reconciliation reference; gitignored and privacy-sensitive |
 | `$A1_PRIVATE_DIR/a1/review.csv` | Later operator-reviewed A1 input; ignored and authoritative for its nine rows |
-| `plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md` | Release 1A OCR role, field, report, and necessity contract |
-| `plans/2026-08-12-plan-o-database-and-transaction-architecture.md` | Release 1A OCR data, transaction, migration, and deletion design |
+| `plans/PLAN-WORKERS.md` | Release 1A OCR role, field, report, and necessity contract |
+| `plans/PLAN-WORKERS.md` | Release 1A OCR data, transaction, migration, and deletion design |
 | `research/2026-08-11-ai-infra-library-findings.md` | Historical, time-sensitive research input only |
 
 ## Troubleshooting
