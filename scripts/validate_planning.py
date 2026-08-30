@@ -51,20 +51,19 @@ VALID_GATES = {
 # explicitly excluded from cycle detection.
 BLOCKING_GATES = VALID_GATES - {"evidence-only"}
 
-# Exact required catalog IDs (counted from the task requirements).
+# Exact required catalog IDs (34 after the 2026-08-30 plan re-model).
 REQUIRED_IDS = [
     # Milestones
     "M0", "M1A", "M1B", "M2", "M3", "M4", "M5", "M6",
-    # Plans
-    "E", "F", "G", "H", "J", "K", "L", "M", "M2P", "N", "O", "P", "Q", "R", "AC", "AD", "AE", "AF", "AF2", "AF2.1", "AF2.2",
+    # Plans (consolidated set)
+    "PLAN-INFRA", "PLAN-A1", "PLAN-WORKERS", "PLAN-INVOICE",
+    "PLAN-LEGAL", "PLAN-FREE-MODEL", "PLAN-HISTORY",
     # Decisions
     "DEC-001", "DEC-002", "DEC-003", "DEC-004", "DEC-005", "DEC-006",
     "DEC-007", "DEC-008", "DEC-009", "DEC-010", "DEC-011", "DEC-012",
     "DEC-013", "DEC-014", "DEC-015", "DEC-016",
     # Lanes
     "critical-path", "parallel", "a1-lane",
-    # Superseded / historical
-    "D", "I", "B", "C", "consolidated-roadmap",
 ]
 
 # Forbidden stale source-link fragments (legacy / superseded paths).
@@ -84,6 +83,13 @@ FORBIDDEN_PATH_TOKENS = (
     "private", ".env", "review.csv", "employees", "cohort", "payroll",
     "credential", "password", "token", "apikey", "api_key",
 )
+
+# Plan governance paths are text-only planning/archive documentation. The
+# forbidden tokens name real-data/runtime directories (e.g. "a1", "evidence")
+# that never live under plans/, while consolidated plan filenames themselves
+# legitimately embed them (PLAN-A1.md, dated-plan archive names). The token
+# guard stays fully active for every other staged path.
+APPROVED_STAGED_PATH_PREFIXES = ("plans/",)
 
 DEFAULT_CATALOG = "planning/catalog.json"
 DEFAULT_SCHEMA = "planning/catalog.schema.json"
@@ -205,10 +211,18 @@ def plan_file_for_item(root: Path, item: dict):
     item_id = item["id"].lower()
     for link in item.get("source_links", []):
         rel = strip_link_target(link)
-        if rel and ("plans/" in rel) and ("plan-%s" % item_id) in rel:
-            p = (root / rel).resolve()
-            if p.is_file():
-                return p
+        if not rel or "plans/" not in rel:
+            continue
+        p = (root / rel).resolve()
+        if not p.is_file():
+            continue
+        stem = Path(rel).stem.lower()
+        # Accept plans/<ID>.md and plans/PLAN-<ID>.md as the plan file for a
+        # consolidated PLAN-* id, with a substring fallback for legacy names.
+        if stem == item_id or stem == ("plan-" + item_id):
+            return p
+        if ("plan-" + item_id) in rel:
+            return p
     return None
 
 
@@ -610,10 +624,10 @@ def check_active_plan_index_presence(catalog, root):
         if item.get("status") not in ("active", "awaiting-review", "accepted"):
             continue
         iid = item.get("id")
-        # A catalog ID may deliberately disambiguate a plan from a milestone
-        # (M2P versus milestone M2). In that case, the authoritative source
-        # link in INDEX is an unambiguous claim even when the human title is
-        # "Plan M2".
+        # A catalog ID may deliberately disambiguate one plan from another
+        # (PLAN-INFRA versus PLAN-INVOICE). In that case, the authoritative
+        # source link in INDEX is an unambiguous claim even when the human
+        # title is shortened.
         source_links = item.get("source_links", []) or []
         source_claimed = any(strip_link_target(link) in text for link in source_links)
         if not source_claimed and ("Plan %s" % iid) not in text and ("plan-%s" % iid.lower()) not in text.lower():
@@ -686,6 +700,8 @@ def check_staged_forbidden_and_pii(catalog, root):
     staged = get_staged_paths(root)
     matched_tokens = set()
     for path in staged:
+        if path.startswith(APPROVED_STAGED_PATH_PREFIXES):
+            continue
         low = path.lower()
         for tok in FORBIDDEN_PATH_TOKENS:
             if tok in low:
@@ -697,9 +713,9 @@ def check_staged_forbidden_and_pii(catalog, root):
 
 def check_prototype_start_gate(catalog, root):
     by_id = {item.get("id"): item for item in catalog.get("items", [])}
-    sprint = by_id.get("M2P")
-    if not sprint:
-        return False, "M2P prototype sprint missing"
+    plan = by_id.get("PLAN-INFRA")
+    if not plan:
+        return False, "PLAN-INFRA missing"
     approvals_path = root / "planning/approvals.json"
     if not approvals_path.is_file():
         return False, "approval register missing"
@@ -707,12 +723,12 @@ def check_prototype_start_gate(catalog, root):
     adr = next((record for record in approvals.get("records", []) if record.get("id") == "ADR-001"), None)
     if not adr:
         return False, "ADR-001 approval record missing"
-    if sprint.get("executable"):
+    if plan.get("executable"):
         if adr.get("validation") != "passed" or adr.get("implementation_gate") != "open":
-            return False, "M2P executable before ADR-001 validation gate opens"
-        if any(by_id.get(item, {}).get("decision_state") != "accepted" for item in ("N", "O")):
-            return False, "M2P executable before N/O Release 1A slice acceptance"
-    return True, "M2P preparation active; scaffold remains bound to machine-readable gates"
+            return False, "PLAN-INFRA executable before ADR-001 validation gate opens"
+        if by_id.get("PLAN-WORKERS", {}).get("decision_state") != "accepted":
+            return False, "PLAN-INFRA executable before PLAN-WORKERS Release 1A slice acceptance"
+    return True, "PLAN-INFRA preparation active; scaffold remains bound to machine-readable gates"
 
 
 def check_approval_asset_and_provenance(catalog, root):

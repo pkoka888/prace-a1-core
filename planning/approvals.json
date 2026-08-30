@@ -15,7 +15,7 @@
       "implementation_gate": "open",
       "implementation_gate_reason": null,
       "activation_gate": "blocked",
-      "activation_gate_reason": "DEC-012 and every real-data activation and Plan K recovery gate remain separate.",
+      "activation_gate_reason": "DEC-012 and every real-data activation and PLAN-INFRA recovery gate remain separate.",
       "choices": [
         {"id": "DEC-006", "label": "Aplikační architektura", "recommended": "Django 5.2 LTS modular monolith, Python 3.13, PostgreSQL, templates + targeted HTMX", "selected": "Django 5.2 LTS modular monolith, Python 3.13, PostgreSQL, templates + targeted HTMX", "approval": "approved", "deviation_reason": null},
         {"id": "DEC-007", "label": "MFA", "recommended": "django-allauth[mfa] with mandatory TOTP for privileged roles", "selected": "django-allauth[mfa] with mandatory TOTP for privileged roles", "approval": "approved", "deviation_reason": null},

@@ -135,7 +135,7 @@ def test_valid_full_catalog_json(root):
 def test_exact_required_ids_coverage():
     ids = {i["id"] for i in load_valid()["items"]}
     assert ids == set(vp.REQUIRED_IDS)
-    assert len(vp.REQUIRED_IDS) == 53  # Includes the M2 prototype plan, distinct from milestone M2.
+    assert len(vp.REQUIRED_IDS) == 34  # 8 milestones + 7 consolidated plans + 16 decisions + 3 lanes.
 
 
 def test_index_parser_distinguishes_dotted_successor_ids(tmp_path):
@@ -248,7 +248,7 @@ def test_prohibited_cycle(root):
 def test_plan_header_index_mismatch(root):
     def fn(d):
         for it in d["items"]:
-            if it["id"] == "E":
+            if it["id"] == "PLAN-INFRA":
                 it["status"] = "blocked"
     mutate(root, fn)
     p = run(root, json_out=True)
@@ -306,7 +306,7 @@ def test_broken_markdown_link(root):
 def test_historical_executable(root):
     def fn(d):
         for it in d["items"]:
-            if it["id"] == "D":
+            if it["id"] == "PLAN-HISTORY":
                 it["executable"] = True
     mutate(root, fn)
     p = run(root, json_out=True)
@@ -317,7 +317,7 @@ def test_historical_executable(root):
 def test_historical_missing_successor(root):
     def fn(d):
         for it in d["items"]:
-            if it["id"] == "D":
+            if it["id"] == "PLAN-HISTORY":
                 it["successor"] = None
     mutate(root, fn)
     p = run(root, json_out=True)
@@ -328,7 +328,7 @@ def test_historical_missing_successor(root):
 def test_missing_referenced_file(root):
     def fn(d):
         for it in d["items"]:
-            if it["id"] == "M":
+            if it["id"] == "PLAN-INFRA":
                 it.setdefault("referenced_files", []).append("scripts/missing_xyz.py")
     mutate(root, fn)
     p = run(root, json_out=True)
@@ -367,7 +367,7 @@ def test_prototype_item_without_authority(root):
             "dependencies": [], "risks": [], "quality_gates": ["x"],
             "source_links": ["docs/prototypes/roadmap-portal/index.html"],
             "exit_evidence": "x", "last_reviewed": "2026-08-13",
-            "executable": False, "successor": "M",
+            "executable": False, "successor": "PLAN-INFRA",
         })
     mutate(root, fn)
     p = run(root, json_out=True)
@@ -384,6 +384,13 @@ def test_unsafe_staged_path(root):
     assert "staged forbidden-path and PII/secret indicators" in failures(p.stdout)
     # Never leak the staged path content.
     assert "credentials.txt" not in (p.stdout + p.stderr)
+
+
+def test_staged_plan_governance_paths_allowed(root):
+    subprocess.run(["git", "-C", str(root), "add", "plans/PLAN-A1.md"], check=True)
+    p = run(root, json_out=True)
+    assert p.returncode == 0, p.stdout + p.stderr
+    assert "staged forbidden-path and PII/secret indicators" not in failures(p.stdout)
 
 
 # --------------------------------------------------------------------------

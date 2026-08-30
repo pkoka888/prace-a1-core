@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_or_reviewed_at": "2026-08-13T13:28:00Z",
+  "generated_or_reviewed_at": "2026-08-30T00:00:00Z",
   "items": [
     {
       "risks": [],
@@ -13,9 +13,9 @@
       "last_reviewed": "2026-08-13",
       "executable": true,
       "successor": "M1A",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
+      "approver": "Jan delegated defaults",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "docs/release-1a/unblock-review-packet.md and docs/architecture/release-1a-catalog.json",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "M0",
@@ -104,7 +104,13 @@
       "status": "planned",
       "decision_state": "not-applicable",
       "evidence_state": "none",
-      "dependencies": []
+      "dependencies": [
+        {
+          "gate": "may-be-accepted",
+          "id": "PLAN-INFRA",
+          "reason": "M2 exit requires the consolidated PLAN-INFRA foundation/prototype work and Jan J1–J4 observation"
+        }
+      ]
     },
     {
       "risks": [],
@@ -211,383 +217,347 @@
       "dependencies": []
     },
     {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "approved ADR-001, threat model, dependency and rollback evidence",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M2",
+      "id": "PLAN-INFRA",
+      "kind": "plan",
       "approver": null,
       "decision_date": null,
       "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "E",
-      "kind": "plan",
-      "title": "Plan E — Architecture Proofs and ADR-001",
-      "owner": "product engineering",
-      "milestone": "M1A",
+      "dependencies": [
+        {
+          "id": "DEC-016",
+          "gate": "activation-gate",
+          "reason": "Server62/encrypted-backup and GitLab-CI activation require the DEC-016 explicit-approval gate"
+        },
+        {
+          "id": "PLAN-WORKERS",
+          "gate": "may-be-implemented",
+          "reason": "Release 1A role/data/transaction discovery (formerly N/O) must be accepted before M2 prototype implementation"
+        }
+      ],
+      "risks": [
+        "ADR-001 technical validation pending; acceptance with DEC-006 evidence incomplete",
+        "Server62 backup/restore and capacity evidence incomplete until DEC-013/DEC-016 gates pass",
+        "Provisional A1 lane operates as a separate lane and must not be disturbed"
+      ],
+      "quality_gates": [
+        "ADR-001 validated and hash-bound in planning/approvals.json",
+        "DEC-016 activation-gate satisfied before any server/remote/CI mutation",
+        "planning validator 24/24",
+        "cz_lang/intl deployment concern addressed by sync arch validation"
+      ],
+      "referenced_files": [
+        "docs/decisions/ADR-001-jan-portal-architecture.md",
+        "docs/decisions/decision-register.md",
+        "docs/operations/sysadmin-readiness-2026-08-12.md",
+        "docs/prototypes/roadmap-portal/index.html"
+      ],
+      "referenced_commands": [
+        "python3"
+      ],
+      "title": "Architecture, operating model, planning cockpit, prototype, and infrastructure foundation",
+      "owner": "product engineering + primary agent + server sysadmin",
+      "milestone": "M0–M2",
       "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "executable": true,
+      "successor": null,
+      "last_reviewed": "2026-08-30",
+      "source_links": [
+        "plans/PLAN-INFRA.md",
+        "AGENTS.md"
+      ],
+      "exit_evidence": "E/L/M/checkpoint acceptance consolidated: validated ADR-001, approved operating model and planning cockpit, functional prototype and M2 foundation, server62/GitLab-CI readiness evidence with separate approvals"
     },
     {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-f-jan-workflow-discovery.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "approved Release 1A scenarios and traceability matrix",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M3",
+      "id": "PLAN-A1",
+      "kind": "plan",
       "approver": null,
       "decision_date": null,
       "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "F",
-      "kind": "plan",
-      "title": "Plan F — Jan Workflow Discovery",
-      "owner": "product owner",
-      "milestone": "M1A",
+      "dependencies": [],
+      "risks": [
+        "17/17 A1 rows blocked in finalize_a1.py readiness until the operator populates per-row certificate, signatory, source-status, and review-flag fields",
+        "PII-bearing outputs must never be staged, copied outside the repo, or moved into a tracked archive"
+      ],
+      "quality_gates": [
+        "A1_PRIVATE_DIR required and fail-closed",
+        "a1_quality_gate render (300 DPI) + validate + hash-bound visual PASS",
+        "validated_by_user=1 with complete approvals/report before final promotion"
+      ],
+      "referenced_files": [
+        "readme-employees-to-a1-form.md",
+        ".agents/skills/a1-pdf-production/SKILL.md",
+        "scripts/generate_provisional_a1.py",
+        "scripts/finalize_a1.py",
+        "scripts/a1_quality_gate.py",
+        "docs/security/real-data-rules.md"
+      ],
+      "referenced_commands": [
+        "python3"
+      ],
+      "title": "A1 production, repository history, and privacy baseline",
+      "owner": "primary A1 production agent; operator approval required for regeneration",
+      "milestone": "A1 operations",
       "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
+      "decision_state": "prototype-required",
+      "evidence_state": "operator-verified",
+      "executable": false,
+      "successor": null,
+      "last_reviewed": "2026-08-30",
+      "source_links": [
+        "plans/PLAN-A1.md",
+        "AGENTS.md"
+      ],
+      "exit_evidence": "Canonical cohort reproducible from authorized sources with validated_by_user=1 and authoritative certificate/signatory evidence; repository baseline c01aa2b confirmed; PII never staged"
     },
     {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-g-german-market-and-competitors.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "verified market and competitor evidence",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M6",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "G",
+      "id": "PLAN-WORKERS",
       "kind": "plan",
-      "title": "Plan G — German Market and Competitor Research",
-      "owner": "product research",
-      "milestone": "M1B/M6",
-      "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-h-ux-ui-and-copy-research.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
+      "approver": "Jan delegated defaults (N); Pavel/Jan delegated defaults (O)",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "docs/decisions/ADR-002-release-1a-data-and-transactions.md and docs/release-1a/unblock-review-packet.md",
+      "dependencies": [
+        {
+          "id": "PLAN-INFRA",
+          "gate": "evidence-only",
+          "reason": "Operating model and architecture baseline bound role/data and workflow design"
+        },
+        {
+          "id": "PLAN-LEGAL",
+          "gate": "evidence-only",
+          "reason": "Data protection and legal requirements constrain collection, retention, and UX copy"
+        }
       ],
-      "exit_evidence": "tested workflow, localization, and accessibility contract",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M3",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
+      "risks": [
+        "Observed Jan journeys and M3 workflow maturity remain outstanding",
+        "OCR/document workflow behavior is only testable on the synthetic vertical slice"
+      ],
+      "quality_gates": [
+        "Release 1A catalog frozen and reviewed",
+        "ADR-002 and unblock-review-packet acceptance recorded",
+        "M3 employee/OCR/assignment journeys completed on synthetic data"
+      ],
+      "referenced_files": [
+        "AGENTS.md",
+        "readme-scan-to-employees.md",
+        "docs/architecture/release-1a-catalog.json",
+        "docs/decisions/ADR-002-release-1a-data-and-transactions.md"
+      ],
       "referenced_commands": [],
-      "id": "H",
-      "kind": "plan",
-      "title": "Plan H — UX, UI, and Copy Research",
-      "owner": "product design",
+      "title": "Worker, role, data, UX, and OCR workflow discovery",
+      "owner": "product owner + product design + product engineering",
       "milestone": "M1A–M3",
       "status": "active",
       "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-j-data-protection-and-legal.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "activation gate and operational procedures",
-      "last_reviewed": "2026-08-13",
+      "evidence_state": "primary-source-verified",
       "executable": true,
-      "successor": "M5",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "J",
-      "kind": "plan",
-      "title": "Plan J — Data Protection and Legal",
-      "owner": "product owner + legal",
-      "milestone": "M1A–M5",
-      "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
+      "successor": "M3",
+      "last_reviewed": "2026-08-30",
       "source_links": [
-        "plans/2026-08-12-plan-k-server62-readiness.md",
+        "plans/PLAN-WORKERS.md",
         "AGENTS.md",
         "roadmap.md",
-        "plans/INDEX.md"
+        "docs/decisions/2026-08-12-jan-release-1-solution-brief.md"
       ],
-      "exit_evidence": "capacity, repaired edge path, monitoring, recovery proof, rollback, permissions, TLS evidence",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M5",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "K",
-      "kind": "plan",
-      "title": "Plan K — server62 Production Readiness",
-      "owner": "server sysadmin; product engineering verifies",
-      "milestone": "M0–M5",
-      "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
+      "exit_evidence": "Approved Jan Release 1A scenarios, traceability matrix, and frozen catalog; M3 employee/document/OCR/assignment workflows complete on the synthetic slice"
     },
     {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-l-agent-operating-model.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "authority hierarchy and task startup/Git/subagent rules exist",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M",
+      "id": "PLAN-INVOICE",
+      "kind": "plan",
       "approver": null,
       "decision_date": null,
       "decision_evidence": null,
-      "referenced_files": [
-        "AGENTS.md",
-        "plans/INDEX.md"
-      ],
-      "referenced_commands": [],
-      "id": "L",
-      "kind": "plan",
-      "title": "Plan L — Agent, Skill, Workflow, and Git Operating Model",
-      "owner": "primary agent with Pavel approval for publication",
-      "milestone": "M0–M1",
-      "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-m-visual-planning-cockpit.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md",
-        "planning/catalog.json"
-      ],
-      "exit_evidence": "catalog schema, example catalog, deterministic renderer/loader, and validation command",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": null,
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [
-        "planning/catalog.json",
-        "planning/catalog.schema.json",
-        "scripts/validate_planning.py"
-      ],
-      "referenced_commands": [],
-      "id": "M",
-      "kind": "plan",
-      "title": "Plan M — Generated Visual Planning Cockpit",
-      "owner": "product design + engineering",
-      "milestone": "M1 and continuous",
-      "status": "planned",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
       "dependencies": [
         {
-          "id": "L",
-          "gate": "may-be-accepted",
-          "reason": "catalog/validator work may begin; M exit requires L acceptance"
+          "id": "PLAN-LEGAL",
+          "gate": "evidence-only",
+          "reason": "Legal and data-protection constraints bound ingestion scope"
+        },
+        {
+          "id": "PLAN-INFRA",
+          "gate": "evidence-only",
+          "reason": "Operating model and architecture baseline bound the foundation"
+        },
+        {
+          "id": "PLAN-WORKERS",
+          "gate": "evidence-only",
+          "reason": "Employee/document/OCR discovery bounds the ingestion workflow"
+        },
+        {
+          "id": "M3",
+          "gate": "evidence-only",
+          "reason": "Document and OCR workflow maturity informs ingestion"
+        },
+        {
+          "id": "DEC-015",
+          "gate": "specialist-gate",
+          "reason": "Persistence/adapters, production implementation, and Plan acceptance require accounting-specialist sign-off"
         }
-      ]
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
       ],
-      "exit_evidence": "Release 1A catalog first; broader discovery afterward",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "M2",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "N",
-      "kind": "plan",
-      "title": "Plan N — Release 1A Role and Data Discovery",
-      "owner": "product owner + domain research",
-      "milestone": "M1A–M1B",
-      "status": "planned",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-o-database-and-transaction-architecture.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
+      "risks": [
+        "Live capture gated by Integrity 1.3; nothing runs for real invoices",
+        "Structural validators or the external benchmark alone are insufficient evidence",
+        "No tax calculations or bookkeeping behavior may be added"
       ],
-      "exit_evidence": "Release 1A data architecture and ADR-002 first",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "M2",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "O",
-      "kind": "plan",
-      "title": "Plan O — Release 1A Database and Transaction Architecture",
-      "owner": "product engineering",
-      "milestone": "M1A–M1B",
-      "status": "planned",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-p-payroll-and-finance-architecture.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
+      "quality_gates": [
+        "Evidence/review/leakage/safety/reproducibility gates pass",
+        "Synthetic in-memory ingestion contracts green (matching engine review/CSV)",
+        "DEC-015 specialist acceptance before persistence/adapters"
       ],
-      "exit_evidence": "parallel non-blocking research/design; authoritative calculations specialist-gated",
-      "last_reviewed": "2026-08-13",
-      "executable": true,
-      "successor": "M1B",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "P",
-      "kind": "plan",
-      "title": "Plan P — Payroll and Finance Architecture",
-      "owner": "product engineering + payroll specialists",
-      "milestone": "M1B",
-      "status": "active",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-q-repository-history-reference-privacy.md",
-        "docs/decisions/decision-register.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "sanitized checkpoint c01aa2b reconciled",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": null,
-      "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": null,
       "referenced_files": [
-        "plans/2026-08-12-plan-q-repository-history-reference-privacy.md"
+        "src/invoice_ingestion/contracts.py",
+        "tests/test_invoice_ingestion_contract.py",
+        "research/benchmark-experimental/STATUS.json",
+        "research/processed/reproducibility-report.json",
+        "scripts/validate_collector_execution.py"
       ],
       "referenced_commands": [],
-      "id": "Q",
-      "kind": "checkpoint",
-      "title": "Plan Q — Repository History, Reference, and Privacy Remediation",
-      "owner": "primary agent; Pavel approves exact remote/destructive actions",
-      "milestone": "M0",
-      "status": "accepted",
-      "decision_state": "accepted",
-      "evidence_state": "none",
-      "dependencies": []
+      "title": "Accounting automation research and invoice ingestion foundation",
+      "owner": "product engineering + Czech/German accounting specialists",
+      "milestone": "M1B+",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "provisional",
+      "executable": true,
+      "successor": null,
+      "last_reviewed": "2026-08-30",
+      "source_links": [
+        "plans/PLAN-INVOICE.md",
+        ".opencode/skills/market-research-evidence/SKILL.md",
+        "docs/decisions/decision-register.md",
+        "AGENTS.md"
+      ],
+      "exit_evidence": "Evidence corpus and capability matrix complete; domain interfaces/adapters spec and synthetic tests green; DEC-015 satisfied; no production activation"
     },
     {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-r-a1-production-stabilization.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "canonical cohort reproducible from authorized sources",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": null,
+      "id": "PLAN-LEGAL",
+      "kind": "plan",
       "approver": null,
       "decision_date": null,
       "decision_evidence": null,
+      "dependencies": [
+        {
+          "id": "PLAN-INFRA",
+          "gate": "evidence-only",
+          "reason": "Operating model and architecture baseline bounds legal/data-protection design"
+        },
+        {
+          "id": "PLAN-WORKERS",
+          "gate": "evidence-only",
+          "reason": "Role/data and UX discovery inform legal text and processing boundaries"
+        }
+      ],
+      "risks": [
+        "Legal requirements are advisory until M5 real-data activation",
+        "German market/competitor evidence is an input to later growth, not implementation authority"
+      ],
+      "quality_gates": [
+        "Primary-source-verified market and legal evidence",
+        "Legal compliance checklist reviewed",
+        "Activation gate and operational procedures per real-data-rules"
+      ],
+      "referenced_files": [
+        "docs/security/real-data-rules.md",
+        "docs/decisions/decision-register.md"
+      ],
+      "referenced_commands": [],
+      "title": "Data protection, legal, market, and business validation",
+      "owner": "product owner + legal",
+      "milestone": "M1A–M6",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "primary-source-verified",
+      "executable": true,
+      "successor": "M6",
+      "last_reviewed": "2026-08-30",
+      "source_links": [
+        "plans/PLAN-LEGAL.md",
+        "docs/security/real-data-rules.md",
+        "AGENTS.md"
+      ],
+      "exit_evidence": "Verified market/legal evidence, legal compliance checklist, and an activation gate with operational procedures; real-data activation remains gated"
+    },
+    {
+      "id": "PLAN-FREE-MODEL",
+      "kind": "plan",
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "dependencies": [
+        {
+          "id": "PLAN-INFRA",
+          "gate": "evidence-only",
+          "reason": "Plan operating rules bound the evaluation; this plan cannot accept PLAN-INFRA or activate a skill"
+        }
+      ],
+      "risks": [
+        "Only free-tier endpoints authorized; zero cost must be verified before any live call",
+        "429/quota exhaustion must defer, never fall back to paid models",
+        "Only strictly parsed, completed read-only commands in the capsule become read evidence"
+      ],
+      "quality_gates": [
+        "Offline logic tests, fixtures, containment, and zero-cost preflight green",
+        "Three repeated exact-read receipts per candidate with validated manifests and trace receipts",
+        "Capsule isolation prevents host/repo/Git/MCP/plugin/skill writes and reads"
+      ],
+      "referenced_files": [
+        "config/free-model-eval/policy.json",
+        "scripts/run_free_model_eval.py",
+        "src/free_model_eval/core.py",
+        "src/free_model_eval/engine.py",
+        "tests/test_free_model_eval_contracts.py",
+        "tests/test_free_model_eval_af2_protocol.py",
+        "tests/test_free_model_eval_af21_integrity.py",
+        "tests/test_free_model_eval_isolation.py"
+      ],
+      "referenced_commands": [],
+      "title": "Bounded Codex-led free-model evaluation, trace repair, and capsule isolation",
+      "owner": "primary agent; Codex integrates and accepts",
+      "milestone": "M0–M1A",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "synthetic-tested",
+      "executable": true,
+      "successor": null,
+      "last_reviewed": "2026-08-30",
+      "source_links": [
+        "plans/PLAN-FREE-MODEL.md",
+        "config/free-model-eval/policy.json",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md"
+      ],
+      "exit_evidence": "Three repeated synthetic trace/review/code-draft runs per model/control with validated receipts; no model promoted and no skill activated"
+    },
+    {
+      "id": "PLAN-HISTORY",
+      "kind": "plan",
+      "approver": null,
+      "decision_date": null,
+      "decision_evidence": null,
+      "dependencies": [],
+      "risks": [
+        "Historical context must never execute or be re-activated without a new explicit plan"
+      ],
+      "quality_gates": [
+        "Archived dated plans remain under .archive/plans/ and in git history only"
+      ],
       "referenced_files": [],
       "referenced_commands": [],
-      "id": "R",
-      "kind": "plan",
-      "title": "Plan R — A1 Production Stabilization",
-      "owner": "primary A1 production agent",
-      "milestone": "A1 operations",
-      "status": "planned",
-      "decision_state": "prototype-required",
+      "title": "Archived superseded and historical plans",
+      "owner": "primary agent (maintenance only)",
+      "milestone": "historical",
+      "status": "historical",
+      "decision_state": "not-applicable",
       "evidence_state": "none",
-      "dependencies": []
+      "executable": false,
+      "successor": "PLAN-INFRA",
+      "last_reviewed": "2026-08-30",
+      "source_links": [
+        "plans/PLAN-HISTORY.md",
+        "plans/INDEX.md",
+        "roadmap.md"
+      ],
+      "exit_evidence": "Historical context only — no execution, no promotion; successor PLAN-INFRA carries any still-relevant context"
     },
     {
       "risks": [],
@@ -611,7 +581,7 @@
       "milestone": "M0",
       "status": "accepted",
       "decision_state": "accepted",
-      "evidence_state": "none",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -636,7 +606,7 @@
       "milestone": "M1A",
       "status": "accepted",
       "decision_state": "accepted",
-      "evidence_state": "none",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -661,7 +631,7 @@
       "milestone": "M1A",
       "status": "accepted",
       "decision_state": "accepted",
-      "evidence_state": "none",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -686,7 +656,7 @@
       "milestone": "M1A",
       "status": "accepted",
       "decision_state": "accepted",
-      "evidence_state": "none",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -711,22 +681,22 @@
       "milestone": "M1A",
       "status": "accepted",
       "decision_state": "accepted",
-      "evidence_state": "none",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "ADR-001 proofs pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved ADR-001 architecture direction; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "ADR-001 proofs pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved ADR-001 architecture direction",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-006",
@@ -734,109 +704,109 @@
       "title": "Django modular-monolith baseline",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "proposed-default",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Synthetic comparison pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved django-allauth[mfa]; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "Synthetic comparison pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved all ADR-001 selected components",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-007",
       "kind": "decision",
-      "title": "MFA package",
+      "title": "django-allauth[mfa] with mandatory privileged-role TOTP",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Failure/recovery proof pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved django-q2 ORM broker; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "Failure/recovery proof pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved all ADR-001 selected components",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-008",
       "kind": "decision",
-      "title": "Background queue package",
+      "title": "django-q2 ORM-broker background queue",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Authorization/download proof pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved encrypted filesystem and authorized internal delivery; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel/sysadmin",
-      "decision_date": null,
-      "decision_evidence": "Authorization/download proof pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved direction; sysadmin validation pending",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-009",
       "kind": "decision",
-      "title": "Protected storage implementation",
+      "title": "Encrypted filesystem with authorized Nginx internal delivery",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md"
+        "docs/decisions/ADR-001-jan-portal-architecture.md"
       ],
-      "exit_evidence": "Coverage proof pending",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Pavel approved project-owned append-only AuditEvent; technical validation pending",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
-      "decision_date": null,
-      "decision_evidence": "Coverage proof pending",
+      "decision_date": "2026-08-17",
+      "decision_evidence": "Pavel approved all ADR-001 selected components",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-010",
       "kind": "decision",
-      "title": "Audit package and project-owned event boundary",
+      "title": "Project-owned append-only AuditEvent boundary",
       "owner": "product engineering",
       "milestone": "M1A",
-      "status": "active",
-      "decision_state": "prototype-required",
-      "evidence_state": "none",
+      "status": "accepted",
+      "decision_state": "accepted",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -861,7 +831,7 @@
       "milestone": "M1A",
       "status": "accepted",
       "decision_state": "not-applicable",
-      "evidence_state": "none",
+      "evidence_state": "primary-source-verified",
       "dependencies": []
     },
     {
@@ -870,13 +840,13 @@
       "source_links": [
         "docs/security/real-data-rules.md"
       ],
-      "exit_evidence": "Gate evidence incomplete",
-      "last_reviewed": "2026-08-13",
+      "exit_evidence": "Gate evidence incomplete; not ready for approval",
+      "last_reviewed": "2026-08-17",
       "executable": false,
       "successor": null,
       "approver": "Pavel",
       "decision_date": null,
-      "decision_evidence": "Gate evidence incomplete",
+      "decision_evidence": "Gate evidence incomplete; not ready for approval",
       "referenced_files": [],
       "referenced_commands": [],
       "id": "DEC-012",
@@ -885,7 +855,7 @@
       "owner": "product owner",
       "milestone": "M5",
       "status": "active",
-      "decision_state": "awaiting-pavel",
+      "decision_state": "prototype-required",
       "evidence_state": "none",
       "dependencies": []
     },
@@ -893,7 +863,7 @@
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-k-server62-readiness.md"
+        "plans/PLAN-INFRA.md"
       ],
       "exit_evidence": "Operator decision; policy reconciled in roadmap, solution brief, and real-data gate",
       "last_reviewed": "2026-08-13",
@@ -911,14 +881,14 @@
       "milestone": "M0–M5",
       "status": "accepted",
       "decision_state": "accepted",
-      "evidence_state": "none",
+      "evidence_state": "operator-verified",
       "dependencies": []
     },
     {
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-q-repository-history-reference-privacy.md"
+        "plans/PLAN-A1.md"
       ],
       "exit_evidence": "Remote refs observed at `c01aa2b`; original approval evidence not yet reconciled",
       "last_reviewed": "2026-08-13",
@@ -936,6 +906,73 @@
       "milestone": "M0",
       "status": "accepted",
       "decision_state": "accepted",
+      "evidence_state": "operator-verified",
+      "dependencies": []
+    },
+    {
+      "risks": [],
+      "quality_gates": [],
+      "source_links": [
+        "plans/PLAN-INVOICE.md",
+        "AGENTS.md",
+        "docs/decisions/decision-register.md"
+      ],
+      "exit_evidence": "Accounting-specialist boundary defined; public/synthetic in-memory proof may proceed; persistence/adapters, production implementation, and Plan PLAN-INVOICE acceptance remain specialist-gated",
+      "last_reviewed": "2026-08-14",
+      "executable": false,
+      "successor": null,
+      "approver": "accounting-specialist (role required for acceptance)",
+      "decision_date": null,
+      "decision_evidence": "Inputs defined; acceptance pending specialist sign-off",
+      "referenced_files": [
+        "plans/PLAN-INVOICE.md"
+      ],
+      "referenced_commands": [],
+      "id": "DEC-015",
+      "kind": "decision",
+      "title": "Accounting-specialist acceptance of invoice ground truth and AD implementation boundary",
+      "owner": "product engineering + Czech/German accounting specialists",
+      "milestone": "M1B",
+      "status": "active",
+      "decision_state": "prototype-required",
+      "evidence_state": "none",
+      "dependencies": [
+        {
+          "gate": "evidence-only",
+          "id": "PLAN-INVOICE",
+          "reason": "DEC-015 governs PLAN-INVOICE persistence/adapters, production implementation, and Plan acceptance"
+        }
+      ]
+    },
+    {
+      "risks": [
+        "Secondary remote or CI could be activated without reviewed credentials, runner isolation, or exact publication approval"
+      ],
+      "quality_gates": [
+        "Explicit Pavel approval before remote, credential, runner, CI, or publication mutation"
+      ],
+      "source_links": [
+        "plans/PLAN-INFRA.md",
+        "docs/decisions/decision-register.md"
+      ],
+      "exit_evidence": "Explicit approval plus verified same reviewed SHA on GitHub and GitLab",
+      "last_reviewed": "2026-08-15",
+      "executable": false,
+      "successor": null,
+      "approver": "Pavel",
+      "decision_date": null,
+      "decision_evidence": "Plan defines the proposal; explicit activation approval is not recorded",
+      "referenced_files": [
+        "plans/PLAN-INFRA.md"
+      ],
+      "referenced_commands": [],
+      "id": "DEC-016",
+      "kind": "decision",
+      "title": "GitLab secondary backup and CI activation with GitHub authoritative",
+      "owner": "primary agent",
+      "milestone": "M0",
+      "status": "active",
+      "decision_state": "proposed-default",
       "evidence_state": "none",
       "dependencies": []
     },
@@ -946,7 +983,7 @@
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "exit_evidence": "L,M,F,E,N,O,H active/planned with defined lanes",
+      "exit_evidence": "PLAN-INFRA, PLAN-WORKERS active with defined lanes",
       "last_reviewed": "2026-08-13",
       "executable": true,
       "successor": null,
@@ -961,36 +998,18 @@
       "owner": "primary agent",
       "milestone": "M1A",
       "status": "active",
-      "decision_state": "accepted",
+      "decision_state": "not-applicable",
       "evidence_state": "none",
       "dependencies": [
         {
-          "id": "L",
-          "gate": "may-be-accepted"
+          "id": "PLAN-INFRA",
+          "gate": "may-be-accepted",
+          "reason": "Consolidated foundation/prototype plan on the critical path"
         },
         {
-          "id": "M",
-          "gate": "may-be-accepted"
-        },
-        {
-          "id": "F",
-          "gate": "may-be-accepted"
-        },
-        {
-          "id": "E",
-          "gate": "may-be-accepted"
-        },
-        {
-          "id": "N",
-          "gate": "may-be-accepted"
-        },
-        {
-          "id": "O",
-          "gate": "may-be-accepted"
-        },
-        {
-          "id": "H",
-          "gate": "may-be-accepted"
+          "id": "PLAN-WORKERS",
+          "gate": "may-be-accepted",
+          "reason": "Consolidated worker/data/UX/OCR plan on the critical path"
         }
       ]
     },
@@ -1001,7 +1020,7 @@
         "roadmap.md",
         "plans/INDEX.md"
       ],
-      "exit_evidence": "G,J,K,P research/design proceed without blocking Release 1A",
+      "exit_evidence": "PLAN-LEGAL, PLAN-INFRA, PLAN-INVOICE proceed without blocking Release 1A",
       "last_reviewed": "2026-08-13",
       "executable": false,
       "successor": null,
@@ -1016,24 +1035,23 @@
       "owner": "primary agent",
       "milestone": "M1A–M1B",
       "status": "active",
-      "decision_state": "accepted",
+      "decision_state": "not-applicable",
       "evidence_state": "none",
       "dependencies": [
         {
-          "id": "G",
-          "gate": "may-begin"
+          "id": "PLAN-LEGAL",
+          "gate": "may-begin",
+          "reason": "Legal/market research proceeds without blocking Release 1A"
         },
         {
-          "id": "J",
-          "gate": "may-begin"
+          "id": "PLAN-INFRA",
+          "gate": "may-begin",
+          "reason": "Foundation work proceeds in parallel"
         },
         {
-          "id": "K",
-          "gate": "may-begin"
-        },
-        {
-          "id": "P",
-          "gate": "may-begin"
+          "id": "PLAN-INVOICE",
+          "gate": "may-begin",
+          "reason": "Public/synthetic research and ingestion proof proceed without blocking Release 1A"
         }
       ]
     },
@@ -1041,7 +1059,7 @@
       "risks": [],
       "quality_gates": [],
       "source_links": [
-        "plans/2026-08-12-plan-r-a1-production-stabilization.md",
+        "plans/PLAN-A1.md",
         "AGENTS.md"
       ],
       "exit_evidence": "canonical cohort reproducible from authorized sources",
@@ -1059,144 +1077,15 @@
       "owner": "primary A1 production agent",
       "milestone": "A1 operations",
       "status": "planned",
-      "decision_state": "prototype-required",
+      "decision_state": "not-applicable",
       "evidence_state": "none",
       "dependencies": [
         {
-          "id": "R",
-          "gate": "may-be-implemented"
+          "id": "PLAN-A1",
+          "gate": "may-be-implemented",
+          "reason": "A1 production lane runs against the consolidated PLAN-A1"
         }
       ]
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-d-product-research-and-deployment.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "decomposed into active plans; retained as reviewed handoff",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "N",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "D",
-      "kind": "plan",
-      "title": "Plan D — Product Research and Deployment (superseded)",
-      "owner": "product owner",
-      "milestone": "M1",
-      "status": "superseded",
-      "decision_state": "superseded",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-12-plan-i-marketing-and-business-validation.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "superseded as standalone M1 gate; later-growth inputs to M1B/M6",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "H",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "I",
-      "kind": "plan",
-      "title": "Plan I — Marketing and Business Validation (superseded)",
-      "owner": "product owner",
-      "milestone": "M1",
-      "status": "superseded",
-      "decision_state": "superseded",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-11-plan-b-opencode-cleanup-workflows.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "historical; retained pending Plan Q",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "L",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "B",
-      "kind": "plan",
-      "title": "Plan B — OpenCode Cleanup Workflows (historical)",
-      "owner": "primary agent",
-      "milestone": "historical",
-      "status": "historical",
-      "decision_state": "not-applicable",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-11-plan-c-opencode-research.md",
-        "plans/INDEX.md"
-      ],
-      "exit_evidence": "historical; retained pending Plan Q",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "L",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "C",
-      "kind": "plan",
-      "title": "Plan C — OpenCode Research (historical)",
-      "owner": "primary agent",
-      "milestone": "historical",
-      "status": "historical",
-      "decision_state": "not-applicable",
-      "evidence_state": "none",
-      "dependencies": []
-    },
-    {
-      "risks": [],
-      "quality_gates": [],
-      "source_links": [
-        "plans/2026-08-11-consolidated-roadmap.md",
-        "roadmap.md"
-      ],
-      "exit_evidence": "historical context only",
-      "last_reviewed": "2026-08-13",
-      "executable": false,
-      "successor": "M0",
-      "approver": null,
-      "decision_date": null,
-      "decision_evidence": null,
-      "referenced_files": [],
-      "referenced_commands": [],
-      "id": "consolidated-roadmap",
-      "kind": "plan",
-      "title": "2026-08-11 Consolidated Roadmap (historical)",
-      "owner": "primary agent",
-      "milestone": "historical",
-      "status": "historical",
-      "decision_state": "not-applicable",
-      "evidence_state": "none",
-      "dependencies": []
     }
   ]
 }

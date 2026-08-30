@@ -2,7 +2,7 @@ window.APPROVAL_REGISTER = {
   "records": [
     {
       "activation_gate": "blocked",
-      "activation_gate_reason": "DEC-012 and every real-data activation and Plan K recovery gate remain separate.",
+      "activation_gate_reason": "DEC-012 and every real-data activation and PLAN-INFRA recovery gate remain separate.",
       "approval_evidence": "Pavel approved ADR-001, Django and all listed recommended selections in the project conversation.",
       "approved_at": "2026-08-17",
       "approver": "Pavel",

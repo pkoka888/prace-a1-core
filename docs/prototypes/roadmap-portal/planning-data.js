@@ -129,38 +129,18 @@ window.PLANNING_CATALOG = {
       "title": "GitLab secondary backup and CI activation with GitHub authoritative"
     }
   ],
-  "generated_or_reviewed_at": "2026-08-16T00:00:00Z",
+  "generated_or_reviewed_at": "2026-08-30T00:00:00Z",
   "historical_or_superseded": [
     {
-      "id": "B",
+      "id": "PLAN-HISTORY",
       "status": "historical",
-      "successor": "L"
-    },
-    {
-      "id": "C",
-      "status": "historical",
-      "successor": "L"
-    },
-    {
-      "id": "D",
-      "status": "superseded",
-      "successor": "N"
-    },
-    {
-      "id": "I",
-      "status": "superseded",
-      "successor": "H"
-    },
-    {
-      "id": "consolidated-roadmap",
-      "status": "historical",
-      "successor": "M0"
+      "successor": "PLAN-INFRA"
     }
   ],
   "lanes": [
     {
       "deps": [
-        "R"
+        "PLAN-A1"
       ],
       "id": "a1-lane",
       "status": "planned",
@@ -168,13 +148,8 @@ window.PLANNING_CATALOG = {
     },
     {
       "deps": [
-        "L",
-        "M",
-        "F",
-        "E",
-        "N",
-        "O",
-        "H"
+        "PLAN-INFRA",
+        "PLAN-WORKERS"
       ],
       "id": "critical-path",
       "status": "active",
@@ -182,11 +157,9 @@ window.PLANNING_CATALOG = {
     },
     {
       "deps": [
-        "G",
-        "J",
-        "K",
-        "P",
-        "AC"
+        "PLAN-LEGAL",
+        "PLAN-INFRA",
+        "PLAN-INVOICE"
       ],
       "id": "parallel",
       "status": "active",
@@ -236,9 +209,6 @@ window.PLANNING_CATALOG = {
     }
   ],
   "missing_gate_items": [
-    "B",
-    "C",
-    "D",
     "DEC-001",
     "DEC-002",
     "DEC-003",
@@ -255,14 +225,6 @@ window.PLANNING_CATALOG = {
     "DEC-014",
     "DEC-015",
     "DEC-016",
-    "E",
-    "F",
-    "G",
-    "H",
-    "I",
-    "J",
-    "K",
-    "M",
     "M0",
     "M1A",
     "M1B",
@@ -271,403 +233,114 @@ window.PLANNING_CATALOG = {
     "M4",
     "M5",
     "M6",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
+    "PLAN-HISTORY",
     "a1-lane",
-    "consolidated-roadmap",
     "critical-path",
     "parallel"
   ],
   "plans": [
     {
       "decision_state": "prototype-required",
-      "executable": true,
-      "id": "AC",
-      "milestone": "M1B+",
-      "owner": "product engineering + Czech/German accounting specialists",
-      "sources": [
-        "plans/2026-08-13-plan-ac-accounting-automation-research.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan AC — Accounting and Invoice Automation Research"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "AD",
-      "milestone": "M1B",
-      "owner": "product engineering + Czech/German accounting specialists",
-      "sources": [
-        "plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan AD — Invoice Ingestion and Reviewed Export Foundation"
-    },
-    {
-      "decision_state": "proposed-default",
-      "executable": true,
-      "id": "AE",
-      "milestone": "M0",
-      "owner": "primary agent",
-      "sources": [
-        "plans/2026-08-14-plan-ae-repository-workflow-dual-remotes-ci-automation.md",
-        "change-packages.yml",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan AE — Repository Workflow, Dual Remotes, and CI Automation"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "AF",
-      "milestone": "M0–M1A",
-      "owner": "primary agent; Codex integrates and accepts",
-      "sources": [
-        "plans/2026-08-15-plan-af-free-model-evaluation.md",
-        "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md",
-        "docs/research/2026-08-15-free-model-provider-comparison.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan AF — Bounded Codex-Led Free-Model Evaluation"
-    },
-    {
-      "decision_state": "prototype-required",
       "executable": false,
-      "id": "AF2",
-      "milestone": "M0–M1A",
-      "owner": "primary agent; Codex integrates and accepts",
-      "sources": [
-        "plans/2026-08-15-plan-af2-free-model-trace-repair.md",
-        "plans/2026-08-15-plan-af-free-model-evaluation.md",
-        "plans/INDEX.md"
-      ],
-      "status": "blocked",
-      "title": "Plan AF2 — Exact-Manifest Trace Protocol Repair"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "AF2.1",
-      "milestone": "M0–M1A",
-      "owner": "primary agent; Codex integrates and accepts",
-      "sources": [
-        "plans/2026-08-15-plan-af2.1-evidence-integrity-repair.md",
-        "docs/research/2026-08-15-af2-free-model-trace-review-report.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan AF2.1 — Evidence-Integrity Repair"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "AF2.2",
-      "milestone": "M0–M1A",
-      "owner": "primary agent; Codex integrates and accepts",
-      "sources": [
-        "plans/2026-08-16-plan-af2.2-luna-capsule-isolation.md",
-        "docs/research/2026-08-15-af2-free-model-trace-review-report.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan AF2.2 — Luna Exact-Read Adapter and Capsule Isolation"
-    },
-    {
-      "decision_state": "not-applicable",
-      "executable": false,
-      "id": "B",
-      "milestone": "historical",
-      "owner": "primary agent",
-      "sources": [
-        "plans/2026-08-11-plan-b-opencode-cleanup-workflows.md",
-        "plans/INDEX.md"
-      ],
-      "status": "historical",
-      "title": "Plan B — OpenCode Cleanup Workflows (historical)"
-    },
-    {
-      "decision_state": "not-applicable",
-      "executable": false,
-      "id": "C",
-      "milestone": "historical",
-      "owner": "primary agent",
-      "sources": [
-        "plans/2026-08-11-plan-c-opencode-research.md",
-        "plans/INDEX.md"
-      ],
-      "status": "historical",
-      "title": "Plan C — OpenCode Research (historical)"
-    },
-    {
-      "decision_state": "superseded",
-      "executable": false,
-      "id": "D",
-      "milestone": "M1",
-      "owner": "product owner",
-      "sources": [
-        "plans/2026-08-12-plan-d-product-research-and-deployment.md",
-        "plans/INDEX.md"
-      ],
-      "status": "superseded",
-      "title": "Plan D — Product Research and Deployment (superseded)"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "E",
-      "milestone": "M1A",
-      "owner": "product engineering",
-      "sources": [
-        "plans/2026-08-12-plan-e-architecture-proofs-and-adr.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "completed",
-      "title": "Plan E — Architecture Proofs and ADR-001"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "F",
-      "milestone": "M1A",
-      "owner": "product owner",
-      "sources": [
-        "plans/2026-08-12-plan-f-jan-workflow-discovery.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan F — Jan Workflow Discovery"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "G",
-      "milestone": "M1B/M6",
-      "owner": "product research",
-      "sources": [
-        "plans/2026-08-12-plan-g-german-market-and-competitors.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan G — German Market and Competitor Research"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "H",
-      "milestone": "M1A–M3",
-      "owner": "product design",
-      "sources": [
-        "plans/2026-08-12-plan-h-ux-ui-and-copy-research.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan H — UX, UI, and Copy Research"
-    },
-    {
-      "decision_state": "superseded",
-      "executable": false,
-      "id": "I",
-      "milestone": "M1",
-      "owner": "product owner",
-      "sources": [
-        "plans/2026-08-12-plan-i-marketing-and-business-validation.md",
-        "plans/INDEX.md"
-      ],
-      "status": "superseded",
-      "title": "Plan I — Marketing and Business Validation (superseded)"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "J",
-      "milestone": "M1A–M5",
-      "owner": "product owner + legal",
-      "sources": [
-        "plans/2026-08-12-plan-j-data-protection-and-legal.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan J — Data Protection and Legal"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "K",
-      "milestone": "M0–M5",
-      "owner": "server sysadmin; product engineering verifies",
-      "sources": [
-        "plans/2026-08-12-plan-k-server62-readiness.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan K — server62 Production Readiness"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "L",
-      "milestone": "M0–M1",
-      "owner": "primary agent with Pavel approval for publication",
-      "sources": [
-        "plans/2026-08-12-plan-l-agent-operating-model.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan L — Agent, Skill, Workflow, and Git Operating Model"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": false,
-      "id": "M",
-      "milestone": "M1 and continuous",
-      "owner": "product design + engineering",
-      "sources": [
-        "plans/2026-08-12-plan-m-visual-planning-cockpit.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md",
-        "planning/catalog.json"
-      ],
-      "status": "active",
-      "title": "Plan M — Generated Visual Planning Cockpit"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "M2P",
-      "milestone": "M2",
-      "owner": "product engineering + product design",
-      "sources": [
-        "plans/2026-08-17-plan-m2-functional-prototype-sprint.md",
-        "roadmap.md",
-        "plans/INDEX.md",
-        "planning/approvals.json"
-      ],
-      "status": "active",
-      "title": "Plan M2 — Functional Release 1A Prototype Sprint"
-    },
-    {
-      "decision_state": "accepted",
-      "executable": true,
-      "id": "N",
-      "milestone": "M1A–M1B",
-      "owner": "product owner + domain research",
-      "sources": [
-        "plans/2026-08-12-plan-n-full-platform-role-and-data-discovery.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan N — Release 1A Role and Data Discovery"
-    },
-    {
-      "decision_state": "accepted",
-      "executable": true,
-      "id": "O",
-      "milestone": "M1A–M1B",
-      "owner": "product engineering",
-      "sources": [
-        "plans/2026-08-12-plan-o-database-and-transaction-architecture.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan O — Release 1A Database and Transaction Architecture"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": true,
-      "id": "P",
-      "milestone": "M1B",
-      "owner": "product engineering + payroll specialists",
-      "sources": [
-        "plans/2026-08-12-plan-p-payroll-and-finance-architecture.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
-      ],
-      "status": "active",
-      "title": "Plan P — Payroll and Finance Architecture"
-    },
-    {
-      "decision_state": "accepted",
-      "executable": false,
-      "id": "Q",
-      "milestone": "M0",
-      "owner": "primary agent; Pavel approves exact remote/destructive actions",
-      "sources": [
-        "plans/2026-08-12-plan-q-repository-history-reference-privacy.md",
-        "docs/decisions/decision-register.md",
-        "plans/INDEX.md"
-      ],
-      "status": "accepted",
-      "title": "Plan Q — Repository History, Reference, and Privacy Remediation"
-    },
-    {
-      "decision_state": "prototype-required",
-      "executable": false,
-      "id": "R",
+      "id": "PLAN-A1",
       "milestone": "A1 operations",
-      "owner": "primary A1 production agent",
+      "owner": "primary A1 production agent; operator approval required for regeneration",
       "sources": [
-        "plans/2026-08-12-plan-r-a1-production-stabilization.md",
-        "AGENTS.md",
-        "roadmap.md",
-        "plans/INDEX.md"
+        "plans/PLAN-A1.md",
+        "AGENTS.md"
       ],
-      "status": "blocked",
-      "title": "Plan R — A1 Production Stabilization"
+      "status": "active",
+      "title": "A1 production, repository history, and privacy baseline"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "PLAN-FREE-MODEL",
+      "milestone": "M0–M1A",
+      "owner": "primary agent; Codex integrates and accepts",
+      "sources": [
+        "plans/PLAN-FREE-MODEL.md",
+        "config/free-model-eval/policy.json",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md"
+      ],
+      "status": "active",
+      "title": "Bounded Codex-led free-model evaluation, trace repair, and capsule isolation"
     },
     {
       "decision_state": "not-applicable",
       "executable": false,
-      "id": "consolidated-roadmap",
+      "id": "PLAN-HISTORY",
       "milestone": "historical",
-      "owner": "primary agent",
+      "owner": "primary agent (maintenance only)",
       "sources": [
-        "plans/2026-08-11-consolidated-roadmap.md",
+        "plans/PLAN-HISTORY.md",
+        "plans/INDEX.md",
         "roadmap.md"
       ],
       "status": "historical",
-      "title": "2026-08-11 Consolidated Roadmap (historical)"
+      "title": "Archived superseded and historical plans"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "PLAN-INFRA",
+      "milestone": "M0–M2",
+      "owner": "product engineering + primary agent + server sysadmin",
+      "sources": [
+        "plans/PLAN-INFRA.md",
+        "AGENTS.md"
+      ],
+      "status": "active",
+      "title": "Architecture, operating model, planning cockpit, prototype, and infrastructure foundation"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "PLAN-INVOICE",
+      "milestone": "M1B+",
+      "owner": "product engineering + Czech/German accounting specialists",
+      "sources": [
+        "plans/PLAN-INVOICE.md",
+        ".opencode/skills/market-research-evidence/SKILL.md",
+        "docs/decisions/decision-register.md",
+        "AGENTS.md"
+      ],
+      "status": "active",
+      "title": "Accounting automation research and invoice ingestion foundation"
+    },
+    {
+      "decision_state": "prototype-required",
+      "executable": true,
+      "id": "PLAN-LEGAL",
+      "milestone": "M1A–M6",
+      "owner": "product owner + legal",
+      "sources": [
+        "plans/PLAN-LEGAL.md",
+        "docs/security/real-data-rules.md",
+        "AGENTS.md"
+      ],
+      "status": "active",
+      "title": "Data protection, legal, market, and business validation"
+    },
+    {
+      "decision_state": "accepted",
+      "executable": true,
+      "id": "PLAN-WORKERS",
+      "milestone": "M1A–M3",
+      "owner": "product owner + product design + product engineering",
+      "sources": [
+        "plans/PLAN-WORKERS.md",
+        "AGENTS.md",
+        "roadmap.md",
+        "docs/decisions/2026-08-12-jan-release-1-solution-brief.md"
+      ],
+      "status": "active",
+      "title": "Worker, role, data, UX, and OCR workflow discovery"
     }
   ],
   "release_1a_path": [
-    "L",
-    "M",
-    "F",
-    "E",
-    "N",
-    "O",
-    "H"
+    "PLAN-INFRA",
+    "PLAN-WORKERS"
   ],
   "schema_version": "1.0"
 };

@@ -48,7 +48,7 @@ It demonstrates:
 
 This is the seed of the living visual planning cockpit and remains derived,
 synthetic presentation—not application architecture, production code, or an
-independent source of status. Plan M will bind its planning views to a validated
+independent source of status. PLAN-INFRA will bind its planning views to a validated
 repository catalog. Product implementation should reproduce accepted behavior
 using Django templates and progressive enhancement rather than copying prototype
 JavaScript into production.
@@ -59,4 +59,4 @@ Authoritative sources:
 - [PRD](../../../prd.md)
 - [Decision register](../../decisions/decision-register.md)
 - [Real-data policy](../../security/real-data-rules.md)
-- [Plan M](../../../plans/2026-08-12-plan-m-visual-planning-cockpit.md)
+- [Plan PLAN-INFRA](../../../plans/PLAN-INFRA.md)
