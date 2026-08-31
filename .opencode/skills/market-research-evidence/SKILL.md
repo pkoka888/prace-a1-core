@@ -7,12 +7,12 @@ description: Deterministic market, workflow, and architecture research with evid
 
 ## Scope
 
-Czech/German invoice/accounting automation evidence gathering for Plan AC. Research-only phase — NOT implementation authority. No tax calculations, bookkeeping, or real invoice processing.
+Czech/German invoice/accounting automation evidence gathering for Plan PLAN-INVOICE. Research-only phase — NOT implementation authority. No tax calculations, bookkeeping, or real invoice processing.
 
 ## Authority and reading order
 
 1. **Read [`AGENTS.md`](../../../AGENTS.md) first.** It is the binding authority for PII handling, secrets, git staging, and provider/cost policy. This skill is subordinate to it.
-2. Then read the active plan ([Plan AC](../../../plans/2026-08-13-plan-ac-accounting-automation-research.md)) and the AD sibling ([Plan AD](../../../plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md)).
+2. Then read the governing plan ([Plan PLAN-INVOICE](../../../plans/PLAN-INVOICE.md)).
 3. Only then use the scripts and contracts below.
 
 ## Input/Output contract
