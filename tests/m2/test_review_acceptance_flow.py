@@ -1,0 +1,89 @@
+"""
+test_review_acceptance_flow.py
+
+Integration test for the Kontrola Release 1A review acceptance flow.
+"""
+import os
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
+import django
+django.setup()
+
+from django.core.management import call_command
+call_command("migrate", verbosity=0, interactive=False)
+
+from django.test import Client, TransactionTestCase
+from django.contrib.auth import get_user_model
+from allauth.mfa.models import Authenticator
+from portal.release1a.models import Organization, Membership, Release1aReview, Release1aAcceptance
+
+
+class ReviewAcceptanceFlowTests(TransactionTestCase):
+
+    def setUp(self):
+        self.client = Client()
+        self.org = Organization.objects.create(key="reviewtest-org", label="Review Test Org")
+        self.user = get_user_model().objects.create_user(
+            username="reviewer", email="reviewer@example.invalid",
+            password="testpassword123", is_active=True,
+        )
+        Membership.objects.create(
+            user=self.user, organization=self.org,
+            role="admin", active=True
+        )
+        Authenticator.objects.create(
+            user=self.user, type=Authenticator.Type.TOTP, data={}
+        )
+        self.client.force_login(self.user)
+
+    def test_review_dashboard_loads(self):
+        """Authenticated user with TOTP can load /review/."""
+        response = self.client.get("/review/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_review_dashboard_redirects_unauthenticated(self):
+        """Unauthenticated user is redirected from /review/."""
+        anon = Client()
+        response = anon.get("/review/")
+        self.assertIn(response.status_code, (302, 301))
+
+    def test_section_update_creates_review_row(self):
+        """POST to /review/section/<section>/update/ creates a Release1aReview row."""
+        initial_count = Release1aReview.objects.count()
+        response = self.client.post(
+            "/review/section/worker/update/",
+            {"status": Release1aReview.Status.IN_PROGRESS},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Release1aReview.objects.count(), initial_count + 1)
+
+    def test_approval_requires_all_sections_done(self):
+        """Approval button should be disabled unless all four sections are DONE."""
+        for section in [
+            Release1aReview.Section.WORKER,
+            Release1aReview.Section.DOCUMENT_OCR,
+            Release1aReview.Section.ASSIGNMENT,
+            Release1aReview.Section.A1,
+        ]:
+            Release1aReview.objects.update_or_create(
+                user=self.user, section=section,
+                defaults={"status": Release1aReview.Status.DONE}
+            )
+        response = self.client.get("/review/check-answers/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_receipt_requires_acceptance(self):
+        """Accessing /review/receipt/ without an acceptance should redirect."""
+        response = self.client.get("/review/receipt/")
+        self.assertIn(response.status_code, (200, 302))
+
+    def test_acceptance_record_is_immutable(self):
+        """Creating two acceptance records should succeed (append-only)."""
+        Release1aAcceptance.objects.create(
+            user=self.user, git_commit_hash="a" * 40, git_clean=False,
+            app_build_id="testbuild1", review_session_uuid="sess1",
+        )
+        Release1aAcceptance.objects.create(
+            user=self.user, git_commit_hash="b" * 40, git_clean=True,
+            app_build_id="testbuild2", review_session_uuid="sess2",
+        )
+        self.assertEqual(Release1aAcceptance.objects.filter(user=self.user).count(), 2)

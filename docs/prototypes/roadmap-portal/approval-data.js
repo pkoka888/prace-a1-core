@@ -165,6 +165,50 @@ window.APPROVAL_REGISTER = {
       "source": "docs/release-1a/unblock-review-packet.md",
       "title": "Jan Phase-1 recommended defaults",
       "validation": "passed"
+    },
+    {
+      "activation_gate": "blocked",
+      "activation_gate_reason": "Real-data portal activation requires separate authorization per real-data-rules.md.",
+      "approval_evidence": null,
+      "approved_at": null,
+      "approver": "Jan or Pavel as Jan's delegate",
+      "checks": [
+        {
+          "evidence": "Release1aAcceptance record in db",
+          "id": "REV-FRONTEND-1",
+          "label": "All four Kontrola Release 1A sections marked DONE",
+          "status": "pending"
+        },
+        {
+          "evidence": "runtime/portal/synthetic-review/readiness.json",
+          "id": "REV-FRONTEND-2",
+          "label": "Automated readiness (verify_synthetic_review_readiness.sh) passed",
+          "status": "pending"
+        },
+        {
+          "evidence": "allauth MFA Authenticator table",
+          "id": "REV-FRONTEND-3",
+          "label": "Non-superuser reviewer accounts with real TOTP enrollment",
+          "status": "pending"
+        },
+        {
+          "evidence": "Release1aAcceptance record in db",
+          "id": "REV-FRONTEND-4",
+          "label": "Immutable Release1aAcceptance receipt generated",
+          "status": "pending"
+        }
+      ],
+      "choices": [],
+      "dependencies": [],
+      "human_decision": "pending",
+      "id": "REV-1A-FRONTEND",
+      "implementation_gate": "open",
+      "implementation_gate_reason": "Awaiting Jan's completion of J1–J4 via /review/ and one Schválit Release 1A click.",
+      "owner": "product owner",
+      "scope": "J1–J4 workflow and frontend behavior observed via Kontrola Release 1A; synthetic data only; not production deployment, not real-data activation, not public recruitment site.",
+      "source": "docs/operations/release-1a-review-environment.md",
+      "title": "Release 1A frontend acceptance",
+      "validation": "pending"
     }
   ],
   "schema_version": "1.0",

@@ -73,6 +73,30 @@
       "checks": [{"id": "JAN-DEFAULTS", "label": "Fields, Czech labels, roles, states, safe scan/download, assignment and manual-submission defaults are represented with exception-only remaining inputs", "status": "passed", "evidence": "docs/architecture/release-1a-catalog.json"}],
       "dependencies": [],
       "source": "docs/release-1a/unblock-review-packet.md"
+    },
+    {
+      "id": "REV-1A-FRONTEND",
+      "title": "Release 1A frontend acceptance",
+      "scope": "J1–J4 workflow and frontend behavior observed via Kontrola Release 1A; synthetic data only; not production deployment, not real-data activation, not public recruitment site.",
+      "owner": "product owner",
+      "approver": "Jan or Pavel as Jan's delegate",
+      "human_decision": "pending",
+      "approved_at": null,
+      "approval_evidence": null,
+      "validation": "pending",
+      "implementation_gate": "open",
+      "implementation_gate_reason": "Awaiting Jan's completion of J1–J4 via /review/ and one Schválit Release 1A click.",
+      "activation_gate": "blocked",
+      "activation_gate_reason": "Real-data portal activation requires separate authorization per real-data-rules.md.",
+      "choices": [],
+      "checks": [
+        {"id": "REV-FRONTEND-1", "label": "All four Kontrola Release 1A sections marked DONE", "status": "pending", "evidence": "Release1aAcceptance record in db"},
+        {"id": "REV-FRONTEND-2", "label": "Automated readiness (verify_synthetic_review_readiness.sh) passed", "status": "pending", "evidence": "runtime/portal/synthetic-review/readiness.json"},
+        {"id": "REV-FRONTEND-3", "label": "Non-superuser reviewer accounts with real TOTP enrollment", "status": "pending", "evidence": "allauth MFA Authenticator table"},
+        {"id": "REV-FRONTEND-4", "label": "Immutable Release1aAcceptance receipt generated", "status": "pending", "evidence": "Release1aAcceptance record in db"}
+      ],
+      "dependencies": [],
+      "source": "docs/operations/release-1a-review-environment.md"
     }
   ]
 }

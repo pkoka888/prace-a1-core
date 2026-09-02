@@ -53,6 +53,15 @@ Dependencies (all recorded in `planning/catalog.json`):
   renderer/loader, and `scripts/validate_planning.py` are the single validation
   entry point.
 - **Functional prototype sprint:** Jan completes J1–J4 on a tenant-isolated
+  synthetic review environment. Access: `ssh -L 8000:127.0.0.1:8000 s62` then open
+  `http://127.0.0.1:8000/` in the browser on s62; or via a separately-approved stable
+  HTTPS review URL (Tailscale-internal, not public). Review surface at `/review/`
+  (Kontrola Release 1A) — four sections, one acceptance button. Automated readiness:
+  `scripts/verify_synthetic_review_readiness.sh` writes `runtime/portal/synthetic-review/readiness.json`.
+  Seed: `DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review scripts/seed_release1a_dev.py --apply`.
+  Activate reviewer: `python manage.py activate_reviewer --email pavel-reviewer@example.invalid`.
+  Allauth TOTP enrollment enforced (DEC-007); `Membership.mfa_verified` deprecated.
+  Accessibility: axe-core checks via `scripts/axe_check.sh`.
   synthetic vertical slice; the scaffold gate is machine-readable and bound to
   ADR-001, Release 1A slice acceptance, and Jan phase-1 defaults/exceptions.
 - **server62 readiness:** capacity, repaired edge path, monitoring, mandatory

@@ -1,0 +1,85 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Zkontrolujte fungování Release 1A{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900">Zkontrolujte fungování Release 1A</h2>
+        <p class="mt-2 text-gray-600">Zkontrolujte výsledky jednotlivých sekcí před schválením.</p>
+    </div>
+
+    <div class="bg-white shadow rounded-lg divide-y divide-gray-200 mb-6">
+        {% for section in sections %}
+        <div class="p-6 flex items-start">
+            <div class="flex-shrink-0">
+                {% if section.status == "done" %}
+                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+                    <svg class="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg></span>
+                </span>
+                {% elif section.status == "needs_change" %}
+                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
+                    <svg class="h-4 w-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg></span>
+                </span>
+                {% else %}
+                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100">
+                    <span class="text-xs text-gray-500">{{ forloop.counter }}</span>
+                </span>
+                {% endif %}
+            </div>
+            <div class="ml-4 flex-1">
+                <h3 class="text-sm font-medium text-gray-900">{{ section.label }}</h3>
+                <p class="text-sm text-gray-500">Stav: {{ section.status_display }}</p>
+                {% if section.note %}<p class="text-sm text-gray-500 mt-1">Poznámka: {{ section.note }}</p>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 class="text-sm font-semibold text-blue-900">Rozsah schválení</h3>
+        <p class="text-sm text-blue-800 mt-1">{{ scope_text }}</p>
+        <p class="text-sm text-blue-700 mt-2 font-medium">Vyloučeno z rozsahu:</p>
+        <p class="text-sm text-blue-700">{{ exclusions_text }}</p>
+    </div>
+
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+        <h3 class="text-sm font-semibold text-gray-700">Technická připravenost</h3>
+        {% if readiness_passed %}
+        <p class="text-sm text-green-700 mt-1">✅ {{ readiness_reason }}</p>
+        {% else %}
+        <p class="text-sm text-red-700 mt-1">❌ {{ readiness_reason }}</p>
+        <p class="text-xs text-gray-500 mt-1">Spusťte <code>scripts/verify_synthetic_review_readiness.sh</code> a obnovte stránku.</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <p class="text-sm text-gray-600 mb-4">Build: <code class="bg-gray-100 px-1 rounded text-xs">{{ build_id }}</code> &nbsp; Session: <code class="bg-gray-100 px-1 rounded text-xs">{{ review_session_uuid|slice:":8" }}</code> &nbsp; Prohlížeč: <code class="bg-gray-100 px-1 rounded text-xs">{{ browser_user_agent|slice:":40" }}…</code></p>
+    </div>
+
+    <div class="flex justify-between">
+        <a href="{% url 'review_dashboard' %}"
+           class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            ← Zpět
+        </a>
+        <div class="flex gap-3">
+            <form method="post" action="{% url 'review_return' %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Vrátit k úpravě
+                </button>
+            </form>
+            <form method="post" action="{% url 'review_approve' %}">
+                {% csrf_token %}
+                <input type="hidden" name="exceptions_json" value="[]">
+                <button type="submit"
+                        {% if not all_done or not readiness_passed %}disabled{% endif %}
+                        class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white {% if all_done and readiness_passed %}bg-green-600 hover:bg-green-700{% else %}bg-gray-300 cursor-not-allowed{% endif %}">
+                    Schválit Release 1A
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

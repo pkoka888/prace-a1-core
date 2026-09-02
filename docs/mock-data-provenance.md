@@ -166,3 +166,20 @@ blocked on seven Section 4 columns in the existing protected A1 CSV.
    hashes, schema, markers, references, declared paths, counts, and negative-case
    contracts fail closed. Later proof phases must additionally demonstrate that
    protected paths and real-data environment values are never read.
+
+---
+
+## 7. Synthetic Review Environment Fixtures
+
+Source: `tests/fixtures/release_1a/` (shared with architecture proof fixtures).
+
+| Aspect | Detail |
+|---|---|
+| **Loader** | `scripts/seed_release1a_dev.py` — idempotent, manifest hash verification, protected-path containment guard |
+| **Database** | `runtime/portal/synthetic-review/db.sqlite3` (gitignored) |
+| **Settings** | `portal/settings_synthetic_review.py` — `M2_SYNTHETIC_ONLY=True`, `SYNTHETIC_REVIEW_SECRET` from env |
+| **Reviewer accounts** | `jan-reviewer@example.invalid`, `pavel-reviewer@example.invalid` — inactive, activated via `manage.py activate_reviewer --email …`; individual, non-superuser |
+| **Containment** | `_protected_path_guard()` raises `ProtectedPathAccessed` for any access to `a1/`, `scans/`, `evidence/`, `ocr/`, `data/`, `employees/scans/`, `output/`, `runtime/portal/real`, `secrets/.env` |
+| **Hash verification** | `scripts/verify_synthetic_review_readiness.sh` re-checks `manifest.json` SHA-256 before counting as ready |
+| **Production swap** | Fixtures are never replaced; production data enters via authorized intake/migration after separate DEC-012 gate |
+| **Gate** | `REV-1A-FRONTEND` pending in `planning/approvals.json` |

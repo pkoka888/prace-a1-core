@@ -6,7 +6,26 @@ Dates are ISO 8601. Entries are grouped by change package per `change-packages.y
 
 ---
 
-## [Unreleased] — 2026-08-30 Planning Surface Re-model
+## [Unreleased] — 2026-09-02 Synthetic Review Environment
+
+### Added — Portal Release 1A Review Surface
+- **`portal/settings.py`**: added `CsrfViewMiddleware`, `django-allauth[mfa]` wired into `INSTALLED_APPS` + `AUTHENTICATION_BACKENDS` + `MFA_*` settings per DEC-007; `Membership.mfa_verified` deprecated (field preserved, no authorization query reads it).
+- **`portal/settings_synthetic_review.py`** (new): inherits settings, overrides `DATABASES` → `runtime/portal/synthetic-review/db.sqlite3`, requires `SYNTHETIC_REVIEW_SECRET` env var (no auto-generation).
+- **`portal/release1a/models.py`**: `Membership.mfa_verified` now silently resets to `False` on save; added `Release1aReview` (section, status, note, git/build stamps) and `Release1aAcceptance` (immutable, git hash + clean/dirty + build ID + session UUID).
+- **`portal/release1a/views.py`**: replaced all `mfa_verified=True` reads with allauth `Authenticator` TOTP check; added `/review/` dashboard, `/review/section/<section>/update/`, `/review/check-answers/`, `/review/approve/`, `/review/return/`, `/review/receipt/`, and `/reviewer_activate/<token>/`.
+- **`portal/release1a/urls.py`**: added review routes + allauth URLs.
+- **`portal/release1a/services.py`**: `require_membership` now calls `require_mfa_enrolled(user)` (allauth TOTP) before checking `Membership.active`.
+- **`portal/templates/portal/review_dashboard.html`**, **`review_check_answers.html`**, **`review_receipt.html`**, **`review_return.html`**, **`reviewer_activate.html`** (new): Czech-language review surface.
+- **`portal/release1a/management/commands/activate_reviewer.py`** (new): generates one-time invitation URLs for seeded reviewer accounts.
+- **`scripts/seed_release1a_dev.py`** (new): idempotent seeder — verifies manifest SHA-256 hashes, uses natural unique keys, `update_or_create`, creates inactive reviewer accounts (`jan-reviewer@example.invalid`, `pavel-reviewer@example.invalid`).
+- **`scripts/verify_synthetic_review_readiness.sh`** (new): runs 10 automated readiness checks, writes `runtime/portal/synthetic-review/readiness.json`.
+- **`scripts/axe_check.sh`** (new): axe-core accessibility checks.
+- **`scripts/generate_synthetic_review_secret.sh`** (new): idempotent secret generation, mode 600, never prints secret.
+- **`tests/m2/test_csrf_enforcement.py`**, **`test_totp_real_enforcement.py`**, **`test_review_acceptance_flow.py`**, **`test_synthetic_containment.py`** (new).
+- **`requirements-dev.txt`** (new): `axe-core-selenium`, `axe-playwright`, `playwright`.
+- **`plans/PLAN-INFRA.md`**, **`plans/PLAN-WORKERS.md`**, **`planning/approvals.json`** (updated): added review-environment contract, J1–J4 acceptance cross-reference, `REV-1A-FRONTEND` pending record.
+- **`roadmap.md`**: updated Now + M2 status to reflect review environment implementation.
+- **`docs/operations/release-1a-review-environment.md`** (new): runbook.
 
 ### Changed — Governance Surface
 - Consolidated 27 dated plan files and the 53-item catalog into 7 plans (`PLAN-INFRA`, `PLAN-WORKERS`, `PLAN-INVOICE`, `PLAN-LEGAL`, `PLAN-A1`, `PLAN-FREE-MODEL`, `PLAN-HISTORY`) and a 34-item `planning/catalog.json`. The dated plan files are preserved under `.archive/plans/` (context only, never executed). Decision state, evidence, approver, and decision-date records are preserved for all `DEC-001`–`DEC-016`; only the source links and dependency targets were repointed (e.g. DEC-013/DEC-016 → `plans/PLAN-INFRA.md`, DEC-014 → `plans/PLAN-A1.md`, DEC-015 → `plans/PLAN-INVOICE.md`).

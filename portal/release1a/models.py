@@ -13,6 +13,66 @@ class Membership(models.Model):
     mfa_verified = models.BooleanField(default=False)
     class Meta: constraints = [models.UniqueConstraint(fields=["user", "organization", "role"], name="unique_org_role")]
 
+    def save(self, *args, **kwargs):
+        if self.mfa_verified:
+            self.mfa_verified = False
+        super().save(*args, **kwargs)
+
+
+class Release1aReview(models.Model):
+    class Section(models.TextChoices):
+        WORKER = "worker", "Pracovník"
+        DOCUMENT_OCR = "document_ocr", "Dokument a kontrola OCR"
+        ASSIGNMENT = "assignment", "Přiřazení"
+        A1 = "a1", "Příprava a kontrola A1"
+
+    class Status(models.TextChoices):
+        NOT_STARTED = "not_started", "Nezahájeno"
+        IN_PROGRESS = "in_progress", "Rozpracováno"
+        DONE = "done", "Dokončeno"
+        NEEDS_CHANGE = "needs_change", "Vyžaduje opravu"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    section = models.CharField(max_length=24, choices=Section.choices)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NOT_STARTED)
+    note = models.TextField(blank=True, default="")
+    git_commit_at_visit = models.CharField(max_length=40, blank=True, default="")
+    app_build_id_at_visit = models.CharField(max_length=64, blank=True, default="")
+    review_session_uuid = models.CharField(max_length=36, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [["user", "section"]]
+        ordering = ["section"]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("Release1aReview is append-only; create a new record instead of updating existing.")
+        return super().save(*args, **kwargs)
+
+
+class Release1aAcceptance(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+    git_commit_hash = models.CharField(max_length=40)
+    git_clean = models.BooleanField(default=False)
+    app_build_id = models.CharField(max_length=64)
+    review_session_uuid = models.CharField(max_length=36)
+    scope_text = models.TextField(default="")
+    exclusions_text = models.TextField(default="")
+    browser_user_agent = models.TextField(blank=True, default="")
+    exceptions_json = models.TextField(default="[]")
+    is_stale = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-accepted_at"]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("Release1aAcceptance is immutable; create a new record instead of updating existing.")
+        return super().save(*args, **kwargs)
+
 class TenantModel(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
     class Meta: abstract = True

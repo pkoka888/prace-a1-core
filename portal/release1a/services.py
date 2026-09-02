@@ -1,16 +1,22 @@
 from __future__ import annotations
 from django.db import transaction
 from django.db.models import Q
+from allauth.mfa.models import Authenticator
 from prototypes.architecture.adr001.proof_contract import a1_prepare, stable_hash, validate_upload
 from .models import A1Case, Assignment, AuditEvent, Document, Membership, OcrProposal, Worker
 
 class Forbidden(Exception): pass
 class StaleWrite(Exception): pass
 
+def require_mfa_enrolled(user):
+    return Authenticator.objects.filter(user=user, type=Authenticator.Type.TOTP).exists()
+
 def require_membership(user, organization, role=None):
-    query = Membership.objects.filter(user=user, organization=organization, active=True, mfa_verified=True)
+    if not require_mfa_enrolled(user):
+        raise Forbidden("active organization membership and mandatory TOTP enrollment required")
+    query = Membership.objects.filter(user=user, organization=organization, active=True)
     if role: query = query.filter(role=role)
-    if not query.exists(): raise Forbidden("active organization membership and mandatory TOTP required")
+    if not query.exists(): raise Forbidden("active organization membership required")
 
 @transaction.atomic
 def create_worker(user, organization, **fields):

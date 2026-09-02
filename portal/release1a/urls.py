@@ -19,6 +19,13 @@ from .views import (
     a1_prepare,
     a1_case_detail,
     a1_regenerate,
+    # Review surface
+    review_dashboard,
+    review_section_update,
+    review_check_answers,
+    review_approve,
+    review_return,
+    review_receipt,
 )
 
 urlpatterns = [
@@ -45,4 +52,12 @@ urlpatterns = [
     path("workers/<int:worker_pk>/a1/prepare/", a1_prepare, name="a1_prepare"),
     path("a1/<int:pk>/", a1_case_detail, name="a1_case_detail"),
     path("a1/<int:pk>/regenerate/", a1_regenerate, name="a1_regenerate"),
+
+    # Kontrola Release 1A
+    path("review/", review_dashboard, name="review_dashboard"),
+    path("review/section/<str:section>/update/", review_section_update, name="review_section_update"),
+    path("review/check-answers/", review_check_answers, name="review_check_answers"),
+    path("review/approve/", review_approve, name="review_approve"),
+    path("review/return/", review_return, name="review_return"),
+    path("review/receipt/", review_receipt, name="review_receipt"),
 ]

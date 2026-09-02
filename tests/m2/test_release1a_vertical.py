@@ -8,6 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TransactionTestCase
+from allauth.mfa.models import Authenticator
 from portal.release1a.models import AuditEvent, Membership, Organization, OcrProposal
 from portal.release1a.services import Forbidden, create_assignment, create_worker, prepare_a1, upload_document
 
@@ -19,6 +20,7 @@ class Release1AVerticalTests(TransactionTestCase):
         self.beta = Organization.objects.create(key="synthetic-beta", label="Synthetic Beta")
         self.user = get_user_model().objects.create_user("synthetic-admin", password="synthetic-only")
         self.membership = Membership.objects.create(user=self.user, organization=self.alpha, role="jan_planner", mfa_verified=True)
+        Authenticator.objects.create(user=self.user, type=Authenticator.Type.TOTP, data={})
 
     def test_j1_to_j4_coherent_path_and_non_content_audit(self):
         worker = create_worker(self.user, self.alpha, given_name="Syntetický", family_name="Pracovník", birth_date=date(1990, 1, 1), activity_profile="employee")
@@ -32,9 +34,9 @@ class Release1AVerticalTests(TransactionTestCase):
         assert all("Syntetický" not in event.object_ref for event in AuditEvent.objects.all())
 
     def test_mandatory_mfa_tenant_denial_overlap_and_a1_ambiguity(self):
-        self.membership.mfa_verified = False; self.membership.save()
+        Authenticator.objects.filter(user=self.user).delete()
         with pytest.raises(Forbidden): create_worker(self.user, self.alpha, given_name="A", family_name="B", birth_date=date(1990,1,1), activity_profile="employee")
-        self.membership.mfa_verified = True; self.membership.save()
+        Authenticator.objects.create(user=self.user, type=Authenticator.Type.TOTP, data={})
         worker = create_worker(self.user, self.alpha, given_name="A", family_name="B", birth_date=date(1990,1,1), activity_profile="employee")
         with pytest.raises(Forbidden): upload_document(self.user, self.beta, worker, "x.pdf", "application/pdf", b"%PDF-1.4")
         create_assignment(self.user, self.alpha, worker, start=date(2026,8,1), end=date(2026,8,20), workplace_label="A", activity_label="A")

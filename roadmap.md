@@ -17,7 +17,7 @@ the first usable increment and must not wait for later module activation.
 
 | Category | Work |
 |---|---|
-| **Now** | M2 vertical slice **implemented + code reviewed** (2026-08-19): all J1–J4 journeys built in `portal/release1a/` (forms, views, templates, HTMX, tenant isolation, audit, TOTP enforcement). 10 review bugs fixed, 5 regression tests added — **495 tests pass**. Remaining: Jan observation of J1–J4 journeys. |
+| **Now** | M2 review environment **implemented** (2026-09-02): synthetic DB under `runtime/portal/synthetic-review/`, real django-allauth TOTP (DEC-007), CSRF enforcement, `Kontrola Release 1A` four-section review surface at `/review/`, hash-bound build receipts, automated readiness script `scripts/verify_synthetic_review_readiness.sh`. Jan observes J1–J4 via `/review/`; approval records are immutable. |
 | **Next on Release 1A** | Complete runnable Czech-first J1–J4 screens; observe Jan/operator journeys; collect operational exceptions. |
 | **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-LEGAL (G/J) + PLAN-INVOICE (P) research; Plan AC integrity lane (PLAN-INVOICE): Integrity 1.3 repair + Pilot 1/2; PLAN-INVOICE (Plan AD) synthetic contract; PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). |
 | **Gated** | PLAN-WORKERS (N/O) production impl waits for M1A; **PLAN-A1 (Plan R) completed** (2026-08-20) — 11 PDFs/33 previews generated, QA passed; visual review & backup cleanup pending. PLAN-INVOICE (Plan AD) persistence/acceptance waits DEC-015; portal scaffolding proceeds in M2 (synthetic only); GitLab/CI (PLAN-INFRA, formerly Plan AE/DEC-016) requires explicit approval; real data, publication, history rewrite require separate gates. |
@@ -93,12 +93,7 @@ market evidence are ready for separately gated increments.
 - Use production-shaped synthetic fixtures only; real backend values arrive later
   through configuration, migrations, or authorized intake—not fixture replacement.
 
-**Status (2026-08-19):** the vertical slice is implemented in `portal/release1a/`
-(forms, views, templates, HTMX, tenant isolation, audit, TOTP enforcement) and
-code-reviewed; 10 review bugs fixed with 5 regression tests. Full suite: 495 passed.
-Remaining for exit: Jan observes J1–J4 with synthetic data in the supported browser;
-mandatory TOTP, tenant isolation, audit, retry/idempotency, protected download,
-and accessibility checks pass.
+**Status (2026-09-02):** review environment implemented: synthetic DB at `runtime/portal/synthetic-review/db.sqlite3` (gitignored), real django-allauth TOTP enrollment and challenge (DEC-007), CSRF enforced, `Kontrola Release 1A` at `/review/` with four sections (Pracovník, Dokument a kontrola OCR, Přiřazení, Příprava a kontrola A1), one `Schválit Release 1A` button enabled only when all sections DONE and automated readiness passes. Immutable `Release1aAcceptance` receipt stamped with git commit hash + clean/dirty + build ID. Jan acceptance is one screen; automated readiness gates are machine-verified and stored in `readiness.json`. See `docs/operations/release-1a-review-environment.md`.
 
 ## M3 — Employee, document, OCR, and assignment completeness
 
@@ -148,7 +143,7 @@ failure/approval states.
 > G/J/I→PLAN-LEGAL, AF/AF2→PLAN-FREE-MODEL, B/C/D→PLAN-HISTORY. Statuses below are
 > dated records (roadmap dated 2026-08-19); authoritative status lives in `plans/INDEX.md`.
 
-- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟡 (vertical slice implemented + code reviewed 2026-08-19; awaiting Jan J1–J4 observation). Broader Plan L/M exits do not block this synthetic path.
+- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟢 (review environment implemented 2026-09-02; synthetic DB at `runtime/portal/synthetic-review/`, four-section `Kontrola Release 1A` at `/review/`, allauth TOTP enrolled, immutable receipts, `REV-1A-FRONTEND` pending Jan acceptance). Broader Plan L/M exits do not block this synthetic path.
 - **Parallel infrastructure:** Plan K 🟡 (capacity/backup evidence incomplete) + GitLab runner prep (Plan AE/DEC-016 gated).
 - **Parallel non-blocking research:** G/J/P 🟡 + broader N/O 🟡.
 - **Plan AC integrity lane:** Integrity 1.3 🟡 + synthetic replay 🟡; Pilot 1/2 required before skill activation; live capture blocked.

@@ -1,0 +1,83 @@
+{% extends "portal/base.html" %}
+{% load static %}
+
+{% block title %}Kontrola Release 1A{% endblock %}
+
+{% block extra_head %}
+<style>
+.status-not_started { background-color: #f3f4f6; color: #6b7280; }
+.status-in_progress { background-color: #fef3c7; color: #92400e; }
+.status-done { background-color: #d1fae5; color: #065f46; }
+.status-needs_change { background-color: #fee2e2; color: #991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900">Kontrola Release 1A</h2>
+        <p class="mt-2 text-gray-600">Zkontrolujte každou sekci a zaznamenejte její stav.</p>
+        <p class="mt-1 text-sm text-gray-500">Build: <code class="text-xs bg-gray-100 px-1 rounded">{{ build_id }}</code> &nbsp; Session: <code class="text-xs bg-gray-100 px-1 rounded">{{ review_session_uuid|slice:":8" }}</code></p>
+    </div>
+
+    <div class="bg-white shadow rounded-lg divide-y divide-gray-200 mb-6">
+        {% for section in sections %}
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ forloop.counter }}. {{ section.label }}</h3>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium status-{{ section.status }}">
+                        {{ section.get_status_display }}
+                    </span>
+                </div>
+                <a href="/{{ section.url }}"
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    {% if section.status == section.NOT_STARTED %}Začít{% elif section.status == section.IN_PROGRESS %}Pokračovat{% else %}Zobrazit{% endif %}
+                </a>
+            </div>
+            {% if section.note %}
+            <p class="text-sm text-gray-500 italic">Poznámka: {{ section.note }}</p>
+            {% endif %}
+
+            <div class="mt-4 flex gap-2">
+                <form method="post" action="{% url 'review_section_update' section.key %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="in_progress">
+                    <button type="submit" class="text-xs px-2 py-1 border rounded hover:bg-gray-50">Rozpracováno</button>
+                </form>
+                <form method="post" action="{% url 'review_section_update' section.key %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="done">
+                    <button type="submit" class="text-xs px-2 py-1 border border-green-300 text-green-700 rounded hover:bg-green-50">Dokončeno ✓</button>
+                </form>
+                <form method="post" action="{% url 'review_section_update' section.key %}" class="inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="needs_change">
+                    <button type="submit" class="text-xs px-2 py-1 border border-red-300 text-red-700 rounded hover:bg-red-50">Vyžaduje opravu</button>
+                </form>
+            </div>
+            <div class="mt-3">
+                <form method="post" action="{% url 'review_section_update' section.key %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="{{ section.status }}">
+                    <textarea name="note" rows="1" maxlength="500"
+                              placeholder="Poznámka k sekci (volitelné)"
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="flex justify-between items-center">
+        <a href="{% url 'dashboard' %}"
+           class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            ← Zpět na dashboard
+        </a>
+        <a href="{% url 'review_check_answers' %}"
+           class="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+            Pokračovat ke kontrole →
+        </a>
+    </div>
+</div>
+{% endblock %}
