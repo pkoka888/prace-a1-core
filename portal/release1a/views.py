@@ -99,15 +99,23 @@ def _get_build_id():
     return build_id
 
 
-def _require_mfa(user):
-    return Authenticator.objects.filter(user=user, type=Authenticator.Type.TOTP).exists()
+def _require_mfa(request):
+    """Check that the session has passed allauth TOTP challenge AND user has an enrolled device."""
+    if not request.user.is_authenticated:
+        return False
+    session_methods = request.session.get("account_authentication_methods", [])
+    if "mfa" not in session_methods:
+        return False
+    return Authenticator.objects.filter(
+        user=request.user, type=Authenticator.Type.TOTP
+    ).exists()
 
 
 def get_user_organization(request):
-    """Get the user's active organization. Requires MFA enrollment via allauth."""
+    """Get the user's active organization. Requires MFA-authenticated session."""
     if not request.user.is_authenticated:
         return None
-    if not _require_mfa(request.user):
+    if not _require_mfa(request):
         return None
     membership = Membership.objects.filter(
         user=request.user, active=True
@@ -118,17 +126,17 @@ def get_user_organization(request):
 
 
 def require_org_membership(view_func):
-    """Decorator: requires authenticated user with active org membership AND enrolled MFA."""
+    """Decorator: requires authenticated user with active org membership AND allauth TOTP session."""
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Přihlášení je vyžadováno."))
             from django.contrib.auth.views import redirect_to_login
             return redirect_to_login(request.get_full_path())
-        if not _require_mfa(request.user):
+        if not _require_mfa(request):
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Vyžadováno aktivní MFA (TOTP). Dokončete aktivaci účtu a registraci aplikace pro autentifikaci."))
-            return redirect("account_mfa_view")
+            return redirect("mfa_index")
         org = get_user_organization(request)
         if not org:
             if request.headers.get("HX-Request"):
@@ -150,6 +158,10 @@ def _readiness_passed():
         data = json.load(open(READINESS_FILE))
         if data.get("verdict") != "passed":
             return False, data.get("summary", "readiness selhalo")
+        current_build = _get_build_id()
+        stored_build = data.get("app_build_id", "")
+        if stored_build != current_build:
+            return False, f"build mismatch: readiness je pro {stored_build[:12]}, aktuální {current_build[:12]}"
         return True, data.get("summary", "OK")
     except Exception as e:
         return False, str(e)
@@ -642,11 +654,10 @@ def dashboard(request):
 # Kontrola Release 1A — Review Surface
 # =============================================================================
 
-def _get_or_create_review(user):
+def _get_or_create_review(request):
+    user = request.user
     build_id = _get_build_id()
-    session_uuid = user.socialaccount_set.first().extra_data.get("uuid", "") if user.socialaccount_set.exists() else ""
-    if not session_uuid:
-        session_uuid = str(uuid.uuid4())
+    session_uuid = str(uuid.uuid4())
     rows = {}
     for section, label, _ in REVIEW_SECTIONS:
         obj, created = Release1aReview.objects.get_or_create(
@@ -662,12 +673,9 @@ def _get_or_create_review(user):
     return rows, session_uuid
 
 
+@require_org_membership
 def review_dashboard(request):
-    if not request.user.is_authenticated:
-        from django.contrib.auth.views import redirect_to_login
-        return redirect_to_login(request.get_full_path())
-
-    review_rows, session_uuid = _get_or_create_review(request.user)
+    review_rows, session_uuid = _get_or_create_review(request)
 
     ctx = {
         "sections": [
@@ -693,10 +701,9 @@ def review_dashboard(request):
     return render(request, "portal/review_dashboard.html", ctx)
 
 
+@require_org_membership
 @require_http_methods(["POST"])
 def review_section_update(request, section):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "auth"}, status=401)
     status = request.POST.get("status", Release1aReview.Status.NOT_STARTED)
     note = request.POST.get("note", "")[:500]
 
@@ -726,7 +733,7 @@ def review_section_update(request, section):
         Release1aReview.Status.DONE: f"review.{section}.completed",
         Release1aReview.Status.NEEDS_CHANGE: f"review.{section}.needs_change",
     }
-    if status in event_map and hasattr(request, "organization"):
+    if status in event_map:
         AuditEvent.objects.create(
             organization=request.organization,
             actor_ref=f"user:{request.user.pk}",
@@ -738,12 +745,9 @@ def review_section_update(request, section):
     return JsonResponse({"status": status, "note": note})
 
 
+@require_org_membership
 def review_check_answers(request):
-    if not request.user.is_authenticated:
-        from django.contrib.auth.views import redirect_to_login
-        return redirect_to_login(request.get_full_path())
-
-    review_rows, session_uuid = _get_or_create_review(request.user)
+    review_rows, session_uuid = _get_or_create_review(request)
     all_done = all(
         r.status == Release1aReview.Status.DONE
         for r in review_rows.values()
@@ -778,12 +782,10 @@ def review_check_answers(request):
     return render(request, "portal/review_check_answers.html", ctx)
 
 
+@require_org_membership
 @require_http_methods(["POST"])
 def review_approve(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "auth"}, status=401)
-
-    review_rows, session_uuid = _get_or_create_review(request.user)
+    review_rows, session_uuid = _get_or_create_review(request)
     all_done = all(
         r.status == Release1aReview.Status.DONE
         for r in review_rows.values()
@@ -825,26 +827,22 @@ def review_approve(request):
         is_stale=False,
     )
 
-    if hasattr(request, "organization"):
-        AuditEvent.objects.create(
-            organization=request.organization,
-            actor_ref=f"user:{request.user.pk}",
-            event_type="review.acceptance.submitted",
-            object_ref=f"acceptance:{request.user.pk}",
-            outcome="success",
-        )
+    AuditEvent.objects.create(
+        organization=request.organization,
+        actor_ref=f"user:{request.user.pk}",
+        event_type="review.acceptance.submitted",
+        object_ref=f"acceptance:{request.user.pk}",
+        outcome="success",
+    )
 
     return redirect("review_receipt")
 
 
+@require_org_membership
 def review_return(request):
-    if not request.user.is_authenticated:
-        from django.contrib.auth.views import redirect_to_login
-        return redirect_to_login(request.get_full_path())
-
     if request.method == "POST":
         note = request.POST.get("note", "")[:500]
-        if note and hasattr(request, "organization"):
+        if note:
             AuditEvent.objects.create(
                 organization=request.organization,
                 actor_ref=f"user:{request.user.pk}",
@@ -857,11 +855,8 @@ def review_return(request):
     return render(request, "portal/review_return.html")
 
 
+@require_org_membership
 def review_receipt(request):
-    if not request.user.is_authenticated:
-        from django.contrib.auth.views import redirect_to_login
-        return redirect_to_login(request.get_full_path())
-
     acceptance = Release1aAcceptance.objects.filter(user=request.user).order_by("-accepted_at").first()
     if not acceptance:
         return redirect("review_dashboard")
@@ -933,7 +928,7 @@ def reviewer_activate(request, token):
 
         from django.contrib.auth import login
         login(request, user)
-        return redirect("account_mfa_deactivate_totp")  # redirect to allauth TOTP enroll
+        return redirect("mfa_deactivate_totp")  # redirect to allauth TOTP enroll
 
     if not os.path.exists(token_file):
         return render(request, "portal/reviewer_activate.html", {

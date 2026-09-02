@@ -47,8 +47,6 @@ class Release1aReview(models.Model):
         ordering = ["section"]
 
     def save(self, *args, **kwargs):
-        if self.pk:
-            raise ValueError("Release1aReview is append-only; create a new record instead of updating existing.")
         return super().save(*args, **kwargs)
 
 

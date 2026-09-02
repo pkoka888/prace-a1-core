@@ -29,7 +29,6 @@ def test_seeder_does_not_import_protected_paths():
 
 def test_seeder_protected_path_guard_raises():
     """The seeder's _protected_path_guard should raise on protected paths."""
-    # Import the guard function
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
     try:
         from seed_release1a_dev import _protected_path_guard, ProtectedPathAccessed

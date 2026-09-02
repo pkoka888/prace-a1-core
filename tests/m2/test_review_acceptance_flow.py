@@ -13,6 +13,8 @@ call_command("migrate", verbosity=0, interactive=False)
 
 from django.test import Client, TransactionTestCase
 from django.contrib.auth import get_user_model
+from django.contrib.sessions.backends.db import SessionStore
+from django.conf import settings
 from allauth.mfa.models import Authenticator
 from portal.release1a.models import Organization, Membership, Release1aReview, Release1aAcceptance
 
@@ -34,6 +36,10 @@ class ReviewAcceptanceFlowTests(TransactionTestCase):
             user=self.user, type=Authenticator.Type.TOTP, data={}
         )
         self.client.force_login(self.user)
+        s = SessionStore(session_key=self.client.session.session_key)
+        s["account_authentication_methods"] = ["mfa"]
+        s.save()
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = s.session_key
 
     def test_review_dashboard_loads(self):
         """Authenticated user with TOTP can load /review/."""

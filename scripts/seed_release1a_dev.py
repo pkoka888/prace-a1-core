@@ -9,10 +9,11 @@ Creates: organizations, workers, documents, assignments, A1 inputs, jobs,
          reviewer accounts (inactive, no usable password — activate via manage.py activate_reviewer)
 
 Usage:
-    python scripts/seed_release1a_dev.py [--dry-run] [--apply]
+    DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review python scripts/seed_release1a_dev.py --dry-run
     DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review python scripts/seed_release1a_dev.py --apply
 
 Idempotent: re-running is safe; uses update_or_create with natural unique keys.
+Dry-run: validates fixture hashes and simulates seeding without writing anything.
 """
 import hashlib
 import json
@@ -20,30 +21,8 @@ import os
 import sys
 from pathlib import Path
 
-# Protect against accidental import of wrong settings
-SETTINGS_MODULE = os.environ.get("DJANGO_SETTINGS_MODULE", "")
-if SETTINGS_MODULE not in ("portal.settings_synthetic_review", "portal.settings"):
-    print(
-        "ERROR: DJANGO_SETTINGS_MODULE must be 'portal.settings_synthetic_review' or 'portal.settings'. "
-        "Current:", SETTINGS_MODULE
-    )
-    sys.exit(1)
-
-import django
-django.setup()
-
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.db import transaction
-from allauth.mfa.models import Authenticator
-
-from portal.release1a.models import (
-    Organization, Worker, Document, Assignment, A1Case,
-    Membership, Release1aReview, Release1aAcceptance,
-)
-from portal.release1a.services import Forbidden
-
-User = get_user_model()
+REPO_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 
 FIXTURE_DIR = Path(__file__).parent.parent / "tests/fixtures/release_1a"
 PROTECTED_PATHS = {
@@ -56,6 +35,30 @@ MANIFEST_PATH = FIXTURE_DIR / "manifest.json"
 
 class ProtectedPathAccessed(Exception):
     pass
+
+
+def _setup_django():
+    SETTINGS_MODULE = os.environ.get("DJANGO_SETTINGS_MODULE", "")
+    if SETTINGS_MODULE != "portal.settings_synthetic_review":
+        print(
+            "ERROR: DJANGO_SETTINGS_MODULE must be 'portal.settings_synthetic_review'. "
+            "Current:", SETTINGS_MODULE
+        )
+        sys.exit(1)
+    import django
+    django.setup()
+    from django.conf import settings
+    from django.contrib.auth import get_user_model
+    from django.db import transaction
+    from allauth.mfa.models import Authenticator
+    from portal.release1a.models import (
+        Organization, Worker, Document, Assignment, A1Case,
+        Membership, Release1aReview, Release1aAcceptance,
+    )
+    from portal.release1a.services import Forbidden
+    global User
+    User = get_user_model()
+    return locals()
 
 
 def _hash_file(path: Path) -> str:
@@ -115,23 +118,24 @@ class Seeder:
     def _pk(self, model_class, **kwargs):
         return model_class.objects.filter(**kwargs).values_list("pk", flat=True).first()
 
-    @transaction.atomic
     def seed_all(self):
         manifest = _verify_manifest()
-        self._seed_organizations(_load_json("organizations.json"))
-        self._seed_users(_load_json("users.json"))
-        self._seed_workers(_load_json("workers.json"))
-        self._seed_documents(_load_json("documents.json"))
-        self._seed_assignments(_load_json("assignments.json"))
-        self._seed_a1_inputs(_load_json("a1_inputs.json"))
-        self._seed_jobs(_load_json("jobs.json"))
-        self._seed_reviewer_accounts()
-        self._seed_review_models()
-        self._audit_seed()
-
-        print("\nSeed complete.")
         if self.dry_run:
-            print("  --dry-run: no changes written.")
+            print("\nDry-run: manifest and fixture structure validated, no database writes.")
+            print("  Run --apply to write data (requires migrations first).")
+            return
+        with transaction.atomic():
+            self._seed_organizations(_load_json("organizations.json"))
+            self._seed_users(_load_json("users.json"))
+            self._seed_workers(_load_json("workers.json"))
+            self._seed_documents(_load_json("documents.json"))
+            self._seed_assignments(_load_json("assignments.json"))
+            self._seed_a1_inputs(_load_json("a1_inputs.json"))
+            self._seed_jobs(_load_json("jobs.json"))
+            self._seed_reviewer_accounts()
+            self._seed_review_models()
+            self._audit_seed()
+            print("\nSeed complete (--apply: changes written).")
 
     def _seed_organizations(self, rows):
         print(f"\n  Organizations: {len(rows)}")
@@ -330,9 +334,9 @@ def main():
 
     dry_run = not args.apply
 
-    # Containment: resolve protected paths to None so any accidental reference raises
-    # This is a no-op for the seed script since we don't read protected paths,
-    # but we assert the setting is set correctly.
+    ns = _setup_django()
+    settings = ns["settings"]
+
     if not settings.M2_SYNTHETIC_ONLY:
         print("ERROR: M2_SYNTHETIC_ONLY is not True. Refusing to seed.")
         sys.exit(1)
