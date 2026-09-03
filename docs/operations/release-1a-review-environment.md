@@ -156,19 +156,23 @@ When all four are **Dokončeno**, go to `/review/check-answers/`. The page shows
 - Scope and exclusions (synthetic prototype only; real-data activation excluded)
 - **Schválit Release 1A** button (enabled only if all sections DONE and readiness passed)
 
-Jan clicks **Schválit Release 1A**. An immutable `Release1aAcceptance` record is written with git commit hash, clean/dirty state, build ID, and session UUID.
+Jan clicks **Schválit Release 1A**. An immutable `Release1aAcceptance` record is written with git commit hash, clean/dirty state, build ID, and review session reference.
 
 The receipt at `/review/receipt/` shows the approval. If the server code changes after this, the receipt shows a "Schválení je zastaralé" badge — a new approval is required against the new build.
 
 ---
 
-## Step 9 — Accessibility checks (optional, for Jan's browser journey)
+## Step 9 — Accessibility checks (engineering QA gate, not Jan's approval precondition)
+
+Accessibility is an **engineering gate**, not part of Jan's approval. Run after code changes that may affect WCAG compliance:
 
 ```bash
 ./scripts/axe_check.sh
 ```
 
-Requires the review server to be running. Writes `runtime/portal/synthetic-review/axe.json`. Confirmed WCAG 2.2 A/AA violations block the approval button. Warnings and tool notices are listed in the receipt.
+Requires the review server to be running. Writes `runtime/portal/synthetic-review/axe.json`. Violations are tracked as engineering issues; they do not block Jan's approval button.
+
+Accessibility must pass before M5 real-data activation or production release.
 
 ---
 

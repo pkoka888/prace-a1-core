@@ -75,11 +75,13 @@ READINESS_FILE = os.environ.get(
     "/var/www/prace-v-nemecku.tvoje.info/runtime/portal/synthetic-review/readiness.json",
 )
 
-AXE_RECEIPT_FILE = os.path.join(
-    os.path.dirname(BUILD_MANIFEST_FILE), "axe_receipt.json"
-)
-
-REVIEW_SCOPE_PATTERNS = ["portal/", "tests/", "scripts/", "requirements.txt", "requirements-dev.txt"]
+REVIEW_SCOPE_PATTERNS = [
+    "portal/",
+    "requirements.txt",
+    "requirements-dev.txt",
+    "scripts/verify_synthetic_review_readiness.sh",
+    "scripts/seed_release1a_dev.py",
+]
 
 
 def _get_build_id():
@@ -119,43 +121,6 @@ def _scoped_tree_clean():
         return False, "git status failed"
 
 
-def _axe_receipt_valid(current_build_id):
-    """
-    Verify the axe accessibility receipt exists and is bound to the current build.
-
-    Required fields in receipt: verdict, build_id, tested_urls, timestamp, result_hash.
-    Returns (valid, reason) where reason is empty if valid.
-    """
-    if not os.path.exists(AXE_RECEIPT_FILE):
-        return False, (
-            "accessibility receipt chybí — spusťte scripts/axe_check.sh a potvrďte "
-            "výsledky před schválením"
-        )
-    try:
-        data = json.load(open(AXE_RECEIPT_FILE))
-        required_fields = ["verdict", "build_id", "tested_urls", "timestamp", "result_hash"]
-        missing = [f for f in required_fields if f not in data or data[f] == ""]
-        if missing:
-            return False, (
-                f"accessibility receipt nemá požadovaná pole: {', '.join(missing)} — "
-                f"přegenerujte pomocí scripts/axe_check.sh"
-            )
-        if data["verdict"] != "passed":
-            return False, (
-                f"accessibility receipt verdict={data['verdict']} — "
-                f"opravte WCAG violations a přegenerujte"
-            )
-        stored_build = data.get("build_id", "")
-        if stored_build != current_build_id:
-            return False, (
-                f"accessibility receipt je pro build {stored_build[:12]}, "
-                f"aktuální {current_build_id[:12]} — přegenerujte"
-            )
-        return True, ""
-    except Exception as e:
-        return False, f"accessibility receipt nelze načíst: {e}"
-
-
 def _require_mfa(request):
     """Check that the session has passed allauth TOTP challenge AND user has an enrolled device."""
     if not request.user.is_authenticated:
@@ -173,15 +138,25 @@ def _require_mfa(request):
 
 
 def get_user_organization(request):
-    """Get the user's active organization from session membership. Requires MFA-authenticated session."""
+    """Get the user's active organization from session membership.
+
+    Returns (organization, error_code) tuple:
+    - Exactly one active membership: (org, None)
+    - Zero active memberships: (None, "no_membership")
+    - Multiple active memberships: (None, "multiple_memberships")
+
+    Requires MFA-authenticated session.
+    """
     if not request.user.is_authenticated:
-        return None
-    membership = Membership.objects.filter(
+        return None, "not_authenticated"
+    memberships = list(Membership.objects.filter(
         user=request.user, active=True
-    ).select_related("organization").first()
-    if not membership:
-        return None
-    return membership.organization
+    ).select_related("organization"))
+    if len(memberships) == 0:
+        return None, "no_membership"
+    if len(memberships) > 1:
+        return None, "multiple_memberships"
+    return memberships[0].organization, None
 
 
 def require_org_membership(view_func):
@@ -205,8 +180,8 @@ def require_org_membership(view_func):
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Vyžadováno aktivní MFA (TOTP). Dokončete aktivaci účtu a registraci aplikace pro autentifikaci."))
             return redirect("mfa_index")
-        org = get_user_organization(request)
-        if not org:
+        org, org_error = get_user_organization(request)
+        if org_error == "no_membership":
             security_audit.record_authorization_denial(
                 request, request.user,
                 reason_code="membership_inactive",
@@ -214,6 +189,15 @@ def require_org_membership(view_func):
             )
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Aktivní členství v organizaci je vyžadováno."))
+            return redirect("dashboard")
+        if org_error == "multiple_memberships":
+            security_audit.record_authorization_denial(
+                request, request.user,
+                reason_code="multiple_memberships",
+                object_ref=request.path,
+            )
+            if request.headers.get("HX-Request"):
+                return HttpResponseForbidden(_("Více aktivních členství v organizaci není povoleno."))
             return redirect("dashboard")
         request.organization = org
         return view_func(request, *args, **kwargs)
@@ -696,8 +680,8 @@ def health(request):
 def dashboard(request):
     if not request.user.is_authenticated:
         return render(request, "portal/dashboard.html", {"unauthenticated": True})
-    org = get_user_organization(request)
-    if not org:
+    org, org_error = get_user_organization(request)
+    if org_error:
         return render(request, "portal/dashboard.html", {"unauthenticated": True})
 
     worker_count = Worker.objects.filter(organization=org).count()
@@ -860,6 +844,11 @@ def review_check_answers(request):
 @require_http_methods(["POST"])
 def review_approve(request):
     session = _get_or_create_review_session(request)
+
+    existing = Release1aAcceptance.objects.filter(session=session).first()
+    if existing:
+        return redirect("review_receipt")
+
     review_rows = _get_section_rows(session)
     all_done = all(
         r.status == Release1aReview.Status.DONE

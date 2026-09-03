@@ -92,6 +92,12 @@ class Release1aAcceptance(models.Model):
 
     class Meta:
         ordering = ["-accepted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["session"],
+                name="unique_acceptance_per_session"
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.pk:
