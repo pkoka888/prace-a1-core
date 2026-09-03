@@ -49,7 +49,7 @@ PYTEST_VERSION=$($PYTEST --version 2>/dev/null | head -1 || echo "not installed"
 
 # Build ID: sha256(commit:settings_module:requirements_lock_hash)[:16]
 # Derived from the committed state only — reproducible across clean clones.
-APP_BUILD_ID=$(REPO_ROOT="$REPO_ROOT" DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review $PYTEST_BIN -c "
+APP_BUILD_ID=$(REPO_ROOT="$REPO_ROOT" SYNTHETIC_REVIEW_SECRET="$(cat "$REPO_ROOT/secrets/synthetic_review.key")" DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review $PYTEST_BIN -c "
 import hashlib, sys, os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'portal.settings_synthetic_review'
 import django; django.setup()
