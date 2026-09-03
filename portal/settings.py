@@ -48,6 +48,7 @@ ACCOUNT_LOGIN_METHODS = {"email", "username"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_ADAPTER = "portal.release1a.adapters.InvitationOnlyAccountAdapter"
 
 MFA_ADAPTER = "allauth.mfa.adapter.DefaultMFAAdapter"
 MFA_FORMS = {

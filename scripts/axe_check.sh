@@ -11,6 +11,8 @@
 #
 # Blocking: serious or critical WCAG violations.
 # Non-blocking: notices (minor / null impact).
+# Credentials are supplied by the operator through gitignored secrets or the
+# environment. Never put a reviewer identity, password, or TOTP seed here.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -21,6 +23,10 @@ BUILD_MANIFEST="$REPO_ROOT/runtime/portal/synthetic-review/build_manifest.json"
 
 mkdir -p "$(dirname "$AXE_RECEIPT")"
 cd "$REPO_ROOT"
+
+: "${AXE_REVIEWER_LOGIN:?Set AXE_REVIEWER_LOGIN from a gitignored synthetic-test secret}"
+: "${AXE_REVIEWER_PASSWORD:?Set AXE_REVIEWER_PASSWORD from a gitignored synthetic-test secret}"
+: "${AXE_REVIEWER_TOTP_SECRET:?Set AXE_REVIEWER_TOTP_SECRET from a gitignored synthetic-test secret}"
 
 # ── Build ID ─────────────────────────────────────────────────────────────────
 APP_BUILD_ID="$(SYNTHETIC_REVIEW_SECRET="$(cat "$REPO_ROOT/secrets/synthetic_review.key")" "$PYTEST" -c "
@@ -85,18 +91,7 @@ import sys
 import os
 import time
 
-REPO_ROOT = '/var/www/prace-v-nemecku.tvoje.info'
-sys.path.insert(0, REPO_ROOT)
-os.environ['DJANGO_SETTINGS_MODULE'] = 'portal.settings_synthetic_review'
-os.environ['SYNTHETIC_REVIEW_SECRET'] = open(f'{REPO_ROOT}/secrets/synthetic_review.key').read().strip()
-
 from playwright.sync_api import sync_playwright
-from django.contrib.auth import get_user_model
-
-import django
-django.setup()
-
-User = get_user_model()
 
 BASE = 'http://127.0.0.1:8000'
 
@@ -109,21 +104,12 @@ AXE_CDN = (
 results = {}
 all_passed = True
 
-# Authenticate via real login flow
-ADMIN_EMAIL = 'pav.kaspar@gmail.com'
-ADMIN_PASSWORD = 'temp123'  # User-set password, not SYNTHETIC_REVIEW_SECRET
-
-# Get TOTP secret from admin user
-try:
-    admin = User.objects.get(email=ADMIN_EMAIL)
-    from allauth.mfa.models import Authenticator
-    totp_auth = Authenticator.objects.get(user=admin, type=Authenticator.Type.TOTP)
-    import pyotp
-    totp_secret = totp_auth.data['secret']
-except Exception as e:
-    print(f"ERROR: Could not get TOTP secret: {e}")
-    import sys
-    sys.exit(1)
+# Authenticate via a dedicated synthetic test account. Values are inherited
+# from the operator's environment and are never written to a receipt or log.
+ADMIN_EMAIL = os.environ["AXE_REVIEWER_LOGIN"]
+ADMIN_PASSWORD = os.environ["AXE_REVIEWER_PASSWORD"]
+totp_secret = os.environ["AXE_REVIEWER_TOTP_SECRET"]
+import pyotp
 
 with sync_playwright() as p:
     browser = p.chromium.launch()

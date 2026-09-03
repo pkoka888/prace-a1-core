@@ -1,0 +1,13 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Registrace je uzavřena | Práce v Německu{% endblock %}
+
+{% block content %}
+<section class="max-w-md mx-auto py-8" aria-labelledby="signup-closed-heading">
+    <div class="bg-white shadow rounded-lg p-6 sm:p-8">
+        <h2 id="signup-closed-heading" class="text-2xl font-semibold text-gray-900">Registrace je uzavřena</h2>
+        <p class="mt-3 text-sm text-gray-600">Přístup do tohoto prostředí je pouze na pozvání operátora.</p>
+        <a href="{% url 'account_login' %}" class="mt-6 inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Přejít na přihlášení</a>
+    </div>
+</section>
+{% endblock %}

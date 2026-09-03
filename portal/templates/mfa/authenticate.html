@@ -1,0 +1,29 @@
+{% extends "portal/base.html" %}
+{% load i18n %}
+
+{% block title %}Ověření TOTP | Práce v Německu{% endblock %}
+
+{% block content %}
+<section class="max-w-md mx-auto py-8" aria-labelledby="mfa-heading">
+    <div class="bg-white shadow rounded-lg p-6 sm:p-8">
+        <h2 id="mfa-heading" class="text-2xl font-semibold text-gray-900">Dvoufázové ověření</h2>
+        <p class="mt-2 text-sm text-gray-600">Zadejte šestimístný kód z aplikace pro ověřování.</p>
+        <form method="post" action="{% url 'mfa_authenticate' %}" class="mt-6 space-y-5">
+            {% csrf_token %}
+            {% for field in form.visible_fields %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ field.label }}</label>
+                <div class="mt-1 auth-field">{{ field }}</div>
+                {% for error in field.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+            </div>
+            {% endfor %}
+            {% for error in form.non_field_errors %}<p class="text-sm text-red-700">{{ error }}</p>{% endfor %}
+            <button type="submit" class="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Ověřit a přihlásit</button>
+        </form>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<style>.auth-field input:not([type="checkbox"]) { width: 100%; border: 1px solid #d1d5db; border-radius: .375rem; padding: .5rem .75rem; } .auth-field input[type="checkbox"] { height: 1rem; width: 1rem; } .auth-field input:focus { outline: 2px solid #2563eb; outline-offset: 2px; }</style>
+{% endblock %}
