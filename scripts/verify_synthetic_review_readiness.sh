@@ -23,9 +23,9 @@ cd "$REPO_ROOT"
 # Clean-commit policy: readiness is only valid from a fully committed working tree.
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo "unknown")"
 
-# Review-scope paths: portal code, tests, scripts, dependency files, and config.
-# Excludes: research/, .archive/, and other non-review artifacts.
-SCOPE_PATTERNS="portal/ tests/ scripts/ requirements.txt requirements-dev.txt"
+# Review-scope paths: portal code, dependency files, and runtime scripts only.
+# Excludes: tests/, research/, axe_check.sh, and other engineering QA artifacts.
+SCOPE_PATTERNS="portal/ requirements.txt requirements-dev.txt scripts/verify_synthetic_review_readiness.sh scripts/seed_release1a_dev.py"
 
 # Check tracked file modifications in scope
 SCOPED_CHANGES="$(git status --porcelain $SCOPE_PATTERNS 2>/dev/null | grep -v '^?? ' || true)"
