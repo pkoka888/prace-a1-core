@@ -61,6 +61,13 @@ an agent could make here are privacy/cost/command mistakes, not coding ones.
   ```bash
   venv/bin/python -m pytest -q
   ```
+- **Script Python version consistency**: All shell scripts that invoke Python must use the venv
+  interpreter consistently. Define `PYTHON_BIN` or `PYTEST` at script top:
+  ```bash
+  PYTHON_BIN="$(cd "$(dirname "$0")/.." && pwd)/venv/bin/python"
+  ```
+  Use `$PYTHON_BIN` (not bare `python`, `python3`, or `venv/bin/python`). Exceptions:
+  - JSON-only parsing that does not import Django does not require venv Python.
 - **`A1_PRIVATE_DIR` is mandatory for A1 work.** Scripts fail closed if unset. Set it to the repo root so the gitignored `a1/`, `scans/`, `evidence/`, `ocr/` inputs resolve:
   ```bash
   export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"

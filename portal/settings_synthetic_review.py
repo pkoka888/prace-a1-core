@@ -36,4 +36,17 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "testserver",
     "prace-v-nemecku-internal.tvoje.info",
+    "prace-v-nemecku.tvoje.info",
+    "192.168.1.62",
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://prace-v-nemecku.tvoje.info",
+    "https://prace-v-nemecku-internal.tvoje.info",
+]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+LOGIN_REDIRECT_URL = "/review/"
+
+MFA_TOTP_TOLERANCE = 1

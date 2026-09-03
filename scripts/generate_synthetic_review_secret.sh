@@ -6,7 +6,9 @@
 # - Never prints the secret itself.
 set -euo pipefail
 
-SECRET_FILE="$(cd "$(dirname "$0")/.." && pwd)/secrets/synthetic_review.key"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PYTHON_BIN="$REPO_ROOT/venv/bin/python"
+SECRET_FILE="$REPO_ROOT/secrets/synthetic_review.key"
 SHA256_FILE="${SECRET_FILE}.sha256"
 
 if [[ -f "$SECRET_FILE" ]]; then
@@ -20,7 +22,7 @@ SECRET_DIR="$(dirname "$SECRET_FILE")"
 mkdir -p "$SECRET_DIR"
 chmod 700 "$SECRET_DIR"
 
-SECRET=$(python3 -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
+SECRET=$("$PYTHON_BIN" -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())")
 echo "$SECRET" > "$SECRET_FILE"
 chmod 600 "$SECRET_FILE"
 
