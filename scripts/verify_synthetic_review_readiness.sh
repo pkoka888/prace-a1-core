@@ -107,7 +107,7 @@ run_check "secrets_present" "[ -f '$REPO_ROOT/secrets/synthetic_review.key' ]"
 
 # Check: M2_SYNTHETIC_ONLY is True in synthetic_review settings
 run_check "synthetic_only_gate" "
-    DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review $PYTEST_BIN -c '
+    DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review SYNTHETIC_REVIEW_SECRET=\$(cat '$REPO_ROOT/secrets/synthetic_review.key') $PYTEST_BIN -c '
 import django; django.setup()
 from django.conf import settings
 assert getattr(settings, \"M2_SYNTHETIC_ONLY\", False), \"M2_SYNTHETIC_ONLY not True\"
