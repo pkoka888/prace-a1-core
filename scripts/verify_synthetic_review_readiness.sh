@@ -56,9 +56,8 @@ import django; django.setup()
 from django.conf import settings
 commit = '$GIT_COMMIT'
 req_lock = ''
-req_lock_path = os.path.join(os.path.dirname(__file__), '..', 'requirements.txt')
 try:
-    with open(req_lock_path) as f:
+    with open('$REPO_ROOT/requirements.txt') as f:
         req_lock = f.read()
 except Exception:
     pass
