@@ -79,3 +79,61 @@ Dependencies (all recorded in `planning/catalog.json`):
 asset is current, referenced files/commands resolve, and every external mutation
 (remote, CI, credential, runner, server62 activation) carries its own explicit
 approval record.
+
+## M2 Sprint Status (2026-09-03)
+
+### Completed
+
+| # | Item | Evidence |
+|---|---|---|
+| M2-01 | Migration 0003 with `SeparateDatabaseAndState` + `RunSQL`, `user` FK PROTECT | Applies cleanly; `makemigrations --check` clean |
+| M2-02 | `Release1aAcceptance` model: `organization` and `session` FKs PROTECT | Model + migration |
+| M2-03 | `Release1aReviewSession` model | Model + migration 0003 |
+| M2-04 | `AuthAuditEvent` model + migration 0004 | Append-only auth event table |
+| M2-05 | `security_audit.py` service | Fail-closed, opaque refs, `_session_ref()` safe |
+| M2-06 | `signals.py`: `authenticator_used`, `authentication_failed`, `authenticator_added` wired | All three handlers connected |
+| M2-07 | `on_authenticator_added` session sync | Updates `account_authentication_methods` in session after TOTP enrollment |
+| M2-08 | `MFA_FORMS` path fix | `settings.py` |
+| M2-09 | `ACCOUNT_LOGIN_METHODS` / `ACCOUNT_SIGNUP_FIELDS` fix | `settings.py` |
+| M2-10 | `/login/` → `/accounts/login/` redirect | `urls.py` |
+| M2-11 | Build identity: `app_build_id = sha256(commit:settings_module:requirements_hash)[:16]` | `views.py` |
+| M2-12 | Clean-commit policy in readiness script | `verify_synthetic_review_readiness.sh` |
+| M2-13 | Scoped clean-tree check (portal/tests/scripts only) | `verify_synthetic_review_readiness.sh` |
+| M2-14 | Axe informational-only in readiness script; axe receipt required as explicit approval gate | `verify_synthetic_review_readiness.sh` + `views.py:_axe_receipt_valid` |
+| M2-15 | `pyotp` → `requirements-dev.txt` | Dev-only dependency |
+| M2-16 | All 58 M2 tests pass (41 original + 8 migration regression + 9 schema) | `tests/m2/` |
+| M2-17 | `test_full_onboarding_flow` — real HTTP post onboarding | `tests/m2/test_reviewer_onboarding.py` |
+| M2-18 | 14 M2 test regressions fixed | `test_views.py`, `test_review_fixes.py` |
+
+### Pending
+
+| # | Item | Blocker |
+|---|---|---|
+| M2-19 | Commit changes | None — ready |
+| M2-20 | `REV-1A-FRONTEND` — Jan acceptance of J1–J4 | Jan/operator observation |
+| M2-21 | server62 capacity/backup evidence | Sysadmin |
+| M2-22 | GitLab/CI activation | `DEC-016` explicit Pavel approval |
+| M2-23 | Accessibility violations scan | Fixed — `review_approve()` requires `axe_receipt.json` bound to current build ID |
+
+### Key Findings
+
+- **allauth `authenticator_added` not connected**: allauth defines the signal but
+  has no internal handler that updates `account_authentication_methods` in the session.
+  Our `on_authenticator_added` handler fills this gap.
+- **Django test client `logout()` uses GET**: `client.get('/accounts/logout/')` follows
+  the 302 redirect, creating a new session in the test client. Use POST for tests
+  that need to verify subsequent auth state.
+- **`is_mfa_enabled()` reads DB not session**: allauth's stage controller uses the DB
+  authenticator table to decide whether to show MFA challenge, but uses session's
+  `account_authentication_methods` to decide which stages to activate on a given login
+  attempt. Both must be satisfied.
+- **4 independent-review blockers resolved** (2026-09-03):
+  1. Multi-org migration safety — Pass 1 cardinality check before any org use in 0003.
+  2. Real migration-executor tests — `test_migration_from_0002.py` schema verification + `test_migration_0003.py` behavioral tests.
+  3. Accessibility as approval gate — `review_approve()` requires `axe_receipt.json` bound to build ID.
+  4. Scoped clean-build at approval time — `review_approve()` re-verifies scoped tree with `_scoped_tree_clean()`.
+
+### Status Reports
+
+- Previous: `plans/RELEASE-1A-REVIEW-STATUS-2026-09-02.md` (superseded)
+- Current: `plans/RELEASE-1A-REVIEW-STATUS-2026-09-03.md`
