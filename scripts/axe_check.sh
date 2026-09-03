@@ -23,14 +23,15 @@ mkdir -p "$(dirname "$AXE_RECEIPT")"
 cd "$REPO_ROOT"
 
 # ── Build ID ─────────────────────────────────────────────────────────────────
-APP_BUILD_ID="$("$PYTEST" -c "
+APP_BUILD_ID="$(SYNTHETIC_REVIEW_SECRET="$(cat "$REPO_ROOT/secrets/synthetic_review.key")" "$PYTEST" -c "
 import hashlib, os, sys
 sys.path.insert(0, '$REPO_ROOT')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'portal.settings_synthetic_review'
+os.environ['SYNTHETIC_REVIEW_SECRET'] = os.environ.get('SYNTHETIC_REVIEW_SECRET', '')
 import django; django.setup()
 from django.conf import settings
-commit = open('$REPO_ROOT/.git/refs/heads/$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)').read().strip() if False else '$(
-    git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown
+commit = '$(
+    git -C \"$REPO_ROOT\" rev-parse HEAD 2>/dev/null || echo unknown
 )'
 req_lock = ''
 try:
