@@ -49,15 +49,16 @@ PYTEST_VERSION=$($PYTEST --version 2>/dev/null | head -1 || echo "not installed"
 
 # Build ID: sha256(commit:settings_module:requirements_lock_hash)[:16]
 # Derived from the committed state only — reproducible across clean clones.
-APP_BUILD_ID=$(DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review $PYTEST_BIN -c "
+APP_BUILD_ID=$(REPO_ROOT="$REPO_ROOT" DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review $PYTEST_BIN -c "
 import hashlib, sys, os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'portal.settings_synthetic_review'
 import django; django.setup()
 from django.conf import settings
 commit = '$GIT_COMMIT'
 req_lock = ''
+req_lock_path = os.path.join(os.environ.get('REPO_ROOT', '.'), 'requirements.txt')
 try:
-    with open('$REPO_ROOT/requirements.txt') as f:
+    with open(req_lock_path) as f:
         req_lock = f.read()
 except Exception:
     pass
