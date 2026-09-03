@@ -3,10 +3,15 @@
 # Runs automated readiness checks for the synthetic review environment.
 # Writes deterministic verdict to runtime/portal/synthetic-review/readiness.json.
 # Does NOT run pytest inside a Django request — runs as a standalone script.
+#
+# Scope: all files that affect the review environment's behavior, including
+# portal code, tests, scripts, dependency files, and configuration.
+# Research artifacts in unrelated directories are excluded.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REVIEW_DIR="$REPO_ROOT/runtime/portal/synthetic-review"
+BUILD_MANIFEST_FILE="${REVIEW_DIR}/build_manifest.json"
 READINESS_FILE="${REVIEW_DIR}/readiness.json"
 PYTEST_BIN="$REPO_ROOT/venv/bin/python"
 PYTEST="$PYTEST_BIN -m pytest"
@@ -15,23 +20,50 @@ mkdir -p "$REVIEW_DIR"
 cd "$REPO_ROOT"
 
 # Gather build identity — must match _get_build_id() in views.py
+# Clean-commit policy: readiness is only valid from a fully committed working tree.
 GIT_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo "unknown")"
-GIT_DIRTY="$(git status --porcelain 2>/dev/null | grep -v '^??' | wc -l | tr -d ' ')"
-GIT_CLEAN=$([ "$GIT_DIRTY" -eq 0 ] && echo "true" || echo "false")
+
+# Review-scope paths: portal code, tests, scripts, dependency files, and config.
+# Excludes: research/, .archive/, and other non-review artifacts.
+SCOPE_PATTERNS="portal/ tests/ scripts/ requirements.txt requirements-dev.txt"
+
+# Check tracked file modifications in scope
+SCOPED_CHANGES="$(git status --porcelain $SCOPE_PATTERNS 2>/dev/null | grep -v '^?? ' || true)"
+# Check untracked files in scope (new files in scoped directories)
+UNTRACKED_IN_SCOPE="$(git status --porcelain $SCOPE_PATTERNS 2>/dev/null | grep '^?? ' || true)"
+
+if [ -n "$SCOPED_CHANGES" ] || [ -n "$UNTRACKED_IN_SCOPE" ]; then
+    echo "ERROR: Working tree has uncommitted changes in review scope." >&2
+    echo "Readiness and Jan approval are only allowed from a clean committed checkout." >&2
+    echo "Review scope: $SCOPE_PATTERNS" >&2
+    echo "Commit your changes before running this script." >&2
+    echo "" >&2
+    echo "Scoped changes:" >&2
+    git status --porcelain $SCOPE_PATTERNS >&2
+    exit 1
+fi
+
+GIT_CLEAN="true"
 
 PYTEST_VERSION=$($PYTEST --version 2>/dev/null | head -1 || echo "not installed")
 
-# Build ID: sha256(commit:dirty_flag:settings_module:python_version)[:16]
-# Must match _get_build_id() in portal/release1a/views.py
+# Build ID: sha256(commit:settings_module:requirements_lock_hash)[:16]
+# Derived from the committed state only — reproducible across clean clones.
 APP_BUILD_ID=$(DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review $PYTEST_BIN -c "
 import hashlib, sys, os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'portal.settings_synthetic_review'
 import django; django.setup()
 from django.conf import settings
 commit = '$GIT_COMMIT'
-dirty = 'dirty' if $GIT_DIRTY -gt 0 else 'clean'
+req_lock = ''
+req_lock_path = os.path.join(os.path.dirname(__file__), '..', 'requirements.txt')
+try:
+    with open(req_lock_path) as f:
+        req_lock = f.read()
+except Exception:
+    pass
 build_id = hashlib.sha256(
-    f'{commit}:{dirty}:{settings.SETTINGS_MODULE}:{sys.version}'.encode()
+    f'{commit}:{settings.SETTINGS_MODULE}:{hashlib.sha256(req_lock.encode()).hexdigest()}'.encode()
 ).hexdigest()[:16]
 print(build_id)
 " 2>/dev/null || echo "unknown")
@@ -144,13 +176,15 @@ run_check "m2_integration_tests" "
     $PYTEST -q tests/m2/test_csrf_enforcement.py tests/m2/test_totp_real_enforcement.py tests/m2/test_synthetic_containment.py tests/m2/test_review_acceptance_flow.py 2>/dev/null
 "
 
-# Check: axe script exists
+# ── Accessibility ─────────────────────────────────────────────────────────────
+# axe-core checks are a mandatory pre-Jan gate but require a running server
+# with an authenticated session (J1–J4 screens are behind require_org_membership).
+# The automated check here is informational only — it verifies that tooling
+# is installed but does NOT scan protected pages or fail on violations.
+# Full accessibility validation requires a separate Playwright-based scan with
+# authenticated sessions; see scripts/axe_check.sh.
 run_check "axe_script_exists" "[ -f '$REPO_ROOT/scripts/axe_check.sh' ]"
-
-# Check: axe requirements installed (playwright)
-run_check "axe_deps_installed" "
-    $PYTEST_BIN -c 'import playwright' 2>/dev/null
-"
+run_check "axe_deps_installed" "$PYTEST_BIN -c 'import playwright' 2>/dev/null"
 
 VERDICT="passed"
 if [ $FAILED -gt 0 ]; then
@@ -158,6 +192,16 @@ if [ $FAILED -gt 0 ]; then
 fi
 
 SUMMARY="$PASSED passed, $FAILED failed"
+
+# Write build manifest — read by the application as the authoritative build identity
+cat > "$BUILD_MANIFEST_FILE" <<EOF
+{
+  "git_commit": "$GIT_COMMIT",
+  "git_clean": $GIT_CLEAN,
+  "app_build_id": "$APP_BUILD_ID",
+  "generated_at": "$(date -Iseconds)"
+}
+EOF
 
 cat > "$READINESS_FILE" <<EOF
 {

@@ -11,27 +11,40 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
 import django
 django.setup()
 
+
 from datetime import date
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
 from django.test import Client, TransactionTestCase
+from allauth.mfa.models import Authenticator
 from portal.release1a.models import (
     AuditEvent, Membership, OcrProposal, Organization, Worker,
 )
 from portal.release1a.forms import AssignmentForm
 from portal.release1a.services import create_worker, prepare_a1, upload_document
 
-call_command("migrate", verbosity=0, interactive=False)
-
-
 class ReviewFixRegressionTests(TransactionTestCase):
 
     def setUp(self):
         self.org = Organization.objects.create(key="review-fix-alpha", label="Review Fix Alpha")
         self.user = get_user_model().objects.create_user("reviewfix", password="x")
-        Membership.objects.create(user=self.user, organization=self.org, role="op", active=True, mfa_verified=True)
+        Membership.objects.create(user=self.user, organization=self.org, role="op", active=True)
+        Authenticator.objects.create(
+            user=self.user,
+            type=Authenticator.Type.TOTP,
+            data={"secret": "JBSWY3DPEHPK3PXP"},
+        )
         self.client = Client()
         self.client.force_login(self.user)
+        # Set up allauth session auth methods so views pass MFA check
+        import time
+        from django.contrib.sessions.backends.db import SessionStore
+        sk = self.client.session.session_key
+        s = SessionStore(session_key=sk)
+        s["account_authentication_methods"] = [
+            {"method": "password", "at": int(time.time())},
+            {"method": "mfa", "type": "totp", "at": int(time.time())},
+        ]
+        s.save()
 
     def test_worker_delete_with_a1_case_returns_denied_not_500(self):
         """worker with related A1Case must not 500 (ProtectedError handled)."""

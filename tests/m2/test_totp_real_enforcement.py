@@ -8,8 +8,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
 import django
 django.setup()
 
-from django.core.management import call_command
-call_command("migrate", verbosity=0, interactive=False)
 
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model

@@ -44,17 +44,17 @@ AUTHENTICATION_BACKENDS = [
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
-ACCOUNT_AUTHENTICATION_METHOD = "username_email"
-ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_LOGIN_METHODS = {"email", "username"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 
 MFA_ADAPTER = "allauth.mfa.adapter.DefaultMFAAdapter"
 MFA_FORMS = {
-    "authenticate": "allauth.mfa.forms.AuthenticateForm",
-    "reauthenticate": "allauth.mfa.forms.ReauthenticateForm",
-    "activate_totp": "allauth.mfa.forms.ActivateTOTPForm",
-    "deactivate": "allauth.mfa.forms.DeactivateForm",
+    "authenticate": "allauth.mfa.base.forms.AuthenticateForm",
+    "reauthenticate": "allauth.mfa.base.forms.ReauthenticateForm",
+    "activate_totp": "allauth.mfa.totp.forms.ActivateTOTPForm",
+    "deactivate": "allauth.mfa.totp.forms.DeactivateTOTPForm",
 }
 MFA_SUPPORTED_TYPES = ["totp"]
 MFA_TOTP_PERIOD = 30

@@ -3,16 +3,14 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
 import django
 django.setup()
 
+
 from datetime import date
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
 from django.test import TransactionTestCase
 from allauth.mfa.models import Authenticator
 from portal.release1a.models import AuditEvent, Membership, Organization, OcrProposal
 from portal.release1a.services import Forbidden, create_assignment, create_worker, prepare_a1, upload_document
-
-call_command("migrate", verbosity=0, interactive=False)
 
 class Release1AVerticalTests(TransactionTestCase):
     def setUp(self):

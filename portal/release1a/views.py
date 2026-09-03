@@ -31,8 +31,10 @@ from .models import (
     AuditEvent,
     Membership,
     Release1aReview,
+    Release1aReviewSession,
     Release1aAcceptance,
 )
+from . import security_audit
 from .services import (
     create_worker,
     upload_document,
@@ -63,40 +65,95 @@ REVIEW_EXCLUSIONS_TEXT = (
     "infrastrukturu, veřejné nasazení portálu nebo aktivaci A1 v produkčním režimu."
 )
 
+BUILD_MANIFEST_FILE = os.environ.get(
+    "REVIEW_BUILD_MANIFEST_PATH",
+    "/var/www/prace-v-nemecku.tvoje.info/runtime/portal/synthetic-review/build_manifest.json",
+)
+
 READINESS_FILE = os.environ.get(
     "REVIEW_READINESS_PATH",
     "/var/www/prace-v-nemecku.tvoje.info/runtime/portal/synthetic-review/readiness.json",
 )
 
-BUILD_ID_FILE = os.environ.get(
-    "REVIEW_BUILD_ID_PATH",
-    "/var/www/prace-v-nemecku.tvoje.info/runtime/portal/synthetic-review/build_id.txt",
+AXE_RECEIPT_FILE = os.path.join(
+    os.path.dirname(BUILD_MANIFEST_FILE), "axe_receipt.json"
 )
+
+REVIEW_SCOPE_PATTERNS = ["portal/", "tests/", "scripts/", "requirements.txt", "requirements-dev.txt"]
 
 
 def _get_build_id():
-    if os.path.exists(BUILD_ID_FILE):
-        return open(BUILD_ID_FILE).read().strip()
+    """Read build identity from the manifest written by the readiness script. No caching."""
     try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
-        ).strip()
-        dirty = (
-            "dirty" if subprocess.check_output(
-                ["git", "status", "--porcelain"], text=True, stderr=subprocess.DEVNULL
-            ).strip()
-            else "clean"
-        )
-        import sys
-        build_id = sha256(
-            f"{commit}:{dirty}:{sys.modules['portal.settings'].SETTINGS_MODULE}:{sys.version}".encode()
-        ).hexdigest()[:16]
+        if os.path.exists(BUILD_MANIFEST_FILE):
+            data = json.load(open(BUILD_MANIFEST_FILE))
+            return data.get("app_build_id", "unknown")
     except Exception:
-        build_id = "unknown"
-    os.makedirs(os.path.dirname(BUILD_ID_FILE), exist_ok=True)
-    with open(BUILD_ID_FILE, "w") as fh:
-        fh.write(build_id)
-    return build_id
+        pass
+    return "unknown"
+
+
+def _scoped_tree_clean():
+    """
+    Re-verify that the review-scope tree is clean at approval time.
+
+    Returns (clean, detail) where detail is empty if clean, otherwise a
+    description of what changed.
+    """
+    try:
+        tracked = subprocess.check_output(
+            ["git", "status", "--porcelain", "--"] + REVIEW_SCOPE_PATTERNS,
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+        untracked_out = subprocess.check_output(
+            ["git", "ls-files", "--others", "--exclude-standard", "--"] + REVIEW_SCOPE_PATTERNS,
+            text=True, stderr=subprocess.DEVNULL,
+        ).strip()
+        if tracked or untracked_out:
+            detail = "\n".join(
+                filter(None, [tracked, "# Untracked:", untracked_out])
+            )
+            return False, detail
+        return True, ""
+    except subprocess.CalledProcessError:
+        return False, "git status failed"
+
+
+def _axe_receipt_valid(current_build_id):
+    """
+    Verify the axe accessibility receipt exists and is bound to the current build.
+
+    Required fields in receipt: verdict, build_id, tested_urls, timestamp, result_hash.
+    Returns (valid, reason) where reason is empty if valid.
+    """
+    if not os.path.exists(AXE_RECEIPT_FILE):
+        return False, (
+            "accessibility receipt chybí — spusťte scripts/axe_check.sh a potvrďte "
+            "výsledky před schválením"
+        )
+    try:
+        data = json.load(open(AXE_RECEIPT_FILE))
+        required_fields = ["verdict", "build_id", "tested_urls", "timestamp", "result_hash"]
+        missing = [f for f in required_fields if f not in data or data[f] == ""]
+        if missing:
+            return False, (
+                f"accessibility receipt nemá požadovaná pole: {', '.join(missing)} — "
+                f"přegenerujte pomocí scripts/axe_check.sh"
+            )
+        if data["verdict"] != "passed":
+            return False, (
+                f"accessibility receipt verdict={data['verdict']} — "
+                f"opravte WCAG violations a přegenerujte"
+            )
+        stored_build = data.get("build_id", "")
+        if stored_build != current_build_id:
+            return False, (
+                f"accessibility receipt je pro build {stored_build[:12]}, "
+                f"aktuální {current_build_id[:12]} — přegenerujte"
+            )
+        return True, ""
+    except Exception as e:
+        return False, f"accessibility receipt nelze načíst: {e}"
 
 
 def _require_mfa(request):
@@ -104,7 +161,11 @@ def _require_mfa(request):
     if not request.user.is_authenticated:
         return False
     session_methods = request.session.get("account_authentication_methods", [])
-    if "mfa" not in session_methods:
+    mfa_passed = any(
+        isinstance(r, dict) and r.get("method") == "mfa"
+        for r in session_methods
+    )
+    if not mfa_passed:
         return False
     return Authenticator.objects.filter(
         user=request.user, type=Authenticator.Type.TOTP
@@ -112,10 +173,8 @@ def _require_mfa(request):
 
 
 def get_user_organization(request):
-    """Get the user's active organization. Requires MFA-authenticated session."""
+    """Get the user's active organization from session membership. Requires MFA-authenticated session."""
     if not request.user.is_authenticated:
-        return None
-    if not _require_mfa(request):
         return None
     membership = Membership.objects.filter(
         user=request.user, active=True
@@ -126,7 +185,11 @@ def get_user_organization(request):
 
 
 def require_org_membership(view_func):
-    """Decorator: requires authenticated user with active org membership AND allauth TOTP session."""
+    """Decorator: requires authenticated user with active org membership AND allauth TOTP session.
+
+    Records authorization denials via security_audit (loop-protected).
+    Anonymous redirects to login are not recorded (ordinary auth-required behavior).
+    """
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             if request.headers.get("HX-Request"):
@@ -134,11 +197,21 @@ def require_org_membership(view_func):
             from django.contrib.auth.views import redirect_to_login
             return redirect_to_login(request.get_full_path())
         if not _require_mfa(request):
+            security_audit.record_authorization_denial(
+                request, request.user,
+                reason_code="mfa_required",
+                object_ref=request.path,
+            )
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Vyžadováno aktivní MFA (TOTP). Dokončete aktivaci účtu a registraci aplikace pro autentifikaci."))
             return redirect("mfa_index")
         org = get_user_organization(request)
         if not org:
+            security_audit.record_authorization_denial(
+                request, request.user,
+                reason_code="membership_inactive",
+                object_ref=request.path,
+            )
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Aktivní členství v organizaci je vyžadováno."))
             return redirect("dashboard")
@@ -654,28 +727,34 @@ def dashboard(request):
 # Kontrola Release 1A — Review Surface
 # =============================================================================
 
-def _get_or_create_review(request):
-    user = request.user
+def _get_or_create_review_session(request):
+    """Find or create a review session for (user, org, build_id). Section rows are created lazily."""
     build_id = _get_build_id()
-    session_uuid = str(uuid.uuid4())
+    session, _ = Release1aReviewSession.objects.get_or_create(
+        user=request.user,
+        organization=request.organization,
+        build_id=build_id,
+    )
+    return session
+
+
+def _get_section_rows(session):
+    """Get or create section rows for a session."""
     rows = {}
-    for section, label, _ in REVIEW_SECTIONS:
-        obj, created = Release1aReview.objects.get_or_create(
-            user=user, section=section,
-            defaults={
-                "status": Release1aReview.Status.NOT_STARTED,
-                "git_commit_at_visit": build_id[:12],
-                "app_build_id_at_visit": build_id,
-                "review_session_uuid": session_uuid,
-            }
+    for section_key, _, _ in REVIEW_SECTIONS:
+        row, _ = Release1aReview.objects.get_or_create(
+            session=session,
+            section=section_key,
+            defaults={"status": Release1aReview.Status.NOT_STARTED},
         )
-        rows[section] = obj
-    return rows, session_uuid
+        rows[section_key] = row
+    return rows
 
 
 @require_org_membership
 def review_dashboard(request):
-    review_rows, session_uuid = _get_or_create_review(request)
+    session = _get_or_create_review_session(request)
+    review_rows = _get_section_rows(session)
 
     ctx = {
         "sections": [
@@ -695,7 +774,7 @@ def review_dashboard(request):
                 (Release1aReview.Section.A1, "Příprava a kontrola A1", "workers/"),
             ]
         ],
-        "review_session_uuid": session_uuid,
+        "review_session_pk": session.pk,
         "build_id": _get_build_id(),
     }
     return render(request, "portal/review_dashboard.html", ctx)
@@ -715,17 +794,11 @@ def review_section_update(request, section):
     if section not in valid_sections:
         return JsonResponse({"error": "invalid_section"}, status=400)
 
-    build_id = _get_build_id()
-    session_uuid = str(uuid.uuid4())
+    session = _get_or_create_review_session(request)
     obj, _ = Release1aReview.objects.update_or_create(
-        user=request.user, section=section,
-        defaults={
-            "status": status,
-            "note": note,
-            "git_commit_at_visit": build_id[:12],
-            "app_build_id_at_visit": build_id,
-            "review_session_uuid": session_uuid,
-        }
+        session=session,
+        section=section,
+        defaults={"status": status, "note": note},
     )
 
     event_map = {
@@ -747,7 +820,8 @@ def review_section_update(request, section):
 
 @require_org_membership
 def review_check_answers(request):
-    review_rows, session_uuid = _get_or_create_review(request)
+    session = _get_or_create_review_session(request)
+    review_rows = _get_section_rows(session)
     all_done = all(
         r.status == Release1aReview.Status.DONE
         for r in review_rows.values()
@@ -776,7 +850,7 @@ def review_check_answers(request):
         "scope_text": REVIEW_SCOPE_TEXT,
         "exclusions_text": REVIEW_EXCLUSIONS_TEXT,
         "build_id": _get_build_id(),
-        "review_session_uuid": session_uuid,
+        "review_session_pk": session.pk,
         "browser_user_agent": request.headers.get("User-Agent", ""),
     }
     return render(request, "portal/review_check_answers.html", ctx)
@@ -785,41 +859,52 @@ def review_check_answers(request):
 @require_org_membership
 @require_http_methods(["POST"])
 def review_approve(request):
-    review_rows, session_uuid = _get_or_create_review(request)
+    session = _get_or_create_review_session(request)
+    review_rows = _get_section_rows(session)
     all_done = all(
         r.status == Release1aReview.Status.DONE
         for r in review_rows.values()
     )
-    readiness_passed, _ = _readiness_passed()
+    readiness_passed, readiness_reason = _readiness_passed()
+
+    build_id = _get_build_id()
+    scoped_clean, scoped_detail = _scoped_tree_clean()
 
     if not all_done or not readiness_passed:
         return JsonResponse(
-            {"error": "preconditions not met"}, status=400
+            {"error": "preconditions not met", "detail": readiness_reason}, status=400
         )
 
-    try:
-        exceptions = json.loads(request.POST.get("exceptions_json", "[]"))
-    except Exception:
-        exceptions = []
+    if not scoped_clean:
+        return JsonResponse(
+            {
+                "error": "tree not clean at approval time — commit scoped changes first",
+                "detail": scoped_detail,
+            }, status=400
+        )
 
-    build_id = _get_build_id()
+    exceptions = [
+        {"section": key, "note": row.note}
+        for key, row in review_rows.items()
+        if row.note
+    ]
+
     try:
         git_commit = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
         ).strip()
-        git_clean = not subprocess.check_output(
-            ["git", "status", "--porcelain"], text=True, stderr=subprocess.DEVNULL
-        ).strip()
+        git_clean = True
     except Exception:
         git_commit = "unknown"
         git_clean = False
 
     Release1aAcceptance.objects.create(
         user=request.user,
+        organization=request.organization,
+        session=session,
         git_commit_hash=git_commit,
         git_clean=git_clean,
         app_build_id=build_id,
-        review_session_uuid=session_uuid,
         scope_text=REVIEW_SCOPE_TEXT,
         exclusions_text=REVIEW_EXCLUSIONS_TEXT,
         browser_user_agent=request.headers.get("User-Agent", ""),
@@ -857,7 +942,12 @@ def review_return(request):
 
 @require_org_membership
 def review_receipt(request):
-    acceptance = Release1aAcceptance.objects.filter(user=request.user).order_by("-accepted_at").first()
+    acceptance = (
+        Release1aAcceptance.objects
+        .filter(user=request.user, organization=request.organization)
+        .order_by("-accepted_at")
+        .first()
+    )
     if not acceptance:
         return redirect("review_dashboard")
 
@@ -926,9 +1016,9 @@ def reviewer_activate(request, token):
         open(token_file, "w").write(json.dumps(payload))
         os.chmod(token_file, 0o600)
 
-        from django.contrib.auth import login
-        login(request, user)
-        return redirect("mfa_deactivate_totp")  # redirect to allauth TOTP enroll
+        from django.contrib.auth import logout
+        logout(request)
+        return redirect("mfa_activate_totp")  # redirect to allauth TOTP enrollment
 
     if not os.path.exists(token_file):
         return render(request, "portal/reviewer_activate.html", {

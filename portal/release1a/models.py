@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.db import models
 
+
 class Organization(models.Model):
     key = models.SlugField(unique=True)
     label = models.CharField(max_length=120)
+
 
 class Membership(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -11,12 +13,34 @@ class Membership(models.Model):
     role = models.CharField(max_length=32)
     active = models.BooleanField(default=True)
     mfa_verified = models.BooleanField(default=False)
-    class Meta: constraints = [models.UniqueConstraint(fields=["user", "organization", "role"], name="unique_org_role")]
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "organization", "role"],
+                name="unique_org_role"
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.mfa_verified:
             self.mfa_verified = False
         super().save(*args, **kwargs)
+
+
+class Release1aReviewSession(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    build_id = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "organization", "build_id"],
+                name="unique_user_org_build"
+            )
+        ]
 
 
 class Release1aReview(models.Model):
@@ -32,18 +56,20 @@ class Release1aReview(models.Model):
         DONE = "done", "Dokončeno"
         NEEDS_CHANGE = "needs_change", "Vyžaduje opravu"
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    session = models.ForeignKey(Release1aReviewSession, on_delete=models.CASCADE)
     section = models.CharField(max_length=24, choices=Section.choices)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.NOT_STARTED)
     note = models.TextField(blank=True, default="")
-    git_commit_at_visit = models.CharField(max_length=40, blank=True, default="")
-    app_build_id_at_visit = models.CharField(max_length=64, blank=True, default="")
-    review_session_uuid = models.CharField(max_length=36, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [["user", "section"]]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["session", "section"],
+                name="unique_session_section"
+            )
+        ]
         ordering = ["section"]
 
     def save(self, *args, **kwargs):
@@ -51,12 +77,13 @@ class Release1aReview(models.Model):
 
 
 class Release1aAcceptance(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
+    session = models.ForeignKey(Release1aReviewSession, on_delete=models.PROTECT)
     accepted_at = models.DateTimeField(auto_now_add=True)
     git_commit_hash = models.CharField(max_length=40)
     git_clean = models.BooleanField(default=False)
     app_build_id = models.CharField(max_length=64)
-    review_session_uuid = models.CharField(max_length=36)
     scope_text = models.TextField(default="")
     exclusions_text = models.TextField(default="")
     browser_user_agent = models.TextField(blank=True, default="")
@@ -122,5 +149,19 @@ class AuditEvent(TenantModel):
     class Meta: ordering = ["id"]
     def save(self, *args, **kwargs):
         if self.pk: raise ValueError("AuditEvent is append-only")
+        return super().save(*args, **kwargs)
+
+
+class AuthAuditEvent(models.Model):
+    event_type = models.CharField(max_length=80)
+    outcome = models.CharField(max_length=20)
+    actor_ref = models.CharField(max_length=80, blank=True, default="")
+    organization_id = models.IntegerField(null=True, blank=True)
+    object_ref = models.CharField(max_length=100, blank=True, default="")
+    reason_code = models.CharField(max_length=40, blank=True, default="")
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    class Meta: ordering = ["id"]
+    def save(self, *args, **kwargs):
+        if self.pk: raise ValueError("AuthAuditEvent is append-only")
         return super().save(*args, **kwargs)
 

@@ -4,3 +4,4 @@ pytest-django>=4.5.0
 axe-core-selenium>=4.9.0
 axe-playwright>=0.1.0
 playwright>=1.40.0
+pyotp==2.9.0

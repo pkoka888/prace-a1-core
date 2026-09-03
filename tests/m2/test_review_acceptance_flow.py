@@ -3,20 +3,30 @@ test_review_acceptance_flow.py
 
 Integration test for the Kontrola Release 1A review acceptance flow.
 """
+import json
 import os
+import tempfile
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
+os.environ.setdefault("REVIEW_BUILD_MANIFEST_PATH", tempfile.mktemp(suffix=".json"))
+
 import django
 django.setup()
 
-from django.core.management import call_command
-call_command("migrate", verbosity=0, interactive=False)
 
 from django.test import Client, TransactionTestCase
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
 from django.conf import settings
 from allauth.mfa.models import Authenticator
-from portal.release1a.models import Organization, Membership, Release1aReview, Release1aAcceptance
+from portal.release1a.models import (
+    Organization, Membership, Release1aReview,
+    Release1aReviewSession, Release1aAcceptance,
+)
+
+
+with open(os.environ["REVIEW_BUILD_MANIFEST_PATH"], "w") as f:
+    json.dump({"app_build_id": "testbuild123", "git_commit": "a" * 40, "git_clean": True}, f)
 
 
 class ReviewAcceptanceFlowTests(TransactionTestCase):
@@ -36,10 +46,17 @@ class ReviewAcceptanceFlowTests(TransactionTestCase):
             user=self.user, type=Authenticator.Type.TOTP, data={}
         )
         self.client.force_login(self.user)
-        s = SessionStore(session_key=self.client.session.session_key)
-        s["account_authentication_methods"] = ["mfa"]
+        session_key = self.client.session.session_key
+        s = SessionStore(session_key=session_key)
+        s["account_authentication_methods"] = [
+            {"method": "password"},
+            {"method": "mfa", "type": "totp"},
+        ]
         s.save()
-        self.client.cookies[settings.SESSION_COOKIE_NAME] = s.session_key
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = session_key
+        self.review_session = Release1aReviewSession.objects.create(
+            user=self.user, organization=self.org, build_id="testbuild123"
+        )
 
     def test_review_dashboard_loads(self):
         """Authenticated user with TOTP can load /review/."""
@@ -71,7 +88,7 @@ class ReviewAcceptanceFlowTests(TransactionTestCase):
             Release1aReview.Section.A1,
         ]:
             Release1aReview.objects.update_or_create(
-                user=self.user, section=section,
+                session=self.review_session, section=section,
                 defaults={"status": Release1aReview.Status.DONE}
             )
         response = self.client.get("/review/check-answers/")
@@ -84,12 +101,15 @@ class ReviewAcceptanceFlowTests(TransactionTestCase):
 
     def test_acceptance_record_is_immutable(self):
         """Creating two acceptance records should succeed (append-only)."""
-        Release1aAcceptance.objects.create(
-            user=self.user, git_commit_hash="a" * 40, git_clean=False,
-            app_build_id="testbuild1", review_session_uuid="sess1",
+        session2 = Release1aReviewSession.objects.create(
+            user=self.user, organization=self.org, build_id="testbuild2"
         )
         Release1aAcceptance.objects.create(
-            user=self.user, git_commit_hash="b" * 40, git_clean=True,
-            app_build_id="testbuild2", review_session_uuid="sess2",
+            user=self.user, organization=self.org, session=self.review_session,
+            git_commit_hash="a" * 40, git_clean=False, app_build_id="testbuild1",
+        )
+        Release1aAcceptance.objects.create(
+            user=self.user, organization=self.org, session=session2,
+            git_commit_hash="b" * 40, git_clean=True, app_build_id="testbuild2",
         )
         self.assertEqual(Release1aAcceptance.objects.filter(user=self.user).count(), 2)

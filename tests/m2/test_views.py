@@ -1,20 +1,42 @@
 """M2 Sprint tests — View-layer validation for J1–J4 journeys."""
 import os
+import time
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
 import django
 django.setup()
 
+
 from datetime import date
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
+from django.contrib.sessions.backends.db import SessionStore
 from django.test import Client, TransactionTestCase
+from allauth.mfa.models import Authenticator
 from portal.release1a.models import (
     AuditEvent, Membership, Organization, Worker,
     Document, OcrProposal, Assignment, A1Case
 )
 
-call_command("migrate", verbosity=0, interactive=False)
+def _mfa_login(client, user):
+    """
+    Perform a Django login and set allauth session state so that
+    require_org_membership passes MFA check without a real TOTP code.
+    Creates a TOTP Authenticator for the user if one does not exist.
+    """
+    client.login(username=user.username, password="test-m2")
+    sk = client.session.session_key
+    if not Authenticator.objects.filter(user=user, type=Authenticator.Type.TOTP).exists():
+        Authenticator.objects.create(
+            user=user,
+            type=Authenticator.Type.TOTP,
+            data={"secret": "JBSWY3DPEHPK3PXP"},
+        )
+    s = SessionStore(session_key=sk)
+    s["account_authentication_methods"] = [
+        {"method": "password", "at": int(time.time())},
+        {"method": "mfa", "type": "totp", "at": int(time.time())},
+    ]
+    s.save()
 
 
 class M2ViewTests(TransactionTestCase):
@@ -26,7 +48,7 @@ class M2ViewTests(TransactionTestCase):
         self.user = get_user_model().objects.create_user("m2user", password="test-m2")
         self.membership = Membership.objects.create(
             user=self.user, organization=self.org_alpha,
-            role="jan_planner", mfa_verified=True
+            role="jan_planner"
         )
         self.client = Client()
 
@@ -45,20 +67,20 @@ class M2ViewTests(TransactionTestCase):
 
     def test_j1_worker_list_authenticated(self):
         """J1: Worker list shows correctly when authenticated."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         response = self.client.get("/workers/")
         self.assertEqual(response.status_code, 200)
 
     def test_j1_worker_create_form_get(self):
         """J1: Worker create form renders."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         response = self.client.get("/workers/new/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "form")
 
     def test_j1_worker_create_post_success(self):
         """J1: Worker create POST creates worker + audit event."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         data = {
             "family_name": "TestWorker",
             "given_name": "Jan",
@@ -76,7 +98,7 @@ class M2ViewTests(TransactionTestCase):
 
     def test_j1_worker_create_post_validation_error(self):
         """J1: Worker create POST with invalid data shows errors."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         data = {
             "family_name": "",  # Empty
             "given_name": "",
@@ -103,7 +125,7 @@ class M2ViewTests(TransactionTestCase):
 
     def test_j3_assignment_create_form_get(self):
         """J3: Assignment create form renders."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         worker = Worker.objects.create(
             organization=self.org_alpha,
             given_name="Test", family_name="Worker",
@@ -115,7 +137,7 @@ class M2ViewTests(TransactionTestCase):
 
     def test_j4_a1_prepare_form_get(self):
         """J4: A1 prepare form renders."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         worker = Worker.objects.create(
             organization=self.org_alpha,
             given_name="Test", family_name="Worker",
@@ -127,7 +149,7 @@ class M2ViewTests(TransactionTestCase):
 
     def test_tenant_isolation_in_views(self):
         """Tenant isolation: cross-org access returns 404."""
-        self.client.login(username="m2user", password="test-m2")
+        _mfa_login(self.client, self.user)
         worker_beta = Worker.objects.create(
             organization=self.org_beta,
             given_name="Beta", family_name="Worker",
@@ -143,6 +165,13 @@ class M2ViewTests(TransactionTestCase):
         from portal.release1a.services import (
             create_worker, upload_document, create_assignment, prepare_a1
         )
+        # Ensure user has a TOTP authenticator (service functions require MFA)
+        if not Authenticator.objects.filter(user=self.user, type=Authenticator.Type.TOTP).exists():
+            Authenticator.objects.create(
+                user=self.user,
+                type=Authenticator.Type.TOTP,
+                data={"secret": "JBSWY3DPEHPK3PXP"},
+            )
 
         worker = create_worker(
             self.user, self.org_alpha,
