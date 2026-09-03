@@ -42,6 +42,14 @@ an agent could make here are privacy/cost/command mistakes, not coding ones.
 - OCR/model output is always a proposal until an authorized human confirms it.
   Apply retention review and the 90-day pilot default from the real-data policy;
   record justified extensions or legal holds rather than silently retaining data.
+- **Commit or push completion claims must be validated from the resulting Git object,
+  not from a dirty working tree.** For scoped implementation work, verify that no intended
+  scoped paths remain modified or untracked, inspect `git diff-tree HEAD`, and run the
+  relevant checks from an exported HEAD snapshot. Working-tree test results are not
+  evidence that the commit is complete.
+- **Migration transition tests must use Django historical app states through
+  MigrationExecutor**; do not simulate prior migration states by manually dropping or
+  recreating columns.
 
 ## Environment & commands
 - Python 3.13, dependencies pinned in `requirements.txt`. Set up once:

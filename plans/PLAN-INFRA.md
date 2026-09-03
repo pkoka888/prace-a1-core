@@ -61,7 +61,7 @@ Dependencies (all recorded in `planning/catalog.json`):
   Seed: `DJANGO_SETTINGS_MODULE=portal.settings_synthetic_review scripts/seed_release1a_dev.py --apply`.
   Activate reviewer: `python manage.py activate_reviewer --email pavel-reviewer@example.invalid`.
   Allauth TOTP enrollment enforced (DEC-007); `Membership.mfa_verified` deprecated.
-  Accessibility: axe-core checks via `scripts/axe_check.sh`.
+  Accessibility: axe-core checks via `scripts/axe_check.sh` (engineering QA gate, not Jan's approval precondition).
   synthetic vertical slice; the scaffold gate is machine-readable and bound to
   ADR-001, Release 1A slice acceptance, and Jan phase-1 defaults/exceptions.
 - **server62 readiness:** capacity, repaired edge path, monitoring, mandatory
@@ -82,38 +82,13 @@ approval record.
 
 ## M2 Sprint Status (2026-09-03)
 
-### Completed
+### Outcomes
 
-| # | Item | Evidence |
-|---|---|---|
-| M2-01 | Migration 0003 with `SeparateDatabaseAndState` + `RunSQL`, `user` FK PROTECT | Applies cleanly; `makemigrations --check` clean |
-| M2-02 | `Release1aAcceptance` model: `organization` and `session` FKs PROTECT | Model + migration |
-| M2-03 | `Release1aReviewSession` model | Model + migration 0003 |
-| M2-04 | `AuthAuditEvent` model + migration 0004 | Append-only auth event table |
-| M2-05 | `security_audit.py` service | Fail-closed, opaque refs, `_session_ref()` safe |
-| M2-06 | `signals.py`: `authenticator_used`, `authentication_failed`, `authenticator_added` wired | All three handlers connected |
-| M2-07 | `on_authenticator_added` session sync | Updates `account_authentication_methods` in session after TOTP enrollment |
-| M2-08 | `MFA_FORMS` path fix | `settings.py` |
-| M2-09 | `ACCOUNT_LOGIN_METHODS` / `ACCOUNT_SIGNUP_FIELDS` fix | `settings.py` |
-| M2-10 | `/login/` → `/accounts/login/` redirect | `urls.py` |
-| M2-11 | Build identity: `app_build_id = sha256(commit:settings_module:requirements_hash)[:16]` | `views.py` |
-| M2-12 | Clean-commit policy in readiness script | `verify_synthetic_review_readiness.sh` |
-| M2-13 | Scoped clean-tree check (portal/tests/scripts only) | `verify_synthetic_review_readiness.sh` |
-| M2-14 | Axe informational-only in readiness script; axe receipt required as explicit approval gate | `verify_synthetic_review_readiness.sh` + `views.py:_axe_receipt_valid` |
-| M2-15 | `pyotp` → `requirements-dev.txt` | Dev-only dependency |
-| M2-16 | All 58 M2 tests pass (41 original + 8 migration regression + 9 schema) | `tests/m2/` |
-| M2-17 | `test_full_onboarding_flow` — real HTTP post onboarding | `tests/m2/test_reviewer_onboarding.py` |
-| M2-18 | 14 M2 test regressions fixed | `test_views.py`, `test_review_fixes.py` |
-
-### Pending
-
-| # | Item | Blocker |
-|---|---|---|
-| M2-19 | Commit changes | None — ready |
-| M2-20 | `REV-1A-FRONTEND` — Jan acceptance of J1–J4 | Jan/operator observation |
-| M2-21 | server62 capacity/backup evidence | Sysadmin |
-| M2-22 | GitLab/CI activation | `DEC-016` explicit Pavel approval |
-| M2-23 | Accessibility violations scan | Fixed — `review_approve()` requires `axe_receipt.json` bound to current build ID |
+| # | Outcome | Status | Evidence |
+|---|---|---|---|
+| M2-A | Committed build coherent | ✅ Passed | Exported HEAD validation: 58/58 tests pass, `manage.py check` clean, `makemigrations --check` clean |
+| M2-B | Jan functional review ready | ⏳ Pending | Requires clean launch and operator smoke test |
+| M2-C | Production infrastructure ready | ⏳ Pending | server62 recovery evidence + separately approved CI; does not block M2-B |
 
 ### Key Findings
 
@@ -127,13 +102,17 @@ approval record.
   authenticator table to decide whether to show MFA challenge, but uses session's
   `account_authentication_methods` to decide which stages to activate on a given login
   attempt. Both must be satisfied.
-- **4 independent-review blockers resolved** (2026-09-03):
-  1. Multi-org migration safety — Pass 1 cardinality check before any org use in 0003.
-  2. Real migration-executor tests — `test_migration_from_0002.py` schema verification + `test_migration_0003.py` behavioral tests.
-  3. Accessibility as approval gate — `review_approve()` requires `axe_receipt.json` bound to build ID.
-  4. Scoped clean-build at approval time — `review_approve()` re-verifies scoped tree with `_scoped_tree_clean()`.
+- **Accessibility removed from approval gate**: `_axe_receipt_valid()` call removed from
+  `review_approve()`. Accessibility remains an engineering QA item required before M5
+  real-data activation or production release.
+
+### Accessibility (Engineering Gate)
+
+Accessibility is NOT part of Jan's approval preconditions. It is tracked separately as an engineering gate:
+- Required before M5 real-data activation or production release
+- Run with proper local axe-core dependency and authenticated Playwright fixture
+- Not presented as Jan's responsibility
 
 ### Status Reports
 
-- Previous: `plans/RELEASE-1A-REVIEW-STATUS-2026-09-02.md` (superseded)
-- Current: `plans/RELEASE-1A-REVIEW-STATUS-2026-09-03.md`
+- Superseded: `plans/RELEASE-1A-REVIEW-STATUS-2026-09-02.md`, `plans/RELEASE-1A-REVIEW-STATUS-2026-09-03.md`
