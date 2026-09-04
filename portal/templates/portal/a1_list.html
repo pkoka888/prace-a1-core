@@ -1,0 +1,59 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">A1 případy</h2>
+        <p class="text-gray-600">Seznam všech A1 případů</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pracovník</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Readiness</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Externí stav</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zdrojový hash</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akce</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for case in page_obj %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">
+                    <a href="{% url 'worker_detail' pk=case.worker.pk %}" class="text-blue-600 hover:text-blue-800">{{ case.worker.family_name }} {{ case.worker.given_name }}</a>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {% if case.readiness == 'ready' %}bg-green-100 text-green-800{% elif case.readiness == 'blocked' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ case.readiness }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-gray-500">{{ case.external_status }}</td>
+                <td class="px-6 py-4 text-gray-500 font-mono text-xs">{{ case.source_hash|truncatechars:16 }}</td>
+                <td class="px-6 py-4 text-sm">
+                    <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800">Detail</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="px-6 py-12 text-center text-gray-500">Žádné A1 případy</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<div class="mt-4 flex items-center justify-center space-x-2">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50">Předchozí</a>
+    {% endif %}
+    <span class="px-3 py-2 text-gray-500">Stránka {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50">Další</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

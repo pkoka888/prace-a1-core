@@ -1,0 +1,40 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-semibold text-gray-900">Konflikty přiřazení</h2>
+    <p class="text-gray-600">Překrývající se období přiřazení vyžadující řešení</p>
+</div>
+
+<div class="bg-white rounded-lg shadow">
+    <div class="divide-y divide-gray-200">
+        {% for item in conflicts %}
+        <div class="p-6">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="font-medium text-gray-900">{{ item.assignment.worker.family_name }} {{ item.assignment.worker.given_name }}</p>
+                    <p class="text-sm text-gray-500 mt-1">
+                        {{ item.assignment.workplace_label }} | {{ item.assignment.start|date:"d.m.Y" }} – {{ item.assignment.end|date:"d.m.Y" }}
+                    </p>
+                </div>
+                <a href="{% url 'assignment_edit' worker_pk=item.assignment.worker.pk pk=item.assignment.pk %}" class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded hover:bg-blue-200">Upravit</a>
+            </div>
+            <div class="mt-4 border-l-4 border-yellow-400 pl-4">
+                <p class="text-sm font-medium text-yellow-800">Překrývající se přiřazení:</p>
+                <ul class="mt-2 space-y-1">
+                    {% for overlap in item.overlaps %}
+                    <li class="text-sm text-gray-600">
+                        {{ overlap.workplace_label }} | {{ overlap.start|date:"d.m.Y" }} – {{ overlap.end|date:"d.m.Y" }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% empty %}
+        <div class="px-6 py-12 text-center text-gray-500">
+            Žádné konflikty přiřazení
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

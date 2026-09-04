@@ -1,0 +1,6 @@
+{% load i18n %}
+<form method="post" action="{% url 'intake_upload' %}" enctype="multipart/form-data" id="intake-upload-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">{% trans "Nahrát dokumenty" %}</button>
+</form>

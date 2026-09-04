@@ -1,0 +1,90 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-semibold text-gray-900">Přehled · Queue</h2>
+    <p class="text-gray-600">Úkoly vyžadující pozornost</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Dokumenty ke kontrole</h3>
+            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded">{{ docs_awaiting_review|length }}</span>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for doc in docs_awaiting_review %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ doc.worker.family_name }} {{ doc.worker.given_name }}</p>
+                    <p class="text-sm text-gray-500">{{ doc.content_type }} | {{ doc.get_state_display }}</p>
+                </div>
+                <a href="{% url 'document_detail' pk=doc.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Kontrola</a>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Žádné dokumenty ke kontrole</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Neúplní pracovníci</h3>
+            <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">{{ incomplete_workers|length }}</span>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for worker in incomplete_workers %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ worker.family_name }} {{ worker.given_name }}</p>
+                    <p class="text-sm text-gray-500">{{ worker.birth_date|date:"d.m.Y" }} | {{ worker.get_state_display }}</p>
+                </div>
+                <a href="{% url 'worker_detail' pk=worker.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Žádní neúplní pracovníci</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Pracovníci bez dokumentů</h3>
+            <span class="bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded">{{ workers_without_docs|length }}</span>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for worker in workers_without_docs %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ worker.family_name }} {{ worker.given_name }}</p>
+                    <p class="text-sm text-gray-500">{{ worker.birth_date|date:"d.m.Y" }} | {{ worker.get_activity_profile_display }}</p>
+                </div>
+                <a href="{% url 'document_upload' worker_pk=worker.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Nahrát</a>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Všichni pracovníci mají dokumenty</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Blokované A1 případy</h3>
+            <span class="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded">{{ a1_blocked|length }}</span>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for case in a1_blocked %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ case.worker.family_name }} {{ case.worker.given_name }}</p>
+                    <p class="text-sm text-gray-500">Readiness: {{ case.readiness }}</p>
+                </div>
+                <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
+            </div>
+            {% empty %}
+            <div class="px-6 py-4 text-center text-gray-500">Žádné blokované A1 případy</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

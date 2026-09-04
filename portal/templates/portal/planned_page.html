@@ -1,0 +1,33 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-semibold text-gray-900">{{ module.title }}</h2>
+</div>
+
+<div class="max-w-2xl">
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <span class="px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">Plánovaný modul</span>
+            <span class="text-sm text-gray-500">Cílové vydání: {{ module.target_release }}</span>
+        </div>
+
+        <p class="text-gray-700 mb-6">{{ module.description }}</p>
+
+        <h3 class="text-sm font-semibold text-gray-900 mb-2">Závislosti</h3>
+        <ul class="list-disc list-inside text-sm text-gray-600 mb-6">
+            {% for dep in module.dependencies %}
+            <li>{{ dep }}</li>
+            {% empty %}
+            <li>Bez závislostí</li>
+            {% endfor %}
+        </ul>
+
+        <div class="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
+            <p class="text-sm text-yellow-800">
+                <strong>Funkce zatím není aktivní.</strong> Tato stránka je navigační placeholder pro budoucí modul. Neobsahuje žádné funkční akce.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

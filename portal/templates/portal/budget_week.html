@@ -1,0 +1,384 @@
+{% extends "portal/base.html" %}
+{% load budget_extras %}
+
+{% block title %}Týdenní rozpočet | Práce v Německu{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Mobile tap targets (Apple HIG ≥ 44 px) */
+  .tap { min-height: 44px; min-width: 44px; }
+  /* Sticky pivot header + first column */
+  .pivot thead th { position: sticky; top: 0; z-index: 10; }
+  .pivot tbody th { position: sticky; left: 0; z-index: 5; }
+  .pivot tfoot th { position: sticky; bottom: 0; z-index: 10; }
+  .pivot tbody td.cell { cursor: pointer; transition: background .12s; }
+  .pivot tbody td.cell:hover { background: #eff6ff; }
+  .pivot tbody td.cell:active { background: #dbeafe; }
+  .pivot tbody tr:hover { background: transparent; }
+  /* Cell with value gets subtle emphasis */
+  .pivot td.has-value { font-weight: 600; color: #111827; }
+  .pivot td.zero { color: #d1d5db; }
+  /* Floating add button (mobile thumb zone) */
+  .fab { position: fixed; right: 1rem; bottom: 1rem; z-index: 30; }
+  @media (min-width: 768px) { .fab { display: none; } }
+  /* Print friendly */
+  @media print {
+    .fab, .no-print, header, footer { display: none !important; }
+    .pivot thead th { position: static; }
+    body { background: white; }
+  }
+  /* Smooth modal */
+  .modal-backdrop { transition: opacity .15s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hlavička -->
+<div class="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">Týdenní rozpočet</h2>
+        <p class="text-gray-600 text-sm">Pivot: řádky = pracovníci, sloupce = kategorie. Ťukni buňku pro detail.</p>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+        <button type="button" disabled class="tap px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-400 flex items-center justify-center cursor-not-allowed" aria-label="Předchozí týden — náhled" title="Přepínání týdnů je ve fázi návrhu">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <span class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-900 text-center whitespace-nowrap">
+            Týden {{ week.iso_week }}/{{ week.year }}<br class="md:hidden"><span class="hidden md:inline"> · </span>{{ week.start|date:"d.m." }} – {{ week.end|date:"d.m.Y" }}
+        </span>
+        <button type="button" disabled class="tap px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-400 flex items-center justify-center cursor-not-allowed" aria-label="Další týden — náhled" title="Přepínání týdnů je ve fázi návrhu">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+        <button type="button" disabled class="tap px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-400 cursor-not-allowed" title="Přepínání týdnů je ve fázi návrhu">Dnes</button>
+    </div>
+</div>
+
+<!-- Akční lišta: kopírovat / CSV / tisk -->
+<div class="bg-white rounded-lg shadow mb-4 px-4 py-3 flex flex-wrap items-center gap-2 no-print">
+    <button type="button" onclick="copyWeeklySummary()" class="tap inline-flex items-center px-3 py-2 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 text-sm font-medium text-green-800">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Kopírovat pro WhatsApp
+    </button>
+    <button type="button" disabled class="tap inline-flex items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-400 cursor-not-allowed" title="Export CSV je ve fázi návrhu">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Export CSV · náhled
+    </button>
+    <button type="button" onclick="window.print()" class="tap inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700">
+        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+        Tisk
+    </button>
+    <span id="copy-toast" class="hidden ml-2 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg">Zkopírováno do schránky</span>
+    <span class="ml-auto text-xs text-gray-500">Náhled UI · ukládání zatím vypnuto</span>
+</div>
+
+<!-- Rychlé souhrny -->
+<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
+    <div class="bg-white rounded-lg shadow p-3"><p class="text-xs text-gray-500 uppercase">Výdaje (bez mezd)</p><p class="text-lg font-semibold text-gray-900 mt-1" id="kpi-expenses">{{ totals.expenses }} €</p></div>
+    <div class="bg-white rounded-lg shadow p-3"><p class="text-xs text-gray-500 uppercase">Zálohy</p><p class="text-lg font-semibold text-amber-700 mt-1">{{ totals.advances }} €</p></div>
+    <div class="bg-white rounded-lg shadow p-3"><p class="text-xs text-gray-500 uppercase">Mzdy</p><p class="text-lg font-semibold text-green-700 mt-1">{{ totals.wages }} €</p></div>
+    <div class="bg-white rounded-lg shadow p-3"><p class="text-xs text-gray-500 uppercase">Pokuty</p><p class="text-lg font-semibold text-red-700 mt-1">{{ totals.fines }} €</p></div>
+    <div class="bg-white rounded-lg shadow p-3"><p class="text-xs text-gray-500 uppercase">Nafta</p><p class="text-lg font-semibold text-gray-900 mt-1">{{ totals.fuel }} €</p></div>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg shadow p-3"><p class="text-xs text-blue-700 uppercase font-semibold">Celkem týden</p><p class="text-lg font-bold text-blue-900 mt-1" id="kpi-grand">{{ totals.grand }} €</p></div>
+</div>
+
+<!-- =============================
+     HLAVNÍ PIVOT — zápis v duchu Janova papíru
+     ============================= -->
+<div class="hidden md:block bg-white rounded-lg shadow overflow-hidden mb-4">
+    <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-semibold text-gray-900">Pivot týdne</h3>
+            <p class="text-sm text-gray-500">Buňka = součet pro daného pracovníka a kategorii. Ťukni pro detail / přidání.</p>
+        </div>
+        <span class="text-xs text-gray-400 hidden md:inline">scroll →</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm pivot" id="pivot-table">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">Pracovník</th>
+                    {% for cat in categories %}
+                    <th class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap
+                        {% if cat.key == 'ubyt' %}bg-red-50
+                        {% elif cat.key == 'zal' %}bg-amber-50
+                        {% elif cat.key == 'pok' %}bg-red-50
+                        {% elif cat.key == 'mzd' %}bg-green-50{% endif %}">
+                        {{ cat.label }}
+                    </th>
+                    {% endfor %}
+                    <th class="px-3 py-3 text-right text-xs font-bold text-gray-900 uppercase tracking-wider bg-gray-100">Součet</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for row in pivot_rows %}
+                <tr>
+                    <th class="px-3 py-3 text-left text-sm font-medium text-gray-900 whitespace-nowrap bg-white">{{ row.worker_name }}</th>
+                    {% for cat in categories %}
+                    <td class="cell px-3 py-3 text-right tabular-nums
+                        {% if row.cells|get_item:cat.key %}has-value
+                        {% else %}zero
+                        {% endif %}"
+                        data-worker="{{ row.worker_name }}"
+                        data-category="{{ cat.key }}"
+                        data-category-label="{{ cat.label }}"
+                        data-amount="{{ row.cells|get_item:cat.key|default:'0' }}"
+                        onclick="openCellDetail(this)">
+                        {{ row.cells|get_item:cat.key|default:"—" }}
+                    </td>
+                    {% endfor %}
+                    <td class="px-3 py-3 text-right tabular-nums font-bold text-gray-900 bg-gray-50">{{ row.total }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="{{ categories|length|add:2 }}" class="px-6 py-12 text-center text-gray-500">Žádní pracovníci v této organizaci.</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-100">
+                <tr>
+                    <th class="px-3 py-3 text-left text-xs font-bold text-gray-700 uppercase bg-gray-100">Součet</th>
+                    {% for cat in categories %}
+                    <th class="px-3 py-3 text-right tabular-nums font-bold text-gray-900
+                        {% if cat.key == 'ubyt' or cat.key == 'pok' %}text-red-700
+                        {% elif cat.key == 'zal' %}text-amber-700
+                        {% elif cat.key == 'mzd' %}text-green-700{% endif %}">
+                        {{ col_totals|get_item:cat.key }}
+                    </th>
+                    {% endfor %}
+                    <th class="px-3 py-3 text-right tabular-nums font-bold text-gray-900 bg-gray-200" id="grand-total">{{ col_totals.grand }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- =============================
+     MOBILNÍ KARTY PO OSOBÁCH (pod pivotem, viditelné jen < md)
+     ============================= -->
+<div class="md:hidden space-y-3 mb-4">
+    <h3 class="text-lg font-semibold text-gray-900">Po osobách (mobilní přehled)</h3>
+    {% for row in pivot_rows %}
+    <details class="bg-white rounded-lg shadow" {% if forloop.first %}open{% endif %}>
+        <summary class="px-4 py-3 flex items-center justify-between cursor-pointer tap">
+            <div>
+                <p class="font-medium text-gray-900">{{ row.worker_name }}</p>
+                <p class="text-xs text-gray-500">{% for cat in categories %}{% if row.cells|get_item:cat.key %}{{ cat.label }}: {{ row.cells|get_item:cat.key }} € · {% endif %}{% endfor %}</p>
+            </div>
+            <span class="text-lg font-bold text-gray-900">{{ row.total }} €</span>
+        </summary>
+        <div class="px-4 pb-3 divide-y divide-gray-100">
+            {% for cat in categories %}
+            {% if row.cells|get_item:cat.key %}
+            <button type="button" class="tap w-full py-2 flex items-center justify-between text-left" data-worker="{{ row.worker_name }}" data-category="{{ cat.key }}" data-category-label="{{ cat.label }}" data-amount="{{ row.cells|get_item:cat.key }}" onclick="openCellDetail(this)">
+                <span class="text-sm text-gray-700">{{ cat.label }}</span>
+                <span class="text-sm font-semibold tabular-nums">{{ row.cells|get_item:cat.key }} €</span>
+            </button>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </details>
+    {% endfor %}
+</div>
+
+<!-- =============================
+     RYCHLÝ PŘÍDAVEK — vždy nahoře (PC) / tlačítko FAB (mobil)
+     ============================= -->
+<div class="bg-white rounded-lg shadow mb-4 no-print">
+    <details {% if request.GET.add %}open{% endif %}>
+        <summary class="px-4 py-3 border-b border-gray-200 cursor-pointer tap flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">+ Přidat záznam</h3>
+            <span class="text-xs text-gray-500">rozbalit / skrýt</span>
+        </summary>
+        <form class="p-4 grid grid-cols-1 md:grid-cols-12 gap-3" action="#" method="post" onsubmit="event.preventDefault(); addEntry(this);">
+            <div class="md:col-span-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Datum</label>
+                <input name="date" type="date" value="{{ today|date:'Y-m-d' }}" required class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            </div>
+            <div class="md:col-span-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Pracovník</label>
+                <select name="worker" required class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">— vyberte —</option>
+                    {% for w in workers %}<option value="{{ w.pk }}">{{ w.family_name }} {{ w.given_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-3">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Kategorie</label>
+                <select name="category" required class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    {% for cat in categories %}<option value="{{ cat.key }}">{{ cat.label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Částka (€)</label>
+                <input name="amount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0,00" required class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-right text-lg font-semibold">
+            </div>
+            <div class="md:col-span-1 flex items-end">
+                    <button type="submit" class="tap w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold" aria-label="Přidat položku do náhledu">
+                    <svg class="inline w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                </button>
+            </div>
+            <div class="md:col-span-12">
+                <label class="block text-xs font-medium text-gray-600 mb-1">Poznámka <span class="text-gray-400">(volitelné)</span></label>
+                <input name="note" type="text" placeholder="např. tankování Hannover, pokuta 120€…" class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+            </div>
+            <!-- quick-amount chips -->
+            <div class="md:col-span-12 flex flex-wrap gap-2">
+                <span class="text-xs text-gray-500 self-center">Rychlé částky:</span>
+                <button type="button" onclick="setAmount(this, 85)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs">85 € ubyt.</button>
+                <button type="button" onclick="setAmount(this, 100)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs">100 €</button>
+                <button type="button" onclick="setAmount(this, 120)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs">120 €</button>
+                <button type="button" onclick="setAmount(this, 150)" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs">150 €</button>
+                <span class="text-xs text-gray-400 ml-auto self-center">Foto účtenky: <span class="text-gray-500">fáze 2</span></span>
+            </div>
+        </form>
+    </details>
+</div>
+
+<!-- FAB pro mobil -->
+<button type="button" onclick="document.querySelector('details > summary').click()" class="fab tap w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center no-print" aria-label="Přidat záznam">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+</button>
+
+<!-- =============================
+     POZNÁMKY
+     ============================= -->
+<div class="bg-white rounded-lg shadow">
+    <div class="px-4 py-3 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Poznámky k týdnu</h3>
+    </div>
+    <div class="p-4">
+        <textarea rows="4" class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" placeholder="Volné poznámky — co se v týdnu stalo, co je třeba řešit s Pavlem…">{{ week_notes }}</textarea>
+        <div class="mt-2 flex justify-end">
+            <button type="button" disabled class="tap px-4 py-2 bg-blue-100 text-blue-400 rounded-lg text-sm font-medium cursor-not-allowed" title="Ukládání poznámek je ve fázi návrhu">Uložit poznámky · náhled</button>
+        </div>
+    </div>
+</div>
+
+<!-- =============================
+     MODAL: detail buňky (vstupy pro pracovníka × kategorii)
+     ============================= -->
+<div id="cell-modal" class="fixed inset-0 z-40 hidden items-end md:items-center justify-center modal-backdrop" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black bg-opacity-50" onclick="closeModal()"></div>
+    <div class="relative bg-white w-full md:max-w-lg md:rounded-lg rounded-t-2xl max-h-[90vh] flex flex-col">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
+            <div>
+                <p class="text-xs text-gray-500" id="modal-subtitle">Detail</p>
+                <h3 class="text-lg font-semibold text-gray-900" id="modal-title">—</h3>
+            </div>
+            <button onclick="closeModal()" class="tap w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="overflow-y-auto p-4" id="modal-body">
+            <!-- plněno JS -->
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+{{ categories|json_script:"budget-categories" }}
+{{ pivot_for_js|json_script:"budget-pivot" }}
+{{ entries_for_js|json_script:"budget-entries" }}
+<script>
+/* ---------- šablony dat z Django (bezpečně escapované přes JSON) ---------- */
+const CATEGORIES = JSON.parse(document.getElementById("budget-categories").textContent);
+const PIVOT_DATA = JSON.parse(document.getElementById("budget-pivot").textContent);
+const ENTRIES = JSON.parse(document.getElementById("budget-entries").textContent);
+
+/* ---------- pomocné ---------- */
+function fmt(n) {
+  if (n === 0 || n === "0" || n === null || n === undefined) return "0,00";
+  const v = typeof n === "number" ? n : parseFloat(String(n).replace(",", "."));
+  return v.toLocaleString("cs-CZ", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+function escapeHtml(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]); }
+
+/* ---------- modal: detail buňky ---------- */
+function openCellDetail(td) {
+  const worker = td.dataset.worker;
+  const catKey = td.dataset.category;
+  const catLabel = td.dataset.categoryLabel;
+  const total = parseFloat(td.dataset.amount || "0");
+  const list = ENTRIES.filter(e => e.worker_name === worker && e.category === catKey);
+
+  document.getElementById("modal-title").textContent = `${worker} · ${catLabel}`;
+  document.getElementById("modal-subtitle").textContent = `Součet: ${fmt(total)} € · ${list.length} položek`;
+
+  const body = document.getElementById("modal-body");
+  body.innerHTML = `
+    <div class="mb-4">
+      ${list.length === 0
+        ? `<p class="text-sm text-gray-500 italic">Zatím žádné položky. Přidej první:</p>`
+        : `<ul class="divide-y divide-gray-100 -mx-4">
+            ${list.map(e => `
+              <li class="px-4 py-2 flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-gray-900 font-medium">${escapeHtml(e.date_label)}</p>
+                  ${e.note ? `<p class="text-xs text-gray-500">${escapeHtml(e.note)}</p>` : ""}
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-semibold tabular-nums">${fmt(e.amount)} €</p>
+                  <span class="text-xs text-gray-400">smazat · náhled</span>
+                </div>
+              </li>`).join("")}
+          </ul>`}
+    </div>
+    <form class="border-t pt-4 space-y-2" onsubmit="event.preventDefault(); alert('V ukázce se neukládá.'); closeModal();">
+      <div class="grid grid-cols-2 gap-2">
+        <input type="date" required value="${new Date().toISOString().slice(0,10)}" class="tap px-3 py-2 border border-gray-300 rounded-lg text-sm">
+        <input type="number" inputmode="decimal" step="0.01" min="0" placeholder="${fmt(total) || "0,00"}" class="tap px-3 py-2 border border-gray-300 rounded-lg text-sm text-right" required>
+      </div>
+      <input type="text" placeholder="Poznámka (volitelné)" class="tap w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+      <button type="submit" class="tap w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">+ Přidat položku do náhledu</button>
+      <p class="text-xs text-gray-500 text-center">Foto účtenky bude dostupné ve fázi 2.</p>
+    </form>
+  `;
+  showModal();
+}
+function showModal() { const m = document.getElementById("cell-modal"); m.classList.remove("hidden"); m.classList.add("flex"); document.body.style.overflow = "hidden"; }
+function closeModal() { const m = document.getElementById("cell-modal"); m.classList.add("hidden"); m.classList.remove("flex"); document.body.style.overflow = ""; }
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+/* ---------- rychlé částky v hlavním formuláři ---------- */
+function setAmount(btn, val) {
+  const form = btn.closest("form");
+  form.querySelector('input[name="amount"]').value = val;
+  btn.classList.add("ring-2","ring-blue-400");
+  setTimeout(()=>btn.classList.remove("ring-2","ring-blue-400"), 250);
+}
+
+/* ---------- (mock) přidání záznamu ---------- */
+function addEntry(form) {
+  alert("V ukázce se neukládá. Formulář:\n\n" + JSON.stringify(Object.fromEntries(new FormData(form).entries()), null, 2));
+}
+
+/* ---------- kopírovat souhrn pro WhatsApp ---------- */
+function copyWeeklySummary() {
+  const lines = [];
+  const weekLabel = document.querySelector("span.px-4.py-2.bg-white.border").textContent.replace(/\s+/g," ").trim();
+  lines.push(`📊 *Rozpočet — ${weekLabel}*`);
+  lines.push("");
+  lines.push(`Celkem: *${document.getElementById("grand-total").textContent.trim()}*`);
+  lines.push(`Bez mezd: ${document.getElementById("kpi-expenses").textContent.trim()}`);
+  lines.push("");
+  lines.push("*Po osobách:*");
+  document.querySelectorAll("#pivot-table tbody tr").forEach(tr => {
+    const worker = tr.querySelector("th")?.textContent.trim();
+    const total = tr.querySelector("td:last-child")?.textContent.trim();
+    if (worker) lines.push(`• ${worker}: ${total} €`);
+  });
+  lines.push("");
+  lines.push("*Po kategoriích:*");
+  document.querySelectorAll("#pivot-table tfoot th").forEach((th, i) => {
+    if (i === 0 || i === CATEGORIES.length + 1) return;
+    const catLabel = document.querySelectorAll("#pivot-table thead th")[i].textContent.trim();
+    lines.push(`• ${catLabel}: ${th.textContent.trim()} €`);
+  });
+  const text = lines.join("\n");
+  navigator.clipboard.writeText(text).then(() => {
+    const t = document.getElementById("copy-toast");
+    t.classList.remove("hidden");
+    setTimeout(() => t.classList.add("hidden"), 2200);
+  }).catch(() => prompt("Zkopíruj ručně:", text));
+}
+</script>
+{% endblock %}

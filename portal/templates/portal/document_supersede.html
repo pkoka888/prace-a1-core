@@ -1,0 +1,32 @@
+{% extends "portal/base.html" %}
+{% load i18n %}
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">{% trans "Nahradit dokument" %}</h1>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <p class="mb-4 text-gray-600">
+            {% trans "Nahrazený dokument bude označen jako Nahrazeno a nebude nadále používán." %}
+        </p>
+
+        <form method="post" enctype="multipart/form-data" action="{% url 'document_supersede' document.pk %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    {% trans "Nový soubor" %}
+                </label>
+                <input type="file" name="new_file" accept=".pdf,.png,.jpg,.jpeg" required
+                       class="file-input border rounded p-2 w-full">
+            </div>
+            <div class="flex gap-4">
+                <button type="submit" class="btn btn-primary">
+                    {% trans "Nahradit dokument" %}
+                </button>
+                <a href="{% url 'document_detail' document.pk %}" class="btn btn-secondary">
+                    {% trans "Zrušit" %}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

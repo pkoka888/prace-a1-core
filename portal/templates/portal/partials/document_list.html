@@ -1,0 +1,22 @@
+{% for document in page_obj %}
+<tr class="hover:bg-gray-50">
+    <td class="px-6 py-4">
+        <a href="{% url 'worker_detail' pk=document.worker.pk %}" class="text-blue-600 hover:text-blue-800">{{ document.worker.family_name }} {{ document.worker.given_name }}</a>
+    </td>
+    <td class="px-6 py-4 text-gray-500">{{ document.content_type }}</td>
+    <td class="px-6 py-4">
+        <span class="px-2 py-1 text-xs font-medium rounded-full {% if document.state == 'quarantined' %}bg-yellow-100 text-yellow-800{% elif document.state == 'confirmed' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ document.get_state_display }}
+        </span>
+    </td>
+    <td class="px-6 py-4 text-gray-500 font-mono text-xs">{{ document.sha256|truncatechars:16 }}</td>
+    <td class="px-6 py-4 text-sm space-x-2">
+        <a href="{% url 'document_detail' pk=document.pk %}" class="text-blue-600 hover:text-blue-800">Detail</a>
+        <a href="{% url 'document_download' pk=document.pk %}" class="text-green-600 hover:text-green-800">Stáhnout</a>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="px-6 py-12 text-center text-gray-500">Žádné dokumenty</td>
+</tr>
+{% endfor %}

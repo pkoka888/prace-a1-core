@@ -1,0 +1,13 @@
+{% for proposal in pending_proposals %}
+<div class="px-6 py-4 hover:bg-gray-50">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="font-medium text-gray-900">{{ proposal.document.worker.family_name }} {{ proposal.document.worker.given_name }}</p>
+            <p class="text-sm text-gray-500">{{ proposal.document.content_type }} | {{ proposal.field_name }}: {{ proposal.proposed_value }}</p>
+        </div>
+        <a href="{% url 'ocr_field_review' document_pk=proposal.document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Kontrola</a>
+    </div>
+</div>
+{% empty %}
+<div class="px-6 py-8 text-center text-gray-500">Žádné návrhy k kontrole</div>
+{% endfor %}

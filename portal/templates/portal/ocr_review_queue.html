@@ -1,0 +1,54 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-semibold text-gray-900">Kontrola OCR</h2>
+    <p class="text-gray-600">Fronta dokumentů a návrhů čekajících na kontrolu</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Návrhy polí</h3>
+            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded">{{ pending_proposals|length }}</span>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for proposal in pending_proposals %}
+            <div class="px-6 py-4 hover:bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900">{{ proposal.worker.family_name }} {{ proposal.worker.given_name }}</p>
+                        <p class="text-sm text-gray-500">{{ proposal.document.content_type }}</p>
+                    </div>
+                    <a href="{% url 'ocr_field_review' document_pk=proposal.document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Kontrola</a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="px-6 py-8 text-center text-gray-500">Žádné návrhy k kontrole</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3>neklasifikované dokumenty</h3>
+            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2 py-1 rounded">{{ classified_docs|length }}</span>
+        </div>
+        <div class="divide-y divide-gray-200">
+            {% for classification in classified_docs %}
+            <div class="px-6 py-4 hover:bg-gray-50">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="font-medium text-gray-900">{{ classification.document.worker.family_name }} {{ classification.document.worker.given_name }}</p>
+                        <p class="text-sm text-gray-500">{{ classification.get_doc_type_display }} | Strana: {{ classification.side|default:"—" }}</p>
+                    </div>
+                    <a href="{% url 'document_detail' pk=classification.document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="px-6 py-8 text-center text-gray-500">Žádné neklasifikované dokumenty</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

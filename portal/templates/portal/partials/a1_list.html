@@ -1,0 +1,21 @@
+{% for case in page_obj %}
+<tr class="hover:bg-gray-50">
+    <td class="px-6 py-4">
+        <a href="{% url 'worker_detail' pk=case.worker.pk %}" class="text-blue-600 hover:text-blue-800">{{ case.worker.family_name }} {{ case.worker.given_name }}</a>
+    </td>
+    <td class="px-6 py-4">
+        <span class="px-2 py-1 text-xs font-medium rounded-full {% if case.readiness == 'ready' %}bg-green-100 text-green-800{% elif case.readiness == 'blocked' %}bg-red-100 text-red-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+            {{ case.readiness }}
+        </span>
+    </td>
+    <td class="px-6 py-4 text-gray-500">{{ case.external_status }}</td>
+    <td class="px-6 py-4 text-gray-500 font-mono text-xs">{{ case.source_hash|truncatechars:16 }}</td>
+    <td class="px-6 py-4 text-sm">
+        <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800">Detail</a>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="px-6 py-12 text-center text-gray-500">Žádné A1 případy</td>
+</tr>
+{% endfor %}

@@ -1,0 +1,6 @@
+{% load i18n %}
+<form method="post" action="{% url 'intake_paste' %}" id="intake-paste-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">{% trans "Zpracovat text" %}</button>
+</form>
