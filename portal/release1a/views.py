@@ -1510,6 +1510,18 @@ def planned_page(request):
     return render(request, "portal/planned_page.html", ctx)
 
 
+OCR_TO_CANONICAL = {
+    "surname": "family_name",
+    "dob": "birth_date",
+    "personal_identifier": "insurance_number",
+}
+
+
+def _canonical_field(ocr_field):
+    """Map OCR field name to canonical Worker field name, or return same if not mapped."""
+    return OCR_TO_CANONICAL.get(ocr_field, ocr_field)
+
+
 WORKER_COMPLETION_REQUIRED_FIELDS = [
     "given_name", "family_name", "birth_date", "activity_profile", "state"
 ]
@@ -1568,7 +1580,8 @@ def worker_a1_readiness(worker, organization):
     missing = []
     for field in WORKER_A1_REQUIRED_FIELDS:
         if field not in confirmed_fields:
-            worker_value = getattr(worker, field, None)
+            canonical = _canonical_field(field)
+            worker_value = getattr(worker, canonical, None)
             if not worker_value or (isinstance(worker_value, str) and not worker_value.strip()):
                 missing.append(field)
 
