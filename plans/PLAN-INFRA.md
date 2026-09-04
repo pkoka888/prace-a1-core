@@ -86,8 +86,8 @@ approval record.
 
 | # | Outcome | Status | Evidence |
 |---|---|---|---|
-| M2-A | Committed build coherent | ✅ Passed | Exported HEAD validation: 58/58 tests pass, `manage.py check` clean, `makemigrations --check` clean |
-| M2-B | Jan functional review ready | ⏳ Pending | Requires clean launch and operator smoke test |
+| M2-A | Committed build coherent | ✅ Passed | Exported HEAD validation: 74/74 M2 tests pass, `manage.py check` clean, `makemigrations --check` clean |
+| M2-B | Jan functional review ready | ⏳ Pending | `REV-1A-FRONTEND` pending Jan acceptance via `/review/`; J1–J4 observation/acceptance not yet completed |
 | M2-C | Production infrastructure ready | ⏳ Pending | server62 recovery evidence + separately approved CI; does not block M2-B |
 
 ### Key Findings
@@ -112,6 +112,17 @@ Accessibility is NOT part of Jan's approval preconditions. It is tracked separat
 - Required before M5 real-data activation or production release
 - Run with proper local axe-core dependency and authenticated Playwright fixture
 - Not presented as Jan's responsibility
+
+### Implementation Commits
+
+The following commits constitute the Phase 1 remediation implementation:
+- `dee29c6` — Phase 1 remediation: normalize intake/OCR schema, fix P0 bugs, add capabilities
+- `e38c930` — Fix worker_a1_readiness: map OCR field names to canonical names
+- `5e0e89e` — Add M2 release templates and static assets
+
+### Migration 0006 Note
+
+Migration `0006` is synthetic-only and destructive. It is not production migration evidence. Do not cite it as proof of production schema readiness.
 
 ### Status Reports
 
