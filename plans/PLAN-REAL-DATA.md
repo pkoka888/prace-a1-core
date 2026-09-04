@@ -23,10 +23,10 @@ Every item is required before any real-data upload or new real-person record cre
 |---|---|---|
 | S1-P0-1 | Every material action reachable from an HTTP view passes through a capability check | Complete role × action matrix documented; all roles tested for allowed and denied actions; cross-org read/write/task/download returns zero bytes for unauthorized |
 | S1-P0-2 | Service-level child/parent organization validation; complete cross-tenant test coverage | Cross-tenant insert/update/delete returns explicit domain error at service layer; `tests/tenant/` covers every tenant model for cross-org read/write/task/download |
-| S1-P0-3 | Protected storage implemented via Django `Storage` interface | Upload writes to `runtime/portal/quarantine/<opaque-key>`; authorized download returns bytes; unauthorized returns zero bytes |
-| S1-P0-4 | Quarantine state and scanner adapter in place | File acceptance includes size limit, SHA-256, extension allowlist, independently detected MIME, structural parser check, and explicit scanner unavailable/error state |
+| S1-P0-3 | Protected storage implemented via Django `Storage` interface with encryption-at-rest evidence | Upload writes to `runtime/portal/quarantine/<opaque-key>`; authorized download returns bytes; unauthorized returns zero bytes; filesystem encryption enabled and verified per DEC-009 |
+| S1-P0-4 | Scanner adapter fail-closed: scanner error blocks upload | File acceptance includes size limit, SHA-256, extension allowlist, independently detected MIME, structural parser check; scanner failure or unavailability is a hard reject, not advisory |
 | S1-P0-5 | OCR consumes bytes from storage, not opaque-key-as-path | OCR run opens `storage.open(opaque_key)`; exceptions are not silently swallowed; failed OCR is visible and retryable |
-| S1-P0-6 | FieldProposal and FieldDecision genuinely immutable | No mutation path for confirmed proposals; DB uniqueness for one final decision per proposal |
+| S1-P0-6 | FieldProposal and FieldDecision genuinely immutable from creation | No mutation path for proposals or decisions at any state; DB uniqueness for one final decision per proposal |
 | S1-P0-7 | Authoritative identity revisions created and read by readiness | `WorkerIdentityRevision` created on confirmation; readiness reads current authoritative revision |
 | S1-P0-8 | Zero-field confirmation cannot confirm a document | Confirmation requires at least one accepted decision; document remains unconfirmed otherwise |
 | S1-P0-9 | Both upload paths and both OCR confirmation paths consolidated | One upload pipeline; one confirmation path; no competing code paths |
@@ -46,9 +46,11 @@ Every item is required before any real-data upload or new real-person record cre
 | # | Requirement | Acceptance criterion |
 |---|---|---|
 | S3-M3-1 | `IntakeItem`, partial-failure recovery, and operator retry queue | Multi-file intake partially succeeds gracefully; each file has explicit staged state and reconciliation |
-| S3-M3-2 | Purpose, legal-basis, and retention fields on all document types | `purpose`, `legal_basis_reference`, `retention_review_at`, `retention_status`, `legal_hold_at`, `deleted_at` present and enforced |
-| S3-M3-3 | Czech copy complete; translation catalog coverage measured | `python manage.py compilemessages` passes; extraction catalog covers all user-facing strings; coverage percentage documented; German glossary deferred until operator need confirmed |
-| S3-M3-4 | WCAG 2.2 AA engineering baseline | axe-core automated pass on all user-facing templates; manual spot checks for keyboard navigation, focus visibility, 200% zoom, 320px reflow, error identification, destructive-action confirmation, and screen-reader logical reading order |
+| S3-M3-2 | Purpose, legal-basis, and retention fields on all document types and derivatives | `purpose`, `legal_basis_reference`, `retention_review_at`, `retention_status`, `legal_hold_at`, `deleted_at` present and enforced on `Document`, `DocumentVersion`, `OcrRun`, `FieldProposal`, `FieldDecision`, `WorkerIdentityRevision`, `A1InputSnapshot`, and `A1Artifact` |
+| S3-M3-3 | Deletion exercise: revoke, purge, tombstone | Revocation removes access to bytes; derivative bytes (OCR output, previews, A1 artifacts) are purged; a minimal tombstone is preserved with legal hold check; `legal_hold_at` is checked before any purge |
+| S3-M3-4 | Czech copy complete; translation catalog coverage measured | `python manage.py compilemessages` passes; extraction catalog covers all user-facing strings; coverage percentage documented; German glossary deferred until operator need confirmed |
+| S3-M3-5 | WCAG 2.2 AA engineering baseline | axe-core automated pass on all user-facing templates; manual spot checks for keyboard navigation, focus visibility, 200% zoom, 320px reflow, error identification, destructive-action confirmation, and screen-reader logical reading order |
+| S3-M3-6 | Pre-activation A1 acceptance uses synthetic profiles only | A1 case generation for acceptance testing uses synthetic profiles; real A1 submissions require REV-003 approved and operator-supplied authoritative sources |
 
 ### Sprint 4 — M4/M5 gates (required)
 
@@ -78,6 +80,33 @@ Per `docs/security/real-data-rules.md`:
 - Collection of data without a documented purpose and applicable lawful basis
 - Production database access from developer machines
 - Merger of `a1/` and portal storage lanes
+- **Portal** real-person record creation until REV-003 `human_decision: approved` in `planning/approvals.json` — the separate A1 operations lane is governed by its own gate and is not affected
+
+## REV-002 → REV-003 promotion procedure
+
+Jan completing the review and clicking **Schválit Release 1A** creates a database
+`Release1aAcceptance` record. It does **not** automatically update `planning/approvals.json`.
+The promotion to a tracked approval record follows this sequence:
+
+```
+Jan completes J1–J4 review
+  → application creates build-bound Release1aAcceptance receipt
+  → operator verifies receipt commit/build identity matches
+  → sanitized evidence reference prepared (no PII in approval register)
+  → `REV-002` checks updated to passed in `planning/approvals.json`
+  → `REV-002` human_decision set to approved
+  → `REV-002` approver and approved_at filled in
+  → approval-data.js regenerated from approvals.json
+  → validators run: scripts/validate_planning.py and scripts/validate_approvals.py both pass
+  → exact scoped files committed through explicit staged path list
+  → branch pushed (only if separately approved per DEC-016)
+```
+
+**No PII** from the review session, meeting notes, or database receipt is copied into
+`planning/approvals.json` or any tracked approval artifact.
+
+For REV-003 (real-data activation), the same pattern applies with the additional
+legal/sysadmin sign-off requirement documented in the REV-003 record.
 
 ## Exit evidence
 

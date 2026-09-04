@@ -218,8 +218,83 @@ window.APPROVAL_REGISTER = {
       "source": "docs/operations/release-1a-review-environment.md",
       "title": "Release 1A frontend acceptance",
       "validation": "pending"
+    },
+    {
+      "activation_gate": "blocked",
+      "activation_gate_reason": "Requires PLAN-REAL-DATA completion plus explicit operator/legal/sysadmin approval per real-data-rules.md.",
+      "approval_evidence": null,
+      "approved_at": null,
+      "approver": "pending — operator + legal + sysadmin required",
+      "checks": [
+        {
+          "evidence": "PLAN-REAL-DATA S1-P0-*",
+          "id": "REV-DATA-S1",
+          "label": "Sprint 1 P0 security and functional: capability enforcement, protected storage, OCR bytes-from-storage, immutable decisions, identity revisions",
+          "status": "pending"
+        },
+        {
+          "evidence": "PLAN-REAL-DATA S2-P1-*",
+          "id": "REV-DATA-S2",
+          "label": "Sprint 2 P1 DB/recovery: migrations, composite tenant FKs, idempotency, locking, audit/outbox",
+          "status": "pending"
+        },
+        {
+          "evidence": "PLAN-REAL-DATA S3-M3-*",
+          "id": "REV-DATA-S3",
+          "label": "Sprint 3 M3 completeness: IntakeItem, retention fields, translation coverage, WCAG 2.2 AA",
+          "status": "pending"
+        },
+        {
+          "evidence": "PLAN-REAL-DATA S4-M4-*",
+          "id": "REV-DATA-S4",
+          "label": "Sprint 4 M4/M5 gates: A1 snapshots/artifacts, backup/restore, REV-002 approved",
+          "status": "pending"
+        },
+        {
+          "evidence": "Signed acknowledgment record",
+          "id": "REV-DATA-OPERATOR",
+          "label": "Operator trained; incident procedures and access protocols signed",
+          "status": "pending"
+        },
+        {
+          "evidence": "Legal approval record",
+          "id": "REV-DATA-LEGAL",
+          "label": "Legal counsel reviewed and approved data processing basis",
+          "status": "pending"
+        },
+        {
+          "evidence": "Restore test evidence",
+          "id": "REV-DATA-BACKUP",
+          "label": "Encrypted backup verified: pg_dump + protected files + manifest + off-host copy + isolated restore",
+          "status": "pending"
+        }
+      ],
+      "choices": [],
+      "dependencies": [
+        {
+          "id": "REV-002",
+          "required_gate": "implementation-open"
+        },
+        {
+          "id": "ADR-001",
+          "required_gate": "implementation-open"
+        },
+        {
+          "id": "ADR-002",
+          "required_gate": "implementation-open"
+        }
+      ],
+      "human_decision": "proposed",
+      "id": "REV-003",
+      "implementation_gate": "blocked",
+      "implementation_gate_reason": "Sprint 1 (P0 security), Sprint 2 (P1 DB/recovery), Sprint 3 (M3 completeness), Sprint 4 (M4/M5 gates) all required to pass before activation. See PLAN-REAL-DATA.",
+      "owner": "product engineering + product owner + legal + sysadmin",
+      "scope": "Authorizes real PII upload, OCR processing, document storage, and worker identity management in the portal. Does not authorize public deployment, GitLab CI, or production infrastructure changes. Separate explicit approval required from operator, legal counsel, and sysadmin.",
+      "source": "plans/PLAN-REAL-DATA.md",
+      "title": "Real-data portal activation",
+      "validation": "pending"
     }
   ],
   "schema_version": "1.0",
-  "updated_at": "2026-09-04T00:00:00+02:00"
+  "updated_at": "2026-09-04T12:00:00+02:00"
 };

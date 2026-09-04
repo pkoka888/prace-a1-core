@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_live_approval_register_passes():
-    assert validate(ROOT) == {"result": "pass", "records": 4, "errors": []}
+    assert validate(ROOT) == {"result": "pass", "records": 5, "errors": []}
 
 
 def test_open_gate_requires_passed_checks(tmp_path):

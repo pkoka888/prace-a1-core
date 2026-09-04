@@ -1,6 +1,20 @@
 # Synthetic Release 1A Review Environment — Runbook
 
-**Purpose:** Run the synthetic M2 review environment on s62, seed it with fixture data, and enable Jan to observe J1–J4 via the `Kontrola Release 1A` acceptance screen.
+> ## REV-002 ENGINEERING GATE BLOCKED — Formal acceptance is not yet available
+>
+> `REV-002` in `planning/approvals.json` has `implementation_gate: blocked`.
+> The engineering prerequisites for J2 (protected document storage, real OCR bytes-from-storage,
+> failure/retry) and J4 (immutable snapshots, generated previews, staleness handling) are not yet
+> implemented. **Do not invite Jan to perform formal acceptance yet.**
+>
+> Jan may conduct an **informal UX review** (see Step 8). No `Release1aAcceptance` record
+> should be created until the blocked engineering checks pass and the review scope is clean.
+>
+> **Scope of this runbook:** review environment setup only. It does **not** authorize
+> public routing, Tailscale exposure, real-data access, or production deployment.
+
+**Purpose:** Run the synthetic M2 review environment on s62, seed it with fixture data,
+and enable Jan to observe J1–J4 via the `Kontrola Release 1A` acceptance screen.
 
 **Scope:** This runbook covers the review environment only. It does **not** authorize public routing, Tailscale exposure, real-data access, or production deployment.
 
@@ -139,7 +153,7 @@ Log in with the activated reviewer account (Pavel sets password on first visit).
 
 ---
 
-## Step 8 — Jan observes J1–J4 via Kontrola Release 1A
+## Step 8 — Jan UX review (informal, not formal acceptance)
 
 Navigate to `/review/`. Four sections:
 
@@ -150,15 +164,23 @@ Navigate to `/review/`. Four sections:
 
 Each section has **Začít / Pokračovat / Dokončeno / Vyžaduje opravu** buttons.
 
+> **REV-002 is blocked.** J2 and J4 engineering prerequisites are not yet complete.
+> Do **not** mark those sections as **Dokončeno** — doing so would overstate what Jan observed.
+> Jan may use the sections for UX feedback but should not trigger formal acceptance.
+
 When all four are **Dokončeno**, go to `/review/check-answers/`. The page shows:
 - Four section results
 - Automated readiness verdict (from `readiness.json`)
 - Scope and exclusions (synthetic prototype only; real-data activation excluded)
 - **Schválit Release 1A** button (enabled only if all sections DONE and readiness passed)
 
-Jan clicks **Schválit Release 1A**. An immutable `Release1aAcceptance` record is written with git commit hash, clean/dirty state, build ID, and review session reference.
+> The **Schválit Release 1A** button is **disabled** while `REV-002` engineering gate is blocked.
+> The button will be re-enabled only after Sprint 1 implements protected storage, OCR
+> bytes-from-storage, failure/retry, and A1 immutable snapshots/previews.
 
-The receipt at `/review/receipt/` shows the approval. If the server code changes after this, the receipt shows a "Schválení je zastaralé" badge — a new approval is required against the new build.
+If Jan provides informal UX feedback, record it in meeting notes (no PII). The formal
+`Release1aAcceptance` record — and the promotion procedure to `planning/approvals.json` —
+happens only after the blocked engineering checks pass and a clean review-scope commit is built.
 
 ---
 

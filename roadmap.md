@@ -1,8 +1,9 @@
 # Product Roadmap — Jan Pilot to Recruitment Platform
 
 **Status:** Authoritative
-**Date:** 2026-08-19
-**Current stage:** M0 repository organization, M1 discovery/architecture proofs, M2 scaffold gate open
+**Original date:** 2026-08-19
+**Last status update:** 2026-09-04
+**Current stage:** M2 synthetic implementation partial; `REV-002` blocked pending J2/J4 engineering completion; PLAN-REAL-DATA gates Sprint 1–4 before real-data activation
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 

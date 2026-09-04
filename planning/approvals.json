@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-04T00:00:00+02:00",
+  "updated_at": "2026-09-04T12:00:00+02:00",
   "records": [
     {
       "id": "ADR-001",
@@ -97,6 +97,37 @@
       ],
       "dependencies": [{"id": "ADR-001", "required_gate": "implementation-open"}, {"id": "ADR-002", "required_gate": "implementation-open"}],
       "source": "docs/operations/release-1a-review-environment.md"
+    },
+    {
+      "id": "REV-003",
+      "title": "Real-data portal activation",
+      "scope": "Authorizes real PII upload, OCR processing, document storage, and worker identity management in the portal. Does not authorize public deployment, GitLab CI, or production infrastructure changes. Separate explicit approval required from operator, legal counsel, and sysadmin.",
+      "owner": "product engineering + product owner + legal + sysadmin",
+      "approver": "pending — operator + legal + sysadmin required",
+      "human_decision": "proposed",
+      "approved_at": null,
+      "approval_evidence": null,
+      "validation": "pending",
+      "implementation_gate": "blocked",
+      "implementation_gate_reason": "Sprint 1 (P0 security), Sprint 2 (P1 DB/recovery), Sprint 3 (M3 completeness), Sprint 4 (M4/M5 gates) all required to pass before activation. See PLAN-REAL-DATA.",
+      "activation_gate": "blocked",
+      "activation_gate_reason": "Requires PLAN-REAL-DATA completion plus explicit operator/legal/sysadmin approval per real-data-rules.md.",
+      "choices": [],
+      "checks": [
+        {"id": "REV-DATA-S1", "label": "Sprint 1 P0 security and functional: capability enforcement, protected storage, OCR bytes-from-storage, immutable decisions, identity revisions", "status": "pending", "evidence": "PLAN-REAL-DATA S1-P0-*"},
+        {"id": "REV-DATA-S2", "label": "Sprint 2 P1 DB/recovery: migrations, composite tenant FKs, idempotency, locking, audit/outbox", "status": "pending", "evidence": "PLAN-REAL-DATA S2-P1-*"},
+        {"id": "REV-DATA-S3", "label": "Sprint 3 M3 completeness: IntakeItem, retention fields, translation coverage, WCAG 2.2 AA", "status": "pending", "evidence": "PLAN-REAL-DATA S3-M3-*"},
+        {"id": "REV-DATA-S4", "label": "Sprint 4 M4/M5 gates: A1 snapshots/artifacts, backup/restore, REV-002 approved", "status": "pending", "evidence": "PLAN-REAL-DATA S4-M4-*"},
+        {"id": "REV-DATA-OPERATOR", "label": "Operator trained; incident procedures and access protocols signed", "status": "pending", "evidence": "Signed acknowledgment record"},
+        {"id": "REV-DATA-LEGAL", "label": "Legal counsel reviewed and approved data processing basis", "status": "pending", "evidence": "Legal approval record"},
+        {"id": "REV-DATA-BACKUP", "label": "Encrypted backup verified: pg_dump + protected files + manifest + off-host copy + isolated restore", "status": "pending", "evidence": "Restore test evidence"}
+      ],
+      "dependencies": [
+        {"id": "REV-002", "required_gate": "implementation-open"},
+        {"id": "ADR-001", "required_gate": "implementation-open"},
+        {"id": "ADR-002", "required_gate": "implementation-open"}
+      ],
+      "source": "plans/PLAN-REAL-DATA.md"
     }
   ]
 }

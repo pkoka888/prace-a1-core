@@ -113,3 +113,166 @@ class ReviewAcceptanceFlowTests(TransactionTestCase):
             git_commit_hash="b" * 40, git_clean=True, app_build_id="testbuild2",
         )
         self.assertEqual(Release1aAcceptance.objects.filter(user=self.user).count(), 2)
+
+
+class Rev002GateTests(TransactionTestCase):
+    """Verify that the REV-002 engineering gate prevents Release1aAcceptance creation."""
+
+    def setUp(self):
+        self.client = Client()
+        self.org = Organization.objects.create(key="gatetest-org", label="Gate Test Org")
+        self.user = get_user_model().objects.create_user(
+            username="gatetester", email="gatetester@example.invalid",
+            password="testpassword123", is_active=True,
+        )
+        Membership.objects.create(
+            user=self.user, organization=self.org,
+            role="admin", active=True
+        )
+        Authenticator.objects.create(
+            user=self.user, type=Authenticator.Type.TOTP, data={}
+        )
+        self.client.force_login(self.user)
+        session_key = self.client.session.session_key
+        s = SessionStore(session_key=session_key)
+        s["account_authentication_methods"] = [
+            {"method": "password"},
+            {"method": "mfa", "type": "totp"},
+        ]
+        s.save()
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = session_key
+        self.review_session = Release1aReviewSession.objects.create(
+            user=self.user, organization=self.org, build_id="testbuild123"
+        )
+        for section in [
+            Release1aReview.Section.WORKER,
+            Release1aReview.Section.DOCUMENT_OCR,
+            Release1aReview.Section.ASSIGNMENT,
+            Release1aReview.Section.A1,
+        ]:
+            Release1aReview.objects.update_or_create(
+                session=self.review_session, section=section,
+                defaults={"status": Release1aReview.Status.DONE}
+            )
+
+    def test_rev002_gate_open_returns_correct_status(self):
+        """Unit test for _rev002_gate_open with blocked and open gates."""
+        from portal.release1a.views import _rev002_gate_open
+        from unittest.mock import patch
+
+        blocked_json = {
+            "schema_version": "1.0",
+            "updated_at": "2026-09-04T00:00:00+02:00",
+            "records": [{
+                "id": "REV-002",
+                "title": "Test",
+                "scope": "Test scope",
+                "owner": "test",
+                "approver": "tester",
+                "human_decision": "proposed",
+                "validation": "pending",
+                "implementation_gate": "blocked",
+                "activation_gate": "blocked",
+                "choices": [],
+                "checks": [],
+                "dependencies": [],
+                "source": "test.md",
+            }]
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(blocked_json, f)
+            blocked_path = f.name
+        try:
+            with patch("portal.release1a.views.APPROVALS_FILE", blocked_path):
+                open_, reason = _rev002_gate_open()
+            self.assertFalse(open_)
+            self.assertIn("blocked", reason)
+        finally:
+            os.unlink(blocked_path)
+
+        open_json = dict(blocked_json)
+        open_json["records"][0]["implementation_gate"] = "open"
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(open_json, f)
+            open_path = f.name
+        try:
+            with patch("portal.release1a.views.APPROVALS_FILE", open_path):
+                open_, reason = _rev002_gate_open()
+            self.assertTrue(open_)
+        finally:
+            os.unlink(open_path)
+
+    def test_blocked_gate_rejects_approval(self):
+        """
+        POST to review_approve while REV-002 implementation_gate is blocked
+        must return 403 and not create a Release1aAcceptance record.
+        """
+        from portal.release1a import views as review_views
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            blocked_approvals = os.path.join(tmpdir, "approvals.json")
+            with open(blocked_approvals, "w") as f:
+                json.dump({
+                    "schema_version": "1.0",
+                    "updated_at": "2026-09-04T00:00:00+02:00",
+                    "records": [{
+                        "id": "REV-002",
+                        "title": "Test",
+                        "scope": "Test scope",
+                        "owner": "test",
+                        "approver": "tester",
+                        "human_decision": "proposed",
+                        "validation": "pending",
+                        "implementation_gate": "blocked",
+                        "activation_gate": "blocked",
+                        "choices": [],
+                        "checks": [],
+                        "dependencies": [],
+                        "source": "test.md",
+                    }]
+                }, f)
+            with patch.object(review_views, "APPROVALS_FILE", blocked_approvals):
+                with patch.object(review_views, "_scoped_tree_clean", return_value=(True, "")):
+                    with patch.object(review_views, "_readiness_passed", return_value=(True, "OK")):
+                        response = self.client.post("/review/approve/")
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("blocked", response.json().get("error", "").lower())
+        self.assertEqual(Release1aAcceptance.objects.count(), 0)
+
+    def test_open_gate_allows_approval(self):
+        """
+        POST to review_approve when REV-002 implementation_gate is open
+        must succeed and create a Release1aAcceptance record.
+        """
+        from portal.release1a import views as review_views
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            open_approvals = os.path.join(tmpdir, "approvals.json")
+            with open(open_approvals, "w") as f:
+                json.dump({
+                    "schema_version": "1.0",
+                    "updated_at": "2026-09-04T00:00:00+02:00",
+                    "records": [{
+                        "id": "REV-002",
+                        "title": "Test",
+                        "scope": "Test scope",
+                        "owner": "test",
+                        "approver": "tester",
+                        "human_decision": "proposed",
+                        "validation": "passed",
+                        "implementation_gate": "open",
+                        "activation_gate": "blocked",
+                        "choices": [],
+                        "checks": [],
+                        "dependencies": [],
+                        "source": "test.md",
+                    }]
+                }, f)
+            with patch.object(review_views, "APPROVALS_FILE", open_approvals):
+                with patch.object(review_views, "_scoped_tree_clean", return_value=(True, "")):
+                    with patch.object(review_views, "_readiness_passed", return_value=(True, "OK")):
+                        response = self.client.post("/review/approve/")
+        self.assertEqual(response.status_code, 302)  # redirect to receipt
+        self.assertEqual(Release1aAcceptance.objects.count(), 1)

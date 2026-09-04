@@ -78,6 +78,35 @@ READINESS_FILE = os.environ.get(
     "/var/www/prace-v-nemecku.tvoje.info/runtime/portal/synthetic-review/readiness.json",
 )
 
+APPROVALS_FILE = os.environ.get(
+    "APPROVALS_FILE",
+    "/var/www/prace-v-nemecku.tvoje.info/planning/approvals.json",
+)
+
+
+def _rev002_gate_open():
+    """
+    Check whether the REV-002 implementation gate is open.
+
+    Returns (open, reason) — open=True only when the gate is explicitly 'open'.
+    A 'blocked' gate returns (False, "REV-002 implementation_gate is blocked").
+    A missing record returns (False, "REV-002 not found in approvals register").
+    """
+    try:
+        data = json.load(open(APPROVALS_FILE))
+        record = next(
+            (r for r in data.get("records", []) if r.get("id") == "REV-002"),
+            None,
+        )
+        if not record:
+            return False, "REV-002 not found in approvals register"
+        gate = record.get("implementation_gate", "blocked")
+        if gate == "open":
+            return True, "REV-002 implementation_gate is open"
+        return False, f"REV-002 implementation_gate is {gate}"
+    except Exception as e:
+        return False, f"could not read approvals register: {e}"
+
 REVIEW_SCOPE_PATTERNS = [
     "portal/",
     "requirements.txt",
@@ -1079,6 +1108,7 @@ def review_check_answers(request):
         for r in review_rows.values()
     )
     readiness_passed, readiness_reason = _readiness_passed()
+    gate_open, gate_reason = _rev002_gate_open()
 
     ctx = {
         "sections": [
@@ -1099,6 +1129,8 @@ def review_check_answers(request):
         "all_done": all_done,
         "readiness_passed": readiness_passed,
         "readiness_reason": readiness_reason,
+        "gate_open": gate_open,
+        "gate_reason": gate_reason,
         "scope_text": REVIEW_SCOPE_TEXT,
         "exclusions_text": REVIEW_EXCLUSIONS_TEXT,
         "build_id": _get_build_id(),
@@ -1138,6 +1170,13 @@ def review_approve(request):
                 "error": "tree not clean at approval time — commit scoped changes first",
                 "detail": scoped_detail,
             }, status=400
+        )
+
+    gate_open, gate_reason = _rev002_gate_open()
+    if not gate_open:
+        return JsonResponse(
+            {"error": "REV-002 engineering gate is blocked", "detail": gate_reason},
+            status=403,
         )
 
     exceptions = [
