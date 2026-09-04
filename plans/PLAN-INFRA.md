@@ -87,7 +87,7 @@ approval record.
 | # | Outcome | Status | Evidence |
 |---|---|---|---|
 | M2-A | Committed build coherent | ✅ Passed | Exported HEAD validation: 74/74 M2 tests pass, `manage.py check` clean, `makemigrations --check` clean |
-| M2-B | Jan functional review ready | ⏳ Pending | `REV-1A-FRONTEND` pending Jan acceptance via `/review/`; J1–J4 observation/acceptance not yet completed |
+| M2-B | Jan functional review ready | ⏳ Pending | `REV-002` blocked: J2/J4 require real storage/OCR/download implementation before sections can be marked DONE |
 | M2-C | Production infrastructure ready | ⏳ Pending | server62 recovery evidence + separately approved CI; does not block M2-B |
 
 ### Key Findings

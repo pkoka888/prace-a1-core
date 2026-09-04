@@ -168,7 +168,7 @@ window.APPROVAL_REGISTER = {
     },
     {
       "activation_gate": "blocked",
-      "activation_gate_reason": "Real-data portal activation requires separate authorization per real-data-rules.md.",
+      "activation_gate_reason": "Real-data portal activation requires separate authorization per real-data-rules.md and PLAN-REAL-DATA gates Sprint 1–4.",
       "approval_evidence": null,
       "approved_at": null,
       "approver": "Jan or Pavel as Jan's delegate",
@@ -199,11 +199,20 @@ window.APPROVAL_REGISTER = {
         }
       ],
       "choices": [],
-      "dependencies": [],
-      "human_decision": "pending",
-      "id": "REV-1A-FRONTEND",
-      "implementation_gate": "open",
-      "implementation_gate_reason": "Awaiting Jan's completion of J1–J4 via /review/ and one Schválit Release 1A click.",
+      "dependencies": [
+        {
+          "id": "ADR-001",
+          "required_gate": "implementation-open"
+        },
+        {
+          "id": "ADR-002",
+          "required_gate": "implementation-open"
+        }
+      ],
+      "human_decision": "proposed",
+      "id": "REV-002",
+      "implementation_gate": "blocked",
+      "implementation_gate_reason": "J2 requires real quarantine, OCR bytes-from-storage, failure/retry, and protected download — not yet implemented. J4 requires immutable snapshots, generated previews, and staleness handling — not yet implemented. Jan should not mark those sections DONE.",
       "owner": "product owner",
       "scope": "J1–J4 workflow and frontend behavior observed via Kontrola Release 1A; synthetic data only; not production deployment, not real-data activation, not public recruitment site.",
       "source": "docs/operations/release-1a-review-environment.md",
@@ -212,5 +221,5 @@ window.APPROVAL_REGISTER = {
     }
   ],
   "schema_version": "1.0",
-  "updated_at": "2026-08-17T00:00:00+02:00"
+  "updated_at": "2026-09-04T00:00:00+02:00"
 };

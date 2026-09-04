@@ -6,8 +6,11 @@
 
 ## Purpose
 
-Authorize real PII upload, OCR processing, document storage, and worker identity
-management in the portal after all P0/P1 security and functional gaps are closed.
+Define prerequisites and evidence for a later, explicit real-data activation
+decision. Completion of this plan does not itself authorize real-data processing.
+The controlling authority is [`docs/security/real-data-rules.md`](../docs/security/real-data-rules.md),
+with explicit operator/legal/sysadmin approval required.
+
 This plan does not authorize production deployment, public exposure, or GitLab CI.
 
 ## Activation prerequisites
@@ -18,10 +21,10 @@ Every item is required before any real-data upload or new real-person record cre
 
 | # | Requirement | Acceptance criterion |
 |---|---|---|
-| S1-P0-1 | Every material action reachable from an HTTP view passes through a capability check | All roles tested for allowed and denied actions; cross-org read/write/task/download returns zero bytes for unauthorized |
-| S1-P0-2 | Child/parent organization referential integrity enforced at DB and service layer | DB composite FKs on PostgreSQL; cross-tenant insert returns explicit domain error |
+| S1-P0-1 | Every material action reachable from an HTTP view passes through a capability check | Complete role × action matrix documented; all roles tested for allowed and denied actions; cross-org read/write/task/download returns zero bytes for unauthorized |
+| S1-P0-2 | Service-level child/parent organization validation; complete cross-tenant test coverage | Cross-tenant insert/update/delete returns explicit domain error at service layer; `tests/tenant/` covers every tenant model for cross-org read/write/task/download |
 | S1-P0-3 | Protected storage implemented via Django `Storage` interface | Upload writes to `runtime/portal/quarantine/<opaque-key>`; authorized download returns bytes; unauthorized returns zero bytes |
-| S1-P0-4 | Quarantine state and scanner adapter in place | File acceptance includes size, SHA-256, extension allowlist, MIME detection, structural parser check, and explicit scanner unavailable state |
+| S1-P0-4 | Quarantine state and scanner adapter in place | File acceptance includes size limit, SHA-256, extension allowlist, independently detected MIME, structural parser check, and explicit scanner unavailable/error state |
 | S1-P0-5 | OCR consumes bytes from storage, not opaque-key-as-path | OCR run opens `storage.open(opaque_key)`; exceptions are not silently swallowed; failed OCR is visible and retryable |
 | S1-P0-6 | FieldProposal and FieldDecision genuinely immutable | No mutation path for confirmed proposals; DB uniqueness for one final decision per proposal |
 | S1-P0-7 | Authoritative identity revisions created and read by readiness | `WorkerIdentityRevision` created on confirmation; readiness reads current authoritative revision |
@@ -33,8 +36,8 @@ Every item is required before any real-data upload or new real-person record cre
 | # | Requirement | Acceptance criterion |
 |---|---|---|
 | S2-P1-1 | Forward-only migrations from `0005` to current | `MigrationExecutor` transition tests pass from `0005` to HEAD on PostgreSQL |
-| S2-P1-2 | Composite tenant foreign keys on PostgreSQL | `FOREIGN KEY (organization_id, document_id) REFERENCES ...` on all tenant-owned relations |
-| S2-P1-3 | Idempotency keys unique; conditional optimistic locking | `OcrRun.idempotency_key UNIQUE`; `UPDATE ... WHERE id=? AND version=?` on Assignment |
+| S2-P1-2 | Composite tenant foreign keys on PostgreSQL | `FOREIGN KEY (organization_id, document_id) REFERENCES ...` on all tenant-owned relations; PostgreSQL RLS as optional defense in depth with non-owner application role |
+| S2-P1-3 | Idempotency keys unique; conditional optimistic locking | `OcrRun.idempotency_key UNIQUE`; `UPDATE ... WHERE id=? AND version=?` on Assignment; Worker version field enforces same pattern |
 | S2-P1-4 | Audit/outbox replaces manual StatusEvent/AuditEvent duplication | One typed append-only event stream; no duplicate writes for the same domain event |
 | S2-P1-5 | Query-derived composite indexes added | `CREATE INDEX` for confirmed filter, assignment overlap, readiness aggregation |
 
@@ -44,8 +47,8 @@ Every item is required before any real-data upload or new real-person record cre
 |---|---|---|
 | S3-M3-1 | `IntakeItem`, partial-failure recovery, and operator retry queue | Multi-file intake partially succeeds gracefully; each file has explicit staged state and reconciliation |
 | S3-M3-2 | Purpose, legal-basis, and retention fields on all document types | `purpose`, `legal_basis_reference`, `retention_review_at`, `retention_status`, `legal_hold_at`, `deleted_at` present and enforced |
-| S3-M3-3 | Czech copy complete; all 48 portal templates load translation tags | `python manage.py compilemessages` passes; no hardcoded user-facing strings remain |
-| S3-M3-4 | WCAG 2.2 AA baseline met | axe-core audit passes AA on all user-facing templates; focus visibility, error identification, and destructive-action confirmation accessible |
+| S3-M3-3 | Czech copy complete; translation catalog coverage measured | `python manage.py compilemessages` passes; extraction catalog covers all user-facing strings; coverage percentage documented; German glossary deferred until operator need confirmed |
+| S3-M3-4 | WCAG 2.2 AA engineering baseline | axe-core automated pass on all user-facing templates; manual spot checks for keyboard navigation, focus visibility, 200% zoom, 320px reflow, error identification, destructive-action confirmation, and screen-reader logical reading order |
 
 ### Sprint 4 — M4/M5 gates (required)
 
@@ -53,9 +56,9 @@ Every item is required before any real-data upload or new real-person record cre
 |---|---|---|
 | S4-M4-1 | A1 immutable snapshots and artifacts | `A1InputSnapshot` and `A1Artifact` created per A1 case; bytes stored in protected storage |
 | S4-M4-2 | Deterministic A1 generation with QA evidence | `scripts/a1_quality_gate.py render+validate` passes for all approved profiles |
-| S4-M4-3 | Submission and authority response tracking | `AuthoritySubmission` and `AuthorityResponse` records; ČSSZ/DVKA submission identifier stored |
-| S4-M4-4 | Encrypted backup and isolated restore proof | `pg_dump` encrypted with reviewed key; restore to isolated environment verified; integrity hash matches |
-| S4-M4-5 | Jan/operator J1–J4 observation recorded | `REV-1A-FRONTEND` approved; acceptance evidence in `planning/approvals.json` |
+| S4-M4-3 | Submission and authority response tracking | `AuthoritySubmission` and `AuthorityResponse` records; submission identifier from the actual competent institution stored |
+| S4-M4-4 | Encrypted backup and isolated restore proof | Covers: encrypted `pg_dump`, protected file snapshots, manifest with integrity hashes, off-host copy, and isolated application-level restore confirmed |
+| S4-M4-5 | Jan/operator J1–J4 observation recorded | `REV-002` human_decision: approved; acceptance evidence in `planning/approvals.json` |
 
 ## Real-data rules (never relaxed)
 
@@ -72,7 +75,7 @@ Per `docs/security/real-data-rules.md`:
 
 - Public deployment or HTTPS exposure
 - GitLab runner, CI pipeline, or deployment automation
-- Collection of real data from non-consenting individuals
+- Collection of data without a documented purpose and applicable lawful basis
 - Production database access from developer machines
 - Merger of `a1/` and portal storage lanes
 
@@ -80,9 +83,9 @@ Per `docs/security/real-data-rules.md`:
 
 | Criterion | Evidence |
 |---|---|
-| All Sprint 1–4 gates pass | `planning/approvals.json` records `REAL-DATA-GATE` with `human_decision: approved` |
-| P0 authorization defects closed | `tests/security/test_capabilities.py` 100% coverage; cross-org tests green on PostgreSQL |
-| P0 storage/OCR defects closed | `tests/architecture/test_protected_storage.py` passes with real Django Storage backend |
-| All 48 templates translated | `python manage.py compilemessages` clean; `gettext` extracted for all user-facing strings |
-| Encrypted backup verified | Restore to isolated PostgreSQL instance confirmed; hash matches `pg_dump` output |
+| All Sprint 1–4 gates pass | `planning/approvals.json` records `REV-003` with `human_decision: approved` and all checks passed |
+| P0 authorization defects closed | Complete role × action matrix in `docs/architecture/`; all roles tested for allowed and denied actions; cross-org tests green on PostgreSQL |
+| P0 storage/OCR defects closed | `tests/architecture/test_protected_storage.py` passes with real Django Storage backend; OCR run passes bytes from storage |
+| Translation coverage | `python manage.py compilemessages` clean; extraction catalog document with coverage percentage |
+| Encrypted backup verified | Restore to isolated PostgreSQL instance confirmed; all artifacts verified; off-host copy confirmed |
 | Operator trained | Jan/operator signed acknowledgment of incident procedures and access protocols |

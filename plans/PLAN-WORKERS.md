@@ -44,7 +44,7 @@ tracked source of truth is this file plus [`plans/INDEX.md`](INDEX.md).
   [`docs/decisions/ADR-002-release-1a-data-and-transactions.md`](../docs/decisions/ADR-002-release-1a-data-and-transactions.md);
   acceptance brief
   [`docs/release-1a/unblock-review-packet.md`](../docs/release-1a/unblock-review-packet.md).
-- **Jan workflow discovery:** environment available via `Kontrola Release 1A` at `/review/`; observation/acceptance pending — `REV-1A-FRONTEND` is not yet approved; one acceptance record written per review session (immutable, git-commit-bound). Individual reviewer accounts (non-superuser, inactive until `activate_reviewer`); real TOTP enrollment required. See `docs/operations/release-1a-review-environment.md`.
+- **Jan workflow discovery:** environment available via `Kontrola Release 1A` at `/review/`; `REV-002` is in `proposed` state with `implementation_gate: blocked` — J2 and J4 require Sprint 1 implementation before functional acceptance; one acceptance record written per review session (immutable, git-commit-bound). Individual reviewer accounts (non-superuser, inactive until `activate_reviewer`); real TOTP enrollment required. See `docs/operations/release-1a-review-environment.md`.
   matrix; decision input
   [`docs/decisions/2026-08-12-jan-release-1-solution-brief.md`](../docs/decisions/2026-08-12-jan-release-1-solution-brief.md).
 - **UX/UI/copy:** tested workflow, localization, and accessibility contract

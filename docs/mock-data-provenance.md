@@ -182,4 +182,4 @@ Source: `tests/fixtures/release_1a/` (shared with architecture proof fixtures).
 | **Containment** | `_protected_path_guard()` raises `ProtectedPathAccessed` for any access to `a1/`, `scans/`, `evidence/`, `ocr/`, `data/`, `employees/scans/`, `output/`, `runtime/portal/real`, `secrets/.env` |
 | **Hash verification** | `scripts/verify_synthetic_review_readiness.sh` re-checks `manifest.json` SHA-256 before counting as ready |
 | **Production swap** | Fixtures are never replaced; production data enters via authorized intake/migration after separate DEC-012 gate |
-| **Gate** | `REV-1A-FRONTEND` pending in `planning/approvals.json` |
+| **Gate** | `REV-002` in `proposed`/`blocked` state in `planning/approvals.json` — blocked until Sprint 1 implements real storage/OCR |
