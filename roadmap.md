@@ -140,10 +140,10 @@ failure/approval states.
 
 > Mapping note: dated plan letters below correspond to the consolidated plans —
 > E/K/L/M/AE→PLAN-INFRA, R/Q→PLAN-A1, F/H/N/O→PLAN-WORKERS, AC/AD/P→PLAN-INVOICE,
-> G/J/I→PLAN-LEGAL, AF/AF2→PLAN-FREE-MODEL, B/C/D→PLAN-HISTORY. Statuses below are
-> dated records (roadmap dated 2026-08-19); authoritative status lives in `plans/INDEX.md`.
+> G/J/I→PLAN-LEGAL, AF/AF2→PLAN-FREE-MODEL, B/C/D→PLAN-HISTORY, REAL-DATA→PLAN-REAL-DATA.
+> Statuses below are dated records (roadmap dated 2026-08-19); authoritative status lives in `plans/INDEX.md`.
 
-- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟢 (review environment implemented 2026-09-02; synthetic DB at `runtime/portal/synthetic-review/`, four-section `Kontrola Release 1A` at `/review/`, allauth TOTP enrolled, immutable receipts, `REV-1A-FRONTEND` pending Jan acceptance). Broader Plan L/M exits do not block this synthetic path.
+- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟡 (synthetic implementation green 74/74 tests; `REV-1A-FRONTEND` pending Jan J1–J4 acceptance via `/review/`; PLAN-REAL-DATA gates Sprint 1–4 before any real-data activation). Broader Plan L/M exits do not block this synthetic path.
 - **Parallel infrastructure:** Plan K 🟡 (capacity/backup evidence incomplete) + GitLab runner prep (Plan AE/DEC-016 gated).
 - **Parallel non-blocking research:** G/J/P 🟡 + broader N/O 🟡.
 - **Plan AC integrity lane:** Integrity 1.3 🟡 + synthetic replay 🟡; Pilot 1/2 required before skill activation; live capture blocked.
