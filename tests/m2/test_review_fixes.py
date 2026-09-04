@@ -17,7 +17,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TransactionTestCase
 from allauth.mfa.models import Authenticator
 from portal.release1a.models import (
-    AuditEvent, Membership, OcrProposal, Organization, Worker,
+    AuditEvent, Membership, FieldProposal, Organization, Worker,
 )
 from portal.release1a.forms import AssignmentForm
 from portal.release1a.services import create_worker, prepare_a1, upload_document
@@ -27,7 +27,7 @@ class ReviewFixRegressionTests(TransactionTestCase):
     def setUp(self):
         self.org = Organization.objects.create(key="review-fix-alpha", label="Review Fix Alpha")
         self.user = get_user_model().objects.create_user("reviewfix", password="x")
-        Membership.objects.create(user=self.user, organization=self.org, role="op", active=True)
+        Membership.objects.create(user=self.user, organization=self.org, role="jan_planner", active=True)
         Authenticator.objects.create(
             user=self.user,
             type=Authenticator.Type.TOTP,
@@ -85,7 +85,7 @@ class ReviewFixRegressionTests(TransactionTestCase):
         """upload_document creates exactly one proposal (no duplicates from view)."""
         worker = create_worker(self.user, self.org, given_name="G", family_name="H", birth_date=date(1990, 1, 1), activity_profile="employee")
         document = upload_document(self.user, self.org, worker, "fixture.pdf", "application/pdf", b"%PDF-1.4\n%%EOF")
-        proposals = list(OcrProposal.objects.filter(document=document))
+        proposals = list(FieldProposal.objects.filter(document=document))
         self.assertEqual(len(proposals), 1, "service must be the single proposal source")
         self.assertEqual(proposals[0].field_name, "family_name")
 

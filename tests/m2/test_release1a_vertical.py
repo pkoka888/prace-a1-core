@@ -9,7 +9,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import TransactionTestCase
 from allauth.mfa.models import Authenticator
-from portal.release1a.models import AuditEvent, Membership, Organization, OcrProposal
+from portal.release1a.models import AuditEvent, Membership, Organization, FieldProposal
 from portal.release1a.services import Forbidden, create_assignment, create_worker, prepare_a1, upload_document
 
 class Release1AVerticalTests(TransactionTestCase):
@@ -17,13 +17,13 @@ class Release1AVerticalTests(TransactionTestCase):
         self.alpha = Organization.objects.create(key="synthetic-alpha", label="Synthetic Alpha")
         self.beta = Organization.objects.create(key="synthetic-beta", label="Synthetic Beta")
         self.user = get_user_model().objects.create_user("synthetic-admin", password="synthetic-only")
-        self.membership = Membership.objects.create(user=self.user, organization=self.alpha, role="jan_planner", mfa_verified=True)
+        self.membership = Membership.objects.create(user=self.user, organization=self.alpha, role="jan_planner")
         Authenticator.objects.create(user=self.user, type=Authenticator.Type.TOTP, data={})
 
     def test_j1_to_j4_coherent_path_and_non_content_audit(self):
         worker = create_worker(self.user, self.alpha, given_name="Syntetický", family_name="Pracovník", birth_date=date(1990, 1, 1), activity_profile="employee")
         document = upload_document(self.user, self.alpha, worker, "fixture.pdf", "application/pdf", b"%PDF-1.4\n%%EOF")
-        assert OcrProposal.objects.get(document=document).proposed_value == "Syntetický návrh"
+        assert FieldProposal.objects.get(document=document).proposed_value == "Syntetický návrh"
         _, overlap = create_assignment(self.user, self.alpha, worker, start=date(2026, 8, 1), end=date(2026, 8, 15), workplace_label="Syntetické pracoviště", activity_label="Test")
         assert not overlap
         case = prepare_a1(self.user, self.alpha, worker)

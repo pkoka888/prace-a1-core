@@ -14,7 +14,7 @@ from django.test import Client, TransactionTestCase
 from allauth.mfa.models import Authenticator
 from portal.release1a.models import (
     AuditEvent, Membership, Organization, Worker,
-    Document, OcrProposal, Assignment, A1Case
+    Document, Assignment, A1Case
 )
 
 def _mfa_login(client, user):
@@ -199,3 +199,106 @@ class M2ViewTests(TransactionTestCase):
         # No sensitive data in audit payloads
         for event in AuditEvent.objects.all():
             self.assertNotIn("Syntetický", event.object_ref)
+
+
+class M2NavigationRegressionTests(TransactionTestCase):
+    """Regression tests for navigation links - proves routes resolve correctly."""
+
+    def setUp(self):
+        self.org = Organization.objects.create(key="nav-org", label="Navigation Org")
+        self.user = get_user_model().objects.create_user("navuser", password="test-m2")
+        self.membership = Membership.objects.create(
+            user=self.user, organization=self.org, role="admin"
+        )
+        self.client = Client()
+        _mfa_login(self.client, self.user)
+        self.worker = Worker.objects.create(
+            organization=self.org,
+            given_name="Navigace", family_name="Test",
+            birth_date=date(1990, 1, 1),
+            activity_profile="employee",
+        )
+
+    def test_workers_list_navigates(self):
+        """Pracovníci → Zobrazit všechny links to /workers/"""
+        response = self.client.get("/workers/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Test Navigace")
+
+    def test_worker_detail_navigates(self):
+        """Worker detail page renders without HTMX modal issues."""
+        response = self.client.get(f"/workers/{self.worker.pk}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Navigace")
+        self.assertContains(response, "Test")
+        self.assertNotContains(response, "hx-get", status_code=200)
+
+    def test_dashboard_documents_link_resolves(self):
+        """Dashboard Dokumenty link goes to /documents/"""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/documents/"')
+
+    def test_dashboard_assignments_link_resolves(self):
+        """Dashboard Přiřazení link goes to /assignments/"""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/assignments/"')
+
+    def test_dashboard_a1_link_resolves(self):
+        """Dashboard A1 případy link goes to /a1/"""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/a1/"')
+
+    def test_document_list_navigates(self):
+        """Global document list renders at /documents/"""
+        response = self.client.get("/documents/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_assignment_list_navigates(self):
+        """Global assignment list renders at /assignments/"""
+        response = self.client.get("/assignments/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_a1_list_navigates(self):
+        """Global A1 list renders at /a1/"""
+        response = self.client.get("/a1/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_intake_wizard_navigates(self):
+        """Intake wizard renders at /workers/new/intake/"""
+        response = self.client.get("/workers/new/intake/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Přidat pracovníka")
+
+    def test_planned_pages_render(self):
+        """Planned module pages show inactive message."""
+        planned_modules = [
+            "/partners/", "/jobs/", "/candidates/", "/requests/",
+            "/capacity/", "/attendance/", "/communications/", "/finance/",
+            "/invoices/", "/payroll-cz/", "/payroll-de/", "/integrations/",
+            "/privacy/", "/admin/"
+        ]
+        for url in planned_modules:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, f"Failed for {url}")
+            self.assertContains(response, "Funkce zatím není aktivní")
+
+    def test_ocr_review_queue_navigates(self):
+        """OCR review queue renders at /ocr-review/"""
+        response = self.client.get("/ocr-review/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Kontrola OCR")
+
+    def test_assignment_conflicts_navigates(self):
+        """Assignment conflicts renders at /assignments/conflicts/"""
+        response = self.client.get("/assignments/conflicts/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Konflikty přiřazení")
+
+    def test_worker_archive_page_loads(self):
+        """Worker archive confirmation page renders."""
+        response = self.client.get(f"/workers/{self.worker.pk}/archive/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Archivovat")

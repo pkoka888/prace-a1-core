@@ -343,3 +343,91 @@ class A1ApprovalForm(forms.Form):
             "rows": 3,
         }),
     )
+
+
+class IntakeWizardForm(forms.Form):
+    """Unified intake wizard - choose upload, paste, or manual entry."""
+
+    INTAKE_CHOICES = [
+        ("upload", _("Nahrát doklady (OP/ZP)")),
+        ("paste", _("Vložit text")),
+        ("manual", _("Vyplnit ručně")),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("organization", None)
+        kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+    intake_type = forms.ChoiceField(
+        label=_("Způsob přidání pracovníka"),
+        choices=INTAKE_CHOICES,
+        widget=forms.RadioSelect(attrs={"class": "radio-field"}),
+    )
+    purpose = forms.ChoiceField(
+        label=_("Účel intake"),
+        choices=[
+            ("a1", _("Příprava A1")),
+            ("assignment", _("Přiřazení")),
+            ("payroll", _("Mzdové podklady")),
+        ],
+        widget=forms.Select(attrs={"class": "select-field"}),
+    )
+
+
+class MultiDocumentUploadForm(forms.Form):
+    """Multi-document upload for OP/ZP intake - up to 4 sides, 10MB each."""
+
+    file1 = forms.FileField(
+        label=_("První soubor"),
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            "class": "file-input",
+            "accept": ".pdf,.png,.jpg,.jpeg",
+        }),
+    )
+    file2 = forms.FileField(
+        label=_("Druhý soubor"),
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            "class": "file-input",
+            "accept": ".pdf,.png,.jpg,.jpeg",
+        }),
+    )
+    file3 = forms.FileField(
+        label=_("Třetí soubor"),
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            "class": "file-input",
+            "accept": ".pdf,.png,.jpg,.jpeg",
+        }),
+    )
+    file4 = forms.FileField(
+        label=_("Čtvrtý soubor"),
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            "class": "file-input",
+            "accept": ".pdf,.png,.jpg,.jpeg",
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.organization = kwargs.pop("organization", None)
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        files = [cleaned_data.get(f"file{i}") for i in range(1, 5)]
+        provided = [f for f in files if f]
+        if not provided:
+            raise ValidationError(_("Nahrajte alespoň jeden soubor."))
+        for f in provided:
+            if f.size > MAX_UPLOAD_BYTES:
+                raise ValidationError(
+                    _("Soubor %(name)s je příliš velký (max %(size)s MB).") %
+                    {"name": f.name, "size": MAX_UPLOAD_BYTES // (1024 * 1024)}
+                )
+            if f.content_type not in ["application/pdf", "image/png", "image/jpeg"]:
+                raise ValidationError(_("Nepovolený typ souboru %(name)s. Povoleno: PDF, PNG, JPG.") % {"name": f.name})
+        return cleaned_data

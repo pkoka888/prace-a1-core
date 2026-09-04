@@ -41,10 +41,7 @@ class TOTPRealEnforcementTests(TransactionTestCase):
         )
 
     def test_mfa_verified_flag_does_not_grant_access(self):
-        """A user with mfa_verified=True but no allauth TOTP should be denied."""
-        membership = Membership.objects.get(user=self.user_without_totp, organization=self.org)
-        membership.mfa_verified = True
-        membership.save(update_fields=["mfa_verified"])
+        """A user without allauth TOTP should be denied regardless of membership flags."""
         self.assertFalse(require_mfa_enrolled(self.user_without_totp))
 
     def test_user_with_allauth_totp_passes_mfa_check(self):

@@ -7,13 +7,93 @@
         <p class="text-gray-600">Detail pracovníka</p>
     </div>
     <div class="space-x-2">
-        <a href="{% url 'worker_edit' pk=worker.pk %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium" hx-get="{% url 'worker_edit' pk=worker.pk %}" hx-target="#worker-form-modal" hx-swap="innerHTML">Upravit</a>
+        <a href="{% url 'worker_edit' pk=worker.pk %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">Upravit</a>
         <a href="{% url 'assignment_create' worker_pk=worker.pk %}" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium">Přidat přiřazení</a>
         <a href="{% url 'document_upload' worker_pk=worker.pk %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Nahrát dokument</a>
         <a href="{% url 'a1_prepare' worker_pk=worker.pk %}" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">A1 případ</a>
     </div>
 </div>
 
+<div class="mb-4 border-b border-gray-200">
+    <nav class="flex -mb-px space-x-4">
+        <a href="?tab=" class="px-3 py-2 text-sm font-medium {% if not tab %}border-b-2 border-blue-500 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">Přehled</a>
+        <a href="?tab=documents" class="px-3 py-2 text-sm font-medium {% if tab == 'documents' %}border-b-2 border-blue-500 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">Dokumenty ({{ documents|length }})</a>
+        <a href="?tab=assignments" class="px-3 py-2 text-sm font-medium {% if tab == 'assignments' %}border-b-2 border-blue-500 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">Přiřazení ({{ assignments|length }})</a>
+        <a href="?tab=a1" class="px-3 py-2 text-sm font-medium {% if tab == 'a1' %}border-b-2 border-blue-500 text-blue-600{% else %}text-gray-500 hover:text-gray-700{% endif %}">A1 případy ({{ a1_cases|length }})</a>
+    </nav>
+</div>
+
+{% if tab == 'documents' %}
+<div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">Dokumenty</h3>
+        <a href="{% url 'document_upload' worker_pk=worker.pk %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Nahrát</a>
+    </div>
+    <div class="divide-y divide-gray-200">
+        {% for document in documents %}
+        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+            <div>
+                <p class="font-medium text-gray-900">{{ document.content_type }}</p>
+                <p class="text-sm text-gray-500">Stav: {{ document.get_state_display }} | SHA256: {{ document.sha256|truncatechars:16 }}</p>
+            </div>
+            <div class="space-x-2">
+                <a href="{% url 'document_detail' pk=document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
+                <a href="{% url 'document_download' pk=document.pk %}" class="text-green-600 hover:text-green-800 text-sm">Stáhnout</a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="px-6 py-12 text-center text-gray-500">Žádné dokumenty</div>
+        {% endfor %}
+    </div>
+</div>
+
+{% elif tab == 'assignments' %}
+<div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">Přiřazení</h3>
+        <a href="{% url 'assignment_create' worker_pk=worker.pk %}" class="px-3 py-1 bg-green-100 text-green-800 text-sm rounded hover:bg-green-200">Přidat</a>
+    </div>
+    <div class="divide-y divide-gray-200">
+        {% for assignment in assignments %}
+        <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+            <div>
+                <p class="font-medium text-gray-900">{{ assignment.workplace_label }}</p>
+                <p class="text-sm text-gray-500">{{ assignment.activity_label }} | {{ assignment.start|date:"d.m.Y" }} – {{ assignment.end|date:"d.m.Y" }}</p>
+                <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {% if assignment.state == 'planned' %}bg-blue-100 text-blue-800{% elif assignment.state == 'active' %}bg-green-100 text-green-800{% elif assignment.state == 'completed' %}bg-gray-100 text-gray-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">{{ assignment.get_state_display }}</span>
+            </div>
+            <a href="{% url 'assignment_edit' worker_pk=worker.pk pk=assignment.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Upravit</a>
+        </div>
+        {% empty %}
+        <div class="px-6 py-12 text-center text-gray-500">Žádná přiřazení</div>
+        {% endfor %}
+    </div>
+</div>
+
+{% elif tab == 'a1' %}
+<div class="bg-white rounded-lg shadow">
+    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">A1 případy</h3>
+        <a href="{% url 'a1_prepare' worker_pk=worker.pk %}" class="px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded hover:bg-purple-200">Připravit A1</a>
+    </div>
+    <div class="divide-y divide-gray-200">
+        {% for case in a1_cases %}
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="font-medium text-gray-900">A1 případ #{{ case.pk }}</p>
+                    <p class="text-sm text-gray-500">Připravenost: <span class="{% if case.readiness == 'ready' %}text-green-600{% else %}text-red-600{% endif %}">{{ case.readiness }}</span> | Externí: {{ case.external_status }}</p>
+                    <p class="text-sm text-gray-500">Zdrojový hash: {{ case.source_hash|truncatechars:16 }}</p>
+                </div>
+                <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="px-6 py-12 text-center text-gray-500">Žádné A1 případy</div>
+        {% endfor %}
+    </div>
+</div>
+
+{% else %}
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Základní údaje</h3>
@@ -46,70 +126,69 @@
     </div>
 
     <div class="bg-white rounded-lg shadow p-6 md:col-span-2">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Přiřazení</h3>
-        {% if assignments %}
-        <div class="space-y-2">
-            {% for assignment in assignments %}
-            <div class="p-4 bg-gray-50 rounded-lg flex items-center justify-between">
-                <div>
-                    <p class="font-medium text-gray-900">{{ assignment.workplace_label }}</p>
-                    <p class="text-sm text-gray-500">{{ assignment.activity_label }} | {{ assignment.start|date:"d.m.Y" }} – {{ assignment.end|date:"d.m.Y" }}</p>
-                    <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full {% if assignment.state == 'planned' %}bg-blue-100 text-blue-800{% elif assignment.state == 'active' %}bg-green-100 text-green-800{% elif assignment.state == 'completed' %}bg-gray-100 text-gray-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">{{ assignment.get_state_display }}</span>
-                </div>
-                <a href="{% url 'assignment_edit' worker_pk=worker.pk pk=assignment.pk %}" class="text-blue-600 hover:text-blue-800 text-sm" hx-get="{% url 'assignment_edit' worker_pk=worker.pk pk=assignment.pk %}" hx-target="#assignment-form-modal" hx-swap="innerHTML">Upravit</a>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">A1 připravenost</h3>
+        <div class="space-y-3 text-sm">
+            {% if a1_readiness.ready %}
+            <div class="flex items-center gap-2 text-green-700">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span>Pracovník má všechny potřebné údaje pro A1</span>
             </div>
-            {% endfor %}
+            {% else %}
+            <div class="flex items-center gap-2 text-yellow-700">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                <span>Chybějící údaje: {{ a1_readiness.missing_fields|join:", " }}</span>
+            </div>
+            {% endif %}
+            {% if not a1_readiness.has_assignment %}
+            <div class="text-yellow-700">Chybí přiřazení</div>
+            {% endif %}
+            {% if not a1_readiness.has_confirmed_identity %}
+            <div class="text-yellow-700">Chybí potvrzený identitní dokument</div>
+            {% endif %}
         </div>
-        {% else %}
-        <p class="text-gray-500 text-center py-4">Žádná přiřazení</p>
-        {% endif %}
     </div>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
     <div class="bg-white rounded-lg shadow">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Dokumenty</h3>
-            <a href="{% url 'document_upload' worker_pk=worker.pk %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Nahrát</a>
+            <h3 class="text-lg font-semibold text-gray-900">Poslední dokumenty</h3>
+            <a href="?tab=documents" class="text-blue-600 hover:text-blue-800 text-sm">Všechny →</a>
         </div>
         <div class="divide-y divide-gray-200">
-            {% for document in documents %}
+            {% for document in documents|slice:":3" %}
             <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                 <div>
                     <p class="font-medium text-gray-900">{{ document.content_type }}</p>
-                    <p class="text-sm text-gray-500">Stav: {{ document.get_state_display }} | SHA256: {{ document.sha256|truncatechars:16 }}</p>
+                    <p class="text-sm text-gray-500">{{ document.get_state_display }}</p>
                 </div>
-                <div class="space-x-2">
-                    <a href="{% url 'document_detail' pk=document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
-                    <a href="{% url 'document_download' pk=document.pk %}" class="text-green-600 hover:text-green-800 text-sm">Stáhnout</a>
-                </div>
+                <a href="{% url 'document_detail' pk=document.pk %}" class="text-blue-600 hover:text-blue-800 text-sm">Detail</a>
             </div>
             {% empty %}
-            <div class="px-6 py-4 text-center text-gray-500">Žádné dokumenty</div>
+            <div class="px-6 py-8 text-center text-gray-500">Žádné dokumenty</div>
             {% endfor %}
         </div>
     </div>
 
     <div class="bg-white rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900">A1 případy</h3>
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Poslední přiřazení</h3>
+            <a href="?tab=assignments" class="text-blue-600 hover:text-blue-800 text-sm">Všechna →</a>
         </div>
-        <div class="divide-y divide-gray-200 p-4">
-            {% for case in a1_cases %}
-            <div class="py-2">
-                <p class="font-medium text-gray-900">A1 případ #{{ case.pk }}</p>
-                <p class="text-sm text-gray-500">Připravenost: {{ case.readiness }} | Externí: {{ case.external_status }}</p>
-                <p class="text-sm text-gray-500">Zdrojový hash: {{ case.source_hash|truncatechars:16 }}</p>
-                {% if case.prepared_artifact_hash %}
-                <p class="text-sm text-gray-500">Artefakt hash: {{ case.prepared_artifact_hash|truncatechars:16 }}</p>
-                {% endif %}
-                <a href="{% url 'a1_case_detail' pk=case.pk %}" class="text-blue-600 hover:text-blue-800 text-sm inline-block mt-1">Detail</a>
+        <div class="divide-y divide-gray-200">
+            {% for assignment in assignments|slice:":3" %}
+            <div class="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                <div>
+                    <p class="font-medium text-gray-900">{{ assignment.workplace_label }}</p>
+                    <p class="text-sm text-gray-500">{{ assignment.start|date:"d.m.Y" }} – {{ assignment.end|date:"d.m.Y" }}</p>
+                </div>
+                <span class="px-2 py-1 text-xs font-medium rounded-full {% if assignment.state == 'active' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">{{ assignment.get_state_display }}</span>
             </div>
             {% empty %}
-            <p class="text-gray-500 text-center py-4">Žádné A1 případy</p>
+            <div class="px-6 py-8 text-center text-gray-500">Žádná přiřazení</div>
             {% endfor %}
         </div>
     </div>
 </div>
-
+{% endif %}
 {% endblock %}

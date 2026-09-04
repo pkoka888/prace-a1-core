@@ -103,7 +103,8 @@ class ReviewerOnboardingTests(TransactionTestCase):
             {"login": "reviewer@example.invalid", "password": "SuperSecretPass123!"},
         )
         self.assertEqual(r.status_code, 302)
-        self.assertIn("profile", r.url)
+        # Synthetic-review users land directly in their review workspace.
+        self.assertEqual(r.url, "/review/")
         sk = _session_key(self.client)
         self.assertIsNotNone(sk)
 

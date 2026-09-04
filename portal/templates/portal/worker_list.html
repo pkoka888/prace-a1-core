@@ -6,11 +6,11 @@
         <h2 class="text-2xl font-semibold text-gray-900">Pracovníci</h2>
         <p class="text-gray-600">Správa pracovníků vaší organizace</p>
     </div>
-    <a href="{% url 'worker_create' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+    <a href="{% url 'intake_wizard' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
         <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        Nový pracovník
+        Přidat pracovníka
     </a>
 </div>
 
@@ -41,8 +41,8 @@
                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">{{ worker.get_state_display }}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <a href="{% url 'worker_detail' pk=worker.pk %}" class="text-blue-600 hover:text-blue-900" hx-get="{% url 'worker_detail' pk=worker.pk %}" hx-target="#worker-detail-modal" hx-swap="innerHTML">Detail</a>
-                    <a href="{% url 'worker_edit' pk=worker.pk %}" class="text-gray-600 hover:text-gray-900" hx-get="{% url 'worker_edit' pk=worker.pk %}" hx-target="#worker-form-modal" hx-swap="innerHTML">Upravit</a>
+                    <a href="{% url 'worker_detail' pk=worker.pk %}" class="text-blue-600 hover:text-blue-900">Detail</a>
+                    <a href="{% url 'worker_edit' pk=worker.pk %}" class="text-gray-600 hover:text-gray-900">Upravit</a>
                     <button hx-delete="{% url 'worker_delete' pk=worker.pk %}" hx-target="#worker-{{ worker.pk }}" hx-swap="outerHTML swap:1s" class="text-red-600 hover:text-red-900" onclick="return confirm('Opravdu smazat?')">Smazat</button>
                 </td>
             </tr>
@@ -66,9 +66,5 @@
     {% endif %}
 </div>
 {% endif %}
-
-<!-- Modals for HTMX -->
-<div id="worker-detail-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" hx-target="this" hx-swap="innerHTML"></div>
-<div id="worker-form-modal" class="fixed inset-0 z-50 hidden overflow-y-auto" hx-target="this" hx-swap="innerHTML"></div>
 
 {% endblock %}

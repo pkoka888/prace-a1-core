@@ -41,7 +41,7 @@
                 <p class="text-2xl font-semibold text-gray-900">{{ document_count }}</p>
             </div>
         </div>
-        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
+        <a href="{% url 'document_list' %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
@@ -56,7 +56,7 @@
                 <p class="text-2xl font-semibold text-gray-900">{{ assignment_count }}</p>
             </div>
         </div>
-        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechna →</a>
+        <a href="{% url 'assignment_list' %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechna →</a>
     </div>
 
     <div class="bg-white rounded-lg shadow p-6">
@@ -71,7 +71,7 @@
                 <p class="text-2xl font-semibold text-gray-900">{{ a1_case_count }}</p>
             </div>
         </div>
-        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
+        <a href="{% url 'a1_list' %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Zobrazit všechny →</a>
     </div>
 </div>
 

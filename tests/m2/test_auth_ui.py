@@ -17,7 +17,7 @@ class AuthenticationUiTests(SimpleTestCase):
         response = self.client.get("/accounts/login/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "tailwindcss@2.2.19")
+        self.assertContains(response, "portal/tailwind-2.2.19.min.css")
         self.assertContains(response, "Přístup je pouze pro pozvané recenzenty")
         self.assertNotContains(response, "Zaregistrovat se")
 
@@ -36,5 +36,5 @@ class AuthenticationUiTests(SimpleTestCase):
 
         response = self.client.get("/accounts/signup/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "tailwindcss@2.2.19")
+        self.assertContains(response, "portal/tailwind-2.2.19.min.css")
         self.assertNotContains(response, "<form")
