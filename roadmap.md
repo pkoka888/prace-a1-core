@@ -3,7 +3,7 @@
 **Status:** Authoritative
 **Original date:** 2026-08-19
 **Last status update:** 2026-09-04
-**Current stage:** M2 synthetic implementation partial; `REV-002` blocked pending J2/J4 engineering completion; PLAN-REAL-DATA gates Sprint 1–4 before real-data activation
+**Current stage:** M2 synthetic implementation partial; `ENG-001` blocked pending Sprint 1; sequential gate chain to real-data activation
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
@@ -144,7 +144,7 @@ failure/approval states.
 > G/J/I→PLAN-LEGAL, AF/AF2→PLAN-FREE-MODEL, B/C/D→PLAN-HISTORY, REAL-DATA→PLAN-REAL-DATA.
 > Statuses below are dated records (roadmap dated 2026-08-19); authoritative status lives in `plans/INDEX.md`.
 
-- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 functional prototype sprint 🟡 (synthetic implementation green 74/74 tests; `REV-002` in `proposed`/`blocked` state — J2/J4 require real storage/OCR/download; PLAN-REAL-DATA Sprint 1–4 gates required before real-data activation). Broader Plan L/M exits do not block this synthetic path.
+- **Critical Release 1A:** Plan E validation ✅ + Jan phase-1 HTML review ✅ + N-1A/O-1A ✅ → ADR-002 ✅ + automated prototype-start gate ✅ (open 2026-08-17) → M2 synthetic implementation 🟡 (74/74 tests pass; `ENG-001` blocked — Sprint 1 implements J2/J4 prerequisites; `REV-002` approval deferred until ENG-001 opens). Sequential gate chain: `ENG-001` → `REV-002` → `OPS-001`/`LEG-001`/`INF-001` → Sprint 1–4 → `REV-003` real-data activation. Broader Plan L/M exits do not block this synthetic path.
 - **Parallel infrastructure:** Plan K 🟡 (capacity/backup evidence incomplete) + GitLab runner prep (Plan AE/DEC-016 gated).
 - **Parallel non-blocking research:** G/J/P 🟡 + broader N/O 🟡.
 - **Plan AC integrity lane:** Integrity 1.3 🟡 + synthetic replay 🟡; Pilot 1/2 required before skill activation; live capture blocked.

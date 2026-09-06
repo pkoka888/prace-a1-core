@@ -1,6 +1,6 @@
 # Plan REAL-DATA — Real-Data Activation After Sprint 4 Gates
 
-**Status**: planned
+**Status**: active
 **Milestone**: M5
 **Activation gate**: this plan's acceptance criteria plus all preceding Sprint 1–4 gates
 

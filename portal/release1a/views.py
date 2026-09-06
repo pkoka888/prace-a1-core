@@ -78,34 +78,18 @@ READINESS_FILE = os.environ.get(
     "/var/www/prace-v-nemecku.tvoje.info/runtime/portal/synthetic-review/readiness.json",
 )
 
-APPROVALS_FILE = os.environ.get(
-    "APPROVALS_FILE",
-    "/var/www/prace-v-nemecku.tvoje.info/planning/approvals.json",
-)
 
-
-def _rev002_gate_open():
+def _eng001_gate_open():
     """
-    Check whether the REV-002 implementation gate is open.
+    Check whether the ENG-001 engineering readiness gate is open.
 
-    Returns (open, reason) — open=True only when the gate is explicitly 'open'.
-    A 'blocked' gate returns (False, "REV-002 implementation_gate is blocked").
-    A missing record returns (False, "REV-002 not found in approvals register").
+    The runtime approval button depends on ENG-001, not REV-002.
+    Returns (open, reason) using the shared approval_register module.
     """
-    try:
-        data = json.load(open(APPROVALS_FILE))
-        record = next(
-            (r for r in data.get("records", []) if r.get("id") == "REV-002"),
-            None,
-        )
-        if not record:
-            return False, "REV-002 not found in approvals register"
-        gate = record.get("implementation_gate", "blocked")
-        if gate == "open":
-            return True, "REV-002 implementation_gate is open"
-        return False, f"REV-002 implementation_gate is {gate}"
-    except Exception as e:
-        return False, f"could not read approvals register: {e}"
+    from pathlib import Path
+    from planning.approval_register import check_gate
+    root = Path(__file__).resolve().parents[2]
+    return check_gate(root, "ENG-001", gate="implementation_gate")
 
 REVIEW_SCOPE_PATTERNS = [
     "portal/",
@@ -1108,7 +1092,7 @@ def review_check_answers(request):
         for r in review_rows.values()
     )
     readiness_passed, readiness_reason = _readiness_passed()
-    gate_open, gate_reason = _rev002_gate_open()
+    gate_open, gate_reason = _eng001_gate_open()
 
     ctx = {
         "sections": [
@@ -1172,7 +1156,7 @@ def review_approve(request):
             }, status=400
         )
 
-    gate_open, gate_reason = _rev002_gate_open()
+    gate_open, gate_reason = _eng001_gate_open()
     if not gate_open:
         return JsonResponse(
             {"error": "REV-002 engineering gate is blocked", "detail": gate_reason},

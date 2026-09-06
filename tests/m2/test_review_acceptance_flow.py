@@ -115,8 +115,8 @@ class ReviewAcceptanceFlowTests(TransactionTestCase):
         self.assertEqual(Release1aAcceptance.objects.filter(user=self.user).count(), 2)
 
 
-class Rev002GateTests(TransactionTestCase):
-    """Verify that the REV-002 engineering gate prevents Release1aAcceptance creation."""
+class Eng001GateTests(TransactionTestCase):
+    """Verify that the ENG-001 engineering gate controls the runtime approval button."""
 
     def setUp(self):
         self.client = Client()
@@ -155,124 +155,52 @@ class Rev002GateTests(TransactionTestCase):
                 defaults={"status": Release1aReview.Status.DONE}
             )
 
-    def test_rev002_gate_open_returns_correct_status(self):
-        """Unit test for _rev002_gate_open with blocked and open gates."""
-        from portal.release1a.views import _rev002_gate_open
+    def test_eng001_gate_open_via_shared_module(self):
+        """Unit test for _eng001_gate_open using the shared approval_register module."""
+        from portal.release1a.views import _eng001_gate_open
         from unittest.mock import patch
 
-        blocked_json = {
-            "schema_version": "1.0",
-            "updated_at": "2026-09-04T00:00:00+02:00",
-            "records": [{
-                "id": "REV-002",
-                "title": "Test",
-                "scope": "Test scope",
-                "owner": "test",
-                "approver": "tester",
-                "human_decision": "proposed",
-                "validation": "pending",
-                "implementation_gate": "blocked",
-                "activation_gate": "blocked",
-                "choices": [],
-                "checks": [],
-                "dependencies": [],
-                "source": "test.md",
-            }]
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(blocked_json, f)
-            blocked_path = f.name
-        try:
-            with patch("portal.release1a.views.APPROVALS_FILE", blocked_path):
-                open_, reason = _rev002_gate_open()
+        with patch("planning.approval_register.check_gate") as mock_check:
+            mock_check.return_value = (False, "ENG-001 implementation_gate is blocked")
+            open_, reason = _eng001_gate_open()
             self.assertFalse(open_)
             self.assertIn("blocked", reason)
-        finally:
-            os.unlink(blocked_path)
+            mock_check.assert_called_once()
+            args, kwargs = mock_check.call_args
+            self.assertEqual(args[1], "ENG-001")
+            self.assertEqual(kwargs.get("gate"), "implementation_gate")
 
-        open_json = dict(blocked_json)
-        open_json["records"][0]["implementation_gate"] = "open"
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(open_json, f)
-            open_path = f.name
-        try:
-            with patch("portal.release1a.views.APPROVALS_FILE", open_path):
-                open_, reason = _rev002_gate_open()
+            mock_check.return_value = (True, "ENG-001 implementation_gate is open")
+            open_, reason = _eng001_gate_open()
             self.assertTrue(open_)
-        finally:
-            os.unlink(open_path)
 
-    def test_blocked_gate_rejects_approval(self):
+    def test_blocked_eng001_rejects_approval(self):
         """
-        POST to review_approve while REV-002 implementation_gate is blocked
+        POST to review_approve while ENG-001 implementation_gate is blocked
         must return 403 and not create a Release1aAcceptance record.
         """
         from portal.release1a import views as review_views
         from unittest.mock import patch
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            blocked_approvals = os.path.join(tmpdir, "approvals.json")
-            with open(blocked_approvals, "w") as f:
-                json.dump({
-                    "schema_version": "1.0",
-                    "updated_at": "2026-09-04T00:00:00+02:00",
-                    "records": [{
-                        "id": "REV-002",
-                        "title": "Test",
-                        "scope": "Test scope",
-                        "owner": "test",
-                        "approver": "tester",
-                        "human_decision": "proposed",
-                        "validation": "pending",
-                        "implementation_gate": "blocked",
-                        "activation_gate": "blocked",
-                        "choices": [],
-                        "checks": [],
-                        "dependencies": [],
-                        "source": "test.md",
-                    }]
-                }, f)
-            with patch.object(review_views, "APPROVALS_FILE", blocked_approvals):
-                with patch.object(review_views, "_scoped_tree_clean", return_value=(True, "")):
-                    with patch.object(review_views, "_readiness_passed", return_value=(True, "OK")):
-                        response = self.client.post("/review/approve/")
+        with patch.object(review_views, "_eng001_gate_open", return_value=(False, "ENG-001 implementation_gate is blocked")):
+            with patch.object(review_views, "_scoped_tree_clean", return_value=(True, "")):
+                with patch.object(review_views, "_readiness_passed", return_value=(True, "OK")):
+                    response = self.client.post("/review/approve/")
         self.assertEqual(response.status_code, 403)
         self.assertIn("blocked", response.json().get("error", "").lower())
         self.assertEqual(Release1aAcceptance.objects.count(), 0)
 
-    def test_open_gate_allows_approval(self):
+    def test_open_eng001_allows_approval(self):
         """
-        POST to review_approve when REV-002 implementation_gate is open
+        POST to review_approve when ENG-001 implementation_gate is open
         must succeed and create a Release1aAcceptance record.
         """
         from portal.release1a import views as review_views
         from unittest.mock import patch
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            open_approvals = os.path.join(tmpdir, "approvals.json")
-            with open(open_approvals, "w") as f:
-                json.dump({
-                    "schema_version": "1.0",
-                    "updated_at": "2026-09-04T00:00:00+02:00",
-                    "records": [{
-                        "id": "REV-002",
-                        "title": "Test",
-                        "scope": "Test scope",
-                        "owner": "test",
-                        "approver": "tester",
-                        "human_decision": "proposed",
-                        "validation": "passed",
-                        "implementation_gate": "open",
-                        "activation_gate": "blocked",
-                        "choices": [],
-                        "checks": [],
-                        "dependencies": [],
-                        "source": "test.md",
-                    }]
-                }, f)
-            with patch.object(review_views, "APPROVALS_FILE", open_approvals):
-                with patch.object(review_views, "_scoped_tree_clean", return_value=(True, "")):
-                    with patch.object(review_views, "_readiness_passed", return_value=(True, "OK")):
-                        response = self.client.post("/review/approve/")
+        with patch.object(review_views, "_eng001_gate_open", return_value=(True, "ENG-001 implementation_gate is open")):
+            with patch.object(review_views, "_scoped_tree_clean", return_value=(True, "")):
+                with patch.object(review_views, "_readiness_passed", return_value=(True, "OK")):
+                    response = self.client.post("/review/approve/")
         self.assertEqual(response.status_code, 302)  # redirect to receipt
         self.assertEqual(Release1aAcceptance.objects.count(), 1)

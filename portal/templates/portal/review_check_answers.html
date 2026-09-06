@@ -54,12 +54,12 @@
     </div>
 
     <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-        <h3 class="text-sm font-semibold text-red-900">Stav schvalovacího ventilu REV-002</h3>
+        <h3 class="text-sm font-semibold text-red-900">Stav schvalovacího ventilu ENG-001</h3>
         {% if gate_open %}
-        <p class="text-sm text-green-700 mt-1">✅ REV-002 ventil je otevřený — schválení je možné</p>
+        <p class="text-sm text-green-700 mt-1">✅ ENG-001 ventil je otevřený — schválení je možné</p>
         {% else %}
         <p class="text-sm text-red-700 mt-1">❌ {{ gate_reason }}</p>
-        <p class="text-xs text-red-600 mt-1">Formální schválení Release 1A je zablokováno. Jan může provést neformální UX kontrolu, ale tlačítko Schválit je zakázáno.</p>
+        <p class="text-xs text-red-600 mt-1">Formální schválení Release 1A je zablokováno. Jan může provést neformální UX kontrolu, ale tlačítko Schválit je zakázáno, dokud nebude ENG-001 otevřený.</p>
         {% endif %}
     </div>
 
