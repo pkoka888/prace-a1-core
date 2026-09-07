@@ -1,10 +1,72 @@
 # A1 PDF tool comparison — 2026-09-07
 
-Parent: PLAN-A1. Local research and synthetic geometry tests only. No worker records
-were read, no generated employee PDF was patched, and no production dependency or
-template was changed. Existing test-plan work remains separate.
+Parent: PLAN-A1. Local template investigation and synthetic comparison. The initial
+experiment below concerned the canonical raster background. The subsequent
+user-authorized reference inspection and named-field experiment are recorded first.
+No employee artifact was regenerated or promoted; canonical template migration is pending.
 
-## Decision
+## Named-field comparison after identifying the supplied original
+
+The identified reference PDF has text, vector checkbox borders/marks and image
+artwork on all three pages; it has no AcroForm widgets. PyMuPDF, pypdf,
+pdfplumber/pdfminer and PDFium independently confirmed the mixed structure.
+The earlier image-only finding applies to the canonical raster background only.
+
+A protected experiment prepared a blank vector reference and a searchable template
+with **34 named variables in 36 occurrences**. Examples are `{{surname}}`,
+`{{given_name}}`, `{{birth_surname}}` and `{{certificate_id}}`; the certificate ID
+occurs on every page. The field map records each semantic source, page, baseline,
+font size and maximum width. Personal values, institution details and eight existing
+cross strokes were removed; checkbox borders and page artwork were preserved.
+The original reference was unchanged. No reference content is added to Git.
+
+Both approaches were executed with the same synthetic values and reference geometry:
+
+| Approach | Result | Single-run fill time |
+|---|---|---:|
+| Located token replacement using PyMuPDF | Complete three-page synthetic PDF, no remaining tokens | 495 ms |
+| Existing ReportLab/pypdf overlay on the cleaned reference | Complete three-page synthetic PDF | 89 ms |
+
+These timings exclude template preparation and QA and are not a performance benchmark.
+Use named variables as the field contract for either backend. Token replacement is
+useful for inspecting and editing a template; the current overlay remains faster in
+this trial. Neither requires selecting an OCR engine per worker.
+
+Personal names now share display formatting at the last rendering step:
+`NOVÁKOVÁ` becomes `Nováková`, and `ALENA` becomes `Alena`. Diacritics are preserved;
+OCR/source values are unchanged. Codes and certificate identifiers are not title-cased.
+This corrects the direct-overlay path that could bypass earlier row formatting.
+
+Evidence: all three cleaned pages have zero changed pixels outside allowed field
+and mark bounds at 144 DPI. All pages of both filled examples and the token template
+were locally inspected. Ghostscript independently rendered all nine pages. Exact
+name extraction, repeated IDs, source-value exclusion and absence of leftover tokens
+passed. The examples are prominently marked synthetic and remain in protected runtime
+storage with hashes, field maps and receipts. This is technical template evidence,
+not canonical production QA or confirmation of a worker's facts.
+
+The separately supplied fixed-output claim was checked read-only: its marks use
+0.8-point strokes, whereas the reference uses 0.48-point strokes; colors also differ.
+Consequently the claim of exactly matching drawing style is false. The experimental
+replacement example uses measured reference style; the overlay comparison deliberately
+shows the inherited renderer's current border redraw/color behavior.
+
+Acceptance commands:
+
+- `venv/bin/python -m pytest tests/test_pdf_named_fields.py tests/test_a1_core.py -q`:
+  28 passed, 3 subtests in the working tree.
+- The expanded A1 regression run: 62 passed, 14 subtests, one failure in
+  `test_complete_review_publishes_verified_set`. Its expected employment name is
+  overwritten by inherited self-employment derivation. This is separate from name
+  display formatting: the same test fails with the new formatter disabled in memory.
+  Do not describe the complete A1 pipeline as passing.
+
+Next: integrate a hash-bound reference template and matching layout through canonical
+validation, resolve source-backed employment mapping, and retain review requirements.
+Missing certificate evidence must remain missing. A common template never selects a
+worker's legal/employment status merely by copying the reference's selected boxes.
+
+## Initial canonical-background experiment: decision
 
 Keep ReportLab + pypdf for canonical generation, PyMuPDF for geometry inspection,
 crops and primary QA rendering, and Ghostscript as the existing independent check.
@@ -24,8 +86,9 @@ is 1985×2807 pixels, approximately 240 DPI: about 0.30 point per source pixel.
 Higher rendering DPI does not restore the original vector geometry.
 
 This evaluated the actual canonical background and its committed baseline. The
-separately named employee/reference “A1 2025.pdf” was not supplied as an identified
-input and was not inspected. Its coordinates cannot be assumed to fit this template.
+separately named reference had not yet been inspected during this initial run; the
+subsequent reference experiment above supersedes that limitation. Its coordinates
+cannot be assumed to fit the canonical raster background.
 
 Existing: PyMuPDF 1.28.2, pypdf 6.15.0, ReportLab 5.0.0 and Ghostscript.
 Installed locally: pdfplumber 0.11.10, pdfminer.six 20260107 and pypdfium2 5.13.0,
@@ -106,3 +169,7 @@ Sources: [PyMuPDF coordinate conventions](https://pymupdf.readthedocs.io/en/late
 [pdfplumber scope](https://github.com/jsvine/pdfplumber),
 [PDFium renderer](https://pypdfium2-team.github.io/pypdfium2/),
 [European Labour Authority A1 field descriptions](https://www.ela.europa.eu/sites/default/files/2021-02/SSC-and-Highly-mobile-workers.pdf).
+
+Implementation commit: `094f956`. Its exported Git snapshot passes 44 focused
+PDF/core/Git-scope tests (3 subtests); three pre-existing pypdf warnings concern the
+committed baseline merge implementation. Git publication is checked separately.

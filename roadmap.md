@@ -165,3 +165,16 @@ failure/approval states.
 - **Historical input:** D and all 2026-08-11 plans — mark with headers per Plan L.
 
 Authoritative paths and statuses are maintained in [`plans/INDEX.md`](plans/INDEX.md).
+
+## Named PDF variables and Czech personal-name display — 2026-09-07
+
+Implementation: a local named-token helper and shared last-step personal-name casing
+are implemented. A protected reference experiment produced 34 variables in 36
+positions and compared token replacement with the existing overlay, using synthetic
+values. The canonical background/layout migration remains pending.
+
+Acceptance: focused tests pass; the expanded working-tree A1 suite still has an
+inherited employment-name reconciliation failure. The failure reproduces with the
+new casing function disabled. Deployment, employee regeneration and activation gates
+are unchanged. See [current PDF comparison report](docs/research/2026-09-07-pdf-tool-comparison.md)
+for methods, measurements, artifact limitations and next integration work.

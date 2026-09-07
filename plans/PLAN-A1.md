@@ -57,3 +57,18 @@ tracked source of truth is this file plus [`plans/INDEX.md`](INDEX.md).
 Exit evidence: canonical cohort reproducible from authorized sources
 (`validated_by_user=1` per row), repository baseline confirmed, and PII-bearing
 artifacts never staged or published.
+
+## Named-variable template experiment — 2026-09-07
+
+The supplied vector/text reference was inspected separately from the canonical
+raster background. Protected experiments now include a blank reference, a template
+with 34 named variables, and two three-page synthetic filling examples. Both
+methods format personal names in natural case while preserving raw OCR evidence.
+
+The implementation is a bounded experiment plus a canonical display-casing fix,
+not a completed template migration or employee delivery. Keep existing task IDs and
+acceptance requirements. Next work: bind the approved reference and field geometry
+through canonical configuration; resolve the inherited source/employment mapping
+regression; then run production QA with complete reviewed inputs. No gate opens.
+Detailed acceptance and Git publication evidence belong to the
+[current comparison report](../docs/research/2026-09-07-pdf-tool-comparison.md).
