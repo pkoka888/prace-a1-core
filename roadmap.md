@@ -7,6 +7,15 @@
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
+## Git delivery safeguards — 2026-09-07
+
+Staged-byte validation, fail-closed existing GitHub CI, runtime ignore rules and
+repeatable hook installation are implemented. Focused tooling acceptance passes;
+this does not establish full-repository CI acceptance. Publish the outstanding
+source dependencies in reviewed scopes before merging draft PR #1. Existing
+activation gates and 34 catalog IDs are unchanged. See
+[delivery contract](docs/operations/git-delivery.md).
+
 ## Product objective
 
 Design one coherent Czech/German recruitment and workforce platform, including

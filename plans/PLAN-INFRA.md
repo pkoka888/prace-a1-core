@@ -3,6 +3,16 @@
 **Status**: active
 **Milestone**: M0–M2
 
+## Git delivery safeguards — 2026-09-07
+
+Existing GitHub CI now propagates test, dependency and lint failures. The local
+hook checks staged blobs/catalog and rejects missing or invalid validation.
+Synthetic tooling tests pass from an exported commit snapshot. Full-suite
+collection dependencies and lint backlog remain separate acceptance blockers.
+Next: coherent source publication, clean CI, then review draft PR #1; no new
+runner, remote, deployment or activation authorization. See
+[delivery contract](../docs/operations/git-delivery.md).
+
 ## Purpose
 
 Single governing plan for the foundation and infrastructure of Release 1A:
