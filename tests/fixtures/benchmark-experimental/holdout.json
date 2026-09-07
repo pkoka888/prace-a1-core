@@ -1,0 +1,44 @@
+{
+  "holdout_set": {
+    "version": "0.2.0",
+    "cutoff_date": "2026-08-14",
+    "status": "sealed",
+    "description": "Synthetic holdout questions for contract testing only.",
+    "questions": [
+      {
+        "id": "q-holdout-01",
+        "reason": "synthetic holdout 01 for contract boundary"
+      },
+      {
+        "id": "q-holdout-02",
+        "reason": "synthetic holdout 02 for contract boundary"
+      },
+      {
+        "id": "q-holdout-03",
+        "reason": "synthetic holdout 03 for contract boundary"
+      },
+      {
+        "id": "q-holdout-04",
+        "reason": "synthetic holdout 04 for contract boundary"
+      },
+      {
+        "id": "q-holdout-05",
+        "reason": "synthetic holdout 05 for contract boundary"
+      },
+      {
+        "id": "q-holdout-06",
+        "reason": "synthetic holdout 06 for contract boundary"
+      },
+      {
+        "id": "q-holdout-07",
+        "reason": "synthetic holdout 07 for contract boundary"
+      }
+    ],
+    "metadata": {
+      "total_holdout": 7,
+      "created_by": "synthetic-fixture-generator",
+      "created_date": "2026-08-14T00:00:00Z",
+      "commitment_hash": "PLACEHOLDER_NOT_FINALIZED"
+    }
+  }
+}

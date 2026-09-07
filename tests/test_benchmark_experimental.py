@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import json
 import hashlib
 import importlib.util
+import json
 import shutil
 import subprocess
 import sys
@@ -11,9 +11,8 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft7Validator, FormatChecker
 
-
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "research/benchmark-experimental"
+SOURCE = ROOT / "tests/fixtures/benchmark-experimental"
 VALIDATOR = "validate_and_score.py"
 RUNNER = "run_project_skill.py"
 

@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", "additionalProperties": false,
+  "required": ["review_id", "reviewer_id", "review_type", "review_kind", "question_id", "reviewed_at", "claim_labels"],
+  "properties": {
+    "review_id": {"type": "string", "pattern": "^r-[a-z0-9-]+$"}, "reviewer_id": {"type": "string", "pattern": "^reviewer-[a-z]+$"},
+    "review_type": {"enum": ["primary", "secondary", "arbiter"]}, "question_id": {"type": "string", "pattern": "^q-[a-z0-9-]+$"},
+    "review_kind": {"enum": ["gold-verification", "system-scoring"]},
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "claim_labels": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["claim_id", "correctness", "citation_support"], "properties": {"claim_id": {"type": "string", "pattern": "^(c|sc)-[a-z0-9-]+$"}, "correctness": {"enum": ["correct", "partial", "incorrect", "unproven"]}, "citation_support": {"enum": ["supported", "unsupported", "unproven"]}, "matched_gold_claim_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^c-[a-z0-9-]+$"}}}}}
+  }
+}

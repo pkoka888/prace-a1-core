@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Manual benchmark comparator run manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "record_state", "run_id", "benchmark_version",
+    "provider", "product", "research_mode", "operation", "model",
+    "run_date", "access_basis", "cost", "privacy", "inputs", "outputs"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "record_state": {"enum": ["template", "completed"]},
+    "run_id": {"type": ["string", "null"], "pattern": "^[a-z0-9-]+$"},
+    "benchmark_version": {"const": "0.2.0"},
+    "provider": {"enum": ["OpenAI", "Google", "Perplexity", "Google NotebookLM"]},
+    "product": {"enum": ["ChatGPT Deep Research", "Gemini Deep Research", "Perplexity Research", "NotebookLM"]},
+    "research_mode": {"enum": ["open-web", "source-bounded-control"]},
+    "operation": {"const": "operator-mediated-manual-export"},
+    "model": {"type": ["string", "null"], "minLength": 1},
+    "run_date": {"type": ["string", "null"], "format": "date"},
+    "access_basis": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "verified_on", "operator_note"],
+      "properties": {
+        "kind": {"enum": ["verified-free-interactive", "unverified"]},
+        "verified_on": {"type": ["string", "null"], "format": "date"},
+        "operator_note": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "cost": {
+      "type": "object", "additionalProperties": false,
+      "required": ["currency", "amount_incremental", "paid_api_used", "paid_fallback_enabled"],
+      "properties": {
+        "currency": {"const": "CZK"},
+        "amount_incremental": {"type": ["number", "null"], "minimum": 0},
+        "paid_api_used": {"type": ["boolean", "null"]},
+        "paid_fallback_enabled": {"type": ["boolean", "null"]}
+      }
+    },
+    "privacy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["public_prompts_only", "evaluator_material_excluded", "pii_excluded", "credentials_excluded"],
+      "properties": {
+        "public_prompts_only": {"type": ["boolean", "null"]},
+        "evaluator_material_excluded": {"type": ["boolean", "null"]},
+        "pii_excluded": {"type": ["boolean", "null"]},
+        "credentials_excluded": {"type": ["boolean", "null"]}
+      }
+    },
+    "inputs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["public_prompt_sha256", "question_count", "source_bundle"],
+      "properties": {
+        "public_prompt_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+        "question_count": {"type": ["integer", "null"], "minimum": 1},
+        "source_bundle": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["url", "sha256"],
+            "properties": {
+              "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+              "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+            }
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object", "additionalProperties": false,
+      "required": ["raw_export_sha256", "canonical_result_sha256"],
+      "properties": {
+        "raw_export_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+        "canonical_result_sha256": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"record_state": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "run_id": {"type": "string"}, "model": {"type": "string"},
+          "run_date": {"type": "string"},
+          "access_basis": {
+            "properties": {
+              "kind": {"const": "verified-free-interactive"},
+              "verified_on": {"type": "string"}, "operator_note": {"type": "string"}
+            }
+          },
+          "cost": {"properties": {"amount_incremental": {"const": 0}, "paid_api_used": {"const": false}, "paid_fallback_enabled": {"const": false}}},
+          "privacy": {"properties": {"public_prompts_only": {"const": true}, "evaluator_material_excluded": {"const": true}, "pii_excluded": {"const": true}, "credentials_excluded": {"const": true}}},
+          "inputs": {"properties": {"public_prompt_sha256": {"type": "string"}, "question_count": {"const": 18}}},
+          "outputs": {"properties": {"raw_export_sha256": {"type": "string"}, "canonical_result_sha256": {"type": "string"}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"product": {"const": "NotebookLM"}}},
+      "then": {"properties": {"research_mode": {"const": "source-bounded-control"}, "inputs": {"properties": {"source_bundle": {"minItems": 1}}}}},
+      "else": {"properties": {"research_mode": {"const": "open-web"}, "inputs": {"properties": {"source_bundle": {"maxItems": 0}}}}}
+    },
+    {
+      "if": {"properties": {"product": {"const": "ChatGPT Deep Research"}}},
+      "then": {"properties": {"provider": {"const": "OpenAI"}}}
+    },
+    {
+      "if": {"properties": {"product": {"const": "Gemini Deep Research"}}},
+      "then": {"properties": {"provider": {"const": "Google"}}}
+    },
+    {
+      "if": {"properties": {"product": {"const": "Perplexity Research"}}},
+      "then": {"properties": {"provider": {"const": "Perplexity"}}}
+    },
+    {
+      "if": {"properties": {"product": {"const": "NotebookLM"}}},
+      "then": {"properties": {"provider": {"const": "Google NotebookLM"}}}
+    }
+  ]
+}

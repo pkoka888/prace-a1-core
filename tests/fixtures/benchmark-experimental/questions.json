@@ -1,0 +1,177 @@
+{
+  "benchmark_id": "synthetic-contract-fixture",
+  "version": "0.2.0",
+  "cutoff_date": "2026-08-14",
+  "repair_notes": "Synthetic contract fixtures for boundary tests. No real research data.",
+  "public_questions": [
+    {
+      "id": "q-contract-01",
+      "category": "vendor_prices_tiers_vat",
+      "prompt": "Synthetic contract-question 01 about vendor prices tiers vat for boundary testing.",
+      "expected_fields": [
+        "field_1_a",
+        "field_1_b"
+      ]
+    },
+    {
+      "id": "q-contract-02",
+      "category": "invoice_processing",
+      "prompt": "Synthetic contract-question 02 about invoice processing for boundary testing.",
+      "expected_fields": [
+        "field_2_a",
+        "field_2_b"
+      ]
+    },
+    {
+      "id": "q-contract-03",
+      "category": "accounting_exports",
+      "prompt": "Synthetic contract-question 03 about accounting exports for boundary testing.",
+      "expected_fields": [
+        "field_3_a",
+        "field_3_b"
+      ]
+    },
+    {
+      "id": "q-contract-04",
+      "category": "github_metrics",
+      "prompt": "Synthetic contract-question 04 about github metrics for boundary testing.",
+      "expected_fields": [
+        "field_4_a",
+        "field_4_b"
+      ]
+    },
+    {
+      "id": "q-contract-05",
+      "category": "license_availability",
+      "prompt": "Synthetic contract-question 05 about license availability for boundary testing.",
+      "expected_fields": [
+        "field_5_a",
+        "field_5_b"
+      ]
+    },
+    {
+      "id": "q-contract-06",
+      "category": "non_disclosed",
+      "prompt": "Synthetic contract-question 06 about non disclosed for boundary testing.",
+      "expected_fields": [
+        "field_6_a",
+        "field_6_b"
+      ]
+    },
+    {
+      "id": "q-contract-07",
+      "category": "conflict_resolution",
+      "prompt": "Synthetic contract-question 07 about conflict resolution for boundary testing.",
+      "expected_fields": [
+        "field_7_a",
+        "field_7_b"
+      ]
+    },
+    {
+      "id": "q-contract-08",
+      "category": "entity_resolution",
+      "prompt": "Synthetic contract-question 08 about entity resolution for boundary testing.",
+      "expected_fields": [
+        "field_8_a",
+        "field_8_b"
+      ]
+    },
+    {
+      "id": "q-contract-09",
+      "category": "vendor_prices_tiers_vat",
+      "prompt": "Synthetic contract-question 09 about vendor prices tiers vat for boundary testing.",
+      "expected_fields": [
+        "field_9_a",
+        "field_9_b"
+      ]
+    },
+    {
+      "id": "q-contract-10",
+      "category": "invoice_processing",
+      "prompt": "Synthetic contract-question 10 about invoice processing for boundary testing.",
+      "expected_fields": [
+        "field_10_a",
+        "field_10_b"
+      ]
+    },
+    {
+      "id": "q-contract-11",
+      "category": "accounting_exports",
+      "prompt": "Synthetic contract-question 11 about accounting exports for boundary testing.",
+      "expected_fields": [
+        "field_11_a",
+        "field_11_b"
+      ]
+    },
+    {
+      "id": "q-contract-12",
+      "category": "github_metrics",
+      "prompt": "Synthetic contract-question 12 about github metrics for boundary testing.",
+      "expected_fields": [
+        "field_12_a",
+        "field_12_b"
+      ]
+    },
+    {
+      "id": "q-contract-13",
+      "category": "license_availability",
+      "prompt": "Synthetic contract-question 13 about license availability for boundary testing.",
+      "expected_fields": [
+        "field_13_a",
+        "field_13_b"
+      ]
+    },
+    {
+      "id": "q-contract-14",
+      "category": "non_disclosed",
+      "prompt": "Synthetic contract-question 14 about non disclosed for boundary testing.",
+      "expected_fields": [
+        "field_14_a",
+        "field_14_b"
+      ]
+    },
+    {
+      "id": "q-contract-15",
+      "category": "conflict_resolution",
+      "prompt": "Synthetic contract-question 15 about conflict resolution for boundary testing.",
+      "expected_fields": [
+        "field_15_a",
+        "field_15_b"
+      ]
+    },
+    {
+      "id": "q-contract-16",
+      "category": "entity_resolution",
+      "prompt": "Synthetic contract-question 16 about entity resolution for boundary testing.",
+      "expected_fields": [
+        "field_16_a",
+        "field_16_b"
+      ]
+    },
+    {
+      "id": "q-contract-17",
+      "category": "vendor_prices_tiers_vat",
+      "prompt": "Synthetic contract-question 17 about vendor prices tiers vat for boundary testing.",
+      "expected_fields": [
+        "field_17_a",
+        "field_17_b"
+      ]
+    },
+    {
+      "id": "q-contract-18",
+      "category": "invoice_processing",
+      "prompt": "Synthetic contract-question 18 about invoice processing for boundary testing.",
+      "expected_fields": [
+        "field_18_a",
+        "field_18_b"
+      ]
+    }
+  ],
+  "metadata": {
+    "created_by": "synthetic-fixture-generator",
+    "created_date": "2026-08-14",
+    "total_count": 25,
+    "public_count": 18,
+    "holdout_count": 7
+  }
+}

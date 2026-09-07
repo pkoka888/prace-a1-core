@@ -1,0 +1,679 @@
+{
+  "answers": {
+    "q-contract-01": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-01-1",
+          "text": "synthetic claim for q-contract-01",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-01-1",
+          "question_id": "q-contract-01",
+          "claim_ids": [
+            "c-q-contract-01-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-01"
+        }
+      ]
+    },
+    "q-contract-02": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-02-1",
+          "text": "synthetic claim for q-contract-02",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-02-1",
+          "question_id": "q-contract-02",
+          "claim_ids": [
+            "c-q-contract-02-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-02"
+        }
+      ]
+    },
+    "q-contract-03": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-03-1",
+          "text": "synthetic claim for q-contract-03",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-03-1",
+          "question_id": "q-contract-03",
+          "claim_ids": [
+            "c-q-contract-03-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-03"
+        }
+      ]
+    },
+    "q-contract-04": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-04-1",
+          "text": "synthetic claim for q-contract-04",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-04-1",
+          "question_id": "q-contract-04",
+          "claim_ids": [
+            "c-q-contract-04-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-04"
+        }
+      ]
+    },
+    "q-contract-05": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-05-1",
+          "text": "synthetic claim for q-contract-05",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-05-1",
+          "question_id": "q-contract-05",
+          "claim_ids": [
+            "c-q-contract-05-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-05"
+        }
+      ]
+    },
+    "q-contract-06": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-06-1",
+          "text": "synthetic claim for q-contract-06",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-06-1",
+          "question_id": "q-contract-06",
+          "claim_ids": [
+            "c-q-contract-06-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-06"
+        }
+      ]
+    },
+    "q-contract-07": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-07-1",
+          "text": "synthetic claim for q-contract-07",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-07-1",
+          "question_id": "q-contract-07",
+          "claim_ids": [
+            "c-q-contract-07-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-07"
+        }
+      ]
+    },
+    "q-contract-08": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-08-1",
+          "text": "synthetic claim for q-contract-08",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-08-1",
+          "question_id": "q-contract-08",
+          "claim_ids": [
+            "c-q-contract-08-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-08"
+        }
+      ]
+    },
+    "q-contract-09": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-09-1",
+          "text": "synthetic claim for q-contract-09",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-09-1",
+          "question_id": "q-contract-09",
+          "claim_ids": [
+            "c-q-contract-09-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-09"
+        }
+      ]
+    },
+    "q-contract-10": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-10-1",
+          "text": "synthetic claim for q-contract-10",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-10-1",
+          "question_id": "q-contract-10",
+          "claim_ids": [
+            "c-q-contract-10-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-10"
+        }
+      ]
+    },
+    "q-contract-11": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-11-1",
+          "text": "synthetic claim for q-contract-11",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-11-1",
+          "question_id": "q-contract-11",
+          "claim_ids": [
+            "c-q-contract-11-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-11"
+        }
+      ]
+    },
+    "q-contract-12": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-12-1",
+          "text": "synthetic claim for q-contract-12",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-12-1",
+          "question_id": "q-contract-12",
+          "claim_ids": [
+            "c-q-contract-12-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-12"
+        }
+      ]
+    },
+    "q-contract-13": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-13-1",
+          "text": "synthetic claim for q-contract-13",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-13-1",
+          "question_id": "q-contract-13",
+          "claim_ids": [
+            "c-q-contract-13-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-13"
+        }
+      ]
+    },
+    "q-contract-14": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-14-1",
+          "text": "synthetic claim for q-contract-14",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-14-1",
+          "question_id": "q-contract-14",
+          "claim_ids": [
+            "c-q-contract-14-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-14"
+        }
+      ]
+    },
+    "q-contract-15": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-15-1",
+          "text": "synthetic claim for q-contract-15",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-15-1",
+          "question_id": "q-contract-15",
+          "claim_ids": [
+            "c-q-contract-15-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-15"
+        }
+      ]
+    },
+    "q-contract-16": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-16-1",
+          "text": "synthetic claim for q-contract-16",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-16-1",
+          "question_id": "q-contract-16",
+          "claim_ids": [
+            "c-q-contract-16-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-16"
+        }
+      ]
+    },
+    "q-contract-17": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-17-1",
+          "text": "synthetic claim for q-contract-17",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-17-1",
+          "question_id": "q-contract-17",
+          "claim_ids": [
+            "c-q-contract-17-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-17"
+        }
+      ]
+    },
+    "q-contract-18": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-contract-18-1",
+          "text": "synthetic claim for q-contract-18",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-contract-18-1",
+          "question_id": "q-contract-18",
+          "claim_ids": [
+            "c-q-contract-18-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-contract-18"
+        }
+      ]
+    },
+    "q-holdout-01": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-01-1",
+          "text": "synthetic claim for q-holdout-01",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-01-1",
+          "question_id": "q-holdout-01",
+          "claim_ids": [
+            "c-q-holdout-01-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-01"
+        }
+      ]
+    },
+    "q-holdout-02": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-02-1",
+          "text": "synthetic claim for q-holdout-02",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-02-1",
+          "question_id": "q-holdout-02",
+          "claim_ids": [
+            "c-q-holdout-02-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-02"
+        }
+      ]
+    },
+    "q-holdout-03": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-03-1",
+          "text": "synthetic claim for q-holdout-03",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-03-1",
+          "question_id": "q-holdout-03",
+          "claim_ids": [
+            "c-q-holdout-03-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-03"
+        }
+      ]
+    },
+    "q-holdout-04": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-04-1",
+          "text": "synthetic claim for q-holdout-04",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-04-1",
+          "question_id": "q-holdout-04",
+          "claim_ids": [
+            "c-q-holdout-04-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-04"
+        }
+      ]
+    },
+    "q-holdout-05": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-05-1",
+          "text": "synthetic claim for q-holdout-05",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-05-1",
+          "question_id": "q-holdout-05",
+          "claim_ids": [
+            "c-q-holdout-05-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-05"
+        }
+      ]
+    },
+    "q-holdout-06": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-06-1",
+          "text": "synthetic claim for q-holdout-06",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-06-1",
+          "question_id": "q-holdout-06",
+          "claim_ids": [
+            "c-q-holdout-06-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-06"
+        }
+      ]
+    },
+    "q-holdout-07": {
+      "atomic_claims": [
+        {
+          "claim_id": "c-q-holdout-07-1",
+          "text": "synthetic claim for q-holdout-07",
+          "citation_urls": [
+            "https://example.invalid/source"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "evidence_id": "ev-q-holdout-07-1",
+          "question_id": "q-holdout-07",
+          "claim_ids": [
+            "c-q-holdout-07-1"
+          ],
+          "source_url": "https://example.invalid/source",
+          "final_url": "https://example.invalid/source",
+          "retrieved_at": "2026-08-14T00:00:00Z",
+          "effective_date": null,
+          "source_type": "secondary",
+          "content_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "supported_excerpt": "synthetic evidence for q-holdout-07"
+        }
+      ]
+    }
+  }
+}

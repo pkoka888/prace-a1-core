@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object", "additionalProperties": false,
+  "required": ["result_id", "benchmark_version", "system_info", "questions_processed", "results", "processing_metadata"],
+  "properties": {
+    "result_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "benchmark_version": {"const": "0.2.0"},
+    "system_info": {
+      "type": "object", "additionalProperties": false,
+      "required": ["system_name", "provider", "mode", "model", "cost_verified_zero"],
+      "properties": {
+        "system_name": {"type": "string", "minLength": 1}, "provider": {"type": "string", "minLength": 1},
+        "mode": {"enum": ["manual-export", "local", "verified-free"]}, "model": {"type": ["string", "null"]},
+        "cost_verified_zero": {"const": true}
+      }
+    },
+    "questions_processed": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^q-[a-z0-9-]+$"}},
+    "results": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/result"}},
+    "processing_metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["started_at", "completed_at", "input_hash", "output_hash"],
+      "properties": {
+        "started_at": {"type": "string", "format": "date-time"}, "completed_at": {"type": "string", "format": "date-time"},
+        "input_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "output_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$", "description": "SHA-256 of canonical JSON after removing this output_hash member."}
+      }
+    }
+  },
+  "definitions": {
+    "result": {
+      "type": "object", "additionalProperties": false, "required": ["question_id", "claims", "abstained"],
+      "properties": {
+        "question_id": {"type": "string", "pattern": "^q-[a-z0-9-]+$"}, "abstained": {"type": "boolean"},
+        "claims": {"type": "array", "items": {"$ref": "#/definitions/claim"}}
+      },
+      "allOf": [{
+        "if": {"properties": {"abstained": {"const": true}}, "required": ["abstained"]},
+        "then": {"properties": {"claims": {"maxItems": 0}}},
+        "else": {"properties": {"claims": {"minItems": 1}}}
+      }]
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false, "required": ["claim_id", "text", "citation_urls"],
+      "properties": {
+        "claim_id": {"type": "string", "pattern": "^sc-[a-z0-9-]+$"}, "text": {"type": "string", "minLength": 1},
+        "citation_urls": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "format": "uri", "pattern": "^https://"}}
+      }
+    }
+  }
+}

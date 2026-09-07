@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0", "record_state": "template", "run_id": null,
+  "benchmark_version": "0.2.0", "provider": "Perplexity", "product": "Perplexity Research",
+  "research_mode": "open-web", "operation": "operator-mediated-manual-export",
+  "model": null, "run_date": null,
+  "access_basis": {"kind": "unverified", "verified_on": null, "operator_note": null},
+  "cost": {"currency": "CZK", "amount_incremental": null, "paid_api_used": null, "paid_fallback_enabled": null},
+  "privacy": {"public_prompts_only": null, "evaluator_material_excluded": null, "pii_excluded": null, "credentials_excluded": null},
+  "inputs": {"public_prompt_sha256": null, "question_count": null, "source_bundle": []},
+  "outputs": {"raw_export_sha256": null, "canonical_result_sha256": null}
+}
