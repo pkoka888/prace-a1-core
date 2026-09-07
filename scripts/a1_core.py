@@ -17,6 +17,11 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
+try:
+    from .pdf_named_fields import display_value
+except ImportError:
+    from pdf_named_fields import display_value
+
 
 PAGE_SIZE = (595.2, 841.92)
 PROVISIONAL_NOTICE = "NÁVRH – ČEKÁ NA POTVRZENÍ OSSZ"
@@ -376,7 +381,7 @@ def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
     for page_number in range(page_count):
         for field_name, cfg in fields_by_page.get(page_number, []):
             value = computed.get(field_name, _get_path(form, cfg.get("source", field_name)))
-            _draw_field(c, value, cfg, font)
+            _draw_field(c, display_value(cfg.get("source", field_name), value), cfg, font)
         c.saveState()
         for field, cfg in layout.get("checkboxes", {}).items():
             if int(cfg["page"]) != page_number:

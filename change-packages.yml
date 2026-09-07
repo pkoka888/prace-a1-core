@@ -59,6 +59,13 @@
       "rollback": "Revert status and regression assertion together; do not mutate v2 artifacts.",
       "intended_commit": "test: quarantine stale plan-ac synthetic checkpoint"
     },
+    "a1_named_field_experiment": {
+      "purpose": "Named PDF token experiment and shared personal-name display casing. No canonical template migration or employee publication.",
+      "paths": ["scripts/pdf_named_fields.py", "tests/test_pdf_named_fields.py", "scripts/a1_core.py", "tests/test_a1_core.py"],
+      "checks": ["venv/bin/python -m pytest tests/test_pdf_named_fields.py tests/test_a1_core.py -q"],
+      "dependencies": ["Source reference and experimental PDFs remain in protected storage", "Canonical acceptance requirements unchanged"],
+      "rollback": "Revert helper, renderer name-formatting call and associated tests together; preserve all source PDFs."
+    },
     "a1_policy": {
       "purpose": "Fail-closed A1 policy documentation; no real-data operation.",
       "paths": [".agents/skills/a1-pdf-production/", "readme-employees-to-a1-form.md", "readme-scan-to-employees.md", "tests/test_comprehensive.py"],
