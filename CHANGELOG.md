@@ -6,6 +6,11 @@ Dates are ISO 8601. Entries are grouped by change package per `change-packages.y
 
 ---
 
+## [2026-09-07] — Plan AC v12 live tooling + clean-checkout CI collection fix
+
+### Changed — provide the tracked v12 test contract its validator on clean checkouts
+- **`change-packages.yml`** (updated): moved `scripts/run_collector_proposals_v12.py`, `scripts/validate_collector_execution_v12.py`, `tests/test_collector_v12.py` from `quarantined_research_artifacts` to `plan_ac_integrity` (AC-01 Option B ratified). Restores clean-checkout CI collection, which previously failed because the tracked test imported the untracked + quarantined validator.
+
 ## [Unreleased] — 2026-09-02 Synthetic Review Environment
 
 ### Added — Portal Release 1A Review Surface

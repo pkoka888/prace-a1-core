@@ -10,9 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from scripts.run_collector_proposals_v12 import InvalidProposal, semantic_sha256, validate_and_build
+from scripts.run_collector_proposals_v12 import (
+    InvalidProposal,
+    semantic_sha256,
+    validate_and_build,
+)
 from scripts.validate_collector_execution_v12 import validate_execution
-
 
 PROJECT = Path(__file__).resolve().parent.parent
 
@@ -90,7 +93,7 @@ def proposal(tmp_path: Path) -> tuple[Path, dict]:
         "export_format_ids": ("export-format-csv", "csv", "csv"),
     }
     inspections = []
-    for lane_id, lane in pack["lanes"].items():
+    for lane in pack["lanes"].values():
         for entity in lane["entities"]:
             for field in lane["fields"]:
                 slot = (entity["id"], field["id"])

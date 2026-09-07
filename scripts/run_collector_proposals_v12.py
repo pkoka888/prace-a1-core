@@ -12,7 +12,6 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import sys
 import tempfile
 from pathlib import Path
@@ -22,11 +21,19 @@ from jsonschema import Draft7Validator, FormatChecker
 
 try:
     from scripts.validate_field_normalization import (
-        InvalidRules, Unavailable, normalize, safe_regex_values, validate_rules,
+        InvalidRules,
+        Unavailable,
+        normalize,
+        safe_regex_values,
+        validate_rules,
     )
 except ModuleNotFoundError:  # direct ``python scripts/...`` execution
     from validate_field_normalization import (  # type: ignore[no-redef]
-        InvalidRules, Unavailable, normalize, safe_regex_values, validate_rules,
+        InvalidRules,
+        Unavailable,
+        normalize,
+        safe_regex_values,
+        validate_rules,
     )
 
 
@@ -192,7 +199,7 @@ def validate_and_build(root: Path, proposal: dict[str, Any]) -> tuple[dict[str, 
     captures: dict[tuple[str, str], dict[str, Any]] = {}
     capture_bindings: dict[str, dict[str, str]] = {}
     for binding in proposal["capture_manifests"]:
-        path, manifest = check_binding(root, binding)
+        _, manifest = check_binding(root, binding)
         validate_schema(manifest, capture_schema, f"capture {binding['path']}")
         if manifest["query_pack_hash"] != pack["query_pack_hash"]:
             raise InvalidProposal("capture query-pack hash mismatch")
