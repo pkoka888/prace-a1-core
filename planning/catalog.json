@@ -408,8 +408,7 @@
       "referenced_files": [
         "src/invoice_ingestion/contracts.py",
         "tests/test_invoice_ingestion_contract.py",
-        "research/benchmark-experimental/STATUS.json",
-        "research/processed/reproducibility-report.json",
+        "tests/test_benchmark_experimental.py",
         "scripts/validate_collector_execution.py"
       ],
       "referenced_commands": [],
