@@ -10,10 +10,70 @@ an agent could make here are privacy/cost/command mistakes, not coding ones.
 ## Critical safety — PII, Git, secrets
 - Never `git add -A`/`.` or wildcard-stage. Stage an explicit reviewed non-PII path list and inspect `git diff --cached`.
 - These paths are gitignored and must never be committed, force-added, or copied to `/tmp` or outside the repo: `a1/`, `scans/`, `evidence/`, `ocr/`, `data/`, `employees/scans/`, `output/`, `runtime/portal/`, `secrets/`, `.env`. Treat `.history-remediation/` as sensitive too.
-- Never commit or push unless explicitly asked. Never force-push, rewrite history, or delete branches without separate exact approval.
+- Routine scoped commits and pushes to the existing private GitHub feature branch are authorized by the delivery policy below; a task-specific no-commit/no-push instruction overrides this default. Never force-push, rewrite history, delete branches, merge to a protected/default branch, or publish to a new remote without separate exact approval.
 - Use **synthetic data** in tests, fixtures, docs, screenshots, and prompts. Never copy a real employee row, scan, PDF, identifier, or address into a test (see `tests/fixtures/` and `readme-employees-to-a1-form.md` §Synthetic example).
 - Keep real-data operations, planning/docs, A1 code, and portal code in separate commits.
-- Subagents are research/analysis workers: never pass them scans, employee datasets, `.env`, credentials, or unredacted A1 artifacts. Only the primary agent handles real-data edits and Git publication.
+- Subagents may research, implement, test or review explicitly assigned non-PII scopes when delegation is authorized. Never pass them scans, employee datasets, `.env`, credentials, or unredacted A1 artifacts. Use distinct file ownership; only the primary agent integrates findings, handles real-data edits and publishes Git changes.
+
+## Autonomous delivery and minimal operator decisions
+
+- Treat requests to implement, fix, continue or resolve planned work as authorization
+  for the necessary in-project code, tests, fixtures, documentation and planning
+  changes. Do not repeatedly ask for permission to edit source or run synthetic tests.
+- Select the next unblocked, bounded deliverable from the active plan and roadmap.
+  Complete implementation, relevant tests and evidence in the same work cycle.
+  Fix reproducible failures before adding features. Do not expand a review-only
+  request into implementation or silently activate a blocked plan.
+- Prefer the existing shared Python core, thin adapters and canonical scripts.
+  Automate repeatable checks, safe fixture setup, receipts and generated planning
+  assets with existing tooling before introducing new tools or frameworks.
+- Jan supplies missing business facts and consolidated confirmation. Engineering
+  chooses engines, paths, retries and technical configuration. Do not ask Jan to
+  invent certificate evidence, select legal articles or resolve technical defaults.
+  Keep application preparation separate from certificate issuance and acceptance.
+- Use parallel independent reads/tests where safe. When delegation is authorized,
+  give agents exact non-PII file scopes, acceptance commands and expected evidence;
+  primary review remains required. Avoid concurrent edits to shared files or shared
+  test databases. Free-provider and privacy restrictions still apply.
+- Update existing parent/child plans and roadmap at a meaningful delivery checkpoint,
+  not after every edit. Preserve task IDs and the 34 top-level catalog entries;
+  regenerate derived assets only after their sources change. Record implementation,
+  test acceptance, Git publication and deployment separately. Structural validators
+  do not establish runtime acceptance or open human/activation gates.
+- Keep one current delivery report with commands, results, limitations and next owner.
+  Prefer updating it to creating repeated corrective reports. Store detailed synthetic
+  logs and hash-bound receipts in protected project runtime storage, not in Git.
+
+## Routine Git delivery (standing authorization)
+
+This policy authorizes the primary agent to commit and push completed, reviewed
+non-PII work to the existing private GitHub `origin` feature branch without another
+permission round. It supersedes older general "ask before every commit/push"
+wording in plans and work orders. Explicit limits in the current user task still win.
+It does not authorize deployment, merging, real-data activation or new CI/remotes.
+
+1. Inspect the branch, upstream and working tree. Preserve unrelated changes and
+   existing staging; never sweep in another agent's files or unknown research/runtime
+   artifacts. Review inherited changes before including them. Use an isolated checkout
+   when necessary; never reset or stash someone else's work to obtain a clean tree.
+2. Finish a coherent scope, including required dependencies, migrations and tests.
+   Keep portal, A1 and planning deliveries separately reviewable. Do not split model
+   changes from their migrations or publish code that relies on untracked modules.
+3. Review an explicit path list and its full staged diff for PII, secrets and unwanted
+   artifacts. Run relevant tests, planning/link checks and whitespace checks. Reuse
+   valid unchanged evidence; do not repeat broad suites without a reason. Never bypass
+   hooks, validators, approval gates or failing acceptance to accelerate delivery.
+4. Commit the bounded scope with a meaningful message. Verify the resulting object
+   and test its exported snapshot as required below; a dirty-tree pass is insufficient.
+   If that snapshot fails, repair and validate with a follow-up commit before pushing.
+5. Push only the intended commits to the existing feature branch on `origin`, using
+   an explicit remote and branch ref. Inspect all outgoing commits, not just the newest.
+   Verify the remote branch SHA matches the intended commit before claiming delivery.
+   On divergence or authentication failure, preserve work, report the precise blocker
+   and continue independent local work; never force-push or expose/load new credentials.
+6. Report the commit SHA, push status, acceptance evidence and remaining blockers.
+   A publication failure does not erase completed implementation. A successful push
+   does not imply deployment or approval of worker facts/certificates.
 
 ## Workspace and host boundary
 
@@ -87,7 +147,7 @@ Canonical scripts (never use legacy `data/a1_forms/`, `a1_field_coords.json`, `a
 - `scripts/a1_core.py` — static overlay renderer + form validation.
 - `scripts/a1_quality_gate.py` — fail-closed QA: `render` (300 DPI previews/contact sheets), `validate`, `record-review` (hash-bound visual PASS).
 
-**Gotcha:** provisional regeneration is currently **blocked** — per-row certificate, signatory, and review-flag gaps in `a1/review.csv` prevent any employee from passing `scripts/finalize_a1.py readiness` (17/17 blocked as of 2026-08-29 audit). The seven Section 4 employment columns (`employment_id`, `employment_name`, `employment_street`, `employment_house_number`, `employment_city`, `employment_postal_code`, `employment_country_code`) **are present** in the CSV header and accepted by `scripts/a1_quality_gate.py`; `finalize_a1.py` maps them to the renderer's `employer_*` form fields. Preserve the existing `output/provisional/` package; do not describe it as reproducible or weaken the gate until the operator populates per-row `activity_name`, `activity_address`, certificate `document_id`/`start_date`/`end_date`/`signed_by`, source fields with AUTHORITATIVE status, and review flags (`certificate_reviewed`, `approved_for_pdf`, `validated_by_user`) (see `readme-employees-to-a1-form.md`).
+**Evidence boundary:** the latest documented baseline is in `roadmap.md` and the active PLAN-A1 report; do not treat historical counts below as live evidence. Provisional regeneration was **blocked** — per-row certificate, signatory, and review-flag gaps in `a1/review.csv` prevent any employee from passing `scripts/finalize_a1.py readiness` (17/17 blocked as of 2026-08-29 audit). The seven Section 4 employment columns (`employment_id`, `employment_name`, `employment_street`, `employment_house_number`, `employment_city`, `employment_postal_code`, `employment_country_code`) **are present** in the CSV header and accepted by `scripts/a1_quality_gate.py`; `finalize_a1.py` maps them to the renderer's `employer_*` form fields. Preserve the existing `output/provisional/` package; do not describe it as reproducible or weaken the gate until the operator populates per-row `activity_name`, `activity_address`, certificate `document_id`/`start_date`/`end_date`/`signed_by`, source fields with AUTHORITATIVE status, and review flags (`certificate_reviewed`, `approved_for_pdf`, `validated_by_user`) (see `readme-employees-to-a1-form.md`).
 
 **Hard rules:**
 - Never copy field values from one generated PDF into another (no form-to-form copying; data-first from authoritative sources).
@@ -108,13 +168,14 @@ Canonical scripts (never use legacy `data/a1_forms/`, `a1_field_coords.json`, `a
   only after repeatable Pilot 1 (OSS tools) and Pilot 2 (Czech products) runs both
   pass Plan AC's evidence, review, safety, and reproducibility gates; passing
   structural validators or the external benchmark alone is insufficient.
-- Do not scaffold the portal, deploy, or activate real data until PLAN-INFRA (ADR-001; formerly Plan E) and M1A gates pass. Web integration must preserve provenance, deterministic QA, and human approval gates.
+- Authorized M2 synthetic portal implementation and tests may proceed under active plans. Deployment and real-data activation remain subject to PLAN-INFRA (ADR-001; formerly Plan E), M1A and the registered activation gates. Web integration must preserve provenance, deterministic QA, and human approval gates.
 
 
 ## Git remotes
 GitHub is currently the only configured remote and remains authoritative as
 `origin`. A private GitLab secondary/backup plus CI is proposed by Plan AE and
 DEC-016, but activation is not approved or configured. Do not add a remote,
-load credentials, install a runner, enable CI, commit, or push without the exact
-separate approval required by Plan AE. Proposed setup and rules live in
+load credentials, install a runner, enable CI, or publish to the proposed GitLab
+remote without the exact separate approval required by Plan AE. Routine publication
+to the existing GitHub feature branch follows the standing delivery policy above. Proposed setup and rules live in
 `docs/operations/gitlab-integration.md`.
