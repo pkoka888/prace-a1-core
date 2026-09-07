@@ -1,0 +1,31 @@
+{
+  "record_version": "1.0",
+  "authority": "non_authoritative_audit_errata",
+  "status": "pending_operator_review",
+  "created_at": "2026-08-14T00:00:00Z",
+  "query_pack_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "target_bindings": [
+    {
+      "path": "research/acquisition/atomic-v1.1-run-f-2026-08-14.json",
+      "sha256": "562363c13bb639b053f788cccdd213c74c3768e4d3c3031ad8d9e1563c940b79"
+    },
+    {
+      "path": "research/acquisition/atomic-v1.1-run-g-2026-08-14.json",
+      "sha256": "9123230f3be232049c6cc61fdeb7604f7fe0c2534bbbc122e3a8eb90ab2ace05"
+    }
+  ],
+  "findings": [
+    {
+      "runs": [
+        "SYNTHETIC-RUN-F"
+      ],
+      "entity_id": "synthetic-entity-1",
+      "field_id": "synthetic-field",
+      "finding": "Synthetic contract finding for boundary testing.",
+      "required_disposition": "Synthetic disposition for testing."
+    }
+  ],
+  "notes": [
+    "Synthetic contract fixture for errata tests. No real research data."
+  ]
+}

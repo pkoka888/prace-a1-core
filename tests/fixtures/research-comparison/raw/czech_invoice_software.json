@@ -1,0 +1,291 @@
+{
+  "lane": "czech_invoice_software",
+  "as_of": "2026-08-14",
+  "collector_version": "synthetic-test",
+  "status": "synthetic",
+  "capture_timestamp": "2026-08-14T00:00:00Z",
+  "records": [
+    {
+      "id": "czech-invoice-software-0",
+      "kind": "vendor_software",
+      "title": "Synthetic czech_invoice_software entity 0",
+      "cohort": "czech_invoice_software",
+      "geography": "czech Republic",
+      "target_customer": "unknown",
+      "source_links": [
+        "https://example.invalid/czech-invoice-software/0"
+      ],
+      "last_verified": "2026-08-14",
+      "offerings": {
+        "received_invoice_processing": {
+          "state": "unknown"
+        },
+        "issued_invoice_generation": {
+          "state": "unknown"
+        },
+        "automated_approvals": {
+          "state": "unknown"
+        },
+        "extraction_accuracy": {
+          "state": "unknown"
+        },
+        "accounting_proposals": {
+          "state": "unknown"
+        },
+        "payment_integration": {
+          "state": "unknown"
+        },
+        "matching_automation": {
+          "state": "unknown"
+        },
+        "archive_compliance": {
+          "state": "unknown"
+        },
+        "audit_trail": {
+          "state": "unknown"
+        },
+        "integration_models": []
+      },
+      "pricing": {
+        "public_status": "unknown",
+        "currency": "unknown",
+        "vat_treatment": "unknown",
+        "pricing_url": null,
+        "tiers": []
+      },
+      "claims": [
+        {
+          "field": "synthetic-field",
+          "value": "synthetic-value",
+          "evidence_ref": "ev-czech-invoice-software-0-1",
+          "confidence": "unverified",
+          "notes": null
+        }
+      ],
+      "github_metrics": {
+        "repo": null,
+        "capture_timestamp": null,
+        "stars": null,
+        "forks": null,
+        "license": null,
+        "latest_release": null,
+        "last_push": null,
+        "activity_caveats": null,
+        "fetch_status": "unproven"
+      },
+      "scores": {
+        "source_authority": "unproven",
+        "recency": "unproven",
+        "corroboration": "unproven",
+        "completeness": "unproven",
+        "accounting_fit": "unproven",
+        "overall": "unproven",
+        "calculated": false,
+        "calculated_at": null
+      },
+      "practical_business_use": "unproven"
+    },
+    {
+      "id": "czech-invoice-software-1",
+      "kind": "vendor_software",
+      "title": "Synthetic czech_invoice_software entity 1",
+      "cohort": "czech_invoice_software",
+      "geography": "czech Republic",
+      "target_customer": "unknown",
+      "source_links": [
+        "https://example.invalid/czech-invoice-software/1"
+      ],
+      "last_verified": "2026-08-14",
+      "offerings": {
+        "received_invoice_processing": {
+          "state": "unknown"
+        },
+        "issued_invoice_generation": {
+          "state": "unknown"
+        },
+        "automated_approvals": {
+          "state": "unknown"
+        },
+        "extraction_accuracy": {
+          "state": "unknown"
+        },
+        "accounting_proposals": {
+          "state": "unknown"
+        },
+        "payment_integration": {
+          "state": "unknown"
+        },
+        "matching_automation": {
+          "state": "unknown"
+        },
+        "archive_compliance": {
+          "state": "unknown"
+        },
+        "audit_trail": {
+          "state": "unknown"
+        },
+        "integration_models": []
+      },
+      "pricing": {
+        "public_status": "unknown",
+        "currency": "unknown",
+        "vat_treatment": "unknown",
+        "pricing_url": null,
+        "tiers": []
+      },
+      "claims": [
+        {
+          "field": "synthetic-field",
+          "value": "synthetic-value",
+          "evidence_ref": "ev-czech-invoice-software-1-1",
+          "confidence": "unverified",
+          "notes": null
+        }
+      ],
+      "github_metrics": {
+        "repo": null,
+        "capture_timestamp": null,
+        "stars": null,
+        "forks": null,
+        "license": null,
+        "latest_release": null,
+        "last_push": null,
+        "activity_caveats": null,
+        "fetch_status": "unproven"
+      },
+      "scores": {
+        "source_authority": "unproven",
+        "recency": "unproven",
+        "corroboration": "unproven",
+        "completeness": "unproven",
+        "accounting_fit": "unproven",
+        "overall": "unproven",
+        "calculated": false,
+        "calculated_at": null
+      },
+      "practical_business_use": "unproven"
+    },
+    {
+      "id": "czech-invoice-software-2",
+      "kind": "vendor_software",
+      "title": "Synthetic czech_invoice_software entity 2",
+      "cohort": "czech_invoice_software",
+      "geography": "czech Republic",
+      "target_customer": "unknown",
+      "source_links": [
+        "https://example.invalid/czech-invoice-software/2"
+      ],
+      "last_verified": "2026-08-14",
+      "offerings": {
+        "received_invoice_processing": {
+          "state": "unknown"
+        },
+        "issued_invoice_generation": {
+          "state": "unknown"
+        },
+        "automated_approvals": {
+          "state": "unknown"
+        },
+        "extraction_accuracy": {
+          "state": "unknown"
+        },
+        "accounting_proposals": {
+          "state": "unknown"
+        },
+        "payment_integration": {
+          "state": "unknown"
+        },
+        "matching_automation": {
+          "state": "unknown"
+        },
+        "archive_compliance": {
+          "state": "unknown"
+        },
+        "audit_trail": {
+          "state": "unknown"
+        },
+        "integration_models": []
+      },
+      "pricing": {
+        "public_status": "unknown",
+        "currency": "unknown",
+        "vat_treatment": "unknown",
+        "pricing_url": null,
+        "tiers": []
+      },
+      "claims": [
+        {
+          "field": "synthetic-field",
+          "value": "synthetic-value",
+          "evidence_ref": "ev-czech-invoice-software-2-1",
+          "confidence": "unverified",
+          "notes": null
+        }
+      ],
+      "github_metrics": {
+        "repo": null,
+        "capture_timestamp": null,
+        "stars": null,
+        "forks": null,
+        "license": null,
+        "latest_release": null,
+        "last_push": null,
+        "activity_caveats": null,
+        "fetch_status": "unproven"
+      },
+      "scores": {
+        "source_authority": "unproven",
+        "recency": "unproven",
+        "corroboration": "unproven",
+        "completeness": "unproven",
+        "accounting_fit": "unproven",
+        "overall": "unproven",
+        "calculated": false,
+        "calculated_at": null
+      },
+      "practical_business_use": "unproven"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-czech-invoice-software-0-1",
+      "entity_id": "czech-invoice-software-0",
+      "claim_field": "synthetic-field",
+      "canonical_url": "https://example.invalid/ev/czech-invoice-software-0",
+      "publisher": "synthetic-test",
+      "source_type": "synthetic_test",
+      "publication_date": "2026-08-14",
+      "retrieval_date": "2026-08-14",
+      "confidence": "unverified",
+      "corroboration_status": "not_attempted",
+      "notes": null
+    },
+    {
+      "id": "ev-czech-invoice-software-1-1",
+      "entity_id": "czech-invoice-software-1",
+      "claim_field": "synthetic-field",
+      "canonical_url": "https://example.invalid/ev/czech-invoice-software-1",
+      "publisher": "synthetic-test",
+      "source_type": "synthetic_test",
+      "publication_date": "2026-08-14",
+      "retrieval_date": "2026-08-14",
+      "confidence": "unverified",
+      "corroboration_status": "not_attempted",
+      "notes": null
+    },
+    {
+      "id": "ev-czech-invoice-software-2-1",
+      "entity_id": "czech-invoice-software-2",
+      "claim_field": "synthetic-field",
+      "canonical_url": "https://example.invalid/ev/czech-invoice-software-2",
+      "publisher": "synthetic-test",
+      "source_type": "synthetic_test",
+      "publication_date": "2026-08-14",
+      "retrieval_date": "2026-08-14",
+      "confidence": "unverified",
+      "corroboration_status": "not_attempted",
+      "notes": null
+    }
+  ],
+  "note": "Synthetic contract fixture for comparison tests."
+}

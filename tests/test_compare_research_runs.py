@@ -11,6 +11,8 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/compare_research_runs.py"
+# Synthetic contract fixtures for clean-checkout CI (no unpublished research data).
+SYNTHETIC_FIXTURES = ROOT / "tests/fixtures/research-comparison"
 
 
 def run(tmp_path: Path, mutate=None):
@@ -19,9 +21,9 @@ def run(tmp_path: Path, mutate=None):
     shutil.copytree(ROOT / "research/schemas", project / "research/schemas")
     shutil.copytree(ROOT / "scripts", project / "scripts")
     (project / "research/processed").mkdir(parents=True)
-    shutil.copy2(ROOT / "research/processed/entities.json", project / "research/processed/entities.json")
+    shutil.copy2(SYNTHETIC_FIXTURES / "entities.json", project / "research/processed/entities.json")
     for name in ("left", "right"):
-        shutil.copytree(ROOT / "research/acquisition/raw", project / f"research/acquisition/{name}")
+        shutil.copytree(SYNTHETIC_FIXTURES / "raw", project / f"research/acquisition/{name}")
     if mutate:
         mutate(project)
     result = subprocess.run([
@@ -712,21 +714,18 @@ def test_frozen_collector_protocol_schema_and_digest() -> None:
 
 def test_atomic_errata_schema_and_target_bindings() -> None:
     root = Path(__file__).resolve().parents[1]
-    errata = json.loads(
-        (root / "research/acquisition/atomic-v1.1-errata-2026-08-14.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    schema = json.loads(
-        (root / "research/query-packs/atomic-errata-1.0.schema.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    # Synthetic contract fixtures for clean-checkout CI (no unpublished research data).
+    errata_path = root / "tests/fixtures/research-comparison/errata/atomic-v1.1-errata-2026-08-14.json"
+    schema_path = root / "research/query-packs/atomic-errata-1.0.schema.json"
+    errata = json.loads(errata_path.read_text(encoding="utf-8"))
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
     from jsonschema import Draft7Validator, FormatChecker
 
     Draft7Validator.check_schema(schema)
     assert list(Draft7Validator(schema, format_checker=FormatChecker()).iter_errors(errata)) == []
     for binding in errata["target_bindings"]:
-        payload = (root / binding["path"]).read_bytes()
+        # Resolve target paths relative to the synthetic fixture directory.
+        fixture_root = errata_path.parent
+        payload = (fixture_root / binding["path"].replace("research/acquisition/", "")).read_bytes()
         assert hashlib.sha256(payload).hexdigest() == binding["sha256"]
