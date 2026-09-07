@@ -68,16 +68,16 @@
       ,"intended_commit": "docs: reconcile fail-closed A1 policy"
     },
     "infrastructure_git_workflow": {
-      "purpose": "Local repository workflow validation before remote or CI activation.",
-      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml"],
-      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py -q", "venv/bin/python scripts/validate_change_packages.py --json"],
-      "dependencies": ["All dirty paths classified", "Explicit approval before remote mutation"],
+      "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
+      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md"],
+      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
+      "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
       "rollback": "Revert local workflow files; this package never changes remotes."
       ,"intended_commit": "test: add fail-closed change-package validation"
     },
     "free_model_evaluation": {
       "purpose": "Synthetic-only bounded evaluation of named free OpenCode models with Codex control and deterministic safety gates.",
-      "paths": [".gitignore", "pytest.ini", ".opencode/agents/free-eval-read.md", ".opencode/agents/free-eval-code-draft.md", ".opencode/agents/free-eval-contract-echo.md", "config/free-model-eval/", "src/free_model_eval/", "scripts/run_free_model_eval.py", "tests/fixtures/free_model_eval/", "tests/test_free_model_eval_contracts.py", "tests/test_free_model_eval_events.py", "tests/test_free_model_eval_isolation.py", "tests/test_free_model_eval_preflight.py", "tests/test_free_model_eval_scoring.py", "tests/test_free_model_eval_af2_protocol.py", "tests/test_free_model_eval_af21_integrity.py", "docs/research/templates/free-model-eval-report.md", "docs/research/2026-08-15-af2-free-model-trace-review-report.md"],
+      "paths": ["pytest.ini", ".opencode/agents/free-eval-read.md", ".opencode/agents/free-eval-code-draft.md", ".opencode/agents/free-eval-contract-echo.md", "config/free-model-eval/", "src/free_model_eval/", "scripts/run_free_model_eval.py", "tests/fixtures/free_model_eval/", "tests/test_free_model_eval_contracts.py", "tests/test_free_model_eval_events.py", "tests/test_free_model_eval_isolation.py", "tests/test_free_model_eval_preflight.py", "tests/test_free_model_eval_scoring.py", "tests/test_free_model_eval_af2_protocol.py", "tests/test_free_model_eval_af21_integrity.py", "docs/research/templates/free-model-eval-report.md", "docs/research/2026-08-15-af2-free-model-trace-review-report.md"],
       "checks": ["venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py tests/test_free_model_eval_af2_protocol.py tests/test_free_model_eval_af21_integrity.py -q", "venv/bin/python scripts/run_free_model_eval.py verify-fixtures --policy config/free-model-eval/policy.json"],
       "dependencies": ["Plan L operating rules", "Exact zero-cost preflight before live synthetic calls"],
       "rollback": "Revert Plan PLAN-FREE-MODEL tracked files together; remove only validated ignored runtime/free-model-eval run children.",

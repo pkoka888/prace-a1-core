@@ -8,6 +8,17 @@ on:
   schedule:
     - cron: "0 6 * * *"  # Daily at 06:00 UTC (slow tests)
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PIP_NO_PYTHON_VERSION_WARNING: "1"
@@ -18,6 +29,7 @@ jobs:
   fast-tests:
     name: Fast Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,18 +46,19 @@ jobs:
           python -m venv venv
           venv/bin/pip install --upgrade pip
           venv/bin/pip install -r requirements.txt
-          venv/bin/pip install -r requirements-lock.txt 2>/dev/null || true
+          venv/bin/pip install -r requirements-lock.txt
 
       - name: Run fast tests
         run: |
           venv/bin/python -m pytest -q --ignore=tests/m2 --ignore=tests/architecture \
-            -x -v 2>&1 | tail -30
+            -x -v
         continue-on-error: false
 
   # Lint check: run on every PR and push
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,19 +76,18 @@ jobs:
 
       - name: Run ruff
         run: |
-          venv/bin/ruff check . --output-format=github 2>&1 || true
-        continue-on-error: true
+          venv/bin/ruff check . --output-format=github
+        continue-on-error: false
 
-      - name: Check for secrets (basic)
-        run: |
-          grep -r "sk-or-v1-\|sk-proj-\|KILO_API_KEY\|OPENAI_API_KEY" --include="*.py" . || true
-        continue-on-error: true
+      - name: Check tracked credential signatures
+        run: venv/bin/python scripts/check_git_content.py
 
   # Slow tests: run on schedule and main push only
   slow-tests:
     name: Slow Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 20
+    if: github.event_name == 'schedule' || github.event_name == 'push' && github.ref == 'refs/heads/master'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -95,5 +107,5 @@ jobs:
 
       - name: Run all tests
         run: |
-          venv/bin/python -m pytest -q --tb=short 2>&1 | tail -50
+          venv/bin/python -m pytest -q --tb=short
         continue-on-error: false

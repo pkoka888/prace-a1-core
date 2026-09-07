@@ -1,0 +1,2 @@
+# Canonical PDF templates are binary artifacts, not line-oriented source.
+templates/*.pdf binary

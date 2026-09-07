@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
+import sys
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -64,8 +66,13 @@ def load_catalog(path: Path) -> dict:
     return data
 
 
-def validate(root: Path, catalog_path: Path) -> tuple[dict, int]:
-    catalog = load_catalog(catalog_path)
+def validate(root: Path, catalog_path: Path, *, staged: bool = False) -> tuple[dict, int]:
+    if staged:
+        catalog = json.loads(git(root, "show", ":" + catalog_path.relative_to(root).as_posix()))
+        if catalog.get("schema_version") != 1 or not isinstance(catalog.get("packages"), dict):
+            raise ValueError("invalid staged catalog")
+    else:
+        catalog = load_catalog(catalog_path)
     problems: list[str] = []
     declarations: dict[tuple[str, bool], str] = {}
     for package_id, package in catalog["packages"].items():
@@ -78,7 +85,7 @@ def validate(root: Path, catalog_path: Path) -> tuple[dict, int]:
                     problems.append(f"duplicate rule {rule!r}: {prior}, {package_id}")
                 declarations[(rule, is_prefix)] = package_id
 
-    dirty = dirty_paths(root)
+    dirty = sorted(nul_paths(git(root, "diff", "--cached", "--name-only", "--no-renames", "-z"))) if staged else dirty_paths(root)
     tracked = nul_paths(git(root, "ls-files", "-z"))
     forbidden = catalog.get("forbidden_paths", [])
     entries = []
@@ -90,6 +97,10 @@ def validate(root: Path, catalog_path: Path) -> tuple[dict, int]:
             ):
                 owners.append(package_id)
         denied = [rule for rule in forbidden if matches(path, rule)]
+        if staged and any(part in {"a1", "scans", "evidence", "ocr", "data", "output", "runtime", "secrets", ".history-remediation", "private", "reports"} for part in PurePosixPath(path).parts):
+            denied.append("protected-path")
+        if staged and (PurePosixPath(path).name == ".env" or PurePosixPath(path).name.startswith(".env.") and PurePosixPath(path).name != ".env.example"):
+            denied.append("environment-file")
         if denied:
             problems.append(f"dirty forbidden path: {path}")
         if len(owners) != 1:
@@ -97,20 +108,34 @@ def validate(root: Path, catalog_path: Path) -> tuple[dict, int]:
         package = catalog["packages"].get(owners[0], {}) if len(owners) == 1 else {}
         eligible = package.get("eligible_for_staging", True) and not denied
         indicators = []
+        if staged and not eligible:
+            problems.append(f"staged path is ineligible: {path}")
         candidate = root / path
-        if eligible and candidate.is_file() and not candidate.is_symlink():
-            if path.lower().endswith(ARCHIVE_SUFFIXES):
-                indicators.append("archive")
+        payload = None
+        if eligible and staged:
+            entry = git(root, "ls-files", "--stage", "-z", "--", path)
+            if entry:
+                mode, oid, stage = entry.split(b"\t", 1)[0].split()
+                if mode not in (b"100644", b"100755") or stage != b"0":
+                    indicators.append("unsupported-index-entry")
+                else:
+                    size = int(git(root, "cat-file", "-s", oid.decode()))
+                    if size > 5_000_000:
+                        indicators.append("oversize-review-required")
+                    else:
+                        payload = git(root, "cat-file", "blob", oid.decode())
+        elif eligible and candidate.is_file() and not candidate.is_symlink():
             if candidate.stat().st_size <= 5_000_000:
                 payload = candidate.read_bytes()
-                if any(pattern.search(payload) for pattern in SECRET_PATTERNS):
-                    indicators.append("credential-pattern")
-                if (
-                    candidate.suffix.lower() in {".md", ".json", ".html"}
-                    and not path.startswith(("tests/", "scripts/"))
-                    and PERSONAL_HOST_PATH.search(payload)
-                ):
-                    indicators.append("personal-host-path")
+        if payload is not None:
+            if path.lower().endswith(ARCHIVE_SUFFIXES):
+                indicators.append("archive")
+            if any(pattern.search(payload) for pattern in SECRET_PATTERNS):
+                indicators.append("credential-pattern")
+            if (candidate.suffix.lower() in {".md", ".json", ".html"}
+                and not path.startswith(("tests/", "scripts/"))
+                and PERSONAL_HOST_PATH.search(payload)):
+                indicators.append("personal-host-path")
         if indicators:
             problems.append(f"eligible path requires privacy review ({','.join(indicators)}): {path}")
         entries.append({
@@ -175,9 +200,29 @@ def main() -> int:
     parser.add_argument("--catalog", default="change-packages.yml")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--run-checks", action="store_true")
     args = parser.parse_args()
     root = args.root.resolve()
-    report, status = validate(root, root / args.catalog)
+    try:
+        report, status = validate(root, root / args.catalog, staged=args.staged)
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError):
+        print("CHANGE_PACKAGE_VALIDATION_FAILED", file=sys.stderr)
+        return 1
+    if args.run_checks:
+        if not args.staged or status:
+            return 1
+        checks = dict.fromkeys(check for receipt in report["package_receipts"]
+                               if receipt["path_count"] for check in receipt["checks"])
+        for check in checks:
+            command = shlex.split(check)
+            if not command or any(token in {"|", ";", "&&", "||", ">"} for token in command):
+                return 1
+            try:
+                subprocess.run(command, cwd=root, check=True, timeout=300)
+            except (OSError, subprocess.SubprocessError):
+                print("PACKAGE_CHECK_FAILED", file=sys.stderr)
+                return 1
     rendered = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         output = args.output if args.output.is_absolute() else root / args.output

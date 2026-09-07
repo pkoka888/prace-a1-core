@@ -105,3 +105,14 @@ server.pid
 # excluded by the precise paths above (data/, employees/scans/, private/,
 # output/, reports/, archive/**) and must never be committed.
 scans/
+
+# Local environment variants; only reviewed synthetic examples may be tracked.
+.env.*
+!.env.example
+# All runtime outputs are local; source and fixtures belong outside runtime/.
+/runtime/
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+/:memory:.ses
