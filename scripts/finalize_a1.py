@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare, validate, and atomically publish a reviewed set of A1 PDFs."""
+"""Prepare and validate A1 candidates; reserved final publication requires receipts."""
 
 from __future__ import annotations
 
@@ -19,10 +19,14 @@ from typing import Any
 from pypdf import PdfReader
 
 try:
-    from .a1_core import A1ValidationError, build_form_data, enrich_residence, generate_a1_pdf
+    from .a1_core import A1ValidationError, build_form_data, czech_display_case, enrich_residence, generate_a1_pdf
+    from .a1_paths import PathValidationError, validate_output_path, unique_staging_path, cleanup_staging_only, protected_path, destination_lock, publish_package
+    from .a1_audit import AuditWriteError, audited, audited_operation, current_run_id, write_failure_receipt, write_private_json
     from .a1_private import A1PrivateInputError, private_path, private_root
 except ImportError:  # Direct CLI execution.
-    from a1_core import A1ValidationError, build_form_data, enrich_residence, generate_a1_pdf
+    from a1_core import A1ValidationError, build_form_data, czech_display_case, enrich_residence, generate_a1_pdf
+    from a1_paths import PathValidationError, validate_output_path, unique_staging_path, cleanup_staging_only, protected_path, destination_lock, publish_package
+    from a1_audit import AuditWriteError, audited, audited_operation, current_run_id, write_failure_receipt, write_private_json
     from a1_private import A1PrivateInputError, private_path, private_root
 
 
@@ -33,6 +37,7 @@ PROFILE_BY_OSSZ = {
     "OSSZ Plzeň": "plzen",
     "OSSZ Teplice": "teplice",
     "OSSZ Most": "most",
+    "OSSZ Louny": "louny",
         "OSSZ Frýdek-Místek": "frydek-mistek",
     "OSSZ Nový Jičín": "novy-jicin",
     "OSSZ Praha": "praha",
@@ -60,8 +65,13 @@ class FinalizationError(ValueError):
     """Raised when review data is not safe to publish."""
 
 
+
+
 def load_json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise FinalizationError("JSON_OBJECT_REQUIRED")
+    return value
 
 
 def _date(value: str, field: str) -> str:
@@ -153,43 +163,93 @@ def read_review(path: Path) -> list[dict[str, str]]:
         missing = [field for field in CSV_FIELDS if field not in (reader.fieldnames or [])]
         if missing:
             raise FinalizationError("review CSV is missing columns: " + ", ".join(missing))
-        return [{key: (value or "").strip() for key, value in row.items()} for row in reader]
+        if len(reader.fieldnames) != len(set(reader.fieldnames)):
+            raise FinalizationError("review CSV has duplicate columns")
+        rows = []
+        for index, row in enumerate(reader, start=2):
+            if None in row or any(value is None for value in row.values()):
+                raise FinalizationError(f"review CSV row {index}: field count differs from header")
+            rows.append({key: value.strip() for key, value in row.items()})
+        if not rows:
+            raise FinalizationError("review CSV contains no records")
+        ids = [row["employee_id"] for row in rows]
+        if len(ids) != len(set(ids)):
+            raise FinalizationError("employee_id values must be unique")
+        for value in ids:
+            _slug(value)
+        return rows
 
 
-def readiness_report(rows: list[dict[str, str]]) -> dict[str, Any]:
-    """Return every operator-actionable publication blocker without generating PDFs."""
+def readiness_report(rows: list[dict[str, str]], profile_dir: Path | None = None) -> dict[str, Any]:
+    """Sanitized missing-evidence routing; row indices never identify a person in logs."""
     required_values = (
-        "activity_name", "activity_address", "document_id", "start_date", "end_date",
-        "issue_date", "signed_by",
+        "surname", "given_name", "dob", "birth_place", "nationality", "sex",
+        "insurance_number", "street", "house_number", "city", "postal_code", "country_code",
+        "status_profile", "activity_name", "activity_address", "employment_id", "employment_name",
+        "employment_street", "employment_house_number", "employment_city", "employment_postal_code",
+        "employment_country_code", "resolved_ossz", "institution_profile", "document_id",
+        "start_date", "end_date", "issue_date", "signed_by",
     )
-    report_rows: list[dict[str, Any]] = []
-    for row in rows:
-        blockers: list[str] = []
-        for field in required_values:
-            if not row.get(field):
-                blockers.append(f"missing {field}")
+    report_rows = []
+    for index, row in enumerate(rows, 1):
+        blockers = [f"missing {field}" for field in required_values if not row.get(field)]
         for subject in ("activity", "certificate", "signatory"):
-            if not row.get(f"{subject}_source"):
+            source = row.get(f"{subject}_source", "")
+            if not source:
                 blockers.append(f"missing {subject}_source")
+            elif any(marker in source.casefold() for marker in UNVERIFIED_SOURCE_MARKERS):
+                blockers.append(f"placeholder detected in {subject}_source")
             if row.get(f"{subject}_source_status") != AUTHORITATIVE:
                 blockers.append(f"{subject}_source_status is not AUTHORITATIVE")
-        for flag, expected in (
-            ("certificate_reviewed", YES),
-            ("approved_for_pdf", YES),
-            ("validated_by_user", "1"),
-        ):
+        for flag, expected in (("identity_reviewed", YES), ("certificate_reviewed", YES),
+                               ("approved_for_pdf", YES), ("validated_by_user", "1")):
             if row.get(flag) != expected:
                 blockers.append(f"{flag} must be {expected}")
-        report_rows.append({"employee_id": row.get("employee_id", ""), "blockers": blockers})
-    return {
-        "ready": all(not item["blockers"] for item in report_rows),
-        "employee_count": len(report_rows),
-        "blocked_employee_count": sum(bool(item["blockers"]) for item in report_rows),
-        "employees": report_rows,
-    }
+        status = row.get("status_profile")
+        if status not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
+            blockers.append("unsupported status_profile")
+        if status in {"employee_multi_state", "posted_employee"} and "osvč" in row.get("employment_name", "").casefold():
+            blockers.append("employee profile has self-employed employer data")
+        dates = {}
+        for field in ("dob", "start_date", "end_date", "issue_date"):
+            if row.get(field):
+                try:
+                    dates[field] = datetime.strptime(row[field], "%d.%m.%Y")
+                except ValueError:
+                    blockers.append(f"invalid {field}")
+        if dates.get("start_date") and dates.get("end_date") and dates["start_date"] > dates["end_date"]:
+            blockers.append("start_date is after end_date")
+        for field in ("employee_id", "document_id"):
+            if row.get(field) and sum(other.get(field) == row[field] for other in rows) > 1:
+                blockers.append(f"duplicate {field}")
+        if profile_dir is not None and row.get("institution_profile"):
+            try:
+                profile = load_profile(profile_dir, row["institution_profile"])
+                if profile.get("expected_ossz", "").casefold() != row.get("resolved_ossz", "").casefold():
+                    blockers.append("institution_profile does not match resolved_ossz")
+            except (FinalizationError, OSError, ValueError):
+                blockers.append("institution_profile is missing, unverified or contains placeholder fields")
+        report_rows.append({"row_index": index, "blockers": blockers})
+    return {"ready": bool(rows) and all(not r["blockers"] for r in report_rows),
+            "employee_count": len(rows), "blocked_employee_count": sum(bool(r["blockers"]) for r in report_rows),
+            "employees": report_rows}
 
 
-def load_profile(profile_dir: Path, profile_id: str) -> dict[str, Any]:
+def readiness_receipt_path(requested: Path | None) -> Path:
+    root = private_root().resolve()
+    try:
+        target = protected_path(requested or root / "a1/blocked-rows.json", ("a1", "evidence"))
+    except PathValidationError as exc:
+        raise FinalizationError("READINESS_DESTINATION_INVALID") from exc
+    if (target.suffix != ".json" or target.name in {"cohort.json", "employees_normalized.json", "operator.json"}
+            or any(target.is_relative_to(root / "a1" / name) for name in ("audit", "receipts", "locks"))
+            or not any(target.is_relative_to(root / name) for name in ("a1", "evidence"))):
+        raise FinalizationError("readiness receipt requires a protected non-input JSON destination")
+    return target
+
+
+
+def load_profile(profile_dir: Path, profile_id: str, provisional: bool = False) -> dict[str, Any]:
     profile = load_json(profile_dir / f"{_slug(profile_id)}.json")
     if profile.get("review_status") != "VERIFIED":
         raise FinalizationError(f"institution profile {profile_id!r} is not VERIFIED")
@@ -204,6 +264,12 @@ def load_profile(profile_dir: Path, profile_id: str) -> dict[str, Any]:
         raise FinalizationError(
             f"institution profile {profile_id!r} is missing: {', '.join(missing)}"
         )
+    if not provisional:
+        markers = (*UNVERIFIED_SOURCE_MARKERS, "tbd", "doplnit")
+        invalid = [field for field in PROFILE_FIELDS
+                   if any(marker in str(institution.get(field, "")).casefold() for marker in markers)]
+        if invalid:
+            raise FinalizationError("institution profile contains placeholder fields: " + ", ".join(invalid))
     return profile
 
 
@@ -237,10 +303,15 @@ def _birth_number_matches_dob(value: str, dob: str, sex: str) -> bool:
 
 
 def validate_review(
-    rows: list[dict[str, str]], employees_path: Path, profile_dir: Path
+    rows: list[dict[str, str]], employees_path: Path, profile_dir: Path,
+    provisional: bool = False,
 ) -> list[tuple[dict[str, str], dict[str, Any]]]:
     source_employees = load_json(employees_path).get("employees", [])
     expected_by_id = {item["id"]: item for item in source_employees}
+    if not rows or not source_employees:
+        raise FinalizationError("review and normalized source must not be empty")
+    if len(expected_by_id) != len(source_employees):
+        raise FinalizationError("normalized source employee_id values must be unique")
     expected = set(expected_by_id)
     ids = [row.get("employee_id", "") for row in rows]
     if len(ids) != len(set(ids)):
@@ -254,18 +325,31 @@ def validate_review(
         raise FinalizationError("every employee needs a non-empty, unique document_id")
 
     validated: list[tuple[dict[str, str], dict[str, Any]]] = []
-    required = (
-        "surname", "given_name", "dob", "birth_place", "nationality", "sex",
-        "insurance_number", "street", "house_number", "city", "postal_code",
-        "country_code", "status_profile", "activity_name", "activity_address",
+    if provisional:
+        base_required = (
+            "surname", "given_name", "dob", "birth_place", "nationality", "sex",
+            "insurance_number", "street", "house_number", "city", "postal_code",
+            "country_code", "status_profile",
+            "resolved_ossz", "institution_profile", "issue_date",
+        )
+    else:
+        base_required = (
+            "surname", "given_name", "dob", "birth_place", "nationality", "sex",
+            "insurance_number", "street", "house_number", "city", "postal_code",
+            "country_code", "status_profile",
+            "resolved_ossz", "institution_profile", "start_date", "end_date", "issue_date",
+            "signed_by",
+        )
+    employment_required = (
         "employment_id", "employment_name", "employment_street",
         "employment_house_number", "employment_city", "employment_postal_code",
         "employment_country_code",
-        "resolved_ossz", "institution_profile", "start_date", "end_date", "issue_date",
-        "signed_by",
     )
+    activity_required = ("activity_name", "activity_address")
     for row in rows:
-        employee_id = row["employee_id"]
+        employee_id = _slug(row["employee_id"])
+        status = row.get("status_profile", "")
+        required = (*base_required, *activity_required, *employment_required)
         missing = [field for field in required if not row.get(field)]
         if missing:
             raise FinalizationError(f"{employee_id}: missing required values: {', '.join(missing)}")
@@ -274,53 +358,70 @@ def validate_review(
                 raise FinalizationError(f"{employee_id}: {flag} must be YES")
         if row.get("validated_by_user") != "1":
             raise FinalizationError(f"{employee_id}: validated_by_user must be 1")
-        for subject in ("activity", "certificate", "signatory"):
-            _require_authoritative_source(row, subject)
-
-        source_employee = expected_by_id[employee_id]
-        source_values = {
-            **{field: source_employee.get("person", {}).get(field, "") for field in (
-                "surname", "given_name", "dob", "birth_place", "nationality",
-                "sex", "insurance_number",
-            )},
-            **{field: source_employee.get("residence", {}).get(field, "") for field in (
-                "street", "house_number", "city", "district", "country_code",
-            )},
-        }
-        mismatched = [
-            field for field, value in source_values.items()
-            if value and row.get(field, "").casefold() != str(value).strip().casefold()
-        ]
-        expected_scans = set(source_employee.get("provenance", {}).get("scans", []))
-        reviewed_scans = {item.strip() for item in row.get("source_scans", "").split(";") if item.strip()}
-        if mismatched or reviewed_scans != expected_scans:
-            details = ", ".join(mismatched) if mismatched else "source_scans"
-            raise FinalizationError(
-                f"{employee_id}: reviewed identity/residence differs from normalized scan source: {details}"
-            )
+        if not provisional:
+            for subject in ("activity", "certificate", "signatory"):
+                _require_authoritative_source(row, subject)
+            source_employee = expected_by_id[employee_id]
+            source_values = {
+                **{field: source_employee.get("person", {}).get(field, "") for field in (
+                    "surname", "given_name", "dob", "birth_place", "nationality",
+                    "sex", "insurance_number",
+                )},
+                **{field: source_employee.get("residence", {}).get(field, "") for field in (
+                    "street", "house_number", "city", "district", "country_code",
+                )},
+            }
+            mismatched = [
+                field for field, value in source_values.items()
+                if value and row.get(field, "").casefold() != str(value).strip().casefold()
+            ]
+            expected_scans = set(source_employee.get("provenance", {}).get("scans", []))
+            reviewed_scans = {item.strip() for item in row.get("source_scans", "").split(";") if item.strip()}
+            if mismatched or reviewed_scans != expected_scans:
+                details = ", ".join(mismatched) if mismatched else "source_scans"
+                raise FinalizationError(
+                    f"{employee_id}: reviewed identity/residence differs from normalized scan source: {details}"
+                )
         if row["sex"] not in {"M", "F"}:
             raise FinalizationError(f"{employee_id}: sex must be M or F")
-        if row["status_profile"] != "self_employed_multi_state":
+        if row["status_profile"] not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
             raise FinalizationError(f"{employee_id}: unsupported status_profile")
+        if row["status_profile"] in {"employee_multi_state", "posted_employee"}:
+            if "osvč" in row["employment_name"].casefold():
+                raise FinalizationError("employee profile has self-employed employer data")
         dob = _date(row["dob"], f"{employee_id}.dob")
-        start = _date(row["start_date"], f"{employee_id}.start_date")
-        end = _date(row["end_date"], f"{employee_id}.end_date")
-        issue = _date(row["issue_date"], f"{employee_id}.issue_date")
-        if datetime.strptime(start, "%d.%m.%Y") > datetime.strptime(end, "%d.%m.%Y"):
-            raise FinalizationError(f"{employee_id}: start_date is after end_date")
-        if not _birth_number_matches_dob(row["insurance_number"], dob, row["sex"]):
-            raise FinalizationError(f"{employee_id}: insurance_number does not match dob")
+        if not provisional:
+            start = _date(row["start_date"], f"{employee_id}.start_date")
+            end = _date(row["end_date"], f"{employee_id}.end_date")
+            issue = _date(row["issue_date"], f"{employee_id}.issue_date")
+            if datetime.strptime(start, "%d.%m.%Y") > datetime.strptime(end, "%d.%m.%Y"):
+                raise FinalizationError(f"{employee_id}: start_date is after end_date")
+            if not _birth_number_matches_dob(row["insurance_number"], dob, row["sex"]):
+                raise FinalizationError(f"{employee_id}: insurance_number does not match dob")
 
-        profile = load_profile(profile_dir, row["institution_profile"])
-        if profile.get("expected_ossz", "").casefold() != row["resolved_ossz"].casefold():
-            raise FinalizationError(f"{employee_id}: institution profile does not match resolved_ossz")
-        if row["resolved_ossz"].casefold() not in profile["institution"]["name"].casefold():
-            raise FinalizationError(f"{employee_id}: institution name does not identify resolved_ossz")
+        profile = load_profile(profile_dir, row["institution_profile"], provisional=provisional)
+        if not provisional:
+            if profile.get("expected_ossz", "").casefold() != row["resolved_ossz"].casefold():
+                raise FinalizationError(f"{employee_id}: institution profile does not match resolved_ossz")
+            if row["resolved_ossz"].casefold() not in profile["institution"]["name"].casefold():
+                raise FinalizationError(f"{employee_id}: institution name does not identify resolved_ossz")
         validated.append((row, profile))
     return validated
 
 
+def display_row(row: dict[str, str]) -> dict[str, str]:
+    """Display-only casing: preserve evidence, employer legal names and prose."""
+    result = dict(row)
+    for field in ("surname", "given_name", "birth_place", "street", "city", "district",
+                  "employment_street", "employment_city"):
+        value = result.get(field, "")
+        if value.isupper():
+            result[field] = czech_display_case(value)
+    return result
+
+
 def row_to_form(row: dict[str, str], profile: dict[str, Any]) -> dict[str, Any]:
+    row = display_row(row)
     employee = {
         "id": row["employee_id"],
         "person": {
@@ -334,7 +435,7 @@ def row_to_form(row: dict[str, str], profile: dict[str, Any]) -> dict[str, Any]:
             "country_code": row["country_code"], "ossz": row["resolved_ossz"],
         },
         "employment": {
-            "kind": "self_employed",
+            "kind": "self_employed" if row["status_profile"] == "self_employed_multi_state" else "employee",
             "employer_id": row["employment_id"],
             "employer_name": row["employment_name"],
             "street": row["employment_street"],
@@ -370,6 +471,7 @@ def verify_pdf(
     profile: dict[str, Any],
     all_rows: list[dict[str, str]],
 ) -> dict[str, Any]:
+    row = display_row(row)
     reader = PdfReader(str(path))
     if len(reader.pages) != 3 or reader.get_fields():
         raise FinalizationError(f"{row['employee_id']}: PDF is not a static three-page document")
@@ -383,17 +485,20 @@ def verify_pdf(
         nationality, row["insurance_number"], row["street"],
         row["house_number"], row["city"], row["postal_code"], row["document_id"],
         row["start_date"], row["end_date"], row["issue_date"], row["signed_by"],
-        row["activity_name"], profile["institution"]["code"],
+        profile["institution"]["code"],
+        row["employment_id"], row["employment_street"],
+        row["employment_house_number"], row["employment_city"],
+        row["employment_postal_code"], row["employment_country_code"],
     )
+    if row["status_profile"] == "self_employed_multi_state":
+        expected += (row["surname"], row["given_name"])
+        expected += (row["activity_name"], row["activity_address"])
     missing = [value for value in expected if value not in text]
     if missing:
         raise FinalizationError(f"{row['employee_id']}: PDF text is missing: {missing}")
-    document_id_pages = [
-        i + 1 for i, page_text in enumerate(page_texts) if row["document_id"] not in page_text
-    ]
-    if document_id_pages:
+    if row["document_id"] not in page_texts[0]:
         raise FinalizationError(
-            f"{row['employee_id']}: document_id is not identical on pages {document_id_pages}"
+            f"{row['employee_id']}: document_id missing from page 1"
         )
     if "{{" in text:
         raise FinalizationError(f"{row['employee_id']}: PDF contains a template placeholder")
@@ -408,6 +513,26 @@ def verify_pdf(
     return {"page_count": len(reader.pages), "sha256": _sha256(path), "size_bytes": path.stat().st_size}
 
 
+def generation_dependencies(review, employees, profiles, background, layout, extras=()):
+    paths = {"review": review, "normalized_source": employees,
+             "background": background, "layout": layout,
+             "renderer": ROOT / "scripts/a1_core.py",
+             "mapper": Path(__file__),
+             "audit": ROOT / "scripts/a1_audit.py",
+             "paths": ROOT / "scripts/a1_paths.py",
+             "template_repair_receipt": ROOT / "config/a1_template_repair_2026-09-06.json",
+             "address_rules": ROOT / "config/address_enrichment.json"}
+    paths.update({f"institution/{p.name}": p for p in profiles.glob("*.json")})
+    paths.update({f"extra/{index}": p for index, p in enumerate(extras)})
+    return {key: _sha256(Path(path)) for key, path in paths.items()}
+
+
+def snapshot_hash(rows):
+    return hashlib.sha256(json.dumps(rows, sort_keys=True, ensure_ascii=False,
+                                     separators=(",", ":")).encode()).hexdigest()
+
+
+@audited("candidate_generate", "a1_candidate")
 def generate_final_set(
     review_path: Path,
     employees_path: Path,
@@ -416,16 +541,26 @@ def generate_final_set(
     layout: Path,
     output: Path,
 ) -> Path:
+    import uuid
+    validate_output_path(output, review_path, employees_path)
+    inputs = generation_dependencies(review_path, employees_path, profile_dir, background, layout)
     rows = read_review(review_path)
     validated = validate_review(rows, employees_path, profile_dir)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    staging = Path(tempfile.mkdtemp(prefix=".a1-staging-", dir=output.parent))
+    if output.exists():
+        raise FinalizationError(f"output destination already exists; must be unique: {output}")
+    run_id = current_run_id()
+    staging = unique_staging_path(output.parent, f"candidate-{run_id}")
     generated_at = datetime.now(timezone.utc).isoformat()
     manifest: dict[str, Any] = {
         "generated_at": generated_at,
+        "status": "CANDIDATE_REQUIRES_QA_AND_APPROVAL",
+        "run_id": run_id,
+        "inputs": inputs,
+        "snapshot_sha256": snapshot_hash(rows),
         "review_sha256": _sha256(review_path),
         "generated": [],
     }
+    pid = os.getpid()
     try:
         for row, profile in validated:
             form = row_to_form(row, profile)
@@ -448,20 +583,15 @@ def generate_final_set(
         (staging / "generation_manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        backup = None
-        if output.exists():
-            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            backup = output.with_name(f"{output.name}.backup-{stamp}")
-            os.replace(output, backup)
-        try:
-            os.replace(staging, output)
-        except Exception:
-            if backup is not None and backup.exists() and not output.exists():
-                os.replace(backup, output)
-            raise
+        if generation_dependencies(review_path, employees_path, profile_dir, background, layout) != inputs:
+            raise FinalizationError("generation dependencies changed; candidate is stale")
+        for artifact in staging.iterdir():
+            artifact.chmod(0o600)
+        with destination_lock(output):
+            publish_package(staging, output)
         return output
-    except Exception:
-        shutil.rmtree(staging, ignore_errors=True)
+    except Exception as exc:
+        cleanup_staging_only(staging, pid)
         raise
 
 
@@ -478,44 +608,63 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--review", type=Path)
     readiness = sub.add_parser("readiness", help="list all operator-actionable review blockers")
     readiness.add_argument("--review", type=Path)
+    readiness.add_argument("--report", type=Path, help="protected JSON receipt; defaults under a1/")
     generate = sub.add_parser("generate", help="generate and atomically publish the complete reviewed set")
     generate.add_argument("--review", type=Path)
     generate.add_argument("--background", type=Path, default=ROOT / "templates/a1_background.pdf")
     generate.add_argument("--layout", type=Path, default=ROOT / "config/a1_layout.json")
-    generate.add_argument("--output", type=Path, default=ROOT / "output/final")
+    generate.add_argument("--output", type=Path, default=None)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    import uuid
     args = build_parser().parse_args(argv)
     try:
+        private_root()
         args.employees = args.employees or private_path("a1/employees_normalized.json")
-        args.review = args.review or (
-            private_root() / "a1/review.csv"
-            if args.command == "prepare"
-            else private_path("a1/review.csv")
-        )
-        if args.command == "prepare":
-            prepare_review(args.employees, args.enrichment, args.current_institution, args.review)
-            print(f"Prepared review CSV: {args.review}")
-        elif args.command == "validate":
-            validated = validate_review(read_review(args.review), args.employees, args.profiles)
-            print(f"Validated {len(validated)} approved employees")
-        elif args.command == "readiness":
-            report = readiness_report(read_review(args.review))
-            print(json.dumps(report, ensure_ascii=False, indent=2))
-            return 0 if report["ready"] else 1
-        else:
-            result = generate_final_set(
-                args.review, args.employees, args.profiles, args.background, args.layout, args.output
-            )
-            print(f"Published final set: {result}")
-        return 0
-    except (
-        A1PrivateInputError, FinalizationError, A1ValidationError, FileNotFoundError,
-        json.JSONDecodeError,
-    ) as exc:
-        print(f"FINALIZATION BLOCKED: {exc}", file=sys.stderr)
+        args.review = args.review or (private_root() / "a1/review.csv" if args.command == "prepare"
+                                      else private_path("a1/review.csv"))
+        if args.command == "generate":
+            generate_final_set(args.review, args.employees, args.profiles, args.background,
+                               args.layout, args.output or private_root() / "output/candidate" / str(uuid.uuid4()))
+            print("Generated candidate set; QA and artifact approval remain required")
+            return 0
+        operation, purpose = {"prepare": ("review_prepare", "a1_prepare"),
+                              "validate": ("review_validate", "a1_validate"),
+                              "readiness": ("readiness_check", "a1_readiness")}[args.command]
+        with audited_operation(operation, purpose) as run_id:
+            if args.command == "prepare":
+                protected_path(args.review, ("a1",))
+                if args.review.exists():
+                    raise FinalizationError("REVIEW_EXISTS")
+                prepare_review(args.employees, args.enrichment, args.current_institution, args.review)
+                args.review.chmod(0o600)
+                summary = "Prepared review CSV"
+            elif args.command == "validate":
+                validated = validate_review(read_review(args.review), args.employees, args.profiles)
+                summary = f"Validated {len(validated)} approved employees"
+            else:
+                destination = readiness_receipt_path(args.report)
+                if (destination in {args.review.resolve(), args.employees.resolve()}
+                        or destination.is_relative_to(args.profiles.resolve())):
+                    raise FinalizationError("RECEIPT_INPUT_OVERLAP")
+                report = readiness_report(read_review(args.review), args.profiles)
+                report['run_id'] = run_id
+                write_private_json(destination, report)
+                summary = json.dumps({key: report[key] for key in ("ready", "employee_count", "blocked_employee_count")})
+        print(summary)
+        return (0 if report["ready"] else 1) if args.command == "readiness" else 0
+    except (Exception, KeyboardInterrupt):  # Sanitize unexpected malformed-input errors at the CLI boundary.
+        if args.command == "readiness":
+            try:
+                destination = readiness_receipt_path(args.report)
+                if (destination not in {args.review.resolve(), args.employees.resolve()}
+                        and not destination.is_relative_to(args.profiles.resolve())):
+                    write_failure_receipt(destination, "READINESS_INPUT_INVALID")
+            except (A1PrivateInputError, FinalizationError, OSError, ValueError, AttributeError):
+                pass
+        print("FINALIZATION_BLOCKED", file=sys.stderr)
         return 1
 
 

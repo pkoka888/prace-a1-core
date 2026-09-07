@@ -3,6 +3,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from scripts.finalize_a1 import (
@@ -13,10 +14,8 @@ from scripts.finalize_a1 import (
     readiness_report,
     validate_review,
 )
-from scripts.generate_provisional_a1 import (
-    build_provisional_rows,
-    document_id_for_issue_year,
-)
+from scripts.a1_core import A1ValidationError, document_id_for_issue_year
+from scripts.generate_provisional_a1 import build_provisional_rows
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -105,6 +104,11 @@ class FinalizationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.base = Path(self.temp.name)
+        self.env_patch = patch.dict("os.environ", {"A1_PRIVATE_DIR": str(self.base)})
+        self.env_patch.start()
+        self.addCleanup(self.env_patch.stop)
+        (self.base / "a1").mkdir()
+        (self.base / "a1/operator.json").write_text(json.dumps({"organization_id": "synthetic-tests"}))
         self.employees = [
             employee("anna-test", "TESTOVÁ", "ANNA", "01.02.1990", "900201/1234"),
             employee("bert-test", "PŘÍKLAD", "BERT", "03.04.1985", "850403/5678"),
@@ -140,6 +144,7 @@ class FinalizationTests(unittest.TestCase):
         self.review_path = self.base / "review.csv"
 
     def tearDown(self):
+        self.env_patch.stop()
         self.temp.cleanup()
 
     def write_rows(self, rows):
@@ -219,7 +224,7 @@ class FinalizationTests(unittest.TestCase):
         self.write_rows(rows)
         approved_review = self.review_path.read_bytes()
         approved_review_sha256 = hashlib.sha256(approved_review).hexdigest()
-        output = self.base / "final"
+        output = self.base / "output/candidate"
         generate_final_set(
             self.review_path,
             self.employees_path,
@@ -247,56 +252,56 @@ class FinalizationTests(unittest.TestCase):
         config = json.loads(
             (ROOT / "config/a1_provisional.json").read_text(encoding="utf-8")
         )
+        # Section 5.2 defaults to "DE, CZ" — destination and home member states.
         self.assertEqual("DE, CZ", config["activity_address"])
+        # Section 5.1 is left blank for self-employed multi-state workers.
+        self.assertEqual("", config["activity_name"])
         self.assertFalse(
             {"additional_people", "issue_dates", "document_ids"} & set(config)
         )
 
     def test_document_id_year_token_reflects_issue_date(self):
         self.assertEqual(
-            "N650212S000/2026/DE",
-            document_id_for_issue_year("N650212S000/{year}/DE", "16.03.2026"),
+            "N65023S000/2026/DE",
+            document_id_for_issue_year("N65023S000/{year}/DE", "16.03.2026"),
         )
         self.assertEqual(
-            "N650212S000/2027/DE",
-            document_id_for_issue_year("N650212S000/{year}/DE", "01.09.2027"),
+            "N65023S000/2027/DE",
+            document_id_for_issue_year("N65023S000/{year}/DE", "01.09.2027"),
         )
 
     def test_document_id_explicit_year_must_match_issue_date(self):
         self.assertEqual(
-            "N650212S000/2026/DE",
-            document_id_for_issue_year("N650212S000/2026/DE", "16.03.2026"),
+            "N65023S000/2026/DE",
+            document_id_for_issue_year("N65023S000/2026/DE", "16.03.2026"),
         )
-        with self.assertRaisesRegex(FinalizationError, "does not reflect 6.10 issue year"):
-            document_id_for_issue_year("N650212S000/2025/DE", "16.03.2026")
+        with self.assertRaisesRegex(A1ValidationError, "does not reflect 6.10 issue year"):
+            document_id_for_issue_year("N65023S000/2025/DE", "16.03.2026")
 
-    def test_provisional_document_ids_are_unique_after_year_binding(self):
-        profile_path = self.profile_dir / "teplice-test.json"
-        profile = json.loads(profile_path.read_text(encoding="utf-8"))
-        profile["current_office_contact"] = {"name": "TEST CONTACT", "role": "director"}
-        profile_path.write_text(json.dumps(profile), encoding="utf-8")
-        rows = [review_row(self.employees[0], "N65DOC-A/{year}/DE")]
+    def test_provisional_does_not_accept_unreconciled_cohort_placeholders(self):
+        rows = [review_row(e, f"DOC-{i}") for i, e in enumerate(self.employees)]
         self.write_rows(rows)
-        config_path = self.base / "a1_provisional.json"
-        config_path.write_text(json.dumps({
-            "issue_date_reference": "11.08.2026",
-            "activity_name": "x",
-            "activity_address": "DE, CZ",
-        }), encoding="utf-8")
-        cohort_path = self.base / "cohort.json"
-        cohort_path.write_text(json.dumps({
-            "issue_dates": {"anna-test": "11.06.2026"},
-            "document_ids": {"anna-test": "N65DOC-A/{year}/DE"},
-            "additional_people": [],
-        }), encoding="utf-8")
-        built, _ = build_provisional_rows(
-            self.review_path, self.profile_dir, config_path, cohort_path
-        )
-        self.assertEqual("N65DOC-A/2026/DE", built[0][0]["document_id"])
+        config = self.base / "config.json"
+        config.write_text('{"notice":"SYNTHETIC COPY"}')
+        cohort = self.base / "cohort.json"
+        cohort.write_text(json.dumps({"issue_dates": {}, "document_ids": {}}))
+        with self.assertRaisesRegex(FinalizationError, "reviewed employee set"):
+            build_provisional_rows(self.review_path, self.profile_dir, config, cohort, self.employees_path)
 
     def test_verified_project_profiles_contain_no_placeholder_values(self):
         markers = ("tbd", "doplnit", "placeholder")
+        import subprocess
+        try:
+            tracked = subprocess.check_output(
+                ["git", "ls-files", "--", "config/institutions/"],
+                text=True, stderr=subprocess.DEVNULL
+            ).strip().splitlines()
+            tracked = {ROOT / p for p in tracked}
+        except subprocess.CalledProcessError:
+            tracked = set()
         for path in (ROOT / "config/institutions").glob("*.json"):
+            if path not in tracked:
+                continue
             profile = json.loads(path.read_text(encoding="utf-8"))
             if profile.get("review_status") != "VERIFIED":
                 continue

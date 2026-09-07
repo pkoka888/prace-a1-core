@@ -5,42 +5,316 @@
     "section": "Printed A1 form section containing the field; page_header identifies the repeated certificate number above the numbered sections."
   },
   "fields": {
-    "document_id_p1": {"section": "page_header", "source": "certificate.document_id", "page": 0, "x": 89, "y": 786, "size": 9, "max_width": 105},
-    "person.insurance_number": {"section": "1.1", "page": 0, "x": 156, "y": 453.5, "size": 9, "max_width": 145},
-    "person.surname": {"section": "1.2", "page": 0, "x": 136, "y": 437, "size": 9, "max_width": 165},
-    "person.given_name": {"section": "1.3", "page": 0, "x": 128, "y": 424, "size": 9, "max_width": 173},
-    "person.maiden_name": {"section": "1.4", "page": 0, "x": 170, "y": 408.5, "size": 9, "max_width": 131},
-    "person.dob": {"section": "1.5", "page": 0, "x": 164, "y": 395.5, "size": 9, "max_width": 100},
-    "person.nationality": {"section": "1.6", "page": 0, "x": 377, "y": 395, "size": 9, "max_width": 140},
-    "person.birth_place": {"section": "1.7", "page": 0, "x": 160, "y": 380.5, "size": 9, "max_width": 141},
-    "residence.address": {"section": "1.8.1", "page": 0, "x": 136, "y": 351.5, "size": 9, "max_width": 156},
-    "residence.postal_code": {"section": "1.8.3", "page": 0, "x": 339, "y": 351.5, "size": 9, "max_width": 60},
-    "residence.city": {"section": "1.8.2", "page": 0, "x": 119, "y": 337, "size": 9, "max_width": 173},
-    "residence.country_code": {"section": "1.8.4", "page": 0, "x": 359, "y": 337, "size": 9, "max_width": 40},
-    "certificate.member_state": {"section": "2.1", "page": 0, "x": 142, "y": 211.5, "size": 9, "max_width": 45},
-    "certificate.start_date": {"section": "2.2", "page": 0, "x": 164, "y": 197.5, "size": 9, "max_width": 90},
-    "certificate.end_date": {"section": "2.3", "page": 0, "x": 388, "y": 197.5, "size": 9, "max_width": 90},
-    "document_id_p2": {"section": "page_header", "source": "certificate.document_id", "page": 1, "x": 96, "y": 786, "size": 9, "max_width": 105},
-    "employment.employer_id": {"section": "4.2", "page": 1, "x": 329, "y": 391, "size": 9, "max_width": 190},
-    "employment.employer_name": {"section": "4.3", "page": 1, "x": 198, "y": 377, "size": 9, "max_width": 320},
-    "employment.address": {"section": "4.4.1", "page": 1, "x": 136, "y": 348, "size": 9, "max_width": 155},
-    "employment.country_code": {"section": "4.4.2", "page": 1, "x": 354, "y": 348, "size": 9, "max_width": 45},
-    "employment.city": {"section": "4.4.3", "page": 1, "x": 119, "y": 333.5, "size": 9, "max_width": 172},
-    "employment.postal_code": {"section": "4.4.4", "page": 1, "x": 331, "y": 333.5, "size": 9, "max_width": 68},
-    "activity.name": {"section": "5.1", "page": 1, "x": 84, "y": 216, "size": 9, "max_width": 430},
-    "document_id_p3": {"section": "page_header", "source": "certificate.document_id", "page": 2, "x": 97, "y": 786, "size": 9, "max_width": 105},
-    "activity.address": {"section": "5.2", "page": 2, "x": 84, "y": 605, "size": 9, "max_width": 430, "max_lines": 2, "line_height": 13},
-    "institution.name": {"section": "6.1", "page": 2, "x": 128, "y": 326, "size": 9, "max_width": 315, "max_lines": 2, "line_height": 14},
-    "institution.address": {"section": "6.2", "page": 2, "x": 136, "y": 297, "size": 9, "max_width": 210},
-    "institution.city": {"section": "6.3", "page": 2, "x": 125, "y": 283, "size": 9, "max_width": 170},
-    "institution.postal_code": {"section": "6.4", "page": 2, "x": 118, "y": 268, "size": 9, "max_width": 85},
-    "institution.country_code": {"section": "6.5", "page": 2, "x": 363, "y": 268, "size": 9, "max_width": 40},
-    "institution.code": {"section": "6.6", "page": 2, "x": 146, "y": 253.5, "size": 9, "max_width": 75},
-    "institution.issue_date": {"section": "6.10", "page": 2, "x": 130, "y": 195, "size": 9, "max_width": 95},
-    "institution.signed_by": {"section": "6.11", "page": 2, "x": 130, "y": 180.5, "size": 9, "max_width": 150}
+    "person.insurance_number": {
+      "section": "1.1",
+      "page": 0,
+      "x": 156,
+      "y": 453.5,
+      "size": 9,
+      "max_width": 145
+    },
+    "person.surname": {
+      "section": "1.2",
+      "page": 0,
+      "x": 136,
+      "y": 437,
+      "size": 9,
+      "max_width": 165
+    },
+    "person.given_name": {
+      "section": "1.3",
+      "page": 0,
+      "x": 128,
+      "y": 424,
+      "size": 9,
+      "max_width": 173
+    },
+    "person.maiden_name": {
+      "section": "1.4",
+      "page": 0,
+      "x": 170,
+      "y": 408.5,
+      "size": 9,
+      "max_width": 131
+    },
+    "person.dob": {
+      "section": "1.5",
+      "page": 0,
+      "x": 164,
+      "y": 395.5,
+      "size": 9,
+      "max_width": 100
+    },
+    "person.nationality": {
+      "section": "1.6",
+      "page": 0,
+      "x": 377,
+      "y": 395,
+      "size": 9,
+      "max_width": 140
+    },
+    "person.birth_place": {
+      "section": "1.7",
+      "page": 0,
+      "x": 160,
+      "y": 380.5,
+      "size": 9,
+      "max_width": 141
+    },
+    "residence.address": {
+      "section": "1.8.1",
+      "page": 0,
+      "x": 136,
+      "y": 351.5,
+      "size": 9,
+      "max_width": 156
+    },
+    "residence.postal_code": {
+      "section": "1.8.3",
+      "page": 0,
+      "x": 339,
+      "y": 351.5,
+      "size": 9,
+      "max_width": 60
+    },
+    "residence.city": {
+      "section": "1.8.2",
+      "page": 0,
+      "x": 119,
+      "y": 337,
+      "size": 9,
+      "max_width": 173
+    },
+    "residence.country_code": {
+      "section": "1.8.4",
+      "page": 0,
+      "x": 359,
+      "y": 337,
+      "size": 9,
+      "max_width": 40
+    },
+    "certificate.member_state": {
+      "section": "2.1",
+      "page": 0,
+      "x": 142,
+      "y": 211.5,
+      "size": 9,
+      "max_width": 45
+    },
+    "certificate.start_date": {
+      "section": "2.2",
+      "page": 0,
+      "x": 164,
+      "y": 197.5,
+      "size": 9,
+      "max_width": 90
+    },
+    "certificate.end_date": {
+      "section": "2.3",
+      "page": 0,
+      "x": 388,
+      "y": 197.5,
+      "size": 9,
+      "max_width": 90
+    },
+    "employment.employer_id": {
+      "section": "4.2",
+      "page": 1,
+      "x": 329,
+      "y": 391,
+      "size": 9,
+      "max_width": 190
+    },
+    "employment.employer_name": {
+      "section": "4.3",
+      "page": 1,
+      "x": 198,
+      "y": 377,
+      "size": 9,
+      "max_width": 320
+    },
+    "employment.address": {
+      "section": "4.4.1",
+      "page": 1,
+      "x": 136,
+      "y": 348,
+      "size": 9,
+      "max_width": 155
+    },
+    "employment.country_code": {
+      "section": "4.4.2",
+      "page": 1,
+      "x": 354,
+      "y": 348,
+      "size": 9,
+      "max_width": 45
+    },
+    "employment.city": {
+      "section": "4.4.3",
+      "page": 1,
+      "x": 119,
+      "y": 333.5,
+      "size": 9,
+      "max_width": 172
+    },
+    "employment.postal_code": {
+      "section": "4.4.4",
+      "page": 1,
+      "x": 331,
+      "y": 333.5,
+      "size": 9,
+      "max_width": 68
+    },
+    "activity.name": {
+      "section": "5.1",
+      "page": 1,
+      "x": 84,
+      "y": 216,
+      "size": 9,
+      "max_width": 430
+    },
+    "activity.address": {
+      "section": "5.2",
+      "page": 2,
+      "x": 84,
+      "y": 605,
+      "size": 9,
+      "max_width": 430,
+      "max_lines": 2,
+      "line_height": 13
+    },
+    "institution.name": {
+      "section": "6.1",
+      "page": 2,
+      "x": 128,
+      "y": 326,
+      "size": 9,
+      "max_width": 315,
+      "max_lines": 2,
+      "line_height": 14
+    },
+    "institution.address": {
+      "section": "6.2",
+      "page": 2,
+      "x": 136,
+      "y": 297,
+      "size": 9,
+      "max_width": 210
+    },
+    "institution.city": {
+      "section": "6.3",
+      "page": 2,
+      "x": 125,
+      "y": 283,
+      "size": 9,
+      "max_width": 170
+    },
+    "institution.postal_code": {
+      "section": "6.4",
+      "page": 2,
+      "x": 118,
+      "y": 268,
+      "size": 9,
+      "max_width": 85
+    },
+    "institution.country_code": {
+      "section": "6.5",
+      "page": 2,
+      "x": 363,
+      "y": 268,
+      "size": 9,
+      "max_width": 40
+    },
+    "institution.code": {
+      "section": "6.6",
+      "page": 2,
+      "x": 146,
+      "y": 253.5,
+      "size": 9,
+      "max_width": 75
+    },
+    "institution.issue_date": {
+      "section": "6.10",
+      "page": 2,
+      "x": 130,
+      "y": 195,
+      "size": 9,
+      "max_width": 95
+    },
+    "institution.signed_by": {
+      "section": "6.11",
+      "page": 2,
+      "x": 130,
+      "y": 180.5,
+      "size": 9,
+      "max_width": 150
+    }
   },
   "checkboxes": {
-    "status_osv_c_multistate": {"section": "3.4", "page": 1, "x": 297.0, "y": 600.0, "size": 8.5, "reconstruct_border": true},
-    "employer_type_self_employed": {"section": "4.1.2", "page": 1, "x": 297.0, "y": 407.0, "size": 8.5, "reconstruct_border": true}
+    "status_osv_c_multistate": {
+      "section": "3.4",
+      "page": 1,
+      "x": 296.1,
+      "y": 598.12,
+      "size": 7.4,
+      "reconstruct_border": true
+    },
+    "employer_type_self_employed": {
+      "section": "4.1.2",
+      "page": 1,
+      "x": 296.1,
+      "y": 410.02,
+      "size": 7.4,
+      "reconstruct_border": true
+    },
+    "gender_male": {
+      "section": "1.1",
+      "page": 0,
+      "x": 459.2,
+      "y": 452.82,
+      "size": 10.0
+    },
+    "gender_female": {
+      "section": "1.1",
+      "page": 0,
+      "x": 402.5,
+      "y": 452.82,
+      "size": 10.0
+    },
+    "valid_duration": {
+      "section": "2.4",
+      "page": 0,
+      "x": 83.4,
+      "y": 181.02,
+      "size": 7.4
+    },
+    "no_fixed_address": {
+      "section": "5.3",
+      "page": 2,
+      "x": 76.5,
+      "y": 409.42,
+      "size": 7.4
+    },
+    "status_posted_employee": {
+      "section": "3.1",
+      "page": 1,
+      "x": 76.5,
+      "y": 614.92,
+      "size": 7.4
+    },
+    "status_employee_multistate": {
+      "section": "3.2",
+      "page": 1,
+      "x": 296.1,
+      "y": 614.92,
+      "size": 7.4
+    },
+    "employer_type_employee": {
+      "section": "4.1.1",
+      "page": 1,
+      "x": 76.5,
+      "y": 410.02,
+      "size": 7.4
+    }
   }
 }

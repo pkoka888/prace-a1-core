@@ -170,6 +170,54 @@ Canonical scripts (never use legacy `data/a1_forms/`, `a1_field_coords.json`, `a
   structural validators or the external benchmark alone is insufficient.
 - Authorized M2 synthetic portal implementation and tests may proceed under active plans. Deployment and real-data activation remain subject to PLAN-INFRA (ADR-001; formerly Plan E), M1A and the registered activation gates. Web integration must preserve provenance, deterministic QA, and human approval gates.
 
+## A1 frameworks — single source of truth
+There are two PDF generation frameworks for the A1 form. They are kept as
+**fallbacks for each other**; the placeholder search/replace is the
+preferred default once a vector-backed template is available. See
+[docs/architecture/A1_FRAMEWORKS.md](docs/architecture/A1_FRAMEWORKS.md)
+for the full mapping. Short version:
+
+- **Placeholder search/replace** (`scripts/pdf_named_fields.py`) is the
+  preferred default for vector-backed templates with `{{variable}}` tokens.
+  Cleaner code; the value flows through a single substitution step.
+- **Coordinate overlay** (`scripts/a1_core.py` → `generate_a1_pdf`) is
+  the fallback that the current A1 2025 image-backed template forces.
+  Real employee artifacts, the dashboard click handler
+  (`portal/release1a/services.py:323`), the CLI (`scripts/generate_provisional_a1.py`),
+  and the QA gate all flow through it today.
+
+Shared core logic — issue-date policy, document-id policy, Czech display
+casing, form flattening, validation — lives in `scripts/a1_core.py` and
+**must not be duplicated**. If you find yourself writing the same helper
+elsewhere, stop and add it to `a1_core.py` instead.
+
+### Section 5 policy
+
+- **5.1** is left blank for self-employed multi-state workers; the
+  provisional policy default is empty (`config/a1_provisional.json::activity_name`).
+- **5.2** is the destination member state plus the home member state as a
+  comma list, default `"DE, CZ"` (`config/a1_provisional.json::activity_address`).
+  Cohort rows may override for AT or other member states.
+
+### PDF rendering rules
+
+- `generate_a1_pdf()` is the only entry point. The page merge uses
+  `pymupdf.show_pdf_page` (not `pypdf.PdfWriter.merge_page`) because
+  the latter drops comma-separated text operands such as `(DE, CZ) Tj`.
+- All overlay text comes from `build_form_data()`, which applies
+  defensive `czech_display_case()` so any caller (CSV row, JSON fixture,
+  DB row) gets the same casing the canonical pipeline produces.
+
+## Script naming conventions
+New scripts use a domain-prefixed style so the catalog stays predictable.
+When adding a script, match the most-specific prefix:
+
+- `a1_*` — A1 form generation, validation, quality gate, audit
+- `release1a_*` — legacy release1a scripts (superseded by `portal/release1a/`)
+- `validate_*` / `run_*` / `seed_*` — validation harnesses, benchmarks, dev seeds
+- `research_*` — market research and benchmark tooling
+- `document_core` — cross-document OCR + extraction library (`src/document_core/`)
+
 
 ## Git remotes
 GitHub is currently the only configured remote and remains authoritative as

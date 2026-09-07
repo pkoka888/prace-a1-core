@@ -1,10 +1,10 @@
 {
-  "status": "PROVISIONAL_PLACEHOLDERS",
+  "status": "PROVISIONAL_REVIEWED_INPUTS",
   "notice": "CLIENT_CONFIRMATION_COPY",
-  "activity_name": "Samostatná výdělečná činnost",
+  "activity_name": "",
   "activity_address": "DE, CZ",
-  "employment_mode": "self_employed_multi_state",
-  "validity_policy": "2.1=CZ; 2.2 equals the per-employee provisional 6.10 date; 2.3 is one year minus one day after 2.2",
+  "validity_policy": "Use authoritative reviewed dates unchanged; do not synthesize dates or certificate IDs",
   "issue_date_reference": "11.08.2026",
-  "warning": "All activity, certificate, date, issue and signed-by values are layout placeholders until confirmed by OSSZ. Current office directors are contacts, not confirmed certificate signatories."
+  "warning": "Client confirmation copies require canonical accepted source evidence. These policy display defaults do not overwrite review.csv. Office contacts are not certificate signatories; rendered bytes require separate QA and publication approval.",
+  "policy_application": "REVIEWED_VALUES_ONLY"
 }

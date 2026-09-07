@@ -1,0 +1,22 @@
+{
+  "description": "Synthetic A1 fixtures for Milan/Robin/Filip Orgonik and Patrik Život — Jan pilot testing",
+  "fiction": "Conspicuously synthetic. Not real persons, employers, or institutions. Created for Jan A1 form observation.",
+  "generated_at": "2026-09-07",
+  "generator": "scripts.a1_core.generate_a1_pdf (canonical coordinate overlay framework)",
+  "notice": "SYNTHETIC — Jan pilot test — not real",
+  "source": "a1/review.csv (synthetic subset, employee_id matching the cohort) + config/institutions/plzen.json",
+  "core_logic": "scripts/a1_core.generate_provisional_issue_date (Mon/Wed, 61-180 days) + scripts.a1_core.generate_provisional_document_id (random /YYYY/DE, year-bound)",
+  "profiles_used": {
+    "milan-orgonik": "config/institutions/plzen.json (OSSZ Plzeň, VERIFIED, code=444)",
+    "robin-orgonik": "config/institutions/plzen.json (OSSZ Plzeň, VERIFIED, code=444)",
+    "filip-orgonik": "config/institutions/plzen.json (OSSZ Plzeň, VERIFIED, code=444)",
+    "patrik-zivot": "config/institutions/plzen.json (OSSZ Plzeň, VERIFIED, code=444)"
+  },
+  "files": {
+    "A1_milan-orgonik.pdf": "Full 3-page A1 form — Milan Orgonik (DOB 04.03.1967)",
+    "A1_robin-orgonik.pdf": "Full 3-page A1 form — Robin Orgonik (DOB 05.09.2001)",
+    "A1_filip-orgonik.pdf": "Full 3-page A1 form — Filip Orgonik (DOB 15.01.2004)",
+    "A1_patrik-zivot.pdf": "Full 3-page A1 form — Patrik Život (DOB 15.03.1990)",
+    "templates/a1_template_marked.pdf": "Background template with red {{variable}} overlay for visual field review"
+  }
+}

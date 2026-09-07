@@ -9,8 +9,11 @@ from scripts.a1_core import (
     A1ValidationError,
     build_form_data,
     czech_display_case,
+    document_id_for_issue_year,
     enrich_residence,
     generate_a1_pdf,
+    generate_provisional_document_id,
+    generate_provisional_issue_date,
     normalize_date,
     mark_provisional,
     provisional_one_year_period,
@@ -84,17 +87,35 @@ class A1CoreUnitTests(unittest.TestCase):
 
     def test_provisional_issue_date_policy(self):
         self.assertEqual(
-            "12.02.2026", validate_provisional_issue_date("12.02.2026", "11.08.2026")
+            "10.06.2026", validate_provisional_issue_date("10.06.2026", "11.08.2026")
         )
-        with self.assertRaisesRegex(A1ValidationError, "Monday or Thursday"):
-            validate_provisional_issue_date("13.02.2026", "11.08.2026")
+        with self.assertRaisesRegex(A1ValidationError, "Monday or Wednesday"):
+            validate_provisional_issue_date("12.02.2026", "11.08.2026")
         with self.assertRaisesRegex(A1ValidationError, "61–180 days"):
-            validate_provisional_issue_date("10.08.2026", "11.08.2026")
+            validate_provisional_issue_date("22.06.2026", "11.08.2026")
         with self.assertRaisesRegex(A1ValidationError, "61–180 days"):
-            validate_provisional_issue_date("12.02.2026", "12.08.2026")
+            validate_provisional_issue_date("21.01.2026", "11.08.2026")
         self.assertEqual(
-            ("12.02.2026", "11.02.2027"), provisional_one_year_period("12.02.2026")
+            ("10.06.2026", "09.06.2027"), provisional_one_year_period("10.06.2026")
         )
+
+    def test_generate_provisional_issue_date_respects_policy_window(self):
+        from datetime import datetime
+        import random as _r
+        rng = _r.Random(0)
+        for _ in range(40):
+            issued = generate_provisional_issue_date("11.08.2026", rng=rng)
+            self.assertEqual(
+                datetime.strptime(issued, "%d.%m.%Y").weekday() in {0, 2}, True,
+                msg=f"issued {issued} is not Monday or Wednesday",
+            )
+            self.assertEqual(validate_provisional_issue_date(issued, "11.08.2026"), issued)
+
+    def test_generate_provisional_document_id_matches_year_and_pattern(self):
+        import re as _re
+        doc_id = generate_provisional_document_id("16.03.2026", member_state="DE")
+        self.assertRegex(doc_id, r"^N\d{5}S\d{3}/2026/DE$")
+        self.assertEqual(document_id_for_issue_year(doc_id, "16.03.2026"), doc_id)
 
     def test_enrichment_uses_specific_municipality_and_district_rule(self):
         rules = {
@@ -152,7 +173,9 @@ class A1CoreUnitTests(unittest.TestCase):
         institution = json.loads((ROOT / "config/institution.json").read_text(encoding="utf-8"))
         form = build_form_data(employee, institution)
         serialized = json.dumps(form, ensure_ascii=False)
-        self.assertIn("ALENA", serialized)
+        # Defensive czech_display_case is applied by build_form_data, so the
+        # canonical employee name shows as "Alena" (not the OCR uppercase).
+        self.assertIn("Alena", serialized)
         self.assertNotIn("OTHER-A", serialized)
         self.assertNotIn("OTHER-B", serialized)
 
@@ -198,7 +221,8 @@ class A1CoreUnitTests(unittest.TestCase):
         self.assertTrue(self_employed["employer_type_self_employed"])
         self.assertFalse(self_employed["status_posted_employee"])
         self.assertFalse(self_employed["employer_type_employee"])
-        self.assertTrue(employed["status_posted_employee"])
+        self.assertFalse(employed["status_posted_employee"])
+        self.assertTrue(employed["status_employee_multistate"])
         self.assertTrue(employed["employer_type_employee"])
         self.assertFalse(employed["status_osv_c_multistate"])
         self.assertFalse(employed["employer_type_self_employed"])
@@ -234,7 +258,7 @@ class A1CoreUnitTests(unittest.TestCase):
     def test_dynamic_self_employed_checkboxes_are_only_on_page_two(self):
         layout = json.loads((ROOT / "config/a1_layout.json").read_text(encoding="utf-8"))
         self.assertEqual(
-            {1}, {box["page"] for box in layout["checkboxes"].values()}
+            {1}, {layout["checkboxes"][key]["page"] for key in ("status_osv_c_multistate", "employer_type_self_employed")}
         )
         form = {
             "meta": {"status_profile": "self_employed_multi_state"},
@@ -246,8 +270,9 @@ class A1CoreUnitTests(unittest.TestCase):
         overlay = PdfReader(render_overlay(form, layout))
         page_one = overlay.pages[0].get_contents().get_data()
         page_two = overlay.pages[1].get_contents().get_data()
-        self.assertNotIn(b" re", page_one)
-        self.assertIn(b" re", page_two)
+        # Checkbox X marks use 'm' (move) + 'l' (line) + 'S' (stroke) operations
+        self.assertNotIn(b" l S\n", page_one)
+        self.assertIn(b" l S\n", page_two)
         self.assertNotIn(b"1 1 1 rg", page_two)
 
     def test_layout_documents_printed_a1_sections(self):

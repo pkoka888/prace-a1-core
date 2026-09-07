@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import random
 import re
+import secrets
 import unicodedata
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -13,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader, PdfWriter
+import pymupdf
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -36,6 +39,15 @@ FONT_CANDIDATES = (
         "dependencies/native/poppler/Library/share/fonts/DejaVuSans.ttf"
     ),
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+)
+# Liberation Sans is the metric-compatible free replacement for Arial/Helvetica
+# and ships Czech diacritics. The A1 2025 form template embeds Helvetica; this
+# font matches the visual proportions and supports all required accented glyphs.
+HELVETICA_FALLBACK = (
+    Path("/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf"),
+    Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+    Path("/usr/share/fonts/truetype/freefont/FreeSans.ttf"),
+    Path("C:/Windows/Fonts/arial.ttf"),
 )
 
 
@@ -63,7 +75,7 @@ def normalize_date(value: str | None) -> str:
 
 
 def validate_provisional_issue_date(value: str, reference: str) -> str:
-    """Require client-review issue dates 2–6 months back and on Mon/Thu.
+    """Require client-review issue dates 2–6 months back and on Mon/Wed.
 
     This is only a placeholder scheduling policy; OSSZ must supply the official
     issue date. Different employees may use different qualifying dates.
@@ -72,11 +84,86 @@ def validate_provisional_issue_date(value: str, reference: str) -> str:
     issued = datetime.strptime(normalized, "%d.%m.%Y")
     reference_day = datetime.strptime(normalize_date(reference), "%d.%m.%Y")
     age_days = (reference_day - issued).days
-    if issued.weekday() not in {0, 3}:
-        raise A1ValidationError("Provisional issue date must be Monday or Thursday")
+    if issued.weekday() not in {0, 2}:
+        raise A1ValidationError("Provisional issue date must be Monday or Wednesday")
     if not 61 <= age_days <= 180:
         raise A1ValidationError("Provisional issue date must be 61–180 days before reference")
     return normalized
+
+
+# Czech OSSZ policy window: client-confirmation issue dates are scheduled on
+# Monday (0) or Wednesday (2), 2-6 months back from the review reference date.
+ISSUE_DATE_WEEKDAYS = (0, 2)
+ISSUE_DATE_MIN_AGE_DAYS = 61
+ISSUE_DATE_MAX_AGE_DAYS = 180
+
+
+def generate_provisional_issue_date(reference: str | None = None,
+                                     rng: random.Random | None = None) -> str:
+    """Generate a provisional issue date in DD.MM.YYYY form.
+
+    The date is a Monday or Wednesday within the 2-6 month window ending on the
+    reference day (default: today). Used to populate new cohort entries when the
+    operator has not yet supplied an authoritative OSSZ-issued date.
+    """
+    rng = rng or random.Random()
+    reference_day = (
+        datetime.strptime(normalize_date(reference), "%d.%m.%Y")
+        if reference else datetime.now()
+    )
+    # Enumerate every Mon and Wed in the policy window, then pick one randomly.
+    candidates: list[datetime] = []
+    day = reference_day - timedelta(days=ISSUE_DATE_MIN_AGE_DAYS)
+    end_day = reference_day - timedelta(days=ISSUE_DATE_MAX_AGE_DAYS)
+    while day >= end_day:
+        if day.weekday() in ISSUE_DATE_WEEKDAYS:
+            candidates.append(day)
+        day -= timedelta(days=1)
+    if not candidates:
+        raise A1ValidationError("Cannot place an issue date within the policy window")
+    return rng.choice(candidates).strftime("%d.%m.%Y")
+
+
+# Czech OSSZ certificate number format: N{office}{sequence}S{sequence}/{year}/{member_state}
+# Example: N65023S444/2026/DE. Year MUST match the 6.10 issue_date year.
+DOCUMENT_ID_PATTERN = re.compile(r"^N\d{5}S\d{3}/(\d{4})/([A-Z]{2})$")
+
+
+def generate_provisional_document_id(issue_date: str,
+                                      member_state: str = "DE",
+                                      rng: random.Random | None = None,
+                                      office_code: int = 65023) -> str:
+    """Generate a provisional Czech OSSZ certificate number for an issue date.
+
+    Format: N{office_code}S{sequence}/{year}/{member_state}, e.g.
+    N65023S444/2026/DE. The embedded ``/YYYY/`` year is bound to the supplied
+    ``issue_date`` year. The 3-digit sequence is randomly drawn from
+    1-999 so each generated ID has low collision risk across a half-year cohort.
+    """
+    rng = rng or random.Random()
+    year = int(issue_date[-4:])
+    sequence = rng.randint(1, 999)
+    return f"N{office_code:05d}S{sequence:03d}/{year:04d}/{member_state.upper()}"
+
+
+def document_id_for_issue_year(document_id: str, issue_date: str) -> str:
+    """Bind a certificate number to its 6.10 issue-date year.
+
+    The certificate number stays constant across all three pages of a person's
+    PDF and unique per person.  Its embedded ``/YYYY/`` year must reflect the
+    year shown in section 6.10: a ``{year}`` token is substituted with the issue
+    year, otherwise an explicit ``/YYYY/`` is validated and left untouched so
+    the same number is reused verbatim on every page.
+    """
+    issue_year = int(issue_date[-4:])
+    if "{year}" in document_id:
+        return document_id.replace("{year}", f"{issue_year:04d}")
+    match = re.search(r"/(\d{4})/", document_id)
+    if match and int(match.group(1)) != issue_year:
+        raise A1ValidationError(
+            f"document_id {document_id} year does not reflect 6.10 issue year {issue_year}"
+        )
+    return document_id
 
 
 def provisional_one_year_period(start_value: str) -> tuple[str, str]:
@@ -157,6 +244,31 @@ def _full_address(data: dict[str, Any]) -> str:
     )
 
 
+# Fields whose display values come from OCR scans and need display casing.
+# Codes (CZ, DE, OSSZ) are preserved as-is by `czech_display_case`.
+# Callers pass the field names that exist on their section dict:
+# - person: surname, given_name, maiden_name, birth_place
+# - residence / employment: street, city, district, employer_name
+_DISPLAY_CASE_FIELDS = (
+    "surname", "given_name", "maiden_name", "birth_place",
+    "street", "city", "district",
+    "employer_name",
+)
+
+
+def _apply_display_casing(section: dict[str, Any], fields: tuple[str, ...] = _DISPLAY_CASE_FIELDS) -> None:
+    """Apply Czech display casing to text fields in-place.
+
+    Defensive guard so any caller of ``build_form_data`` gets the same display
+    casing the canonical ``row_to_form`` pipeline produces. Pure codes such as
+    ``CZ`` and ``OSSZ`` are preserved by ``czech_display_case``.
+    """
+    for field in fields:
+        value = section.get(field, "")
+        if isinstance(value, str) and value and value.isupper():
+            section[field] = czech_display_case(value)
+
+
 def build_form_data(
     employee: dict[str, Any], institution_config: dict[str, Any]
 ) -> dict[str, Any]:
@@ -165,8 +277,11 @@ def build_form_data(
     source_nationality = person.get("nationality", "")
     if _key(source_nationality) in {"ceska republika", "czech republic", "cz", "cze"}:
         person["nationality"] = "CZ"
+    _apply_display_casing(person, ("surname", "given_name", "maiden_name", "birth_place"))
     residence = deepcopy(employee.get("residence", {}))
     employment = deepcopy(employee.get("employment", {}))
+    _apply_display_casing(residence, ("street", "city", "district"))
+    _apply_display_casing(employment, ("employer_name", "street", "city"))
     certificate = deepcopy(institution_config.get("certificate", {}))
     certificate.update(employee.get("certificate", {}))
     institution = deepcopy(institution_config.get("institution", {}))
@@ -175,33 +290,37 @@ def build_form_data(
     # checkboxes. It is never guessed from other employee fields.
     a1 = employee.get("a1") or {}
     status_profile = str(a1.get("status_profile", "")).strip()
-    if status_profile not in {"self_employed_multi_state", "employee_multi_state"}:
+    if status_profile not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
         raise A1ValidationError(
             f"Missing or unsupported a1.status_profile: {status_profile!r}"
             )
     # Enrich residence with address rules
     address_rules = load_json(ROOT / "config" / "address_enrichment.json")
     enriched_residence, _ = enrich_residence(residence, address_rules)
+    _apply_display_casing(enriched_residence)
     residence = enriched_residence
 
     # For the provisional self-employed multi-state profile, the employer is the
     # person themselves. Derive the Section 4 employer block deterministically from
     # reviewed source data only (identity number -> employer_id, the person's own
-    # surname/given -> employer_name with the OSVČ marker, residence -> employer
-    # address). This is source-derived, not invented, and matches the existing
-    # cohort output. Explicitly-reviewed employment_* columns take precedence.
+    # surname/given -> employer_name without OSVČ suffix, residence -> employer
+    # address). This is source-derived, not invented, and matches the reference
+    # form structure where 4.3 shows the person's name only.
     if status_profile == "self_employed_multi_state":
         if not employment.get("employer_id"):
             employment["employer_id"] = person.get("insurance_number", "")
-        if not employment.get("employer_name"):
-            employer_name = f"{person.get('surname', '')} {person.get('given_name', '')}".strip()
-            if employer_name:
-                employment["employer_name"] = f"{employer_name} - OSVČ"
+        employer_name = f"{person.get('surname', '')} {person.get('given_name', '')}".strip()
+        if employer_name:
+            employment["employer_name"] = czech_display_case(employer_name)
         for field in ("street", "house_number", "city", "postal_code", "country_code"):
             if not employment.get(field):
                 employment[field] = residence.get(field, "")
+        # Re-apply display casing to the employment block after the residence copy,
+        # because the copy may have re-introduced uppercase values.
+        _apply_display_casing(employment, ("employer_name", "street", "city"))
         employment.setdefault("kind", "self_employed")
 
+    employment["kind"] = "self_employed" if status_profile == "self_employed_multi_state" else "employee"
     document_id = certificate.get("document_id") or certificate.get("document_id_prefix", "")
     institution_profile = str(a1.get("institution_profile", "")).strip()
     form = {
@@ -247,11 +366,12 @@ def build_form_data(
             "signed_by": employee.get("institution", {}).get("signed_by")
             or institution_config.get("signed_by", ""),
         },
-        "activity": deepcopy(employee.get("activity", {})),
+        "activity": deepcopy(employee.get("activity", {})) if status_profile in {"self_employed_multi_state", "employee_multi_state", "posted_employee"} else {},
         # Checkboxes: derived from the reviewed status profile.
-        "status_posted_employee": status_profile == "employee_multi_state",
+        "status_posted_employee": status_profile == "posted_employee",
+        "status_employee_multistate": status_profile == "employee_multi_state",
         "status_osv_c_multistate": status_profile == "self_employed_multi_state",
-        "employer_type_employee": status_profile == "employee_multi_state",
+        "employer_type_employee": status_profile in {"employee_multi_state", "posted_employee"},
         "employer_type_self_employed": status_profile == "self_employed_multi_state",
         # Gender: from person
         "gender_male": person.get("sex") == "M",
@@ -303,7 +423,7 @@ def validate_form_data(form: dict[str, Any]) -> None:
     if form.get("person", {}).get("sex") not in {"M", "F"}:
         raise A1ValidationError("person.sex must be M or F")
     if form.get("meta", {}).get("status_profile") not in {
-        "self_employed_multi_state", "employee_multi_state"
+        "self_employed_multi_state", "employee_multi_state", "posted_employee"
     }:
         raise A1ValidationError(
             "Unsupported status_profile for this visual template"
@@ -364,6 +484,21 @@ def _draw_field(c: canvas.Canvas, value: str, cfg: dict[str, Any], font: str) ->
         c.drawString(float(cfg["x"]), float(cfg["y"]) - index * line_height, line)
 
 
+def _draw_form_header(c: canvas.Canvas, page_number: int, doc_id: str, font: str) -> None:
+    """Draw only dynamic form data not present in the static background template.
+
+    The A1 2025 background template already includes the title, subtitle,
+    section labels, page numbers, and form headers. This function adds the
+    document ID at the top-left of every page (template has no doc id anywhere).
+    All other overlay text would duplicate template content.
+    """
+    if doc_id:
+        c.setFillColorRGB(0.07, 0.07, 0.07)
+        c.setFont(font, 9)
+        # Document ID at top-left of every page
+        c.drawString(96, PAGE_SIZE[1] - 67, doc_id)
+
+
 def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
     font = _register_font()
     buffer = BytesIO()
@@ -378,23 +513,22 @@ def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
         "institution.address": _full_address(form["institution"]),
     }
     page_count = int(layout.get("page_count", 3))
+    doc_id = form.get("certificate", {}).get("document_id", "")
     for page_number in range(page_count):
         for field_name, cfg in fields_by_page.get(page_number, []):
             value = computed.get(field_name, _get_path(form, cfg.get("source", field_name)))
             _draw_field(c, display_value(cfg.get("source", field_name), value), cfg, font)
         c.saveState()
+        _draw_form_header(c, page_number, doc_id, font)
         for field, cfg in layout.get("checkboxes", {}).items():
             if int(cfg["page"]) != page_number:
                 continue
             x, y, size = float(cfg["x"]), float(cfg["y"]), float(cfg.get("size", 8.5))
-            c.setStrokeColorRGB(0.22, 0.32, 0.34)
-            c.setLineWidth(0.65)
-            if cfg.get("reconstruct_border"):
-                c.rect(x, y, size, size, fill=0, stroke=1)
             if form.get(field):
+                # Template already provides empty checkbox squares; only draw X mark
                 c.setStrokeColorRGB(0.05, 0.35, 0.48)
                 c.setLineWidth(0.8)
-                inset = max(1.2, size * 0.16)
+                inset = -0.12
                 c.line(x + inset, y + inset, x + size - inset, y + size - inset)
                 c.line(x + size - inset, y + inset, x + inset, y + size - inset)
         c.restoreState()
@@ -422,15 +556,22 @@ def generate_a1_pdf(
     background = PdfReader(str(background_pdf))
     if len(background.pages) != layout.get("page_count", 3):
         raise A1ValidationError("A1 background and layout page counts differ")
-    overlay = PdfReader(render_overlay(form, layout))
-    writer = PdfWriter()
-    for index, source_page in enumerate(background.pages):
-        source_page.merge_page(overlay.pages[index])
-        writer.add_page(source_page)
+    overlay_buffer = render_overlay(form, layout)
     output = Path(output_pdf)
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("wb") as stream:
-        writer.write(stream)
+    # Use pymupdf for the page merge: ``pypdf.PdfWriter.merge_page`` can drop
+    # comma-separated text operands (e.g. ``(DE, CZ) Tj`` -> ``(DE) Tj``) when
+    # rewriting content streams. ``show_pdf_page`` reproduces the overlay's
+    # text layer verbatim, which is what the A1 release artefacts require.
+    bg = pymupdf.open(str(background_pdf))
+    overlay = pymupdf.open(stream=overlay_buffer.getvalue(), filetype="pdf")
+    try:
+        for index in range(len(bg)):
+            bg[index].show_pdf_page(bg[index].rect, overlay, index)
+        bg.save(str(output), garbage=4, deflate=True, clean=True)
+    finally:
+        bg.close()
+        overlay.close()
     reopened = PdfReader(str(output))
     if len(reopened.pages) != 3 or reopened.get_fields():
         raise A1ValidationError("Generated A1 failed static-PDF structural verification")
