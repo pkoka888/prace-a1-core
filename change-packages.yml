@@ -69,7 +69,7 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
-      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md", "scripts/evaluate_a1_pdf_tools.py", "docs/research/2026-09-07-a1-pdf-tools.md"],
+      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md", "scripts/evaluate_a1_pdf_tools.py", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
       "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
       "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
       "rollback": "Revert local workflow files; this package never changes remotes."
