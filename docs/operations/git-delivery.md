@@ -33,6 +33,9 @@ Ignore rules do not protect already tracked files or historical Git objects.
 
 Focused acceptance: **16 tests passed**, including an exported commit snapshot
 of implementation commit `5d41658`. Planning checks: **24/24** in the working tree.
+The first full exported planning snapshot exposed missing local evidence references.
+ADR comparison links and the benchmark receipt reference now explicitly identify
+unpublished local evidence; no artifact or decision was promoted.
 Broad CI acceptance remains pending and is not inferred from these results.
 
 Run `venv/bin/python -m pytest tests/test_validate_change_packages.py -q`,

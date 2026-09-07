@@ -29,12 +29,16 @@ and the existing A1 engine behind a Django-independent Python interface.
 
 ## Evidence links
 
-- [MFA comparison](evidence/plan-e/01-mfa-comparison.md)
-- [Queue comparison](evidence/plan-e/02-queue-comparison.md)
-- [Storage comparison](evidence/plan-e/03-storage-comparison.md)
-- [Audit comparison](evidence/plan-e/04-audit-comparison.md)
-- [Threat model](evidence/plan-e/05-threat-model.md)
-- [Deployment/rollback](evidence/plan-e/06-deployment-rollback.md)
+Publication note (2026-09-07): the six comparison/evidence files below are
+local, unpublished references. A clean clone does not contain them; this note
+does not revalidate or alter the historical architecture decision.
+
+- MFA comparison — local reference `evidence/plan-e/01-mfa-comparison.md` (unpublished)
+- Queue comparison — local reference `evidence/plan-e/02-queue-comparison.md` (unpublished)
+- Storage comparison — local reference `evidence/plan-e/03-storage-comparison.md` (unpublished)
+- Audit comparison — local reference `evidence/plan-e/04-audit-comparison.md` (unpublished)
+- Threat model — local reference `evidence/plan-e/05-threat-model.md` (unpublished)
+- Deployment/rollback — local reference `evidence/plan-e/06-deployment-rollback.md` (unpublished)
 - [Cockpit asset](../../docs/prototypes/roadmap-portal/planning-data.js)
 
 ## Validation result

@@ -41,8 +41,8 @@ tracked source of truth is this file plus [`plans/INDEX.md`](INDEX.md).
 - **Research (provisional):** experimental skill
   [`.opencode/skills/market-research-evidence/SKILL.md`](../.opencode/skills/market-research-evidence/SKILL.md)
   and collector/review tooling (see `research/query-packs/`,
-  `research/benchmark-experimental/STATUS.json`,
-  `research/processed/reproducibility-report.json`). Integrity 1.3 must reject
+  the local benchmark status and reproducibility receipts, both unpublished
+  and requiring separate evidence review). Integrity 1.3 must reject
   rebound sources, modified excerpts, out-of-window timestamps, and incomplete
   pricing before any new live collector run. It may become operational only
   after Pilot 1 and Pilot 2 each pass twice; structural validators and the
