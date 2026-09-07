@@ -117,7 +117,9 @@ class Worker(TenantModel):
     version = models.PositiveIntegerField(default=1)
 
 class Document(TenantModel):
-    worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
+    worker = models.ForeignKey(Worker, on_delete=models.PROTECT, null=True, blank=True)
+    purpose = models.CharField(max_length=80, default="worker_intake")
+    retention_review_at = models.DateTimeField(null=True, blank=True)
     opaque_key = models.CharField(max_length=100, unique=True)
     sha256 = models.CharField(max_length=64)
     content_type = models.CharField(max_length=80)
@@ -150,6 +152,8 @@ class Assignment(TenantModel):
 class A1Case(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
     source_hash = models.CharField(max_length=64)
+    source_snapshot_json = models.JSONField(default=dict, blank=True)
+    is_stale = models.BooleanField(default=False)
 
     class Readiness(models.TextChoices):
         BLOCKED = "blocked", "Blokováno"
@@ -164,8 +168,43 @@ class A1Case(TenantModel):
         REJECTED = "rejected", "Zamítnuto OSSZ"
         DENIED = "denied", "Zamítnuto"
 
+    artifact_reference = models.JSONField(default=dict, blank=True)
+    artifact_dependencies = models.JSONField(default=dict, blank=True)
     prepared_artifact_hash = models.CharField(max_length=64, blank=True)
+    receipt_build_id = models.CharField(max_length=64, blank=True)
+    receipt_git_commit = models.CharField(max_length=40, blank=True)
     external_status = models.CharField(max_length=32, choices=ExternalStatus.choices, default=ExternalStatus.NOT_SUBMITTED)
+    notes = models.TextField(blank=True, default="")
+
+    # J4 visual confirmation fields
+    visual_confirmed = models.BooleanField(default=False, db_default=False)
+    visual_confirmed_at = models.DateTimeField(blank=True, null=True)
+    visual_confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        related_name="visual_confirmations",
+    )
+    visual_confirmation_notes = models.TextField(blank=True, default="", db_default="")
+    visual_confirmation_receipt = models.CharField(max_length=400, blank=True, default="", db_default="")
+    evidence_documents = models.JSONField(default=list, blank=True, db_default="[]")
+    evidence_notes = models.JSONField(default=list, blank=True, db_default="[]")
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).values(
+                "source_hash", "source_snapshot_json", "artifact_reference", "artifact_dependencies",
+                "prepared_artifact_hash").first()
+            if previous:
+                for field in ("source_hash", "source_snapshot_json"):
+                    if previous[field] != getattr(self, field):
+                        raise ValueError("A1_SNAPSHOT_IMMUTABLE")
+                if previous["artifact_reference"]:
+                    for field in ("artifact_reference", "artifact_dependencies", "prepared_artifact_hash"):
+                        if previous[field] != getattr(self, field):
+                            raise ValueError("A1_ARTIFACT_IMMUTABLE")
+        return super().save(*args, **kwargs)
 
 class AuditEvent(TenantModel):
     actor_ref = models.CharField(max_length=80)
@@ -207,6 +246,7 @@ class IntakeSession(TenantModel):
         MERGED = "merged", "Sloučeno"
         ARCHIVED = "archived", "Archivováno"
 
+    ocr_runs = models.ManyToManyField("OcrRun", related_name="intake_sessions", blank=True)
     worker = models.ForeignKey(Worker, models.PROTECT, null=True, blank=True)
     purpose = models.CharField(max_length=24, choices=Purpose.choices)
     state = models.CharField(max_length=24, choices=State.choices, default=State.DRAFT)
@@ -251,6 +291,7 @@ class DocumentClassification(TenantModel):
     side = models.CharField(max_length=16, blank=True, default="")
 
     class DocType(models.TextChoices):
+        CZ_PASSPORT = "cz_passport", "Cestovní pas"
         CZ_ID_FRONT = "cz_id_front", "OP přední strana"
         CZ_ID_BACK = "cz_id_back", "OP zadní strana"
         CZ_HEALTH_CARD_FRONT = "cz_health_card_front", "ZP přední strana"
@@ -265,7 +306,16 @@ class DocumentClassification(TenantModel):
 
 
 class OcrRun(TenantModel):
-    """An OCR processing run for a document version."""
+    """An OCR processing run for a document version. Derivatives never replace originals."""
+    output_key = models.CharField(max_length=160, blank=True, default="")
+    output_sha256 = models.CharField(max_length=64, blank=True, default="")
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
+    attempt_token = models.CharField(max_length=32, blank=True, default="")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["organization", "idempotency_key"],
+                       condition=~models.Q(idempotency_key=""), name="unique_org_ocr_idempotency")]
+
 
     class Engine(models.TextChoices):
         LOCAL = "local", "Lokální OCR"
@@ -290,6 +340,25 @@ class OcrRun(TenantModel):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class DocumentRegionAssociation(TenantModel):
+    """Explicit human association; immutable and independent of upload context."""
+    ocr_run = models.ForeignKey(OcrRun, models.PROTECT)
+    region_id = models.CharField(max_length=36)
+    document_type = models.CharField(max_length=24, blank=True, default="")
+    issuer = models.CharField(max_length=8, blank=True, default="")
+    worker = models.ForeignKey(Worker, models.PROTECT)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["ocr_run", "region_id"], name="unique_run_region_association")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("DocumentRegionAssociation is immutable")
+        return super().save(*args, **kwargs)
+
+
 class FieldProposal(TenantModel):
     """OCR-proposed field value with full provenance."""
 
@@ -303,6 +372,7 @@ class FieldProposal(TenantModel):
     document = models.ForeignKey(Document, models.CASCADE)
     version = models.ForeignKey(DocumentVersion, models.CASCADE)
     ocr_run = models.ForeignKey(OcrRun, models.CASCADE, null=True, blank=True)
+    document_region_id = models.CharField(max_length=36, blank=True, default="")
     field_name = models.CharField(max_length=80)
     raw_ocr_text = models.TextField(blank=True, default="")
     proposed_value = models.CharField(max_length=240)
@@ -318,8 +388,8 @@ class FieldProposal(TenantModel):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
-        if self.pk and self.state == self.State.CONFIRMED:
-            raise ValueError("Confirmed FieldProposal cannot be modified")
+        if self.pk:
+            raise ValueError("FieldProposal cannot be modified")
         return super().save(*args, **kwargs)
 
 

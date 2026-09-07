@@ -1,0 +1,99 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">Vizuální potvrzení A1 #{{ case.pk }}</h2>
+        <p class="text-gray-600">Pracovník: {{ worker.family_name }} {{ worker.given_name }}</p>
+    </div>
+    <a href="{% url 'a1_case_detail' pk=case.pk %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">Zpět</a>
+</div>
+
+{% if case.visual_confirmed %}
+<div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-6">
+    <h4 class="font-medium text-green-800 mb-2">✓ Dokument byl vizuálně potvrzen</h4>
+    <p class="text-green-700">Potvrzeno: {{ case.visual_confirmed_at|date:"d.m.Y H:i" }} uživatelem {{ case.visual_confirmed_by }}</p>
+    {% if case.visual_confirmation_notes %}
+    <p class="text-green-700 mt-2">Poznámky: {{ case.visual_confirmation_notes }}</p>
+    {% endif %}
+</div>
+{% else %}
+<div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
+    <h4 class="font-medium text-yellow-800 mb-2">⚠ Dokument čeká na vizuální kontrolu</h4>
+    <p class="text-yellow-700">Prosím, prohlédněte si všech 3 strany A1 dokumentu a potvrďte, že obsah odpovídá očekávání.</p>
+</div>
+{% endif %}
+
+<section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Náhledy A1 dokumentu">
+    <h3 class="text-lg font-semibold mb-4">Náhledy stránek A1 dokumentu</h3>
+    <div class="flex flex-wrap gap-4 mb-6">
+        {% for page in pages %}
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 w-64 flex flex-col items-center">
+            <h4 class="font-medium text-gray-700 mb-2">Strana {{ page }}</h4>
+            <a href="{% url 'a1_artifact_preview' pk=case.pk page=page %}" target="_blank" class="block mb-2">
+                <img src="{% url 'a1_artifact_preview' pk=case.pk page=page %}" alt="Náhled strany {{ page }}" class="w-full border border-gray-300 rounded shadow-sm" style="max-height: 200px;">
+            </a>
+            <a href="{% url 'a1_artifact_preview' pk=case.pk page=page %}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800">Otevřít v novém okně</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <a href="{% url 'a1_artifact_download' pk=case.pk %}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        Stáhnout kompletní PDF
+    </a>
+</section>
+
+{% if not case.visual_confirmed %}
+<form method="post" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Potvrzení vizuální kontroly</h3>
+        <p class="text-gray-600 mb-4">Prohlédl/a jsem si všechny 3 strany A1 dokumentu a potvrzuji, že:</p>
+
+        <div class="space-y-3 mb-6">
+            <label class="flex items-start space-x-3">
+                <input type="checkbox" name="check_1" required class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700">Všechny údaje na formuláři jsou správné a odpovídají zdrojovým datům</span>
+            </label>
+            <label class="flex items-start space-x-3">
+                <input type="checkbox" name="check_2" required class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700">Formát a rozvržení dokumentu odpovídá předloze</span>
+            </label>
+            <label class="flex items-start space-x-3">
+                <input type="checkbox" name="check_3" required class="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700">Nejsou žádné viditelné chyby, zkreslení nebo chybějící části</span>
+            </label>
+        </div>
+
+        <div>
+            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Poznámky k potvrzení (volitelné)</label>
+            <textarea name="notes" id="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Volitelné poznámky k vizuální kontrole..."></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button type="submit" name="action" value="reject" formnovalidate class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                Zamítnout - dokument vyžaduje opravu
+            </button>
+            <button type="submit" name="action" value="confirm" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Potvrdit - dokument je vizuálně správný
+            </button>
+        </div>
+    </div>
+</form>
+{% else %}
+<div class="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+    <h4 class="font-medium text-green-800 mb-2">✓ Dokument byl vizuálně potvrzen</h4>
+    <p class="text-green-700">Potvrzeno: {{ case.visual_confirmed_at|date:"d.m.Y H:i" }} uživatelem {{ case.visual_confirmed_by }}</p>
+    {% if case.visual_confirmation_notes %}
+    <p class="text-green-700 mt-2">Poznámky: {{ case.visual_confirmation_notes }}</p>
+    {% endif %}
+    <div class="mt-4">
+        <a href="{% url 'a1_case_detail' pk=case.pk %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Zpět na detail případu</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

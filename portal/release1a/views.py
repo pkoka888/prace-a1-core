@@ -1,16 +1,22 @@
 """Views for Release 1A M2 vertical slice — J1–J4 journeys."""
 from __future__ import annotations
 
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_safe
 import json
 import os
 import subprocess
 import uuid
 from hashlib import sha256
+from pathlib import Path
 
 from django.core.paginator import Paginator
+from django.db.models import Q
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from allauth.mfa.models import Authenticator
 
@@ -79,24 +85,76 @@ READINESS_FILE = os.environ.get(
 )
 
 
+def _current_git_commit() -> str:
+    """Return the current HEAD git commit hash, or empty string on failure."""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except Exception:
+        return ""
+
+
+def _current_build_id() -> str:
+    """Return the current app build ID from settings manifest, or empty string."""
+    try:
+        manifest = getattr(settings, "PRACE_RELEASE_MANIFEST", None)
+        if isinstance(manifest, dict):
+            return str(manifest.get("app_build_id") or "")
+    except Exception:
+        pass
+    return ""
+
+
 def _eng001_gate_open():
     """
     Check whether the ENG-001 engineering readiness gate is open.
 
     The runtime approval button depends on ENG-001, not REV-002.
+    This is a fail-closed runtime gate: it requires a clean review scope,
+    matching HEAD, and matching approvals hash before it will open.
+
     Returns (open, reason) using the shared approval_register module.
     """
-    from pathlib import Path
-    from planning.approval_register import check_gate
+    from planning.approval_register import check_gate, approvals_hash
     root = Path(__file__).resolve().parents[2]
-    return check_gate(root, "ENG-001", gate="implementation_gate")
+
+    head = None
+    try:
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except subprocess.CalledProcessError:
+        return False, "cannot read HEAD for receipt binding"
+
+    approv_hash = approvals_hash(root)
+
+    return check_gate(
+        root,
+        "ENG-001",
+        gate="implementation_gate",
+        require_clean=True,
+        expected_commit=head,
+        expected_approvals_hash=approv_hash,
+    )
 
 REVIEW_SCOPE_PATTERNS = [
     "portal/",
     "requirements.txt",
     "requirements-dev.txt",
+    "planning/",
+    "plans/",
+    "docs/prototypes/",
     "scripts/verify_synthetic_review_readiness.sh",
     "scripts/seed_release1a_dev.py",
+    "scripts/release_verifier.py",
+    "scripts/seed_verification_db.py",
+    "scripts/validate_approvals.py",
+    "scripts/validate_planning.py",
+    "tests/",
+    "runtime/portal/verification/",
+    "runtime/portal/synthetic-review/",
+    "roadmap.md",
 ]
 
 
@@ -283,15 +341,24 @@ def worker_create(request):
 @require_org_membership
 def worker_detail(request, pk):
     """J1: Worker detail — shows documents, assignments, A1 cases with tabbed interface."""
+    from .services import require_capability, Forbidden
+    from .models import WorkerIdentityRevision
+    from .document_labels import FIELD_LABELS
+    try:
+        require_capability(request.user, request.organization, "worker:read")
+    except Forbidden:
+        return HttpResponse(status=403)
     worker = get_object_or_404(Worker, pk=pk, organization=request.organization)
-    documents = Document.objects.filter(organization=request.organization, worker=worker).order_by("-id")
+    documents = Document.objects.filter(organization=request.organization).filter(Q(worker=worker) | Q(ocrrun__documentregionassociation__worker=worker)).distinct().order_by("-id")
     assignments = Assignment.objects.filter(organization=request.organization, worker=worker).order_by("-id")
     a1_cases = A1Case.objects.filter(organization=request.organization, worker=worker).order_by("-id")
     tab = request.GET.get("tab", "")
 
     a1_readiness = worker_a1_readiness(worker, request.organization)
 
+    revision = WorkerIdentityRevision.objects.filter(organization=request.organization, worker=worker).order_by("-revision_number").first()
     ctx = {
+        "accepted_identity": [(FIELD_LABELS.get(k, k), v) for k, v in revision.confirmed_fields.items()] if revision else [],
         "worker": worker,
         "documents": documents,
         "assignments": assignments,
@@ -413,8 +480,8 @@ def document_upload(request, worker_pk):
                     return render(request, "portal/partials/document_row.html", {"document": document})
                 return redirect("document_detail", pk=document.pk)
 
-            except Exception as e:
-                form.add_error(None, str(e))
+            except Exception:
+                form.add_error(None, _("Dokument nelze přijmout. Zkontrolujte formát a oprávnění."))
     else:
         form = DocumentUploadForm(organization=request.organization, worker=worker, user=request.user)
 
@@ -426,74 +493,26 @@ def document_upload(request, worker_pk):
 
 @require_org_membership
 def document_detail(request, pk):
-    """J2: Document detail — OCR proposals, human confirmation, download."""
-    document = get_object_or_404(Document, pk=pk, organization=request.organization)
-    proposals = FieldProposal.objects.filter(organization=request.organization, document=document)
-
-    if request.method == "POST":
-        form = OcrConfirmationForm(request.POST, proposals=proposals)
-        if form.is_valid():
-            for proposal in proposals:
-                field_name = f"confirm_{proposal.field_name}_{proposal.pk}"
-                if form.cleaned_data.get(field_name):
-                    corrected_value = form.cleaned_data.get(f"value_{proposal.field_name}_{proposal.pk}", proposal.proposed_value)
-                    FieldDecision.objects.create(
-                        organization=request.organization,
-                        field_proposal=proposal,
-                        decision="confirmed",
-                        corrected_value=corrected_value,
-                        decided_by=request.user,
-                    )
-            AuditEvent.objects.create(
-                organization=request.organization,
-                actor_ref=f"user:{request.user.pk}",
-                event_type="ocr.confirmed",
-                object_ref=f"document:{document.pk}",
-                outcome="success",
-            )
-            document.state = Document.State.CONFIRMED
-            document.save()
-            if request.headers.get("HX-Request"):
-                return render(request, "portal/partials/ocr_proposals.html", {"proposals": proposals, "document": document})
-            return redirect("document_detail", pk=document.pk)
-    else:
-        form = OcrConfirmationForm(proposals=proposals)
-
-    ctx = {"document": document, "proposals": proposals, "form": form}
-    return render(request, "portal/document_detail.html", ctx)
+    from .intake_views import detail
+    return detail(request, pk)
 
 
 @require_org_membership
 def document_download(request, pk):
-    """J2: Protected document delivery — zero-byte for unauthorized."""
-    document = get_object_or_404(Document, pk=pk, organization=request.organization)
+    from .intake_views import original
+    return original(request, pk)
 
-    # In real implementation, this would return X-Accel-Redirect
-    # For synthetic M2, we simulate the check
-    if document.state not in ("confirmed", "proposal_ready"):
-        AuditEvent.objects.create(
-            organization=request.organization,
-            actor_ref=f"user:{request.user.pk}",
-            event_type="document.download_denied",
-            object_ref=f"document:{document.pk}",
-            outcome="denied",
-        )
-        return HttpResponseForbidden(_("Dokument není k dispozici."))
 
-    AuditEvent.objects.create(
-        organization=request.organization,
-        actor_ref=f"user:{request.user.pk}",
-        event_type="document.downloaded",
-        object_ref=f"document:{document.pk}",
-        outcome="success",
-    )
+@require_org_membership
+def document_intake_unassigned(request):
+    from .intake_views import upload_unassigned
+    return upload_unassigned(request)
 
-    # Synthetic response — real would use Nginx X-Accel-Redirect
-    return JsonResponse({
-        "status": "ok",
-        "message": "V produkci by zde byl X-Accel-Redirect na chráněný soubor.",
-        "opaque_key": document.opaque_key,
-    })
+
+@require_org_membership
+def document_crop(request, run_id, region_id, variant):
+    from .intake_views import crop
+    return crop(request, run_id, region_id, variant)
 
 
 # =============================================================================
@@ -636,13 +655,12 @@ def a1_case_detail(request, pk):
         if form.is_valid():
             decision = form.cleaned_data["decision"]
             external_status = form.cleaned_data.get("external_status") or "not_submitted"
-            # NOTE: `notes` is collected for operator UX but not persisted — the
-            # A1Case model has no notes column yet. Persistence arrives with the
-            # M4 approval/review history work (no dead binding here).
+            notes = (form.cleaned_data.get("notes") or "").strip()
 
             if decision == "approve":
                 case.external_status = external_status
-                case.save()
+                case.notes = notes
+                case.save(update_fields=["external_status", "notes"])
                 AuditEvent.objects.create(
                     organization=request.organization,
                     actor_ref=f"user:{request.user.pk}",
@@ -652,7 +670,8 @@ def a1_case_detail(request, pk):
                 )
             else:
                 case.external_status = "denied"
-                case.save()
+                case.notes = notes
+                case.save(update_fields=["external_status", "notes"])
                 AuditEvent.objects.create(
                     organization=request.organization,
                     actor_ref=f"user:{request.user.pk}",
@@ -674,15 +693,44 @@ def a1_case_detail(request, pk):
 @require_org_membership
 @require_http_methods(["POST"])
 def a1_regenerate(request, pk):
-    """J4: A1 regenerate — source-change staleness, job retry."""
+    """J4: A1 regenerate — source-change staleness, job retry.
+
+    Idempotent: if the worker's source state has not changed since this case
+    was prepared, the existing case is reused (and is_stale is cleared). When
+    the source differs, a new A1Case is created via prepare_a1().
+    """
+    from prototypes.architecture.adr001.proof_contract import stable_hash
+
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
 
     if case.external_status in ("issued", "submitted"):
         return JsonResponse({"error": "Nelze regenerovat již vydané/předané A1."}, status=400)
 
-    # Re-run preparation (simulates job retry with same source)
-    new_case = prepare_a1(request.user, request.organization, case.worker)
+    worker = case.worker
+    from .services import current_a1_source, current_artifact_dependencies
+    _, _, current_hash = current_a1_source(worker, request.organization)
+    artifact_changed = bool(case.artifact_reference) and current_artifact_dependencies(case) != case.artifact_dependencies
 
+    if current_hash == case.source_hash and not artifact_changed:
+        was_stale = case.is_stale
+        if case.is_stale:
+            case.is_stale = False
+            case.save(update_fields=["is_stale"])
+        AuditEvent.objects.create(
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.regenerated_no_change",
+            object_ref=f"a1:{case.pk}",
+            outcome="success" if not was_stale else "stale_cleared",
+        )
+        if request.headers.get("HX-Request"):
+            return render(request, "portal/partials/a1_case_row.html", {"case": case})
+        return redirect("a1_case_detail", pk=case.pk)
+
+    new_case = prepare_a1(request.user, request.organization, worker)
+    if artifact_changed:
+        case.is_stale = True
+        case.save(update_fields=["is_stale"])
     AuditEvent.objects.create(
         organization=request.organization,
         actor_ref=f"user:{request.user.pk}",
@@ -700,8 +748,60 @@ def a1_regenerate(request, pk):
 # Health & Dashboard
 # =============================================================================
 
+@never_cache
+@require_safe
 def health(request):
-    return JsonResponse({"status": "synthetic-m2", "real_data": False})
+    """Static synthetic liveness marker; makes no dependency readiness claim.
+
+    Synthetic-only posture is always exposed. No DB queries, no FS probes,
+    no secrets. The infra team's edge probes use this to confirm the
+    service is alive AND that it is the synthetic posture (never real data).
+    """
+    from . import runtime_contract
+
+    return JsonResponse(runtime_contract.health_payload())
+
+
+@never_cache
+@require_safe
+def synthetic_contract(request):
+    """Synthetic-only contract for infra edge probes.
+
+    Returns the full public-facing runtime contract: mode, supervised
+    posture, build identity, database engine basename, storage root
+    basename, MFA requirement. Sanitized: no secrets, no full paths, no
+    identifiers, no PII. The contract never includes information that
+    would change between a synthetic posture and a real-data posture, so
+    its shape is stable enough for the infra layer to diff against an
+    expected fixture.
+    """
+    from . import runtime_contract
+
+    return JsonResponse(runtime_contract.synthetic_contract_payload())
+
+
+@never_cache
+@require_safe
+def readiness(request):
+    """Supervised runtime: killable process deadline. Legacy test mode: direct checks."""
+    import time
+    from django.conf import settings
+    from . import readiness_runner, runtime_contract
+    started = time.monotonic()
+    budget = int(getattr(settings, "PRACE_READINESS_BUDGET_MS", 2000))
+    if getattr(settings, "PRACE_SUPERVISED", False):
+        body = readiness_runner.supervised_probe(budget)
+    else:
+        # In-memory test DBs cannot be inspected from a separate process.
+        # These settings are never supported supervised service targets.
+        body = readiness_runner.collect_checks()
+    elapsed = round((time.monotonic()-started)*1000)
+    if elapsed > budget:
+        body.update(status="not_ready", reason="deadline_exceeded")
+    body.update(mode=runtime_contract.runtime_mode(), supervised=runtime_contract.is_supervised(),
+                build_id=runtime_contract.build_identity()[0], git_commit=runtime_contract.build_identity()[1],
+                budget_ms=budget, elapsed_ms=elapsed)
+    return JsonResponse(body, status=200 if body['status']=='ready' else 503)
 
 
 def dashboard(request):
@@ -887,54 +987,9 @@ def intake_wizard(request):
 
 @require_org_membership
 def intake_upload(request, worker_pk):
-    """Upload OP/ZP documents for an existing worker - up to 4 sides, PDF/PNG/JPG/JPEG, max 10MB each."""
-    from .forms import MultiDocumentUploadForm
-    from .models import IntakeSession
+    from .intake_views import upload_unassigned
     worker = get_object_or_404(Worker, pk=worker_pk, organization=request.organization)
-
-    if request.method == "POST":
-        form = MultiDocumentUploadForm(
-            request.POST, request.FILES,
-            organization=request.organization,
-            user=request.user,
-        )
-        if form.is_valid():
-            files = [form.cleaned_data.get(f"file{i}") for i in range(1, 5)]
-            provided = [f for f in files if f]
-
-            if not provided:
-                form.add_error(None, _("Nahrajte alespoň jeden soubor."))
-            else:
-                session = IntakeSession.objects.create(
-                    organization=request.organization,
-                    worker=worker,
-                    purpose=IntakeSession.Purpose.A1,
-                    state=IntakeSession.State.DRAFT,
-                )
-                from .services import process_intake_document
-                processed = []
-                for f in provided:
-                    content = f.read()
-                    doc, version, classifications, ocr_run = process_intake_document(
-                        request.user,
-                        request.organization,
-                        worker,
-                        f.name,
-                        f.content_type,
-                        content,
-                        session,
-                    )
-                    processed.append(doc)
-
-                if request.headers.get("HX-Request"):
-                    return render(request, "portal/partials/document_list.html", {"documents": processed})
-                return redirect("worker_detail", pk=worker.pk)
-    else:
-        form = MultiDocumentUploadForm(organization=request.organization, user=request.user)
-    ctx = {"form": form, "worker": worker}
-    if request.headers.get("HX-Request"):
-        return render(request, "portal/partials/intake_upload_form.html", ctx)
-    return render(request, "portal/intake_upload.html", ctx)
+    return upload_unassigned(request, worker)
 
 
 @require_org_membership
@@ -1536,7 +1591,6 @@ def planned_page(request):
 OCR_TO_CANONICAL = {
     "surname": "family_name",
     "dob": "birth_date",
-    "personal_identifier": "insurance_number",
 }
 
 
@@ -1594,11 +1648,10 @@ def worker_a1_readiness(worker, organization):
     """
     from .models import FieldProposal
 
-    confirmed_proposals = FieldProposal.objects.filter(
-        organization=organization,
-        document__worker=worker,
-    ).select_related("document")
-    confirmed_fields = {p.field_name for p in confirmed_proposals}
+    from .models import WorkerIdentityRevision
+    revision = WorkerIdentityRevision.objects.filter(organization=organization, worker=worker).order_by("-revision_number").first()
+    confirmed_fields = set(revision.confirmed_fields) if revision else set()
+    confirmed_fields |= {key for key, canonical in OCR_TO_CANONICAL.items() if canonical in confirmed_fields}
 
     missing = []
     for field in WORKER_A1_REQUIRED_FIELDS:
@@ -1609,9 +1662,7 @@ def worker_a1_readiness(worker, organization):
                 missing.append(field)
 
     has_assignment = Assignment.objects.filter(organization=organization, worker=worker).exists()
-    has_confirmed_doc = Document.objects.filter(
-        organization=organization, worker=worker, state=Document.State.CONFIRMED
-    ).exists()
+    has_confirmed_doc = bool(revision and all(revision.confirmed_fields.get(k) for k in ("family_name", "given_name", "birth_date")))
 
     return {
         "ready": len(missing) == 0 and has_assignment and has_confirmed_doc,
@@ -1647,55 +1698,9 @@ def ocr_review_queue(request):
 
 @require_org_membership
 def ocr_field_review(request, document_pk):
-    """Field-by-field OCR review for a document with source preview."""
-    document = get_object_or_404(Document, pk=document_pk, organization=request.organization)
+    from .intake_views import detail
+    return detail(request, document_pk)
 
-    from .models import FieldProposal, DocumentClassification
-
-    proposals = FieldProposal.objects.filter(
-        organization=request.organization,
-        document=document
-    ).order_by("field_name")
-
-    classifications = DocumentClassification.objects.filter(
-        organization=request.organization,
-        document=document
-    )
-
-    if request.method == "POST":
-        for proposal in proposals:
-            field_name = f"value_{proposal.field_name}_{proposal.pk}"
-            confirm_field = f"confirm_{proposal.pk}"
-            corrected = request.POST.get(field_name)
-            confirmed = confirm_field in request.POST
-
-            if confirmed or corrected:
-                from .services import confirm_field_proposal
-                confirm_field_proposal(
-                    request.user,
-                    request.organization,
-                    proposal,
-                    corrected_value=corrected if corrected != proposal.proposed_value else None,
-                    reason="Human review"
-                )
-
-        document.state = Document.State.CONFIRMED
-        document.save()
-        AuditEvent.objects.create(
-            organization=request.organization,
-            actor_ref=f"user:{request.user.pk}",
-            event_type="ocr.confirmed",
-            object_ref=f"document:{document.pk}",
-            outcome="success",
-        )
-        return redirect("document_detail", pk=document.pk)
-
-    ctx = {
-        "document": document,
-        "proposals": proposals,
-        "classifications": classifications,
-    }
-    return render(request, "portal/ocr_field_review.html", ctx)
 
 
 @require_org_membership
@@ -1825,3 +1830,289 @@ _SYNTHETIC_WORKERS = [
     type("_W", (), {"pk": 2, "family_name": "Dvořák", "given_name": "Pavel"})(),
     type("_W", (), {"pk": 3, "family_name": "Svoboda","given_name": "Tomáš"})(),
 ]
+
+
+@never_cache
+@require_safe
+@require_org_membership
+def a1_artifact_download(request, pk, page=None):
+    """Protected review copy; never an issuance or final-promotion endpoint."""
+    from django.conf import settings
+    from django.http import HttpResponse, Http404
+    from .services import require_capability, current_artifact_dependencies, Forbidden
+    from .j4_artifacts import verify_artifact, ArtifactError, _hash
+    try:
+        require_capability(request.user, request.organization, 'a1:prepare')
+    except Forbidden:
+        AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
+                                  event_type='a1.artifact_read',object_ref=f'a1:{pk}',outcome='denied')
+        return HttpResponseForbidden('ACCESS_DENIED')
+    case = A1Case.objects.filter(pk=pk, organization=request.organization).first()
+    if case is None:
+        AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
+                                  event_type='a1.artifact_read',object_ref=f'a1:{pk}',outcome='denied')
+        raise Http404()
+    if not case.artifact_reference or (page is not None and page not in (1, 2, 3)):
+        raise Http404()
+    dependencies = current_artifact_dependencies(case)
+    root = Path(settings.DOCUMENT_STORAGE_ROOT)/'j4'
+    try:
+        verified = verify_artifact(root, case.artifact_reference, dependencies)
+        if case.is_stale or verified['stale']:
+            raise ArtifactError('ARTIFACT_STALE')
+        name = f'page-{page}.png' if page else 'artifact.pdf'
+        data = (root/case.artifact_reference['key']/name).read_bytes()
+        if page is None and _hash(data) != case.prepared_artifact_hash:
+            raise ArtifactError('ARTIFACT_CHANGED')
+    except (ArtifactError, OSError):
+        AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
+                                  event_type='a1.artifact_read',object_ref=f'a1:{case.pk}',outcome='denied')
+        return JsonResponse({'error':'ARTIFACT_UNAVAILABLE_OR_STALE'},status=409)
+    AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
+                              event_type='a1.artifact_read',object_ref=f'a1:{case.pk}',outcome='success')
+    response=HttpResponse(data,content_type='image/png' if page else 'application/pdf')
+    response['Content-Disposition']=f'{"inline" if page else "attachment"}; filename="review-{name}"'
+    response['X-Content-Type-Options']='nosniff'
+    return response
+
+
+# =============================================================================
+# J4 Visual Confirmation & Evidence Intake
+# =============================================================================
+
+@require_org_membership
+def a1_artifact_confirm(request, pk):
+    """Visual confirmation of A1 artifact by operator.
+
+    Operator reviews all pages of the generated A1 PDF and confirms
+    that the visual content matches the expected certificate.
+    This creates an immutable confirmation receipt.
+    """
+    case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
+
+    if not case.artifact_reference:
+        return JsonResponse({"error": "No artifact attached to this case"}, status=400)
+
+    if case.external_status in ("issued", "submitted"):
+        return JsonResponse({"error": "Cannot confirm already issued/submitted A1"}, status=400)
+
+    from django.conf import settings
+    from .services import require_capability, current_artifact_dependencies
+    from .j4_artifacts import verify_artifact, ArtifactError, _hash, _root, _write, _json
+
+    require_capability(request.user, request.organization, "document:confirm")
+
+
+    try:
+        dependencies = current_artifact_dependencies(case)
+        root = Path(settings.DOCUMENT_STORAGE_ROOT) / 'j4'
+        verified = verify_artifact(root, case.artifact_reference, dependencies)
+
+        if case.is_stale or verified.get('stale'):
+            return JsonResponse({"error": "Artifact is stale, source has changed"}, status=409)
+    except (ArtifactError, OSError) as e:
+        return JsonResponse({"error": "Artifact verification failed"}, status=409)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        notes = request.POST.get("notes", "").strip()
+
+        if action == "confirm":
+            # Server-side validation of required confirmation checkboxes
+            if not all(request.POST.get(f"check_{i}") for i in (1, 2, 3)):
+                return JsonResponse(
+                    {"error": "All three confirmation checkboxes must be ticked"}, status=400
+                )
+
+            # Build receipt and persist atomically with case update + audit
+            with transaction.atomic():
+                case = A1Case.objects.select_for_update().get(pk=case.pk)
+
+                receipt_data = {
+                    "schema": 2,
+                    "case_id": case.pk,
+                    "case_source_hash": case.source_hash,
+                    "artifact_key": case.artifact_reference["key"],
+                    "pdf_sha256": case.prepared_artifact_hash,
+                    "confirmed_by": f"user:{request.user.pk}",
+                    "confirmed_at": timezone.now().isoformat(),
+                    "git_commit": _current_git_commit(),
+                    "build_id": _current_build_id(),
+                    "notes": notes,
+                    "visual_confirmation": True,
+                }
+
+                confirmation_dir = _root(
+                    Path(settings.DOCUMENT_STORAGE_ROOT) / "j4"
+                ) / "confirmations" / uuid.uuid4().hex
+                confirmation_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+                _write(confirmation_dir / "confirmation.json", _json(receipt_data))
+                _write(
+                    confirmation_dir / "receipt.json",
+                    _json({"confirmation_sha256": _hash(_json(receipt_data))}),
+                )
+
+                case.visual_confirmed = True
+                case.visual_confirmed_at = timezone.now()
+                case.visual_confirmed_by = request.user
+                case.visual_confirmation_notes = notes
+                case.visual_confirmation_receipt = str(confirmation_dir)
+                case.save(
+                    update_fields=[
+                        "visual_confirmed",
+                        "visual_confirmed_at",
+                        "visual_confirmed_by",
+                        "visual_confirmation_notes",
+                        "visual_confirmation_receipt",
+                    ]
+                )
+
+                AuditEvent.objects.create(
+                    organization=request.organization,
+                    actor_ref=f"user:{request.user.pk}",
+                    event_type="a1.visual_confirmed",
+                    object_ref=f"a1:{case.pk}",
+                    outcome="success",
+                )
+
+            if request.headers.get("HX-Request"):
+                return render(request, "portal/partials/a1_case_row.html", {"case": case})
+            return redirect("a1_case_detail", pk=case.pk)
+
+        elif action == "reject":
+            with transaction.atomic():
+                case = A1Case.objects.select_for_update().get(pk=case.pk)
+                case.visual_confirmed = False
+                case.visual_confirmed_at = timezone.now()
+                case.visual_confirmed_by = request.user
+                case.visual_confirmation_notes = f"REJECTED: {notes}"
+                case.save(
+                    update_fields=[
+                        "visual_confirmed",
+                        "visual_confirmed_at",
+                        "visual_confirmed_by",
+                        "visual_confirmation_notes",
+                    ]
+                )
+
+                AuditEvent.objects.create(
+                    organization=request.organization,
+                    actor_ref=f"user:{request.user.pk}",
+                    event_type="a1.visual_rejected",
+                    object_ref=f"a1:{case.pk}",
+                    outcome="rejected",
+                )
+
+            if request.headers.get("HX-Request"):
+                return render(request, "portal/partials/a1_case_row.html", {"case": case})
+            return redirect("a1_case_detail", pk=case.pk)
+
+        else:
+            return JsonResponse({"error": "Invalid action"}, status=400)
+
+    # GET: show confirmation page
+    return render(request, "portal/a1_artifact_confirm.html", {
+        "case": case,
+        "pages": [1, 2, 3],
+    })
+
+
+@require_org_membership
+def a1_evidence_intake(request, pk):
+    """Operator evidence intake for A1 case.
+
+    Allows operators to upload supporting evidence documents
+    and record notes for the A1 case.
+    """
+    case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
+
+    from django import forms
+    from .services import require_capability
+
+    class EvidenceForm(forms.Form):
+        document = forms.FileField(required=False)
+        note = forms.CharField(widget=forms.Textarea, required=False)
+        evidence_type = forms.ChoiceField(
+            choices=[
+                ("supporting", "Supporting document"),
+                ("correction", "Correction"),
+                ("institution_verification", "Institution verification"),
+                ("other", "Other"),
+            ],
+            required=True,
+        )
+
+    if request.method == "POST":
+        form = EvidenceForm(request.POST, request.FILES)
+        if form.is_valid():
+            document = form.cleaned_data.get("document")
+            note = form.cleaned_data.get("note", "").strip()
+            evidence_type = form.cleaned_data.get("evidence_type")
+
+            # Document upload requires explicit capability; note-only does not.
+            if document:
+                require_capability(
+                    request.user, request.organization, "document:upload"
+                )
+
+            with transaction.atomic():
+                case = A1Case.objects.select_for_update().get(pk=case.pk)
+
+                if document:
+                    from .document_intake import intake
+
+                    doc, version, classifications, run = intake(
+                        user=request.user,
+                        organization=request.organization,
+                        worker=case.worker,
+                        filename=document.name,
+                        content_type=document.content_type,
+                        content=document.read(),
+                    )
+
+                    case.evidence_documents = list(case.evidence_documents or [])
+                    case.evidence_documents.append(
+                        {
+                            "document_id": doc.id,
+                            "evidence_type": evidence_type,
+                            "note": note,
+                            "uploaded_by": request.user.pk,
+                            "uploaded_at": timezone.now().isoformat(),
+                        }
+                    )
+                    case.save(update_fields=["evidence_documents"])
+
+                if note:
+                    case.evidence_notes = list(case.evidence_notes or [])
+                    case.evidence_notes.append(
+                        {
+                            "note": note,
+                            "evidence_type": evidence_type,
+                            "added_by": request.user.pk,
+                            "added_at": timezone.now().isoformat(),
+                        }
+                    )
+                    case.save(update_fields=["evidence_notes"])
+
+                AuditEvent.objects.create(
+                    organization=request.organization,
+                    actor_ref=f"user:{request.user.pk}",
+                    event_type="a1.evidence_added",
+                    object_ref=f"a1:{case.pk}",
+                    outcome="success",
+                )
+
+            if request.headers.get("HX-Request"):
+                return render(
+                    request,
+                    "portal/partials/a1_evidence_list.html",
+                    {"case": case},
+                )
+            return redirect("a1_evidence_intake", pk=case.pk)
+
+    else:
+        form = EvidenceForm()
+
+    return render(
+        request, "portal/a1_evidence_intake.html", {"case": case, "form": form}
+    )

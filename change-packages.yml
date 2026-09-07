@@ -116,6 +116,14 @@
       "rollback": "Restore deleted files from git history.",
       "intended_commit": "chore: remove legacy A1 configs and script backups"
     },
+    "j4_confirmation_evidence_repair": {
+      "purpose": "Repair J4 visual confirmation and evidence intake interface with durable persistence, atomic transactions, capability checks, and tests. Synthetic data only.",
+      "paths": ["portal/release1a/j4_artifacts.py", "portal/release1a/migrations/0012_a1case_confirmation_evidence.py", "portal/release1a/models.py", "portal/release1a/views.py", "portal/templates/portal/a1_artifact_confirm.html", "portal/templates/portal/partials/a1_evidence_list.html", "tests/m2/test_j4_delivery.py"],
+      "checks": ["DJANGO_SETTINGS_MODULE=portal.settings venv/bin/python -m pytest tests/m2/test_j4_delivery.py::J4ConfirmationEvidenceTests -q"],
+      "dependencies": ["plan_ac_integrity"],
+      "rollback": "Revert confirmation/evidence views, model fields, migration, templates, and tests together."
+      ,"intended_commit": "fix: repair J4 confirmation/evidence interface"
+    },
     "quarantined_unrelated": {
       "purpose": "Artifacts outside the authorized update scope.",
       "eligible_for_staging": false,
