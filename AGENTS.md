@@ -175,7 +175,10 @@ There are two PDF generation frameworks for the A1 form. They are kept as
 **fallbacks for each other**; the placeholder search/replace is the
 preferred default once a vector-backed template is available. See
 [docs/architecture/A1_FRAMEWORKS.md](docs/architecture/A1_FRAMEWORKS.md)
-for the full mapping. Short version:
+for the full mapping, and
+[docs/architecture/readme-a1-forms.md](docs/architecture/readme-a1-forms.md)
+for the complete step-by-step pipeline, file ownership, and validation
+layers. Short version:
 
 - **Placeholder search/replace** (`scripts/pdf_named_fields.py`) is the
   preferred default for vector-backed templates with `{{variable}}` tokens.
