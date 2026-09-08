@@ -8,11 +8,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from jsonschema import Draft7Validator
+
+
+def _git_environment():
+    # Local root-bound inspections must not inherit a hook/caller's repository.
+    return {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
 
 
 class ApprovalRegisterError(Exception):
@@ -236,7 +242,7 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
         try:
             git_root = subprocess.check_output(
                 ["git", "rev-parse", "--show-toplevel"], cwd=root,
-                text=True, stderr=subprocess.DEVNULL,
+                text=True, stderr=subprocess.DEVNULL, env=_git_environment(),
             ).strip()
             if Path(git_root).resolve() != root.resolve():
                 errors.append("review root is not the Git repository root")
@@ -246,11 +252,11 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
         try:
             tracked = subprocess.check_output(
                 ["git", "status", "--porcelain", "--"] + REVIEW_SCOPE_PATTERNS,
-                text=True, stderr=subprocess.DEVNULL, cwd=root,
+                text=True, stderr=subprocess.DEVNULL, cwd=root, env=_git_environment(),
             ).strip()
             untracked = subprocess.check_output(
                 ["git", "ls-files", "--others", "--exclude-standard", "--"] + REVIEW_SCOPE_PATTERNS,
-                text=True, stderr=subprocess.DEVNULL, cwd=root,
+                text=True, stderr=subprocess.DEVNULL, cwd=root, env=_git_environment(),
             ).strip()
             if tracked or untracked:
                 errors.append(f"review scope is dirty: tracked={bool(tracked)} untracked={bool(untracked)}")
@@ -261,7 +267,7 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
     if expected_commit:
         try:
             head = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, cwd=root
+                ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, cwd=root, env=_git_environment()
             ).strip()
             if head != expected_commit:
                 errors.append(f"HEAD {head[:8]} does not match expected commit {expected_commit[:8]}")

@@ -1,4 +1,6 @@
 import json
+import os
+import pytest
 from pathlib import Path
 
 from planning.approval_register import (
@@ -7,6 +9,14 @@ from planning.approval_register import (
     approvals_hash,
     ApprovalRegisterError,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolated_git_environment(monkeypatch):
+    """Git hooks export repository overrides; fixture Git must stay independent."""
+    for name in tuple(os.environ):
+        if name.startswith("GIT_"):
+            monkeypatch.delenv(name)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -461,3 +471,13 @@ def test_open_dependency_cannot_hide_its_blocked_prerequisite(tmp_path):
     assert validate(tmp_path)["result"] == "pass"
     opened, reason = check_gate(tmp_path, "REV-001")
     assert not opened and "dependency ENG-001 not satisfied" in reason
+
+
+def test_caller_git_overrides_cannot_redirect_root_checks(tmp_path, monkeypatch):
+    git = _synthetic_git_register(tmp_path)
+    expected = git("rev-parse", "HEAD")
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "not-a-repository"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(tmp_path / "wrong-worktree"))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(tmp_path / "wrong-index"))
+    result = validate(tmp_path, require_clean=True, expected_commit=expected)
+    assert result["errors"] == []

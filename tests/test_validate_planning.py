@@ -17,6 +17,14 @@ from pathlib import Path
 
 import pytest
 
+@pytest.fixture(autouse=True)
+def isolated_git_environment(monkeypatch):
+    """Git hooks export repository overrides; fixture Git must stay independent."""
+    for name in tuple(os.environ):
+        if name.startswith("GIT_"):
+            monkeypatch.delenv(name)
+
+
 REPO = Path(__file__).resolve().parent.parent
 VALIDATOR = REPO / "scripts" / "validate_planning.py"
 GENERATOR = REPO / "scripts" / "generate_planning_asset.py"
