@@ -1,0 +1,43 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h1>Kontrola dokumentů</h1>
+<p>Rozpoznané údaje jsou návrhy. Přiřaďte dokument pracovníkovi a potvrďte pouze ověřené údaje.</p>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+{% if ocr_run %}<p>Stav zpracování: {{ ocr_run.get_state_display }}</p>{% endif %}
+{% if ocr_run.state == 'failed' or ocr_run.state == 'running' or ocr_run.state == 'pending' %}
+<p>Zpracování lze opakovat. Probíhající úloha se nespustí podruhé.</p>
+<form method="post">{% csrf_token %}<button name="action" value="retry">Opakovat zpracování</button></form>
+{% endif %}
+<a href="{% url 'document_download' document.pk %}">Stáhnout původní soubor</a>
+{% for region in regions %}
+<section class="bg-white rounded-lg shadow p-6 my-4">
+<h2>{{ region.type_label }} {{ region.side_label }}</h2>
+{% if region.duplicate_of %}<p>Opakovaný dokument v tomto souboru.</p>{% endif %}
+{% if region.paired_with %}<p>Odpovídající druhá strana nalezena.</p>{% endif %}
+<div class="grid grid-cols-2 gap-4">
+<figure><img alt="Původní výřez dokumentu" src="{% url 'document_crop' region.ocr_run_id region.document_id 'original' %}"><figcaption>Původní výřez</figcaption></figure>
+<figure><img alt="Výřez s upraveným kontrastem" src="{% url 'document_crop' region.ocr_run_id region.document_id 'enhanced' %}"><figcaption>Upravený kontrast</figcaption></figure>
+</div>
+{% if region.findings or region.matching_findings %}<p role="alert">Údaje jsou neúplné nebo se čtení liší. Zkontrolujte originál; rozpory se automaticky neslučují.</p>{% endif %}
+{% if region.completeness.field_sufficiency.missing %}<p>Chybějící údaje: {{ region.missing_labels|join:", " }}</p>{% endif %}
+{% if region.association_record %}<p>Přiřazeno: {{ region.association_record.worker.given_name }} {{ region.association_record.worker.family_name }}</p>
+{% else %}
+<form method="post">{% csrf_token %}<input type="hidden" name="run_id" value="{{ region.ocr_run_id }}"><input type="hidden" name="region_id" value="{{ region.document_id }}">
+{% if region.suggested_worker %}<p>Navržený pracovník: {{ region.suggested_worker.given_name }} {{ region.suggested_worker.family_name }}</p>{% endif %}
+<label>Pracovník <select name="worker_id" required><option value="">Vyberte pracovníka</option>{% for worker in workers %}<option value="{{ worker.pk }}" {% if region.suggested_worker.pk == worker.pk %}selected{% endif %}>{{ worker.given_name }} {{ worker.family_name }}</option>{% endfor %}</select></label>
+<button name="action" value="associate">Přiřadit tento dokument</button></form>
+{% endif %}
+{% if region.association_record and region.proposals %}
+<form method="post">{% csrf_token %}
+{% for proposal in region.proposals %}
+<div><label><input type="checkbox" name="confirm_{{ proposal.pk }}"> {{ proposal.display_label }}
+<input name="value_{{ proposal.field_name }}_{{ proposal.pk }}" value="{{ proposal.proposed_value }}"></label>
+{% if proposal.validation_findings %}<span>Vyžaduje kontrolu a zdůvodnění.</span>{% endif %}</div>
+{% endfor %}
+<label>Důvod opravy nebo vyřešení rozporu <input name="reason"></label>
+<button name="action" value="confirm">Potvrdit vybrané údaje</button></form>
+{% elif not region.association_record %}<p>Před potvrzením údajů přiřaďte dokument pracovníkovi.</p>{% endif %}
+</section>
+{% empty %}<p>Rozpoznané dokumenty zatím nejsou k dispozici.</p>{% endfor %}
+<p><a href="{% url 'document_intake_unassigned' %}">Nahrát další dokumenty</a></p>
+{% endblock %}

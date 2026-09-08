@@ -1,0 +1,7 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h1>Příjem dokumentů</h1><p>Pracovníka můžete přiřadit až po rozpoznání jednotlivých dokumentů.</p>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button>Nahrát a rozpoznat</button></form>
+{% for error in errors %}<p role="alert">{{ error }}</p>{% endfor %}
+{% for document in documents %}<p><a href="{% url 'document_detail' document.pk %}">Zkontrolovat přijatý dokument {{ forloop.counter }}</a></p>{% endfor %}
+{% endblock %}

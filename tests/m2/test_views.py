@@ -10,7 +10,9 @@ from datetime import date
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
-from django.test import Client, TransactionTestCase
+from django.test import Client, TransactionTestCase, override_settings
+import tempfile
+from tests.test_document_core.helpers import OP, card, png
 from allauth.mfa.models import Authenticator
 from portal.release1a.models import (
     AuditEvent, Membership, Organization, Worker,
@@ -43,6 +45,10 @@ class M2ViewTests(TransactionTestCase):
     """Test M2 J1–J4 view layer — redirects, CRUD, audit."""
 
     def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        config = override_settings(DOCUMENT_STORAGE_ROOT=temporary.name)
+        config.enable(); self.addCleanup(config.disable)
         self.org_alpha = Organization.objects.create(key="alpha-m2", label="Alpha M2")
         self.org_beta = Organization.objects.create(key="beta-m2", label="Beta M2")
         self.user = get_user_model().objects.create_user("m2user", password="test-m2")
@@ -180,7 +186,7 @@ class M2ViewTests(TransactionTestCase):
         )
         document = upload_document(
             self.user, self.org_alpha, worker,
-            "fixture.pdf", "application/pdf", b"%PDF-1.4\n%%EOF",
+            "fixture.png", "image/png", png(card(OP)),
         )
         _, _ = create_assignment(
             self.user, self.org_alpha, worker,

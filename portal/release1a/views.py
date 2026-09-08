@@ -1708,56 +1708,25 @@ def document_supersede(request, pk):
     """Create a new version of an existing document."""
     document = get_object_or_404(Document, pk=pk, organization=request.organization)
 
+    from .document_intake import authorize, supersede
+    from .services import Forbidden, MAX_UPLOAD_BYTES
+    try:
+        authorize(request.user, request.organization, "document:supersede")
+    except Forbidden:
+        return HttpResponse(status=403)
     if request.method == "POST":
-        from django.core.files.uploadedfile import UploadedFile
         new_file = request.FILES.get("new_file")
         if not new_file:
-            return JsonResponse({"error": "No file provided"}, status=400)
-
-        content = new_file.read()
-        from .services import quarantine_and_validate
-        validation = quarantine_and_validate(content, new_file.content_type, new_file.name)
-
-        if validation["quarantine_result"] == "failed":
-            return JsonResponse({"error": f"Dokument neprošel validací: {validation['quarantine_result']}"}, status=400)
-
-        existing_version = DocumentVersion.objects.filter(document=document).order_by("-version_number").first()
-        next_version_num = (existing_version.version_number + 1) if existing_version else 1
-
-        opaque_key = f"doc-{uuid.uuid4().hex}"
-        sha256 = validation["sha256"]
-
-        new_version = DocumentVersion.objects.create(
-            organization=request.organization,
-            document=document,
-            version_number=next_version_num,
-            opaque_key=opaque_key,
-            sha256=sha256,
-            content_type=new_file.content_type,
-            byte_size=len(content),
-            quarantine_result=validation["quarantine_result"],
-            malware_result=validation["malware_result"],
-            mime_result=validation["mime_result"],
-        )
-
-        OcrRun.objects.create(
-            organization=request.organization,
-            document=document,
-            version=new_version,
-            engine=OcrRun.Engine.LOCAL,
-            engine_version="1.0.0",
-            state=OcrRun.State.PENDING,
-            idempotency_key=f"supersede-{document.pk}-{new_version.pk}",
-        )
-
-        AuditEvent.objects.create(
-            organization=request.organization,
-            actor_ref=f"user:{request.user.pk}",
-            event_type="document.superseded",
-            object_ref=f"document:{document.pk}",
-            outcome="success",
-        )
-
+            return JsonResponse({"error": "Chybí soubor."}, status=400)
+        if new_file.size > MAX_UPLOAD_BYTES:
+            return JsonResponse({"error": "Soubor je příliš velký."}, status=400)
+        try:
+            supersede(request.user, request.organization, document.pk,
+                      new_file.name, new_file.content_type, new_file.read(MAX_UPLOAD_BYTES + 1))
+        except Forbidden:
+            return HttpResponse(status=403)
+        except (ValueError, OSError):
+            return JsonResponse({"error": "Dokument se nepodařilo uložit. Zkontrolujte soubor a opakujte akci."}, status=400)
         return redirect("document_detail", pk=document.pk)
 
     ctx = {"document": document}

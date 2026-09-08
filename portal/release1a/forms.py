@@ -107,7 +107,7 @@ class DocumentUploadForm(forms.ModelForm):
         label=_("Soubor"),
         widget=forms.ClearableFileInput(attrs={
             "class": "file-input",
-            "accept": ".pdf,.png,.jpg,.jpeg",
+            "accept": ".pdf,.png,.jpg,.jpeg,.tif,.tiff",
             "hx-post": ".",
             "hx-trigger": "change",
             "hx-target": "#document-upload-form",
@@ -137,9 +137,9 @@ class DocumentUploadForm(forms.ModelForm):
                 )
 
             # Content-Type check
-            allowed_types = ["application/pdf", "image/png", "image/jpeg"]
+            allowed_types = ["application/pdf", "image/png", "image/jpeg", "image/tiff"]
             if file.content_type not in allowed_types:
-                raise ValidationError(_("Nepovolený typ souboru. Povoleno: PDF, PNG, JPG."))
+                raise ValidationError(_("Nepovolený typ souboru. Povoleno: PDF, PNG, JPG, TIFF."))
 
             # Filename safety (defense in depth; the service also validates)
             filename = os.path.basename(file.name)
@@ -383,7 +383,7 @@ class MultiDocumentUploadForm(forms.Form):
         required=False,
         widget=forms.ClearableFileInput(attrs={
             "class": "file-input",
-            "accept": ".pdf,.png,.jpg,.jpeg",
+            "accept": ".pdf,.png,.jpg,.jpeg,.tif,.tiff",
         }),
     )
     file2 = forms.FileField(
@@ -391,7 +391,7 @@ class MultiDocumentUploadForm(forms.Form):
         required=False,
         widget=forms.ClearableFileInput(attrs={
             "class": "file-input",
-            "accept": ".pdf,.png,.jpg,.jpeg",
+            "accept": ".pdf,.png,.jpg,.jpeg,.tif,.tiff",
         }),
     )
     file3 = forms.FileField(
@@ -399,7 +399,7 @@ class MultiDocumentUploadForm(forms.Form):
         required=False,
         widget=forms.ClearableFileInput(attrs={
             "class": "file-input",
-            "accept": ".pdf,.png,.jpg,.jpeg",
+            "accept": ".pdf,.png,.jpg,.jpeg,.tif,.tiff",
         }),
     )
     file4 = forms.FileField(
@@ -407,7 +407,7 @@ class MultiDocumentUploadForm(forms.Form):
         required=False,
         widget=forms.ClearableFileInput(attrs={
             "class": "file-input",
-            "accept": ".pdf,.png,.jpg,.jpeg",
+            "accept": ".pdf,.png,.jpg,.jpeg,.tif,.tiff",
         }),
     )
 
@@ -428,6 +428,6 @@ class MultiDocumentUploadForm(forms.Form):
                     _("Soubor %(name)s je příliš velký (max %(size)s MB).") %
                     {"name": f.name, "size": MAX_UPLOAD_BYTES // (1024 * 1024)}
                 )
-            if f.content_type not in ["application/pdf", "image/png", "image/jpeg"]:
-                raise ValidationError(_("Nepovolený typ souboru %(name)s. Povoleno: PDF, PNG, JPG.") % {"name": f.name})
+            if f.content_type not in ["application/pdf", "image/png", "image/jpeg", "image/tiff"]:
+                raise ValidationError(_("Nepovolený typ souboru %(name)s. Povoleno: PDF, PNG, JPG, TIFF.") % {"name": f.name})
         return cleaned_data

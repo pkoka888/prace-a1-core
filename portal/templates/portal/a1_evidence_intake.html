@@ -1,0 +1,106 @@
+{% extends "portal/base.html" %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h2 class="text-2xl font-semibold text-gray-900">Doporučující důkazy k A1 #{{ case.pk }}</h2>
+        <p class="text-gray-600">Pracovník: {{ worker.family_name }} {{ worker.given_name }}</p>
+    </div>
+    <a href="{% url 'a1_case_detail' pk=case.pk %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">Zpět</a>
+</div>
+
+{% if case.visual_confirmed %}
+<div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-6">
+    <h4 class="font-medium text-green-800 mb-2">✓ Dokument byl vizuálně potvrzen</h4>
+    <p class="text-green-700">Potvrzeno: {{ case.visual_confirmed_at|date:"d.m.Y H:i" }} uživatelem {{ case.visual_confirmed_by }}</p>
+{% else %}
+<div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
+    <h4 class="font-medium text-yellow-800 mb-2">⚠ Dokument čeká na vizuální kontrolu</h4>
+    <p class="text-yellow-700">Doporučujeme provést vizuální potvrzení před přidáváním důkazů.</p>
+{% endif %}
+</div>
+
+<section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Přidat důkaz">
+    <h3 class="text-lg font-semibold mb-4">Přidat důkaz nebo poznámku</h3>
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+
+        <div>
+            <label for="{{ form.evidence_type.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.evidence_type.label }}</label>
+            {{ form.evidence_type }}
+            {% if form.evidence_type.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.evidence_type.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="{{ form.document.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.document.label }} (volitelné)</label>
+            {{ form.document }}
+            {% if form.document.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.document.errors.0 }}</p>
+            {% endif %}
+            <p class="mt-1 text-sm text-gray-500">Podporované formáty: PDF, PNG, JPEG. Maximální velikost 10 MB.</p>
+        </div>
+
+        <div>
+            <label for="{{ form.note.id_for_label }}" class="block text-sm font-medium text-gray-700">{{ form.note.label }} (volitelné)</label>
+            {{ form.note }}
+            {% if form.note.errors %}
+            <p class="mt-1 text-sm text-red-600">{{ form.note.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Přidat důkaz</button>
+        </div>
+    </form>
+</section>
+
+<section class="bg-white rounded-lg shadow" aria-label="Seznam důkazů">
+    <h3 class="text-lg font-semibold mb-4">Seznam důkazů</h3>
+    {% if case.evidence_documents or case.evidence_notes %}
+    <div class="space-y-4">
+        {% for evidence in case.evidence_documents %}
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full
+                            {% if evidence.evidence_type == 'supporting' %}bg-blue-100 text-blue-800
+                            {% elif evidence.evidence_type == 'correction' %}bg-yellow-100 text-yellow-800
+                            {% elif evidence.evidence_type == 'institution_verification' %}bg-green-100 text-green-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {{ evidence.evidence_type|default:"supporting" }}
+                        </span>
+                        <span class="text-sm text-gray-500">#{{ evidence.document_id }}</span>
+                    </div>
+                    {% if evidence.note %}
+                    <p class="mt-1 text-sm text-gray-700">{{ evidence.note }}</p>
+                    {% endif %}
+                    <p class="mt-1 text-xs text-gray-500">
+                        Nahráno: {{ evidence.uploaded_at|date:"d.m.Y H:i" }} uživatelem {{ evidence.uploaded_by }}
+                    </p>
+                </div>
+                <a href="{% url 'document_download' pk=evidence.document_id %}" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">Stáhnout</a>
+            </div>
+        {% endfor %}
+
+        {% for note in case.evidence_notes %}
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 border-l-4 border-purple-500">
+            <div class="flex items-center space-x-2 mb-1">
+                <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">Poznámka</span>
+                <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">{{ note.evidence_type|default:"other" }}</span>
+            </div>
+            <p class="text-sm text-gray-700">{{ note.note }}</p>
+            <p class="mt-1 text-xs text-gray-500">
+                Přidáno: {{ note.added_at|date:"d.m.Y H:i" }} uživatelem {{ note.added_by }}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 text-center py-8">Zatím nejsou k dispozici žádné důkazy nebo poznámky.</p>
+    {% endif %}
+</section>
+
+{% endblock %}

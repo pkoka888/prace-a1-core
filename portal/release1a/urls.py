@@ -2,6 +2,8 @@ from django.urls import path
 from .views import (
     dashboard as dashboard_view,
     health,
+    readiness,
+    synthetic_contract,
     attention_queue,
     # J1 — Worker
     worker_list,
@@ -12,6 +14,8 @@ from .views import (
     worker_archive,
     # J2 — Document / OCR
     document_upload,
+    document_intake_unassigned,
+    document_crop,
     document_detail,
     document_download,
     document_list,
@@ -28,6 +32,9 @@ from .views import (
     a1_prepare,
     a1_case_detail,
     a1_regenerate,
+    a1_artifact_download,
+    a1_artifact_confirm,
+    a1_evidence_intake,
     a1_list,
     # Intake wizard
     intake_wizard,
@@ -48,6 +55,8 @@ from .views import (
 
 urlpatterns = [
     path("health/", health, name="health"),
+    path("readiness/", readiness, name="readiness"),
+    path("synthetic/", synthetic_contract, name="synthetic_contract"),
     path("", dashboard_view, name="dashboard"),
     path("attention/", attention_queue, name="attention_queue"),
 
@@ -63,12 +72,14 @@ urlpatterns = [
     path("workers/<int:pk>/archive/", worker_archive, name="worker_archive"),
 
     # J2 — Document / OCR
+    path("documents/intake/", document_intake_unassigned, name="document_intake_unassigned"),
+    path("documents/ocr/<int:run_id>/<uuid:region_id>/<str:variant>/", document_crop, name="document_crop"),
     path("documents/", document_list, name="document_list"),
     path("workers/<int:worker_pk>/documents/upload/", document_upload, name="document_upload"),
     path("documents/<int:pk>/", document_detail, name="document_detail"),
     path("documents/<int:pk>/download/", document_download, name="document_download"),
     path("documents/<int:pk>/supersede/", document_supersede, name="document_supersede"),
-    path("documents/<int:pk>/ocr-review/", ocr_field_review, name="ocr_field_review"),
+    path("documents/<int:document_pk>/ocr-review/", ocr_field_review, name="ocr_field_review"),
     path("ocr-review/", ocr_review_queue, name="ocr_review_queue"),
 
     # J3 — Assignment
@@ -81,6 +92,10 @@ urlpatterns = [
     path("a1/", a1_list, name="a1_list"),
     path("workers/<int:worker_pk>/a1/prepare/", a1_prepare, name="a1_prepare"),
     path("a1/<int:pk>/", a1_case_detail, name="a1_case_detail"),
+    path("a1/<int:pk>/artifact/", a1_artifact_download, name="a1_artifact_download"),
+    path("a1/<int:pk>/preview/<int:page>/", a1_artifact_download, name="a1_artifact_preview"),
+    path("a1/<int:pk>/confirm/", a1_artifact_confirm, name="a1_artifact_confirm"),
+    path("a1/<int:pk>/evidence/", a1_evidence_intake, name="a1_evidence_intake"),
     path("a1/<int:pk>/regenerate/", a1_regenerate, name="a1_regenerate"),
 
     # Planned future modules

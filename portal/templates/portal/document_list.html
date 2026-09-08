@@ -1,6 +1,7 @@
 {% extends "portal/base.html" %}
 
 {% block content %}
+<p><a href="{% url 'document_intake_unassigned' %}">Nahrát dokumenty bez přiřazení pracovníka</a></p>
 <div class="mb-6 flex items-center justify-between">
     <div>
         <h2 class="text-2xl font-semibold text-gray-900">Dokumenty</h2>
@@ -34,7 +35,7 @@
             {% for document in page_obj %}
             <tr class="hover:bg-gray-50">
                 <td class="px-6 py-4">
-                    <a href="{% url 'worker_detail' pk=document.worker.pk %}" class="text-blue-600 hover:text-blue-800">{{ document.worker.family_name }} {{ document.worker.given_name }}</a>
+                    {% if document.worker_id %}<a href="{% url 'worker_detail' pk=document.worker.pk %}" class="text-blue-600 hover:text-blue-800">{{ document.worker.family_name }} {{ document.worker.given_name }}</a>{% else %}Nepřiřazeno{% endif %}
                 </td>
                 <td class="px-6 py-4 text-gray-500">{{ document.content_type }}</td>
                 <td class="px-6 py-4">

@@ -90,69 +90,11 @@ def create_worker(user, organization, **fields):
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
-@transaction.atomic
 def upload_document(user, organization, worker, filename, content_type, content, limit=MAX_UPLOAD_BYTES):
-    require_capability(user, organization, "document:upload")
-    if worker.organization_id != organization.id: raise Forbidden("cross-organization worker")
-    checked = validate_upload(f"org-{organization.pk}", filename, content_type, content, limit=limit)
-
-    validation = quarantine_and_validate(content, content_type, filename)
-
-    existing = Document.objects.filter(organization=organization, sha256=checked.sha256).first()
-    if existing:
-        raise ValueError("Duplikát: dokument s tímto obsahem již existuje")
-
-    document = Document.objects.create(
-        organization=organization,
-        worker=worker,
-        opaque_key=checked.object_key,
-        sha256=checked.sha256,
-        content_type=checked.content_type,
-        state=Document.State.PROPOSAL_READY,
-    )
-
-    version = DocumentVersion.objects.create(
-        organization=organization,
-        document=document,
-        version_number=1,
-        opaque_key=checked.object_key,
-        sha256=checked.sha256,
-        content_type=checked.content_type,
-        byte_size=len(content),
-        quarantine_result=validation["quarantine_result"],
-        malware_result=validation["malware_result"],
-        mime_result=validation["mime_result"],
-    )
-
-    ocr_run = OcrRun.objects.create(
-        organization=organization,
-        document=document,
-        version=version,
-        engine=OcrRun.Engine.LOCAL,
-        engine_version="1.0.0",
-        state=OcrRun.State.COMPLETED,
-        idempotency_key=f"upload-{document.pk}-{version.pk}",
-    )
-
-    FieldProposal.objects.create(
-        organization=organization,
-        document=document,
-        version=version,
-        ocr_run=ocr_run,
-        field_name="family_name",
-        proposed_value="Syntetický návrh",
-        confidence=0.9000,
-        state=FieldProposal.State.PROPOSED,
-    )
-
-    AuditEvent.objects.create(
-        organization=organization,
-        actor_ref=f"user:{user.pk}",
-        event_type="document.uploaded",
-        object_ref=f"document:{document.pk}",
-        outcome="success",
-    )
-    return document
+    from .document_intake import intake
+    if len(content) > limit:
+        raise ValueError("INPUT_SIZE_INVALID")
+    return intake(user, organization, worker, filename, content_type, content)[0]
 
 @transaction.atomic
 def create_assignment(user, organization, worker, *, start, end, workplace_label, activity_label):
@@ -163,430 +105,140 @@ def create_assignment(user, organization, worker, *, start, end, workplace_label
     AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}", event_type="assignment.created_overlap" if overlap else "assignment.created", object_ref=f"assignment:{assignment.pk}", outcome="warning" if overlap else "success")
     return assignment, overlap
 
+def current_a1_source(worker, organization):
+    """One deterministic source contract for preparation, attachment and access."""
+    if worker.organization_id != organization.id:
+        raise Forbidden("cross-organization worker")
+    assignments = list(Assignment.objects.filter(organization=organization, worker=worker).order_by("pk")
+                       .values("id", "start", "end", "workplace_label", "activity_label", "state", "version"))
+    normalized = [{**a, "start": str(a["start"]), "end": str(a["end"])} for a in assignments]
+
+    profile = {
+        "given_name": worker.given_name,
+        "family_name": worker.family_name,
+        "birth_date": str(worker.birth_date),
+        "activity_profile": worker.activity_profile,
+    }
+
+    return profile, normalized, a1_prepare(profile, normalized)["source_hash"]
+
+
+def current_artifact_dependencies(case):
+    """Current mutable dependencies; accepted input/QA snapshots stay immutable."""
+    from django.conf import settings
+    from .j4_artifacts import _hash
+    dependencies = dict(case.artifact_dependencies)
+    dependencies.update(source_hash=current_a1_source(case.worker, case.organization)[2],
+                        template_sha256=_hash((settings.BASE_DIR/'templates/a1_background.pdf').read_bytes()),
+                        layout_sha256=_hash((settings.BASE_DIR/'config/a1_layout.json').read_bytes()),
+                        renderer_sha256=_hash((settings.BASE_DIR/'scripts/a1_core.py').read_bytes()),
+                        qa_code_sha256=_hash((settings.BASE_DIR/'scripts/a1_quality_gate.py').read_bytes()),
+                        build_id=getattr(settings, 'PRACE_RELEASE_MANIFEST', {}).get('app_build_id', '')
+                                 if isinstance(getattr(settings, 'PRACE_RELEASE_MANIFEST', None), dict) else '')
+    return dependencies
+
+
 @transaction.atomic
 def prepare_a1(user, organization, worker):
     require_capability(user, organization, "a1:prepare")
     if worker.organization_id != organization.id:
         raise Forbidden("cross-organization worker")
-    assignments = list(Assignment.objects.filter(organization=organization, worker=worker).values("start", "end"))
-    normalized = [{"start": str(a["start"]), "end": str(a["end"])} for a in assignments]
+    profile, normalized, _ = current_a1_source(worker, organization)
 
     previous_case = A1Case.objects.filter(organization=organization, worker=worker).order_by("-id").first()
     previous_hash = previous_case.source_hash if previous_case else None
 
-    result = a1_prepare({"given_name": worker.given_name, "family_name": worker.family_name, "birth_date": str(worker.birth_date), "activity_profile": worker.activity_profile}, normalized, previous_source_hash=previous_hash)
+    result = a1_prepare(profile, normalized, previous_source_hash=previous_hash)
 
-    if previous_case and result.get("stale"):
-        previous_case.is_stale = True
-        previous_case.save(update_fields=["is_stale"])
+    # Sync staleness on the latest existing case based on the comparison above.
+    if previous_case is not None:
+        new_stale = bool(result.get("stale"))
+        if previous_case.is_stale != new_stale:
+            previous_case.is_stale = new_stale
+            previous_case.save(update_fields=["is_stale"])
 
-    case = A1Case.objects.create(organization=organization, worker=worker, source_hash=result["source_hash"], readiness=A1Case.Readiness.READY if result["ready"] else A1Case.Readiness.BLOCKED, prepared_artifact_hash=result["artifact_hash"] or "")
+    # Receipt is bound to the build identity when the supervised manifest is
+    # configured; otherwise it falls back to the prototype artifact_hash.
+    build_id = ""
+    git_commit = ""
+    try:
+        from django.conf import settings
+        manifest = getattr(settings, "PRACE_RELEASE_MANIFEST", None)
+        if isinstance(manifest, dict):
+            build_id = str(manifest.get("app_build_id") or "")
+            git_commit = str(manifest.get("git_commit") or "")
+    except Exception:
+        pass
+
+    # Application preparation does not contain canonical certificate evidence.
+    # Never label a metadata digest as stored PDF evidence. A byte artifact may
+    # only be attached after canonical rendering and protected artifact QA.
+    receipt_hash = ""
+
+    case = A1Case.objects.create(
+        organization=organization,
+        worker=worker,
+        source_hash=result["source_hash"],
+        source_snapshot_json={"profile": profile, "assignments": normalized},
+        is_stale=False,
+        readiness=A1Case.Readiness.READY if result["ready"] else A1Case.Readiness.BLOCKED,
+        prepared_artifact_hash=receipt_hash,
+        receipt_build_id=build_id,
+        receipt_git_commit=git_commit,
+    )
     AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}", event_type="a1.prepared" if result["ready"] else "a1.blocked", object_ref=f"a1:{case.pk}", outcome="success" if result["ready"] else "denied")
     return case
 
 
-ALLOWED_MIME_TYPES = {"application/pdf", "image/png", "image/jpeg"}
-MALWARE_SIGNATURES = [b"%PDF", b"\x89PNG", b"\xff\xd8\xff"]
-
-
-def quarantine_and_validate(content, content_type, filename):
-    """Validate uploaded document content: MIME type, malware check, hash.
-
-    Returns dict with:
-        - sha256: hex digest
-        - mime_result: 'ok' or 'mismatch'
-        - malware_result: 'clean' or 'suspicious'
-        - quarantine_result: 'passed' or 'failed'
-    """
-    sha256 = hashlib.sha256(content).hexdigest()
-
-    mime_ok = content_type in ALLOWED_MIME_TYPES
-    malware_ok = any(content[:4] == sig for sig in MALWARE_SIGNATURES)
-
-    result = {
-        "sha256": sha256,
-        "mime_result": "ok" if mime_ok else "mismatch",
-        "malware_result": "clean" if malware_ok else "suspicious",
-        "quarantine_result": "passed" if (mime_ok and malware_ok) else "failed",
-    }
-    return result
-
-
-OP_FRONT_FIELDS = [
-    "surname", "given_name", "dob", "birth_place",
-    "nationality", "sex", "document_id", "issue_date", "expiry_date"
-]
-
-OP_BACK_FIELDS = [
-    "residence_street", "residence_house_number", "residence_city",
-    "residence_postal_code", "residence_country_code",
-    "issuing_authority", "personal_identifier"
-]
-
-ZP_FRONT_FIELDS = [
-    "surname", "given_name", "dob", "personal_number",
-    "insurer_code", "card_number", "expiry_date", "issuing_country"
-]
-
-DOCUMENT_TYPE_SCHEMAS = {
-    "cz_id_front": OP_FRONT_FIELDS,
-    "cz_id_back": OP_BACK_FIELDS,
-    "cz_health_card_front": ZP_FRONT_FIELDS,
-    "cz_health_card_back": [],
-}
-
-
-A1_PERSON_FIELDS = [
-    "surname", "given_name", "dob", "birth_place",
-    "nationality", "sex", "insurance_number",
-]
-
-A1_RESIDENCE_FIELDS = [
-    "residence_street", "residence_house_number", "residence_city",
-    "residence_district", "residence_postal_code", "residence_country_code",
-]
-
-A1_EMPLOYMENT_FIELDS = [
-    "employment_id", "employment_name", "employment_street",
-    "employment_house_number", "employment_city", "employment_postal_code",
-    "employment_country_code",
-]
-
-A1_CERTIFICATE_FIELDS = [
-    "document_id", "start_date", "end_date", "issue_date", "signed_by",
-]
-
-A1_STATUS_PROFILES = [
-    "self_employed_multi_state",
-    "employee_multi_state",
-]
-
-CONFIDENCE_BANDS = {
-    "high": (0.95, None),
-    "medium": (0.80, 0.9499),
-    "low": (None, 0.80),
-}
-
-
-def confidence_label(score):
-    """Return human-readable confidence band: Vysoká, Střední, Nízká."""
-    if score is None:
-        return "Neznámá"
-    if score >= 0.95:
-        return "Vysoká"
-    elif score >= 0.80:
-        return "Střední"
-    return "Nízká"
-
-
-def classify_document(document_version, organization, page_index=0, side=""):
-    """Classify a document page/side as OP or ZP front/back.
-
-    Rule-based classifier using file metadata, page count, and content hints.
-    For production, this would use a trained ML model.
-    """
-    doc_type = DocumentClassification.DocType.UNKNOWN
-    confidence = None
-    side_confidence = None
-
-    content_type = document_version.content_type
-    byte_size = document_version.byte_size
-
-    if content_type == "application/pdf":
-        if byte_size < 50000:
-            doc_type = DocumentClassification.DocType.CZ_ID_FRONT
-            confidence = 0.75
-            side = "front"
-            side_confidence = 0.70
-        else:
-            doc_type = DocumentClassification.DocType.CZ_ID_BACK
-            confidence = 0.70
-            side = "back"
-            side_confidence = 0.65
-    elif content_type in ("image/png", "image/jpeg"):
-        if page_index % 2 == 0:
-            doc_type = DocumentClassification.DocType.CZ_ID_FRONT
-            confidence = 0.85
-            side = "front"
-            side_confidence = 0.80
-        else:
-            doc_type = DocumentClassification.DocType.CZ_ID_BACK
-            confidence = 0.80
-            side = "back"
-            side_confidence = 0.75
-
-    classification = DocumentClassification.objects.create(
-        organization=organization,
-        document=document_version.document,
-        version=document_version,
-        page_index=page_index,
-        side=side,
-        doc_type=doc_type,
-        doc_type_confidence=confidence,
-        side_confidence=side_confidence,
-        is_human_confirmed=False,
-    )
-    return classification
-
-
-OP_MRZ_PATTERNS = [
-    r"IDCZ[A-Z<]{30,}",
-    r"[A-Z]{2}[A-Z0-9<]{35,}",
-]
-
-ZP_MRZ_PATTERNS = [
-    r" CZ ",
-    r"VZP",
-    r"ZZP",
-]
-
-CARD_TYPE_INDICATORS = {
-    "cz_id_front": ["OBČANSKÝ PRŮKAZ", "IDENTITY CARD", "CIVILNI", "OP "],
-    "cz_id_back": ["ADRESA", "BYDLIŠTĚ", "ADRESSE", "MÍSTO"],
-    "cz_health_card_front": ["POJIŠTĚNEC", "INSURED", "EHIC", "VZP"],
-    "cz_health_card_back": [],
-}
-
-
-@transaction.atomic
-def process_intake_document(user, organization, worker, filename, content_type, content, intake_session=None):
-    """Full intake pipeline: quarantine → version → classification → OCR.
-
-    This is the canonical entry point for OP/ZP document intake.
-    Returns (document, document_version, classifications, ocr_run).
-    """
-    require_membership(user, organization)
-
-    validation = quarantine_and_validate(content, content_type, filename)
-
-    if validation["quarantine_result"] == "failed":
-        raise ValueError(f"Dokument neprošel validací: {validation['quarantine_result']}")
-
-    opaque_key = f"doc-{uuid.uuid4().hex}"
-    sha256 = validation["sha256"]
-
-    existing = Document.objects.filter(organization=organization, sha256=sha256).first()
-    if existing:
-        raise ValueError("Duplikát: dokument s tímto obsahem již existuje")
-
-    document = Document.objects.create(
-        organization=organization,
-        worker=worker,
-        opaque_key=opaque_key,
-        sha256=sha256,
-        content_type=content_type,
-        state=Document.State.QUARANTINED,
-    )
-
-    version = DocumentVersion.objects.create(
-        organization=organization,
-        document=document,
-        version_number=1,
-        opaque_key=opaque_key,
-        sha256=sha256,
-        content_type=content_type,
-        byte_size=len(content),
-        quarantine_result=validation["quarantine_result"],
-        malware_result=validation["malware_result"],
-        mime_result=validation["mime_result"],
-    )
-
-    idem_key = f"ocr-{document.pk}-{version.pk}-v1"
-    existing_run = OcrRun.objects.filter(document=document, version=version, idempotency_key=idem_key).first()
-    if existing_run:
-        return document, version, [], existing_run
-
-    ocr_run = OcrRun.objects.create(
-        organization=organization,
-        document=document,
-        version=version,
-        engine=OcrRun.Engine.LOCAL,
-        engine_version="1.0.0",
-        state=OcrRun.State.PENDING,
-        idempotency_key=idem_key,
-    )
-
-    classification = classify_document(version, organization)
-
-    field_proposals = create_field_proposals_from_classification(
-        organization, document, version, ocr_run, classification
-    )
-
-    AuditEvent.objects.create(
-        organization=organization,
-        actor_ref=f"user:{user.pk}",
-        event_type="document.quarantine",
-        object_ref=f"document:{document.pk}",
-        outcome="success",
-    )
-
-    if intake_session:
-        intake_session.state = IntakeSession.State.INTAKE_COMPLETE
-        intake_session.save()
-
-    return document, version, [classification], ocr_run
-
-
-def create_field_proposals_from_classification(organization, document, version, ocr_run, classification):
-    """Create FieldProposal records based on document classification.
-
-    For synthetic data, creates sample proposals. In production, this would
-    call the local OCR engine (RapidOCR) to extract actual field values.
-    """
-    from rapidocr import RapidOCR
-
-    proposals = []
-    doc_type = classification.doc_type
-
-    if doc_type == DocumentClassification.DocType.UNKNOWN:
-        return proposals
-
-    schema_fields = DOCUMENT_TYPE_SCHEMAS.get(doc_type, [])
-
-    try:
-        from rapidocr import RapidOCR
-        ocr_engine = RapidOCR()
-        result, _ = ocr_engine(version.opaque_key)
-
-        if result:
-            for item in result:
-                box, text, confidence = item
-                mapped_field = map_ocr_text_to_field(text, doc_type, schema_fields)
-                if mapped_field:
-                    proposal = FieldProposal.objects.create(
-                        organization=organization,
-                        document=document,
-                        version=version,
-                        ocr_run=ocr_run,
-                        field_name=mapped_field,
-                        raw_ocr_text=text,
-                        proposed_value=text.strip(),
-                        confidence=confidence,
-                        doc_class_confidence=classification.doc_type_confidence,
-                        source_page=0,
-                        source_bounding_box=box,
-                        ocr_engine=OcrRun.Engine.RAPIDOCR,
-                        ocr_model_version="1.0.0",
-                        state=FieldProposal.State.PROPOSED,
-                    )
-                    proposals.append(proposal)
-    except Exception:
-        pass
-
-    if not proposals:
-        for field in schema_fields:
-            proposal = FieldProposal.objects.create(
-                organization=organization,
-                document=document,
-                version=version,
-                ocr_run=ocr_run,
-                field_name=field,
-                raw_ocr_text="",
-                proposed_value="",
-                confidence=None,
-                doc_class_confidence=classification.doc_type_confidence,
-                ocr_engine=OcrRun.Engine.LOCAL,
-                state=FieldProposal.State.MISSING,
-            )
-            proposals.append(proposal)
-
-    return proposals
-
-
-CZ_DIACRITICS_MAP = {
-    "Á": "A", "Ä": "A", "Č": "C", "Ď": "D", "É": "E", "Ě": "E",
-    "Í": "I", "Ň": "N", "Ó": "O", "Ř": "R", "Š": "S", "Ť": "T",
-    "Ú": "U", "Ů": "U", "Ü": "U", "Ý": "Y", "Ž": "Z",
-    "á": "a", "ä": "a", "č": "c", "ď": "d", "é": "e", "ě": "e",
-    "í": "i", "ň": "n", "ó": "o", "ř": "r", "š": "s", "ť": "t",
-    "ú": "u", "ů": "u", "ü": "u", "ý": "y", "ž": "z",
-}
-
-
-def normalize_ocr_text(text):
-    """Normalize OCR text: remove extra spaces, normalize diacritics."""
-    import unicodedata
-    text = " ".join(text.split())
-    nfkd = unicodedata.normalize("NFKD", text)
-    return "".join(c for c in nfkd if not unicodedata.combining(c))
-
-
-FIELD_VALUE_PATTERNS = {
-    "cz_id_front": {
-        "surname": r"(?:PŘÍJMENÍ|SURNAME|LAST NAME)[:\s]+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž]+)",
-        "given_name": r"(?:JMÉNA|NAMES|GIVEN NAME)[:\s]+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž\s]+)",
-        "dob": r"(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{4})",
-        "birth_place": r"(?:MÍSTO NAROZENÍ|PLACE OF BIRTH)[:\s]+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž\s]+?)(?=\s+DATUM|\s+NATIONALITY|\s+POHLAVÍ|$)",
-        "nationality": r"(?:NÁRODNOST|NATIONALITY)[:\s]+([A-Z]{2})",
-        "sex": r"(?:POHLAVÍ|SEX)[:\s]+([MZ])",
-        "document_id": r"(?:ČÍSLO|DOCUMENT No|NO)[:\s]+([A-Z0-9]+)",
-        "expiry_date": r"(?:PLATNOST DO|EXPIRY)[:\s]+(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{4})",
-    },
-    "cz_id_back": {
-        "residence_street": r"(?:ULICE|STREET|ADRESA)[:\s]+([A-Z0-9ÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž\s]+?)(?=\s+\d+|$)",
-        "residence_house_number": r"(\d+[/]?\d*)",
-        "residence_city": r"(?:MĚSTO|OBEC|CITY)[:\s]+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž\s]+?)(?=\s+\d{3}\s|$)",
-        "residence_postal_code": r"(\d{3}\s?\d{2})",
-    },
-    "cz_health_card_front": {
-        "surname": r"(?:PŘÍJMENÍ|SURNAME)[:\s]+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž]+)",
-        "given_name": r"(?:JMÉNO|NAME)[:\s]+([A-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽa-záčďéěínóřšťúůýž\s]+)",
-        "personal_number": r"(?:ČÍSLO POJIŠTĚNCE|INSURANCE No)[:\s]+([A-Z0-9/]+)",
-        "card_number": r"(?:ČÍSLO KARTY|CARD No)[:\s]+([A-Z0-9]+)",
-    },
-}
-
-
-def map_ocr_text_to_field(text, doc_type, schema_fields):
-    """Map extracted OCR text to A1 field name based on patterns."""
-    import re
-
-    text_norm = normalize_ocr_text(text)
-    patterns = FIELD_VALUE_PATTERNS.get(doc_type, {})
-
-    for field in schema_fields:
-        pattern = patterns.get(field)
-        if pattern and re.search(pattern, text_norm, re.IGNORECASE):
-            return field
-
-    if len(text_norm) < 3:
-        return None
-
-    for field in schema_fields:
-        if field.replace("_", " ").lower() in text_norm.lower():
-            return field
-
-    return None
-
-
 @transaction.atomic
 def confirm_field_proposal(user, organization, field_proposal, corrected_value=None, reason=""):
-    """Confirm a field proposal with optional correction. Creates immutable FieldDecision."""
-    require_membership(user, organization)
-
-    existing_decision = FieldDecision.objects.filter(field_proposal=field_proposal).exists()
-    if existing_decision:
-        raise ValueError("Návrh již byl potvrzen")
-
-    decision = FieldDecision.objects.create(
-        organization=organization,
-        field_proposal=field_proposal,
-        decision="confirmed",
-        corrected_value=corrected_value or field_proposal.proposed_value,
-        reason=reason,
-        decided_by=user,
-    )
-
-    AuditEvent.objects.create(
-        organization=organization,
-        actor_ref=f"user:{user.pk}",
-        event_type="ocr.confirmed",
-        object_ref=f"field_proposal:{field_proposal.pk}",
-        outcome="success",
-    )
-
+    from .models import DocumentRegionAssociation, WorkerIdentityRevision
+    from src.document_core.interpretation import valid_value
+    require_capability(user, organization, "document:confirm")
+    proposal = FieldProposal.objects.select_for_update().get(pk=field_proposal.pk, organization=organization)
+    if proposal.version.organization_id != organization.pk or proposal.document.organization_id != organization.pk:
+        raise Forbidden("cross-organization proposal")
+    if proposal.version.document_id != proposal.document_id or (proposal.ocr_run_id and
+        (proposal.ocr_run.organization_id != organization.pk or proposal.ocr_run.document_id != proposal.document_id or proposal.ocr_run.version_id != proposal.version_id)):
+        raise Forbidden("cross-organization proposal source")
+    document = Document.objects.select_for_update().get(pk=proposal.document_id, organization=organization)
+    if document.documentversion_set.order_by("-version_number").first().pk != proposal.version_id:
+        raise ValueError("DOCUMENT_VERSION_SUPERSEDED")
+    if FieldDecision.objects.filter(field_proposal=proposal).exists():
+        raise ValueError("PROPOSAL_ALREADY_DECIDED")
+    if proposal.document_region_id:
+        association = DocumentRegionAssociation.objects.filter(organization=organization, ocr_run=proposal.ocr_run,
+                                                               region_id=proposal.document_region_id).first()
+        if not association:
+            raise ValueError("REGION_ASSOCIATION_REQUIRED")
+        worker = association.worker
+    else:
+        worker = proposal.document.worker
+    if worker is None or worker.organization_id != organization.pk:
+        raise Forbidden("worker association required")
+    value = proposal.proposed_value if corrected_value is None else corrected_value
+    if not value or not value.strip():
+        raise ValueError("EMPTY_VALUE")
+    value, findings = valid_value(proposal.field_name, value)
+    if findings:
+        raise ValueError("INVALID_FIELD_VALUE")
+    if proposal.validation_findings and not reason.strip():
+        raise ValueError("CONFLICT_REASON_REQUIRED")
+    decision = FieldDecision.objects.create(organization=organization, field_proposal=proposal, decision="confirmed",
+        corrected_value=value, reason=reason, decided_by=user)
+    # Serialize authoritative revisions per worker; never overwrite Worker from OCR.
+    Worker.objects.select_for_update().get(pk=worker.pk, organization=organization)
+    previous = WorkerIdentityRevision.objects.filter(organization=organization, worker=worker).order_by("-revision_number").first()
+    fields = dict(previous.confirmed_fields) if previous else {}
+    fields[proposal.field_name] = value
+    WorkerIdentityRevision.objects.create(organization=organization, worker=worker, source_document=proposal.document,
+        source_version=proposal.version, revision_number=(previous.revision_number+1 if previous else 1),
+        confirmed_fields=fields, confirmed_by=user)
+    if not FieldProposal.objects.filter(document=proposal.document, version=proposal.version).exclude(fielddecision__decision="confirmed").exists():
+        Document.objects.filter(pk=proposal.document_id).update(state=Document.State.CONFIRMED)
+    AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}", event_type="ocr.confirmed",
+                              object_ref=f"field_proposal:{proposal.pk}", outcome="success")
     return decision
-
 
 @transaction.atomic
 def create_review_task(user, organization, worker, document, task_type, description, priority=ReviewTask.Priority.MEDIUM):
@@ -613,3 +265,63 @@ def create_review_task(user, organization, worker, document, task_type, descript
 
     return task
 
+
+
+@transaction.atomic
+def attach_a1_artifact(user, organization, case_id, *, expected_source_hash,
+                       employee_id, rows, employees_path, profile_dir):
+    """Attach canonical evidence only after authorized explicit record association.
+
+    Does not issue a certificate, approve its visual review, or promote a final.
+    The caller supplies the authoritative employee ID; filenames/names never match.
+    """
+    from pathlib import Path
+    import tempfile
+    from django.conf import settings
+    from scripts.finalize_a1 import validate_review, row_to_form
+    from scripts.a1_core import generate_a1_pdf
+    from scripts.a1_quality_gate import validate_pdf
+    from .j4_artifacts import publish_artifact, _root, _hash, _json
+
+    require_capability(user, organization, "a1:approve")
+    case = A1Case.objects.select_for_update().get(pk=case_id, organization=organization)
+    _, _, live_hash = current_a1_source(case.worker, organization)
+    if case.source_hash != expected_source_hash or case.source_hash != live_hash or case.is_stale:
+        raise StaleWrite("A1_SOURCE_CHANGED")
+    if case.readiness != A1Case.Readiness.READY:
+        raise ValueError("A1_CASE_NOT_READY")
+    if case.artifact_reference:
+        raise StaleWrite("A1_ARTIFACT_ALREADY_ATTACHED")
+    validated = validate_review(rows, Path(employees_path), Path(profile_dir))
+    matches = [(row, profile) for row, profile in validated if row["employee_id"] == employee_id]
+    if len(matches) != 1:
+        raise ValueError("A1_ASSOCIATION_INVALID")
+    row, profile = matches[0]
+    background = settings.BASE_DIR / "templates/a1_background.pdf"
+    layout = settings.BASE_DIR / "config/a1_layout.json"
+    dependencies = {"source_hash": case.source_hash,
+                    "review_sha256": _hash(_json(row)), "institution_sha256": _hash(_json(profile)),
+                    "template_sha256": _hash(background.read_bytes()),
+                    "layout_sha256": _hash(layout.read_bytes())}
+    # Include current renderer/QA/build identities alongside accepted evidence.
+    dependencies.update(current_artifact_dependencies(case))
+    root = _root(Path(settings.DOCUMENT_STORAGE_ROOT) / "j4")
+    with tempfile.TemporaryDirectory(prefix=".render-", dir=root) as temporary:
+        output = Path(temporary) / "artifact.pdf"
+        generate_a1_pdf(row_to_form(row, profile), background, layout, output)
+        output.chmod(0o600)
+        qa = validate_pdf(output, row, {r["employee_id"]: r for r, _ in validated}, background, 24)
+        if not qa.passed or qa.checks.get("ghostscript") is not True:
+            raise ValueError("A1_CANONICAL_QA_FAILED")
+        dependencies["qa_sha256"] = _hash(_json({"pdf_sha256": qa.sha256, "checks": qa.checks}))
+        reference = publish_artifact(root, output.read_bytes(),
+                                     {"case": case.source_snapshot_json, "review": row, "institution": profile,
+                                      "canonical_qa": {"pdf_sha256": qa.sha256, "checks": qa.checks}},
+                                     dependencies)
+    case.artifact_reference = reference
+    case.artifact_dependencies = dependencies
+    case.prepared_artifact_hash = reference["pdf_sha256"]
+    case.save(update_fields=["artifact_reference", "artifact_dependencies", "prepared_artifact_hash"])
+    AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}",
+                              event_type="a1.artifact_attached", object_ref=f"a1:{case.pk}", outcome="success")
+    return case

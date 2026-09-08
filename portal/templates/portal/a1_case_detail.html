@@ -14,6 +14,19 @@
     </div>
 </div>
 
+{% if case.artifact_reference %}
+<section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Dokument ke kontrole">
+    <h3 class="text-lg font-semibold mb-2">Dokument ke kontrole</h3>
+    <p class="text-sm text-gray-600 mb-3">Tato kopie není potvrzením o vydání A1. Změněné podklady vyžadují novou přípravu.</p>
+    <div class="flex flex-wrap gap-4">
+        <a href="{% url 'a1_artifact_download' pk=case.pk %}">Stáhnout PDF</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=1 %}">Náhled strany 1</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=2 %}">Náhled strany 2</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=3 %}">Náhled strany 3</a>
+    </div>
+</section>
+{% endif %}
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Rozhodnutí operátora</h3>
@@ -95,16 +108,6 @@
                         </span>
                     </dd>
                 </div>
-                <div>
-                    <dt class="text-sm text-gray-500">Source hash</dt>
-                    <dd class="font-mono text-xs text-gray-900 break-all">{{ case.source_hash }}</dd>
-                </div>
-                {% if case.prepared_artifact_hash %}
-                <div>
-                    <dt class="text-sm text-gray-500">Artifact hash</dt>
-                    <dd class="font-mono text-xs text-gray-900 break-all">{{ case.prepared_artifact_hash }}</dd>
-                </div>
-                {% endif %}
             </dl>
         </div>
 
