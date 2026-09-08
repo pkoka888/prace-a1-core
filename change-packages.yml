@@ -23,6 +23,7 @@
     "a1_audit_path_dependencies": {
       "purpose": "Publish existing canonical audit/path dependencies and restore Git-independent profile validation.",
       "paths": [
+        "config/a1_template_repair_2026-09-06.json",
         "scripts/a1_paths.py",
         "scripts/a1_audit.py",
         "tests/test_a1_stabilization.py",

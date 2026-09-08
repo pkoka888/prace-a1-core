@@ -1,0 +1,65 @@
+{
+  "source_sha256": "84a6526b9bb12af6a900a5e6b92d4e07cd053664413836d23731a00a55370f3c",
+  "output_sha256": "0f7d602ecb0f77002feebbb72fb9f716c2f568b72d12587021eb3b5d5fed130a",
+  "repairs": [
+    {
+      "page": 1,
+      "rect": [
+        453.925,
+        379.675,
+        463.95,
+        389.7
+      ]
+    },
+    {
+      "page": 1,
+      "rect": [
+        81.425,
+        654.425,
+        88.575,
+        661.825
+      ]
+    },
+    {
+      "page": 3,
+      "rect": [
+        77.55,
+        419.55,
+        84.95,
+        426.95
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "page": 1,
+      "dpi": 144,
+      "outside_changed_pixels": 0
+    },
+    {
+      "page": 2,
+      "dpi": 144,
+      "outside_changed_pixels": 0
+    },
+    {
+      "page": 3,
+      "dpi": 144,
+      "outside_changed_pixels": 0
+    },
+    {
+      "page": 1,
+      "dpi": 300,
+      "outside_changed_pixels": 0
+    },
+    {
+      "page": 2,
+      "dpi": 300,
+      "outside_changed_pixels": 0
+    },
+    {
+      "page": 3,
+      "dpi": 300,
+      "outside_changed_pixels": 0
+    }
+  ]
+}
