@@ -2,6 +2,84 @@
   "schema_version": 1,
   "accepted_checkpoint": "c01aa2b",
   "packages": {
+    "shared_document_core": {
+      "purpose": "Offline framework-independent synthetic document processing and optional local adapters.",
+      "paths": [
+        "src/document_core/",
+        "tests/test_document_core/"
+      ],
+      "checks": [
+        "unshare -Urn venv/bin/python -m pytest tests/test_document_core -q"
+      ],
+      "dependencies": [
+        "Local model assets preinstalled; external providers and real-data activation remain disabled"
+      ],
+      "rollback": "Revert only together with dependent document intake imports."
+    },
+    "synthetic_runtime_dependencies": {
+      "purpose": "Confined synthetic runtime/readiness dependencies; no service activation.",
+      "paths": [
+        "portal/release1a/readiness_checks.py",
+        "portal/release1a/readiness_runner.py",
+        "portal/release1a/readiness_worker.py",
+        "portal/release1a/runtime_contract.py",
+        "portal/release1a/runtime_safety.py",
+        "portal/settings_document_tests.py",
+        "portal/settings_supervised_synthetic.py",
+        "tests/test_readiness_checks.py",
+        "tests/test_runtime_hardening.py",
+        "tests/test_settings_supervised_synthetic.py"
+      ],
+      "checks": [
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py -q"
+      ],
+      "dependencies": [
+        "Existing synthetic portal models; no host service or database writes"
+      ],
+      "rollback": "Preserve service configuration; revert only with dependent readiness routes."
+    },
+    "shared_document_portal": {
+      "purpose": "Protected synthetic intake, version supersession and dependent J4/runtime routes with acceptance tests.",
+      "paths": [
+        "portal/release1a/document_intake.py",
+        "portal/release1a/document_storage.py",
+        "portal/release1a/document_labels.py",
+        "portal/release1a/intake_views.py",
+        "portal/release1a/services.py",
+        "portal/release1a/forms.py",
+        "portal/release1a/urls.py",
+        "portal/templates/portal/document_intake_detail.html",
+        "portal/templates/portal/document_intake_upload.html",
+        "portal/templates/portal/document_list.html",
+        "portal/templates/portal/partials/document_list.html",
+        "portal/templates/portal/worker_detail.html",
+        "portal/templates/portal/a1_case_detail.html",
+        "portal/templates/portal/a1_evidence_intake.html",
+        "tests/document_web/__init__.py",
+        "tests/document_web/test_intake.py",
+        "tests/document_web/test_readiness_postgres.py",
+        "tests/m2/test_views.py",
+        "tests/m2/test_release1a_vertical.py",
+        "tests/m2/test_review_fixes.py",
+        "tests/m2/test_readiness.py",
+        "tests/test_j4_service.py",
+        "tests/test_j4_minimum.py",
+        "tests/test_j4_artifacts.py",
+        "tests/test_runtime_contract.py",
+        "scripts/test_document_intake.py"
+      ],
+      "checks": [
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
+        "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q"
+      ],
+      "dependencies": [
+        "shared_document_core",
+        "synthetic_runtime_dependencies",
+        "release1a_historical_migration_repair",
+        "a1_audit_path_dependencies"
+      ],
+      "rollback": "Keep protected versions and receipts; revert source only after checking dependent routes."
+    },
     "release1a_historical_migration_repair": {
       "purpose": "Restore historical document/J4 migrations and model parity; disposable synthetic databases only.",
       "paths": [
@@ -162,7 +240,7 @@
     "j4_confirmation_evidence_repair": {
       "purpose": "Repair J4 visual confirmation and evidence intake interface with durable persistence, atomic transactions, capability checks, and tests. Synthetic data only.",
       "paths": ["portal/release1a/j4_artifacts.py", "portal/release1a/migrations/0012_a1case_confirmation_evidence.py", "portal/release1a/models.py", "portal/release1a/views.py", "portal/templates/portal/a1_artifact_confirm.html", "portal/templates/portal/partials/a1_evidence_list.html", "tests/m2/test_j4_delivery.py"],
-      "checks": ["DJANGO_SETTINGS_MODULE=portal.settings venv/bin/python -m pytest tests/m2/test_j4_delivery.py::J4ConfirmationEvidenceTests -q"],
+      "checks": ["env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.m2.test_j4_delivery --noinput -v 1"],
       "dependencies": ["plan_ac_integrity"],
       "rollback": "Revert confirmation/evidence views, model fields, migration, templates, and tests together."
       ,"intended_commit": "fix: repair J4 confirmation/evidence interface"
