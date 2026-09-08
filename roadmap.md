@@ -9,11 +9,15 @@ This is the sole authoritative execution roadmap. Dated files under `plans/` def
 
 ## Local automation design — 2026-09-08
 
-Local automation proposal: [one-command scan intake to database and A1 drafts](plans/2026-09-08-local-a1-automation.md).
-Reuse J2/J4 and DB-MIG-1 through DB-MIG-7. Automatic processing records machine
-checks and prepares unverified drafts; BO confirmation records actor/time/revision
-without making the batch wait. This is a design checkpoint, not implemented
-automation, a database migration or real-data activation.
+Consolidated [local automation contract](plans/2026-09-08-local-a1-automation.md)
+and [44-field mapping](docs/architecture/release-1a-field-mapping.md): one editable
+source tree; immutable release exports; explicit development/production data roots;
+reconciled inputs followed by fresh synthetic DB/seed/reproduction work, then
+J2/J4 and DB-MIG-1 through DB-MIG-7. Automatic processing will save proposals and
+prepare eligible unverified drafts; BO records actor/time/revision confirmation.
+AGENTS.md now uses proportional checks and one delivery record. This is a
+documentation checkpoint, not implemented automation, database migration, deployment
+or activation; the 34 catalog entries and registered approval states are unchanged.
 
 ## Approval validation delivery — 2026-09-08
 

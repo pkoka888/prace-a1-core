@@ -3,6 +3,20 @@
 **Status**: active
 **Milestone**: M0–M2
 
+## Practical consolidation and delivery — 2026-09-08
+
+Follow the [local automation plan](2026-09-08-local-a1-automation.md): one editable
+source tree, immutable `runtime/s-<full-commit-sha>/` exports and fresh
+`runtime/portal/supervised-development/` under `portal.settings_supervised_synthetic`.
+Preserve historical databases; rebuild development from the on-disk migration graph.
+Future `runtime/portal/production/` and `portal.settings_production` require separate
+provisioning. Engineering owns settings/manifests; sysadmin owns credentials/host state.
+The planned seed `--verify` and `scripts/release_reproducer.sh <sha>` are follow-up
+implementation, not existing acceptance evidence. No environment is mutated here.
+Use AGENTS.md's proportional checks and one delivery record; historical duplicate
+export-test requirements do not add a new gate. Existing hooks/activation checks
+remain effective. Optional skills/MCPs/client hooks do not block this work.
+
 ## Approval validation delivery — 2026-09-08
 
 Shared approval checks preserve catalog consistency and enforce dependency states

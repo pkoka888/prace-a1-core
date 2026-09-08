@@ -3,6 +3,20 @@
 **Status**: active
 **Milestone**: A1 operations
 
+## Local A1 consolidation — 2026-09-08
+
+The [local automation contract](2026-09-08-local-a1-automation.md) and
+[44-field mapping](../docs/architecture/release-1a-field-mapping.md) define the
+J2/J4/DB-MIG follow-up. Reconcile baseline/scoped inputs explicitly; preserve working
+provisional packages. The canonical renderer and both frameworks remain in place.
+Blank provisional self-employed 5.1 and default 5.2 `DE, CZ` follow existing core
+policy; generic readiness discrepancies stay scoped to that path. Artifact creation,
+input acceptance, visual review and external issuance are distinct.
+This documentation checkpoint changes no PDFs or readiness/approval states. Current
+instructions in AGENTS.md supersede repetitive historical validation procedures.
+Existing operator-only A1 work remains authorized under the canonical pipeline;
+new portal activation uses real-data-rules §14, not a second A1 gate.
+
 ## Purpose
 
 Single governing plan for the fail-closed A1 production pipeline and the

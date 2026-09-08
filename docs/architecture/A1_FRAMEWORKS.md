@@ -1,205 +1,102 @@
-# A1 Generation Frameworks
+# A1 generation frameworks
 
-## Two frameworks, one canonical path
+## One policy core, two rendering frameworks
 
-This repository holds two PDF generation frameworks for the Czech A1 form.
-Both are **fallbacks** for each other; one is preferred. Pick the right one
-based on the template you are rendering against.
+| Framework | Owner | Current use |
+|---|---|---|
+| Coordinate overlay | `scripts/a1_core.py::generate_a1_pdf` | Canonical path for the current image-backed template |
+| Placeholder search/replace | `scripts/pdf_named_fields.py` | Synthetic-tested alternative for a suitable vector/token template |
 
-| Framework | Module | Preferred for | Status |
-|---|---|---|---|
-| **Placeholder search/replace** | `scripts/pdf_named_fields.py` `placeholder_template()` + `replace_placeholders()` | Vector-backed templates with `{{variable}}` tokens. Cleaner code; the value flows through a single substitution step. | **Preferred default** (when template is vector-backed) |
-| **Coordinate overlay** | `scripts/a1_core.py` `generate_a1_pdf()` | Image-backed templates (the current A1 2025 background has no vector text layer). Required when the template cannot accept text-insertion without an opaque redraw. | **Fallback** (forced by image-backed A1 2025 template) |
+Keep both frameworks. A vector-backed template makes placeholder rendering the
+preferred candidate, not an automatic production switch. Integrate it through the
+shared policy and validate equivalent output before changing the canonical path.
+Do not swap only the dashboard call site and leave CLI/QA using another contract.
 
-## Why coordinate overlay is currently canonical
+All shared date, provisional-number, Czech display casing, flattening and validation
+policy belongs in [a1_core.py](../../scripts/a1_core.py). Renderer-specific helpers
+must delegate shared policy there; duplication is a refactoring defect, not another
+source of authority. Integration must make both engines consume the same normalized form values.
+The experimental named-field helper still has its own display seam; reconcile it
+with the core before promoting that engine.
 
-`templates/a1_background.pdf` is the official A1 2025 form. It is delivered
-as a single image per page with no vector text layer. The placeholder
-framework requires a vector text layer to anchor `{{tokens}}` for
-search-and-replace. Until the A1 background template is replaced with a
-vector-backed one, the coordinate overlay (`a1_core.generate_a1_pdf()`)
-is the only framework that produces a release artifact.
+## Current canonical path
 
-When the A1 2025 template is reissued as vector-backed text, the placeholder
-framework becomes the preferred default. The coordinate overlay stays as the
-fallback for any image-backed template the operator may need to render
-against.
+- [generate_provisional_a1.py](../../scripts/generate_provisional_a1.py) composes
+  reviewed inputs, stages output and publishes a protected provisional package.
+- [finalize_a1.py](../../scripts/finalize_a1.py) owns CSV/readiness and `row_to_form()`.
+- [a1_core.py](../../scripts/a1_core.py) owns `build_form_data()`, `render_overlay()`
+  and `generate_a1_pdf()` using `templates/a1_background.pdf` and `config/a1_layout.json`.
+- [a1_quality_gate.py](../../scripts/a1_quality_gate.py) owns package validation,
+  rendered previews and hash-bound visual review.
+- [portal services](../../portal/release1a/services.py) prepare versioned case inputs
+  and call the same renderer; [j4_artifacts.py](../../portal/release1a/j4_artifacts.py)
+  publishes actual PDF bytes, snapshots, page previews and receipts.
 
-## Canonical framework today: coordinate overlay
+As of 2026-09-08, the core reads the background with `PdfReader`, creates a fresh
+`PdfWriter`, adds each background page, then calls `page.merge_page()` with the
+ReportLab overlay. Image streams receive lossless ASCII85 transport encoding.
+The output is reopened to check three pages and no interactive form fields.
+This describes current source, not a general claim about another library's behavior.
+A PDF text dump in an editor is not a rendered-page inspection.
 
-Files involved:
-
-- `scripts/a1_core.py` — static overlay renderer + form validation. **All
-  core logic lives here** (validators, builders, generators).
-- `scripts/generate_provisional_a1.py` — atomic publisher; wraps
-  `a1_core.generate_a1_pdf()` with audit, staging, output validation.
-- `scripts/finalize_a1.py` — readiness checks, `row_to_form()` mapper.
-- `scripts/a1_quality_gate.py` — fail-closed QA gate that re-renders and
-  validates the published PDFs.
-- `portal/release1a/services.py:323` — dashboard click → calls
-  `a1_core.generate_a1_pdf()` after readiness and approval gates pass.
-
-Entry points (CLI):
+Operational entry points (inspect `--help` and use authorized protected inputs):
 
 ```bash
-# 1. Atomic provisional publication
-venv/bin/python scripts/generate_provisional_a1.py \
-  --review $A1_PRIVATE_DIR/a1/review.csv \
-  --cohort  $A1_PRIVATE_DIR/a1/cohort.json \
-  --profiles config/institutions \
-  --config  config/a1_provisional.json \
-  --output  $A1_PACKAGE
-
-# 2. Deterministic QA gate
-venv/bin/python scripts/a1_quality_gate.py render \
-  --pdf-dir "$A1_PACKAGE" --preview-dir ... --contact-dir ... --dpi 300
-venv/bin/python scripts/a1_quality_gate.py validate ...
+export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
+venv/bin/python scripts/generate_provisional_a1.py --help
+venv/bin/python scripts/finalize_a1.py --help
+venv/bin/python scripts/a1_quality_gate.py --help
 ```
 
-Entry point (dashboard):
+Use the [pipeline guide](readme-a1-forms.md) and
+[A1 skill](../../.agents/skills/a1-pdf-production/SKILL.md) for procedures.
+Never copy another person's generated values or substitute a legacy template.
 
-```python
-# portal/release1a/services.py:323
-generate_a1_pdf(row_to_form(row, profile), background, layout, output)
-```
+## Section 5 policy
 
-## Preferred default: placeholder search/replace
+For the current self-employed multi-state provisional presentation,
+`config/a1_provisional.json` defaults `activity_name` (5.1) to blank and
+`activity_address` (5.2) to `DE, CZ`. Preserve explicitly reviewed row-specific
+territory overrides and distinguish employee from self-employed profiles.
+Provisional validation and QA support blank 5.1; the generic readiness report
+still lists activity_name as required. Record that discrepancy as a focused
+follow-up, not proof that provisional generation is universally blocked. Do not
+introduce an additional documentation-only rejection rule or interpret this display default
+as a legal determination. Explicit values must follow the implemented field policy.
 
-Files involved:
+## Data and storage ownership
 
-- `scripts/pdf_named_fields.py` — placeholder insertion + redaction/replace.
-- `tests/test_pdf_named_fields.py` — sole consumer today. Synthetic PDF only.
+The [field mapping](release-1a-field-mapping.md) defines the proposed database
+transition. Until accepted cutover, reconcile the baseline review/cohort files
+with explicitly selected scoped snapshots; neither newest mtime nor an existing
+PDF supplies authoritative input. After cutover the database owns facts and
+CSV/JSON are revision-bound compatibility exports.
 
-The placeholder framework is the **preferred default** because:
+The CLI and portal intentionally have different protected package contracts:
 
-1. The data flow is simpler: `{{name}}` tokens in the template, search-and-
-   replace with a flat `dict[str, str]`.
-2. It does not need the coordinate layout JSON — the template itself is the
-   layout contract.
-3. It produces searchable text in the rendered PDF (useful for visual review).
-
-It is **not yet** the canonical release path because the current A1 2025
-background is image-backed. When the template becomes vector-backed, swap
-the call site in `portal/release1a/services.py:323` to:
-
-```python
-from scripts.pdf_named_fields import placeholder_template, replace_placeholders
-template = placeholder_template(blank_background, fields, font)
-filled = replace_placeholders(template, fields, values, font)
-```
-
-## Core logic — single source of truth
-
-All shared logic lives in `scripts/a1_core.py`. If you find yourself writing
-the same helper in another script, **stop and add it to `a1_core.py`**.
-
-| Concern | Where |
+| Owner | Storage contract |
 |---|---|
-| Date parsing / normalization | `a1_core.normalize_date()` |
-| Provisional issue-date policy (Mon/Wed, 61–180 days) | `a1_core.validate_provisional_issue_date()`, `a1_core.generate_provisional_issue_date()`, constants `ISSUE_DATE_WEEKDAYS`, `ISSUE_DATE_MIN_AGE_DAYS`, `ISSUE_DATE_MAX_AGE_DAYS` |
-| Certificate number binding to issue year | `a1_core.document_id_for_issue_year()` |
-| Random certificate number generation | `a1_core.generate_provisional_document_id()` |
-| One-year provisional period | `a1_core.provisional_one_year_period()` |
-| Czech display casing | `a1_core.czech_display_case()` and `pdf_named_fields.display_value()` (same logic; display_value is the test seam) |
-| Address enrichment | `a1_core.enrich_residence()` |
-| Form validation | `a1_core.validate_form_data()` |
-| Form data flattening (with defensive casing) | `a1_core.build_form_data()` |
-| PDF rendering (coordinate overlay, fallback) | `a1_core.generate_a1_pdf()` and `a1_core.render_overlay()` |
-| PDF rendering (placeholder search/replace, preferred) | `pdf_named_fields.placeholder_template()` and `pdf_named_fields.replace_placeholders()` |
+| Canonical CLI publisher | `output/provisional/<run_uuid>/A1_<opaque_worker_id>.pdf` plus publisher manifests/checklists; QA previews/contact sheets use protected companion directories |
+| `ProtectedDocumentStorage` | Relative keys matched by `(?:documents\|generated)/[a-f0-9]{32}(?:/[a-f0-9]{64})?\.(?:source\|json\|png)` beneath `DOCUMENT_STORAGE_ROOT`; no public URL |
+| J4 artifact publisher | `<configured-artifact-root>/<artifact_uuid_hex>/artifact.pdf`, `snapshot.json`, `page-1.png` etc. and `receipt.json`; staged, hashed and atomically published |
 
-## Section 5 policy (current)
+The regex is enforced by
+[document_storage.py](../../portal/release1a/document_storage.py), not a suggestion
+for naming PDF packages. J4 has its own publisher and receipt validation.
+Private directories/files default to `0700`/`0600` (documented dedicated-group
+exception only). Keep original display filenames in protected metadata when needed.
 
-The original A1 2025 form has two sections for the activity details:
+Fixtures must be wholly synthetic and independent of operational cohorts. Never
+name a fixture directory after actual employees or populate it from their PDFs.
+Generation/visual review does not mean external submission, official issuance or
+final promotion. Reserved final destinations still need the separately implemented
+receipt-bound promotion contract and authoritative evidence.
 
-- **Section 5.1** — "Jméno (jména) nebo obchodní název (názvy) … kde budete
-  zaměstnán / zaměstnána". For a self-employed worker this is empty (the
-  worker is the employer declared in section 4). The provisional
-  configuration must therefore leave `activity_name` empty:
-  `config/a1_provisional.json::activity_name = ""`.
-- **Section 5.2** — "Adresa (adresy) … kde budete zaměstnán / zaměstnána".
-  The default is the destination country and home country as a comma list:
-  `config/a1_provisional.json::activity_address = "DE, CZ"`. The cohort may
-  override for AT or other member states.
+## Directory and release consolidation
 
-If section 5.1 is filled for a self-employed multi-state profile, that is a
-**policy violation**; the QA gate must reject it.
-
-## Naming conventions
-
-Scripts use a **domain-prefixed** style. New scripts should follow the same
-pattern so the catalog stays predictable:
-
-| Prefix | Purpose |
-|---|---|
-| `a1_*` | A1 form generation, validation, quality gate, audit |
-| `portal/release1a/*` | Django app for the A1 release 1A dashboard |
-| `document_core` | Cross-document OCR + extraction library (`src/document_core/`) |
-| `research_*` | Market research and benchmark tooling |
-| `validate_*` | Validation harnesses for plans, approvals, schemas |
-| `run_*` | Executable benchmarks / proofs of concept |
-| `seed_*` | Local DB seeding and dev fixtures |
-| `release_verifier.py` | End-to-end release smoke checks |
-| `release1a_*` | (legacy) early release1a scripts; superseded by the `portal/release1a/` Django app |
-| `migrate_*` | One-time data migration commands (see PLAN-WORKERS-MIGRATE-TO-DB) |
-
-If a new script does not match a known prefix, prefer the **most specific**
-prefix and add a short docstring at the top declaring its scope.
-
-## File-system conventions
-
-A1 artifacts should follow a stable, predictable layout. The repo accumulates
-many "backup" and "preview" trees if generated carelessly.
-
-### Output package layout (canonical)
-
-```
-output/provisional/<UUID>/                # atomic publisher destination
-├── A1_<employee_id>.pdf                   # one per accepted row
-├── verification_table.csv                 # per-row gate status
-├── CLIENT_CONFIRMATION_CHECKLIST.md       # manual review reminder
-└── generation_manifest.json               # inputs/snapshot/receipt hashes
-```
-
-No timestamped backups, no per-page preview copies, no contact-sheets baked
-into the same directory. Previews and contact sheets go into adjacent
-`-previews/` and `-contact-sheets/` directories produced by the QA gate, not
-into the provisional package.
-
-### Test fixture layout
-
-`tests/fixtures/release_1a/orgonik_zivot_pdfs/`:
-
-```
-A1_<cohort_employee_id>.pdf       # canonical name; one per worker
-MANIFEST.json                     # synthetic notice + provenance
-templates/a1_template_marked.pdf  # red {{placeholder}} overlay for review
-```
-
-Naming must match the cohort employee IDs (`a1/cohort.json`). One naming
-convention per artifact — no `-contact.pdf` / `-preview.pdf` duplicates in
-the same directory.
-
-## What the dashboard calls
-
-The dashboard (Django `portal/release1a`) does **not** call any A1 helper
-directly. The path is:
-
-1. Operator uploads scans via the intake view.
-2. OCR pipeline extracts fields; review UI presents them.
-3. Operator finalizes the review → `portal.Worker` row (today: `a1/review.csv`,
-   after PLAN-WORKERS-MIGRATE-TO-DB: direct DB write).
-4. Click **Generate A1** → `portal/release1a/services.py:323`
-   `generate_a1_pdf(row_to_form(row, profile), background, layout, output)`
-5. Deterministic QA gate (`a1_quality_gate.py`) validates the artifact.
-6. Visual review + explicit human approval → `output/final/<UUID>/`.
-
-If you are tempted to add a "Generate A1" button that skips readiness or QA,
-**do not**. The gate is fail-closed for a reason.
-
-## Why both frameworks stay
-
-The coordinate overlay is required for the current image-backed A1 2025
-template; the placeholder search/replace is the preferred default for any
-vector-backed template. They are not duplicated logic — they share
-`display_value`, `czech_display_case`, and the data flow from `build_form_data`.
-They are two renderers consuming the same canonical form data.
+Follow the [local automation plan](../../plans/2026-09-08-local-a1-automation.md):
+one editable source tree; immutable exports at `runtime/s-<full-commit-sha>/`;
+a fresh `runtime/portal/supervised-development/` environment; historical packages
+preserved until individually classified. No parallel editable production code tree.
+Shared OCR stays in `src/document_core/`; thin Django adapters stay in
+`portal/release1a/`. Match existing domain prefixes for new scripts.

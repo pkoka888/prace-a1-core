@@ -2,7 +2,18 @@
 
 **Status**: active
 **Milestone**: M5
-**Activation gate**: this plan's acceptance criteria plus all preceding Sprint 1–4 gates
+**Activation gate**: real-data-rules §14; this plan records the existing Sprint 1–4 dependencies and evidence
+
+## Consolidation boundary — 2026-09-08
+
+The [local automation plan](2026-09-08-local-a1-automation.md) documents one data
+owner, fresh synthetic development and later BO confirmation. It does not import
+real workers, change registered approvals or activate a service. The operational
+activation gate remains [real-data-rules §14](../docs/security/real-data-rules.md#14-real-data-activation-gate),
+with this plan recording its staged dependencies and evidence. Existing authorized
+operator-only A1 work remains separate. Capacity, recovery and production provisioning
+do not block safe synthetic implementation. Preserve current databases and working
+PDF packages; any future production root must be aligned with policy §5 before use.
 
 ## Purpose
 

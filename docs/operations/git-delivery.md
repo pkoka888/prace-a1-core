@@ -1,7 +1,68 @@
 # Git delivery safeguards — 2026-09-08
 
-Parent: PLAN-INFRA. Scope: existing GitHub CI and local Git tooling only.
+Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
+
+## Current operating policy — 2026-09-08 consolidation
+
+[AGENTS.md](../../AGENTS.md) is the concise operational authority. This section
+supersedes historical blanket requirements to repeat working-tree tests in an
+export for every small change. Historical results below remain evidence for their
+own scopes, not additional present-day gates.
+
+| Change | Required verification |
+|---|---|
+| Documentation | Relevant links/status consistency, whitespace and staged-content review |
+| Ordinary code | Focused regression checks once against delivered inputs |
+| Migrations, storage, authorization, shared rendering or dependencies | Relevant integration checks; historical migrations use MigrationExecutor |
+| Release candidate | One reproducible committed-source acceptance run |
+| Generated A1 package | Artifact-specific deterministic checks and local all-page visual review |
+
+Reuse evidence only when tested source, dependencies and configuration match.
+Inspect the committed path/blob set and scope completeness; `git diff-tree` proves
+contents, not runtime behavior. Use an exported-source check when the dirty tree
+cannot establish matching delivered inputs, and for integration/release acceptance.
+Do not rerun an unchanged suite merely because a commit was created. Existing
+mandatory hooks remain effective until deliberately updated; no bypass is authorized.
+
+Routine implementation and private origin feature-branch publication need no extra
+permission. Coherent code/tests/migrations/docs may share a commit. Keep unrelated
+work separate; inspect explicit staged paths and all outgoing commits. A failure
+blocks the behavior it covers; record unrelated failures and continue independent
+safe work. No history rewrite, force-push, public release, deployment or activation.
+
+### Consolidation documentation delivery
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | AGENTS.md shortened to 170 lines; consolidated local plan, 44-field mapping, parent/index/roadmap references, framework and archive guidance; package catalog registers five previously unclassified documentation paths; planning validator permits the three exact reviewed A1 document paths with six regression cases |
+| Validation | 24/24 planning checks; 44/44 mapping rows; 133 relative links resolve in staged-source export; 97 focused planning/approval/package tests pass from exported staged source; staged whitespace/content classification passes |
+| Publication | The commit containing this checkpoint is the delivery object; exact local/remote SHA and final status are recorded in protected runtime delivery-receipt.json and the operator handoff, not inferred from test results |
+| Deployment | Not performed; no settings, database, service or file relocation changes |
+| Activation | Unchanged; real-data-rules §14 and existing registered approvals remain authoritative |
+| Limitations | Historical databases and unreviewed work retained; generic readiness still requires activity_name while provisional validation permits blank 5.1; future seed --verify, reproducer and coordinator are not implemented |
+| Next owner | Engineering: inventory dependencies/selected inputs, then fresh synthetic development setup and the existing J2/J4/DB-MIG tasks |
+
+Only this task's documentation hunks are included; inherited parent-plan edits,
+untracked reports and fixtures are excluded. No application tests or PDF generation
+are needed to establish this documentation checkpoint. The necessary validator
+false-positive repair is the only source-code change: exact document names, not a
+broad directory exemption. Protected-path/content checks remain in force.
+
+Acceptance commands: `venv/bin/python scripts/validate_planning.py` and
+`venv/bin/python -m pytest tests/test_validate_planning.py tests/test_validate_approvals.py tests/test_validate_change_packages.py -q`.
+The exported staged source passed all 97 tests and 24 planning checks; final
+Git-object verification matches delivered inputs to that evidence. The mapping's
+AST check covers each CSV_FIELDS key once. Relative-link checks use the staged
+source export rather than relying on untracked local reports. Existing hooks may
+repeat their own configured checks; they are not bypassed.
+
+During verification the staged document filenames triggered the old substring
+rule; the narrow fix removed that false positive. One new negative-test specimen
+initially used `1a` rather than the prohibited `a1` token; corrected to an actual
+rejected sibling filename, then the complete exported suite passed. No protected
+input was read. Detailed source hashes, commands and publication state are retained
+at `runtime/portal/temporary/consolidation-docs-20260908/delivery-receipt.json`.
 
 ## Checkbox alignment repair — 2026-09-08
 
@@ -150,8 +211,10 @@ Missing/malformed catalogs, unknown or quarantined paths, protected paths, crede
 indicators, unsupported index entries and oversized files fail closed. Deleted
 ordinary source files are accepted without reading absent blobs. Unrelated unstaged
 work is excluded. Catalog checks run with argument arrays, no shell eval, and a
-five-minute timeout. Their execution still uses the working tree: final acceptance
-must also run from the exported commit snapshot. This is not a full PII detector.
+five-minute timeout. Their execution still uses the working tree, so match evidence
+to the delivered inputs under the current operating policy above. Export checks are
+required when that match is unproven, not a duplicate suite for every small edit.
+This is not a full PII detector.
 
 Run `bash scripts/install-git-hooks.sh` after cloning. The installer preserves an
 existing hook before replacement and refuses an independently configured hooksPath.

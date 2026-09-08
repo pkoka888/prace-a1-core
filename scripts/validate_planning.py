@@ -91,6 +91,13 @@ FORBIDDEN_PATH_TOKENS = (
 # (e.g. "a1", "evidence", "employees", "payroll") that never live under these
 # documentation paths. The token guard stays fully active for every other staged path.
 APPROVED_STAGED_PATH_PREFIXES = ("plans/", "readme-")
+# Exact reviewed architecture documents, also owned by change-packages.yml.
+# Do not exempt the whole directory: nearby private files still fail below.
+APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
+    "docs/architecture/A1_FRAMEWORKS.md",
+    "docs/architecture/readme-a1-forms.md",
+    "docs/architecture/release-1a-field-mapping.md",
+})
 
 DEFAULT_CATALOG = "planning/catalog.json"
 DEFAULT_SCHEMA = "planning/catalog.schema.json"
@@ -701,7 +708,7 @@ def check_staged_forbidden_and_pii(catalog, root):
     staged = get_staged_paths(root)
     matched_tokens = set()
     for path in staged:
-        if path.startswith(APPROVED_STAGED_PATH_PREFIXES):
+        if path.startswith(APPROVED_STAGED_PATH_PREFIXES) or path in APPROVED_STAGED_DOCUMENT_PATHS:
             continue
         low = path.lower()
         for tok in FORBIDDEN_PATH_TOKENS:

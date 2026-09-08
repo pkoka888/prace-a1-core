@@ -451,6 +451,39 @@ def test_staged_readme_documentation_paths_allowed(root):
 # --------------------------------------------------------------------------
 # Cycle logic unit checks
 # --------------------------------------------------------------------------
+@pytest.mark.parametrize("path", [
+    "docs/architecture/A1_FRAMEWORKS.md",
+    "docs/architecture/readme-a1-forms.md",
+    "docs/architecture/release-1a-field-mapping.md",
+])
+def test_staged_a1_architecture_documentation_allowed(root, path):
+    document = root / path
+    document.parent.mkdir(parents=True, exist_ok=True)
+    document.write_text("# Synthetic architecture documentation\n")
+    subprocess.run(["git", "-C", str(root), "add", path], check=True)
+    result = run(root, json_out=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("path", [
+    "docs/architecture/readme-a1-forms.csv",
+    "docs/architecture/a1/review.csv",
+    "docs/architecture/readme-a1-forms.md/credentials.txt",
+])
+def test_a1_document_exemption_does_not_allow_nearby_private_paths(root, path):
+    candidate = root / path
+    # A directory with a document's name must not inherit its exemption.
+    if candidate.parent.is_file():
+        candidate.parent.unlink()
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.write_text("synthetic private-path sentinel\n")
+    subprocess.run(["git", "-C", str(root), "add", path], check=True)
+    result = run(root, json_out=True)
+    assert result.returncode == 1
+    assert "staged forbidden-path and PII/secret indicators" in failures(result.stdout)
+    assert "synthetic private-path sentinel" not in result.stdout + result.stderr
+
+
 def test_allowed_evidence_only_cycle():
     catalog = {"items": [
         {"id": "A", "dependencies": [{"id": "B", "gate": "evidence-only"}]},

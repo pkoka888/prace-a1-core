@@ -26,17 +26,20 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | 2026-09-06-A1-EVIDENCE-STATUS-REPAIR (unpublished local material: `plans/2026-09-06-a1-evidence-status-repair.md`) | active | A1 operations | primary A1 production agent | Separate A1 operations (subordinate to PLAN-A1) | Bounded stabilization synthetic-accepted; authoritative reconciliation and promotion pending | A1-REPAIR-1 through A1-REPAIR-7 acceptance criteria met after repair and evidence reconciliation | Placeholder profiles rejected; canonical provisional restrictions enforced including validated_by_user; application vs certificate readiness distinct; cohort provenance uses opaque references; final artifact dependency-bound manifest |
 | [Plan PLAN-FREE-MODEL — bounded free-model evaluation, trace repair, and capsule isolation](PLAN-FREE-MODEL.md) | active | M0–M1A | primary agent; Codex integrates and accepts | Parallel tooling evidence | No live run until offline harness, fixtures, containment, and zero-cost preflight are green | Three repeated synthetic receipts per candidate; no model promoted, no skill activated | `venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py -q` |
 | 2026-09-06-FREE-VISION-PROVIDER-SAFETY (unpublished local material: `plans/2026-09-06-free-vision-provider-safety.md`) | planned | M1A–M2 | primary agent; Codex integrates and accepts | Parallel tooling evidence (subordinate to PLAN-FREE-MODEL) | None | FREE-VISION-1 through FREE-VISION-8 acceptance tests pass; zero-cost verified; AF2 lane separate | No paid endpoints; exact endpoint/model required; unknown pricing prohibits dispatch; AF2 and vision share quota where upstream limits shared; independent pool attempts within budget |
-| [Plan PLAN-WORKERS-MIGRATE-TO-DB — worker data from JSON/CSV to database](PLAN-WORKERS-MIGRATE-TO-DB.md) | planned | M2–M5 | product engineering + primary agent | Critical Release 1A (subordinate to PLAN-WORKERS) | ENG-001 opens, observed Release 1A acceptance, JSON/CSV freeze plan approved | Single dashboard write path; CSV/JSON frozen for archive; CI gate blocks scripts reading legacy files | DB-MIG-1 through DB-MIG-7 acceptance commands; DB-MIG-7 byte-equality round-trip on synthetic data |
+| [Plan PLAN-WORKERS-MIGRATE-TO-DB — worker data from JSON/CSV to database](PLAN-WORKERS-MIGRATE-TO-DB.md) | planned | M2–M5 | product engineering + primary agent | Critical Release 1A (subordinate to PLAN-WORKERS) | ENG-001 opens, observed Release 1A acceptance, JSON/CSV freeze plan approved | Shared service write path; reconciled legacy masters frozen after cutover; revision-bound compatibility exports remain allowed | DB-MIG-1 through DB-MIG-7 acceptance contracts; mapped-input round-trip and pinned synthetic PDF equivalence |
 | [Plan PLAN-REAL-DATA — real-data activation after Sprint 4 gates](PLAN-REAL-DATA.md) | active | M5 | product engineering + product owner + legal + sysadmin | Critical Release 1A | Sprint 1–3 → `ENG-001` → `REV-002` → Sprint 4 → `OPS-001`/`LEG-001`/`INF-001` → `REV-003`; Sprint 4 follows REV-002, not ENG-001 | Prerequisites and evidence defined; explicit operator/legal/sysadmin activation decision deferred | All Sprint 1–4 acceptance criteria green; `REV-003` approved in `planning/approvals.json` |
 
 ## Local automation design
 
-Local automation design (2026-09-08):
-[scan intake to worker database and A1 drafts](2026-09-08-local-a1-automation.md)
-specifies one-command local processing, pending BO verification, deterministic
-matching, protected storage and resume behaviour under existing J2/J4 and
-DB-MIG-1 through DB-MIG-7. Proposed implementation contract only; parent status,
-the 34 top-level entries and activation gates are unchanged.
+Local automation contract (consolidated 2026-09-08):
+[scan intake to worker database and A1 drafts](2026-09-08-local-a1-automation.md),
+with the [complete field mapping](../docs/architecture/release-1a-field-mapping.md).
+One editable source tree, fixed development/release paths, explicit data owners,
+fresh development DB/seed reconciliation and release reproduction precede J2/J4
+and DB-MIG-1 through DB-MIG-7 implementation. One-command processing keeps machine
+proposals separate from BO confirmation. AGENTS.md defines proportional checks and
+one delivery record. This checkpoint implements documentation only; parent statuses,
+the 34 top-level entries and registered approval/activation gates remain unchanged.
 
 ## Historical
 

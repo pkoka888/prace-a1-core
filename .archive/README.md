@@ -1,54 +1,31 @@
-# `.archive/` — local archive directory
+# `.archive/` — non-sensitive history
 
-**Purpose.** Files that are no longer part of the active tree but should
-be preserved on disk (for rollback, audit, or future re-inclusion) live
-under `.archive/`. This directory is the **only** place the operator
-archives things; "delete" suggestions from the operator action plan
-should always be replaced with an archive move here.
+Use this directory for reviewed non-sensitive historical documentation or source
+material. Preserve the original repository-relative path where useful. Existing
+tracked history remains tracked; other local archive entries remain ignored.
+Archiving is a deliberate classification decision, not automatic permission to move
+unknown files or a substitute for retention/deletion policy.
 
-**Convention.** Every file or directory moved under `.archive/` keeps
-its original path **relative to the project root**. The tree mirrors
-the live tree, with `.archive/` as a sibling of the moved item.
+Never move scans, employee datasets, generated A1 PDFs, credentials or other PII
+here. Keep working provisional packages where they are. Individually classified
+private obsolete artifacts may be retained under
+`runtime/portal/temporary/retained/<uuid>/` with an original-location/hash manifest,
+reason, owner and retention-review date. That location remains protected and
+ignored; it is not an ad-hoc backup. Do not relocate `.history-remediation/`.
+
+Non-sensitive examples:
 
 ```text
-output/provisional.backup-20260811-114746/   →   .archive/output/provisional.backup-20260811-114746/
-scripts/a1_core.py.backup                   →   .archive/scripts/a1_core.py.backup
-docs/old-feature/                           →   .archive/docs/old-feature/
+docs/old-feature/ → .archive/docs/old-feature/
+plans/old-plan.md → .archive/plans/old-plan.md
 ```
 
-**Why a mirror and not a flat dump.** The relative path is preserved so
-that:
+Inspect destination collisions and dependencies before a move, and record the
+reversible mapping in the existing delivery record. Never force-add private or
+unknown archived material. Restore a reviewed source file to its normal tracked
+location before ordinary source delivery when it becomes active again.
 
-1. The next operator reading `.archive/output/provisional.backup-20260811-114746/`
-   knows it came from `output/provisional.backup-20260811-114746/`
-   without reading a separate manifest.
-2. A future migration or restoration can move items back to their
-   original path with a single `mv -r .archive/<path> <path>` — no
-   lookup table needed.
-3. Grep across `.archive/` and the live tree is unambiguous because
-   the same filename under different parents means different things.
-
-**Why `.archive/` is gitignored.** Archived items are by definition
-out of the active tree; committing them would defeat the purpose.
-The README in this directory IS tracked (so the convention is visible
-to any agent opening the repo). To track a specific archived item,
-either:
-
-- Move it back to its live path and commit normally, or
-- Add an explicit `git add -f` with the item's full path and a commit
-  message that explains why it stays archived and tracked (rare).
-
-**Operational notes.**
-
-- `.archive/` lives at the repo root so it stays in scope of any
-  `tar` or backup operation that targets the project root.
-- `.archive/` is excluded from the validator (`scripts/validate_change_packages.py`)
-  by the `change-packages.yml` rule: paths matching `.archive/` are
-  not staged even if they appear dirty.
-- `.archive/README.md` (this file) is the only tracked item in the
-  directory. Anything else under `.archive/` is local-only.
-
-**Audit trail.** Each move into `.archive/` should be documented as
-a separate commit on its parent path with a message like
-"chore: archive output/provisional.backup-* per Plan R §8"
-so the git history shows when and why the item left the live tree.
+Authority: [AGENTS.md](../AGENTS.md),
+[real-data rules §5](../docs/security/real-data-rules.md#5-storage-and-git-boundary)
+and the [consolidation plan](../plans/2026-09-08-local-a1-automation.md).
+This policy update does not move or delete existing archive entries.

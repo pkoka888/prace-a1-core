@@ -3,6 +3,18 @@
 **Status**: active
 **Milestone**: M1A–M3
 
+## Local automation and data ownership — 2026-09-08
+
+The [consolidated local automation plan](2026-09-08-local-a1-automation.md) extends
+J2/J4 and DB-MIG-1 through DB-MIG-7 without adding top-level catalog entries.
+The [44-field mapping](../docs/architecture/release-1a-field-mapping.md) reuses
+proposals, decisions and identity/case revisions; the review's missing-column
+estimate is not a schema specification. One command will prepare proposals and
+eligible unverified drafts without waiting for BO; human confirmation remains an
+actor/time/revision decision. No new coordinator or data import is implemented
+by this checkpoint. Next engineering work is the source/input inventory and fresh
+synthetic development setup, then the existing bounded coordinator/DB tasks.
+
 ## Shared intake Git delivery — 2026-09-08
 
 Child: [shared document intake](2026-09-06-ocr-shared-core-local-web.md),

@@ -1,121 +1,96 @@
 # Plan PLAN-WORKERS-MIGRATE-TO-DB — Worker data: from JSON/CSV to database
 
 **Status**: planned
-**Milestone**: M2–M5 (after ENG-001 → REV-002)
+**Milestone**: M2–M5 (accepted cutover after ENG-001 → REV-002)
 
-## Purpose
+## Consolidated contract — 2026-09-08
 
-Eliminate the duplicated, file-based worker data sources
-(`a1/review.csv`, `a1/cohort.json`, `a1/employees_normalized.json`) and
-move authoritative worker identity, assignment, OSSZ-institution, certificate
-document number, issue date, activity territory, and approval state into the
-Release 1A Django database. After this plan, the JSON/CSV files are
-**archive-only** and never read by A1 generation.
+The [local automation plan](2026-09-08-local-a1-automation.md) is the bounded child
+contract for J2/J4 and DB-MIG-1 through DB-MIG-7. Its
+[44-field mapping](../docs/architecture/release-1a-field-mapping.md) supersedes the
+older assumption that every CSV field needs a Worker/A1Case column. This is a
+planning checkpoint, not a completed migration or portal activation.
 
-A1 generation must read a single source of truth — the same records the
-dashboard displays and the operator edits through the worker detail view.
+Respect [ADR-001](../docs/decisions/ADR-001-jan-portal-architecture.md) and
+[ADR-002](../docs/decisions/ADR-002-release-1a-data-and-transactions.md).
+Preserve catalog IDs and registered approvals. No extra ADR, repeated operator
+permission or new activation gate is required for the authorized synthetic preparation.
 
-## Why
+## Purpose and current ownership
 
-- The CSV/JSON trio currently lives in three gitignored files in `a1/`.
-  The cohort and review files are mutated outside the dashboard, by hand,
-  by separate scripts. There is no audit trail, no row-level access control,
-  no enforced referential integrity.
-- The dashboard `portal/release1a/` already models Worker, Document, A1Case,
-  Assignment, and Approval as Django models. Re-using these models for the
-  authoritative data closes the gap and removes the dual-write problem.
-- Once the dashboard is the only writer, the dashboard "Generate A1" button
-  becomes a single-step routine that any operator can run with a single
-  click, with provenance and approval already attached to the row.
+After accepted cutover, organization-scoped Django services own worker identity,
+assignment, institution, A1 input and confirmation revisions. Both dashboard and
+local coordinator use those services; A1 rendering uses the shared Python core.
+CSV/JSON are revision-bound compatibility exports, not editable masters.
 
-## Scope (in scope)
+Before cutover, preserve and reconcile `a1/review.csv`, `a1/cohort.json`, normalized
+identity sources and explicitly selected scoped run snapshots. Never choose a
+winner by modification time, copy facts from generated PDFs, or freeze sources
+before reconciliation. Issued identifiers and confirmed facts retain their evidence.
 
-- Move worker identity fields from `a1/review.csv` → `portal.Worker` rows
-  (already partially modelled in M2).
-- Move `cohort.json document_ids` and `issue_dates` →
-  `portal.A1Case.document_id` and `portal.A1Case.issue_date` (already
-  modelled in J4 minimum).
-- Move `cohort.json additional_people` (when reconciled) → `portal.Worker`
-  with provenance flag `reconciled_from_cohort`.
-- Move `employees_normalized.json` (identity reference) → `portal.Worker`
-  `insurance_number` / `dob` / `birth_place` fields, validated at write
-  time by the shared OCR core.
-- Render the A1 PDF directly from the Django model, with no CSV/JSON
-  intermediate.
-- Add a one-time migration command that reads the legacy files exactly
-  once, writes them into the DB with full provenance, and verifies
-  identical bytes against a fixture-driven A1 generation round-trip.
-- After the migration is verified, the JSON/CSV files are frozen under
-  `a1/_archive/` and a CI check fails the build if any tracked script
-  reads them.
-
-## Out of scope
-
-- M3 OCR workflow and document intake — already implemented in
-  [2026-09-06-OCR-SHARED-CORE-LOCAL](2026-09-06-ocr-shared-core-local-web.md).
-- J4 PDF artifact storage — already implemented; will simply read from
-  the DB instead of the CSV.
-- Activation (real-data / production) — still gated on REV-003 and the
-  PLAN-REAL-DATA gates.
-- Removing `a1/_archive/` from git — only after one full sprint of
-  dashboard-only writes succeed.
+Worker has names, birth date and broad activity profile today; accepted additional
+identity fields fit WorkerIdentityRevision. FieldProposal/FieldDecision already
+hold review evidence. There is no Approval model or dedicated A1Case.document_id
+or issue_date column. Case facts fit versioned snapshots with structured provenance
+and input decisions; visual confirmation is separate. The mapping proposes only
+`Worker.legacy_employee_id` and `Assignment.a1_facts_json` as additional columns,
+with the required constraints and revision/service contracts. These are not implemented.
 
 ## Implementation milestones
 
-| ID | Title | Acceptance command |
+Preserve existing task IDs. Acceptance descriptions below define future scoped
+checks; test modules and commands are added/updated with implementation, not assumed
+available from their mention here. Use one shared export adapter in
+`portal/release1a/a1_exports.py`, as specified by the mapping.
+
+| ID | Contract | Required acceptance |
 |---|---|---|
-| DB-MIG-1 | Worker identity fields live in `portal.Worker`; CSV read path deprecated in scripts but still works. | `venv/bin/python -m pytest tests/m2/test_worker_detail.py -q` |
-| DB-MIG-2 | Cohort `document_ids` / `issue_dates` live in `portal.A1Case`; cohort JSON read path deprecated. | `venv/bin/python -m pytest tests/test_finalize_a1.py -q` |
-| DB-MIG-3 | `scripts/finalize_a1.row_to_form()` reads from `portal.A1Case` and `portal.Worker` (not the CSV). | `venv/bin/python -m pytest tests/test_finalize_a1.py tests/m2/test_release1a_vertical.py -q` |
-| DB-MIG-4 | Dashboard "Generate A1" click → `portal.release1a.services.generate_a1_artifact()` reads from DB, calls `a1_core.generate_a1_pdf()`. | `venv/bin/python -m pytest tests/m2/test_release1a_vertical.py -q` |
-| DB-MIG-5 | One-time migration command reads `a1/review.csv` + `a1/cohort.json` once, writes DB rows with provenance hashes. | `venv/bin/python scripts/migrate_a1_to_db.py --dry-run --source a1/review.csv` |
-| DB-MIG-6 | Frozen `a1/_archive/` snapshot preserved; CI gate blocks any tracked script reading `a1/review.csv` or `a1/cohort.json`. | `venv/bin/python scripts/check_no_csv_reads.py` |
-| DB-MIG-7 | Functional A1 round-trip via dashboard click produces bytes identical (sha256) to the legacy CSV-based generation for the same row, on synthetic data. | `venv/bin/python -m pytest tests/m2/test_db_round_trip.py -q` |
+| DB-MIG-1 | Reconcile identity/legacy bindings into Worker projections and immutable identity revisions; preserve pending proposals | All identity fields mapped; tenant uniqueness; historical MigrationExecutor transition; pending OCR never overwrites accepted fields |
+| DB-MIG-2 | Store versioned assignment facts, institution/profile payload and case certificate inputs with structured provenance | Explicit profile/assignment selection; source and input decision binding; generated IDs/dates remain provisional; visual and input acceptance distinct |
+| DB-MIG-3 | Adapt a selected database snapshot to the existing core form contract; keep finalize_a1.row_to_form Django-independent | Same normalized core input as the pinned compatibility export; one export service; no live legacy master reads on the cutover path |
+| DB-MIG-4 | Dashboard/local coordinator use shared services and the existing canonical renderer/J4 artifact publisher | Actual PDF, snapshot, previews and receipt; stable retry ID; stale dependencies rejected; all-page QA |
+| DB-MIG-5 | Resumable reconciliation/import of explicitly selected CSV/cohort/identity snapshots with source hashes | Dry-run reports conflicts without changes; approved synthetic apply is transactional/idempotent; no duplicate workers or invented confirmations |
+| DB-MIG-6 | Freeze legacy master editing only after accepted reconciliation; maintain protected history and derived compatibility exports | Guard cutover production adapters against live legacy-master reads; historical import and explicit export adapters remain allowed; rollback references preserved |
+| DB-MIG-7 | Demonstrate dashboard/local/core round-trip equivalence on the same synthetic revision | Compare every mapped value/provenance and renderer input; compare PDF bytes with pinned template, renderer, dependencies and deterministic metadata; explain any nondeterminism |
 
-## File-system / naming conventions
+## Environment and delivery order
 
-- **DB models** stay where they are (`portal/release1a/models.py`).
-- **Migration command** is `scripts/migrate_a1_to_db.py`. Domain prefix
-  `a1_*` and verb `migrate_` together make the script's purpose obvious.
-- **Archive directory** is `a1/_archive/` with a timestamped subdir
-  per freeze, never auto-cleaned.
-- **CI gate** is `scripts/check_no_csv_reads.py`. New scripts that need
-  CSV-like input must import from `portal.release1a.services`, not
-  open `a1/*.csv` directly.
+Follow the child plan's inventory, fresh development database, seed reconciliation
+and release reproduction prerequisites before the coordinator/cutover work.
+Use `runtime/portal/supervised-development/` with `portal.settings_supervised_synthetic`;
+PostgreSQL supplies migration/concurrency acceptance, SQLite isolated synthetic tests.
+The existing root and synthetic-review SQLite databases are historical inputs to
+inventory, not a database template. Rebuild fresh from the on-disk migration graph;
+never fabricate migration records or propagate inconsistent history with `--fake`.
 
-## Child work packages
+Extend the existing seed deliberately for that synthetic environment and planned
+`--verify` fixture reconciliation. Implement the planned
+`scripts/release_reproducer.sh <sha>` for immutable `runtime/s-<full-commit-sha>/`
+exports and protected receipts. Neither command is introduced by this documentation.
 
-None yet. DB-MIG-1 through DB-MIG-7 will be tracked as dated sub-plans
-once the parent plan is accepted.
+One editable source tree remains. Do not move entire PDF packages or duplicate
+runtime credentials. Classified private retained material uses
+`runtime/portal/temporary/retained/<uuid>/`, with hash/location manifest and retention
+review; `.archive/` is non-sensitive. Existing protected data was never Git material,
+so this plan does not require deleting an archive from Git or rewriting history.
 
-## Dependencies
+## Dependencies, acceptance and next owner
 
-- `PLAN-INFRA` with gate `evidence-only` — operating model baseline
-  must remain stable during the migration.
-- `PLAN-WORKERS` with gate `implementation` — J1–J4 prototypes already
-  in place; this plan depends on the worker-detail and A1-case pages
-  being editable from the dashboard.
-- `PLAN-LEGAL` with gate `evidence-only` — retention and access
-  boundaries must be defined before deleting legacy files.
+- PLAN-INFRA owns runtime provisioning and infrastructure evidence; routine synthetic
+  implementation remains authorized under existing active plans.
+- PLAN-WORKERS owns worker/BO workflow acceptance; ENG-001 and observed Release 1A
+  acceptance remain cutover dependencies. No registered approval state changes here.
+- PLAN-LEGAL supplies purpose/retention interpretation; real-data portal migration
+  and activation follow [real-data-rules §12–14](../docs/security/real-data-rules.md#12-mandatory-recovery-before-real-data-activation)
+  and [PLAN-REAL-DATA](PLAN-REAL-DATA.md). Production prerequisites do not block
+  synthetic preparation; existing authorized operator-only A1 work stays distinct.
 
-## Status and governance
+Run affected checks once against matching source/dependencies/configuration, under
+[AGENTS.md](../AGENTS.md). Update [one delivery record](../docs/operations/git-delivery.md)
+with implementation, validation, publication, deployment and activation separately.
+Documentation/field coverage alone cannot establish runtime acceptance.
 
-- Status: `planned`. Implementation begins after ENG-001 opens and the
-  Release 1A worker-detail page is observed-accepted.
-- Decision state: not yet reviewed. The PRD-style decision brief will
-  land at `docs/decisions/ADR-NNN-workers-data-db.md` when DB-MIG-1 is
-  scoped.
-- Evidence: `prototype-required`. Each milestone has its own acceptance
-  command; full migration evidence is the cumulative run of those
-  commands plus the DB-MIG-7 round-trip byte-equality proof.
-
-## Documentation
-
-- [Roadmap worker data section](../roadmap.md#release-1a-data-and-transactions)
-  is updated with the new DB-first path.
-- [A1_FRAMEWORKS.md](../docs/architecture/A1_FRAMEWORKS.md) is updated to
-  reflect that the canonical pipeline reads from the DB, not the JSON
-  cohort.
-- [AGENTS.md](../AGENTS.md) carries the standing rule: "A1 generation
-  reads from `portal.release1a` models. Legacy `a1/*.json` and `a1/*.csv`
-  are frozen for archive only."
+Next owner: engineering for the inventory and fresh synthetic development setup,
+then the DB-MIG tasks above. Jan supplies missing business facts and confirms exact
+revisions in BO. The [framework guide](../docs/architecture/A1_FRAMEWORKS.md) describes
+the current file-based/case-snapshot paths without claiming cutover already happened.
