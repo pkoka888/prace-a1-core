@@ -2,7 +2,69 @@
   "page_count": 3,
   "coordinate_system": "ReportLab bottom-left points on 595.2 x 841.92",
   "layout_notes": {
-    "section": "Printed A1 form section containing the field; page_header identifies the repeated certificate number above the numbered sections."
+    "section": "Printed A1 form section containing the field; page_header identifies the repeated certificate number above the numbered sections.",
+    "checkbox_alignment": "The A1 2025 template provides empty checkbox squares in its background image. This layout only declares where the X mark goes, never the box itself. Coordinates were measured against the official template at templates/a1_background.pdf. If the template is replaced with a different geometry, re-measure every value here."
+  },
+  "field_areas": {
+    "section_1_personal": {
+      "page": 0,
+      "row_y": 437,
+      "fields": {
+        "insurance_number": 156,
+        "surname": 136,
+        "given_name": 128,
+        "maiden_name": 170,
+        "dob": 164,
+        "birth_place": 160,
+        "nationality": 377
+      }
+    },
+    "section_1_gender_checkboxes": {
+      "page": 0,
+      "row_y": 452.82,
+      "notes": "Gender checkboxes (Žena/Muž) sit to the right of the 1.1 Číslo pojištěnce field. X marks only; the template provides the empty squares.",
+      "boxes": {
+        "female": {"x": 411, "size": 10.0},
+        "male": {"x": 470, "size": 10.0}
+      }
+    },
+    "section_3_status_checkboxes": {
+      "page": 1,
+      "row_1_y": 605,
+      "row_2_y": 584,
+      "notes": "Section 3 has two rows of three pairs. Row 1: 3.1/3.2 (left/right). Row 2: 3.3/3.4 (left/right).",
+      "boxes": {
+        "3.1_posted_employee": {"x": 72.5, "y": 605, "size": 7.4},
+        "3.2_employee_multistate": {"x": 269.5, "y": 605, "size": 7.4},
+        "3.3_posted_self_employed": {"x": 72.5, "y": 584, "size": 7.4},
+        "3.4_self_employed_multistate": {"x": 269.5, "y": 584, "size": 7.4}
+      }
+    },
+    "section_4_employer_type_checkboxes": {
+      "page": 1,
+      "row_y": 432.5,
+      "notes": "Section 4.1.1/4.1.2 employee-type pair. The 4.1.2 square is faint in some template renders; the X is drawn in dark blue per the original.",
+      "boxes": {
+        "4.1.1_employee": {"x": 72.5, "y": 432.5, "size": 7.4},
+        "4.1.2_self_employed": {"x": 288, "y": 432.5, "size": 7.4}
+      }
+    },
+    "section_2_4_valid_duration": {
+      "page": 0,
+      "row_y": 181.02,
+      "notes": "Section 2.4 valid-duration checkbox (single, left side).",
+      "boxes": {
+        "2.4": {"x": 83.4, "y": 181.02, "size": 7.4}
+      }
+    },
+    "section_5_3_no_fixed_address": {
+      "page": 2,
+      "row_y": 409.42,
+      "notes": "Section 5.3 no-fixed-address checkbox (single, left side).",
+      "boxes": {
+        "5.3": {"x": 76.5, "y": 409.42, "size": 7.4}
+      }
+    }
   },
   "fields": {
     "person.insurance_number": {
@@ -251,38 +313,73 @@
     }
   },
   "checkboxes": {
+    "status_posted_employee": {
+      "section": "3.1",
+      "area": "section_3_status_checkboxes.boxes.3.1_posted_employee",
+      "page": 1,
+      "x": 72.5,
+      "y": 605.0,
+      "size": 7.4
+    },
+    "status_employee_multistate": {
+      "section": "3.2",
+      "area": "section_3_status_checkboxes.boxes.3.2_employee_multistate",
+      "page": 1,
+      "x": 269.5,
+      "y": 605.0,
+      "size": 7.4
+    },
+    "status_posted_self_employed": {
+      "section": "3.3",
+      "area": "section_3_status_checkboxes.boxes.3.3_posted_self_employed",
+      "page": 1,
+      "x": 72.5,
+      "y": 584.0,
+      "size": 7.4
+    },
     "status_osv_c_multistate": {
       "section": "3.4",
+      "area": "section_3_status_checkboxes.boxes.3.4_self_employed_multistate",
       "page": 1,
-      "x": 296.1,
-      "y": 598.12,
-      "size": 7.4,
-      "reconstruct_border": true
+      "x": 269.5,
+      "y": 584.0,
+      "size": 7.4
+    },
+    "employer_type_employee": {
+      "section": "4.1.1",
+      "area": "section_4_employer_type_checkboxes.boxes.4.1.1_employee",
+      "page": 1,
+      "x": 72.5,
+      "y": 432.5,
+      "size": 7.4
     },
     "employer_type_self_employed": {
       "section": "4.1.2",
+      "area": "section_4_employer_type_checkboxes.boxes.4.1.2_self_employed",
       "page": 1,
-      "x": 296.1,
-      "y": 410.02,
-      "size": 7.4,
-      "reconstruct_border": true
-    },
-    "gender_male": {
-      "section": "1.1",
-      "page": 0,
-      "x": 459.2,
-      "y": 452.82,
-      "size": 10.0
+      "x": 288.0,
+      "y": 432.5,
+      "size": 7.4
     },
     "gender_female": {
       "section": "1.1",
+      "area": "section_1_gender_checkboxes.boxes.female",
       "page": 0,
-      "x": 402.5,
+      "x": 411.0,
+      "y": 452.82,
+      "size": 10.0
+    },
+    "gender_male": {
+      "section": "1.1",
+      "area": "section_1_gender_checkboxes.boxes.male",
+      "page": 0,
+      "x": 470.0,
       "y": 452.82,
       "size": 10.0
     },
     "valid_duration": {
       "section": "2.4",
+      "area": "section_2_4_valid_duration.boxes.2.4",
       "page": 0,
       "x": 83.4,
       "y": 181.02,
@@ -290,30 +387,10 @@
     },
     "no_fixed_address": {
       "section": "5.3",
+      "area": "section_5_3_no_fixed_address.boxes.5.3",
       "page": 2,
       "x": 76.5,
       "y": 409.42,
-      "size": 7.4
-    },
-    "status_posted_employee": {
-      "section": "3.1",
-      "page": 1,
-      "x": 76.5,
-      "y": 614.92,
-      "size": 7.4
-    },
-    "status_employee_multistate": {
-      "section": "3.2",
-      "page": 1,
-      "x": 296.1,
-      "y": 614.92,
-      "size": 7.4
-    },
-    "employer_type_employee": {
-      "section": "4.1.1",
-      "page": 1,
-      "x": 76.5,
-      "y": 410.02,
       "size": 7.4
     }
   }

@@ -369,6 +369,7 @@ def build_form_data(
         # Checkboxes: derived from the reviewed status profile.
         "status_posted_employee": status_profile == "posted_employee",
         "status_employee_multistate": status_profile == "employee_multi_state",
+        "status_posted_self_employed": False,  # Not derivable from current profiles.
         "status_osv_c_multistate": status_profile == "self_employed_multi_state",
         "employer_type_employee": status_profile in {"employee_multi_state", "posted_employee"},
         "employer_type_self_employed": status_profile == "self_employed_multi_state",
@@ -454,6 +455,52 @@ def _fit_font(text: str, font: str, size: float, max_width: float) -> float:
     return size
 
 
+# X mark stroke color and width for all checkboxes. Matches the official
+# A1 2025 form's dark blue X over the gray checkbox squares.
+CHECKBOX_X_COLOR = (0.05, 0.35, 0.48)
+CHECKBOX_X_LINE_WIDTH = 0.8
+# Inset < 0 means the X arms extend slightly past the box edges, matching
+# the manual "tick" the operator would draw with a pen.
+CHECKBOX_X_INSET = -0.12
+
+
+def _draw_check_x(c: canvas.Canvas, x: float, y: float, size: float) -> None:
+    """Draw a manual X mark inside the empty checkbox at (x, y, size).
+
+    The template background provides the empty checkbox square; this function
+    only paints the cross. Coordinates are the bottom-left corner of the box.
+    """
+    inset = CHECKBOX_X_INSET
+    c.setStrokeColorRGB(*CHECKBOX_X_COLOR)
+    c.setLineWidth(CHECKBOX_X_LINE_WIDTH)
+    c.line(x + inset, y + inset, x + size - inset, y + size - inset)
+    c.line(x + size - inset, y + inset, x + inset, y + size - inset)
+
+
+def _draw_checkboxes_for_page(
+    c: canvas.Canvas,
+    layout: dict[str, Any],
+    form: dict[str, Any],
+    page_number: int,
+    font: str,
+) -> None:
+    """Draw the X marks for every checked checkbox on ``page_number``.
+
+    Each checkbox layout entry may declare an ``area`` key (a JSON-pointer-like
+    reference to ``field_areas``) so the script can stay decoupled from raw
+    magic numbers. Coordinates still live in the layout for round-trip ease.
+    """
+    for field, cfg in layout.get("checkboxes", {}).items():
+        if int(cfg.get("page", -1)) != page_number:
+            continue
+        if not form.get(field):
+            continue
+        x = float(cfg["x"])
+        y = float(cfg["y"])
+        size = float(cfg.get("size", 7.4))
+        _draw_check_x(c, x, y, size)
+
+
 def _draw_field(c: canvas.Canvas, value: str, cfg: dict[str, Any], font: str) -> None:
     if not value:
         return
@@ -519,17 +566,7 @@ def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
             _draw_field(c, display_value(cfg.get("source", field_name), value), cfg, font)
         c.saveState()
         _draw_form_header(c, page_number, doc_id, font)
-        for field, cfg in layout.get("checkboxes", {}).items():
-            if int(cfg["page"]) != page_number:
-                continue
-            x, y, size = float(cfg["x"]), float(cfg["y"]), float(cfg.get("size", 8.5))
-            if form.get(field):
-                # Template already provides empty checkbox squares; only draw X mark
-                c.setStrokeColorRGB(0.05, 0.35, 0.48)
-                c.setLineWidth(0.8)
-                inset = -0.12
-                c.line(x + inset, y + inset, x + size - inset, y + size - inset)
-                c.line(x + size - inset, y + inset, x + inset, y + size - inset)
+        _draw_checkboxes_for_page(c, layout, form, page_number, font)
         c.restoreState()
         if form.get("meta", {}).get("provisional_notice_visible"):
             c.saveState()
