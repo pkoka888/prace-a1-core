@@ -2,6 +2,41 @@
   "schema_version": 1,
   "accepted_checkpoint": "c01aa2b",
   "packages": {
+    "release1a_historical_migration_repair": {
+      "purpose": "Restore historical document/J4 migrations and model parity; disposable synthetic databases only.",
+      "paths": [
+        "portal/release1a/migrations/0008_shared_document_intake.py",
+        "portal/release1a/migrations/0009_document_region_association.py",
+        "portal/release1a/migrations/0010_a1case_j4_minimum.py",
+        "portal/release1a/migrations/0011_a1case_artifact_evidence.py",
+        "portal/release1a/migrations/0013_alter_a1case_visual_confirmed_by.py",
+        "tests/test_release1a_migration_chain.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_release1a_migration_chain.py -q"
+      ],
+      "dependencies": [
+        "Existing committed models and migration 0012; no service migration or activation"
+      ],
+      "rollback": "Preserve applied migration history; use a reviewed forward repair for any deployed database."
+    },
+    "a1_audit_path_dependencies": {
+      "purpose": "Publish existing canonical audit/path dependencies and restore Git-independent profile validation.",
+      "paths": [
+        "scripts/a1_paths.py",
+        "scripts/a1_audit.py",
+        "tests/test_a1_stabilization.py",
+        "tests/test_finalize_a1.py",
+        "config/institutions/louny.json"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py -q"
+      ],
+      "dependencies": [
+        "Existing canonical renderer and finalization code; no employee regeneration or promotion"
+      ],
+      "rollback": "Revert only with dependent canonical imports; retain protected operation receipts."
+    },
     "governance_truth": {
       "purpose": "Authority, roadmap, decisions, plan statuses, and truth audit.",
       "paths": ["AGENTS.md", "roadmap.md", "prd.md", "plans/INDEX.md", "plans/PLAN-INFRA.md", "plans/PLAN-WORKERS.md", "plans/PLAN-INVOICE.md", "plans/PLAN-LEGAL.md", "plans/PLAN-A1.md", "plans/PLAN-FREE-MODEL.md", "plans/PLAN-HISTORY.md", "plans/audits/2026-08-15-repository-truth-audit.md", "plans/audits/2026-08-15-worktree-inventory.json", "docs/decisions/", "docs/plans/", ".archive/README.md", "docs/security/real-data-rules.md", "docs/mock-data-provenance.md", "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md", "docs/operations/operator-action-plan-2026-08-29.md", "docs/operations/project-migration-audit-2026-08-30.md", "CHANGELOG.md", "PROJECT_AUDIT_REPORT.md", ".opencode/skills/market-research-evidence/SKILL.md"],
