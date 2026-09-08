@@ -2,7 +2,7 @@
   "fix_type": "checkbox_position_correction",
   "date": "2026-09-08",
   "source_sha256": "12fe1d3ab12f93407858d1f4daca09ff84f8e7e37d08376a487e840073e34bac",
-  "layout_sha256": "010464451e84713396844ec2cb02465a88e519e535c76733624b90c67fdd25f3",
+  "layout_sha256": "735c2fcb1013559ab02c57f3aa7ff431a01888a0303a912468ffc6a4938dc84d",
   "extraction_script": "scripts/extract_a1_checkbox_positions.py",
   "fixed_positions": {
     "gender_male": {
@@ -59,5 +59,9 @@
   "verification": "All X marks match original A1 2025.pdf vector positions",
   "validation_passed": true,
   "provisional_pdfs_regenerated": true,
-  "previews_regenerated": true
+  "previews_regenerated": true,
+  "a1_core_sha256": "ac133b0b5f3167aafdee1d2194ce883a0d74b1dacf43ffb754cb0a20ed3a592c",
+  "fix_description": "Fixed valid_duration checkbox: derived from certificate start/end dates instead of hardcoded False; corrected size from 7.46 to 7.44 to match original template; corrected y from 180.98 to 180.98 (verified against A1 2025.pdf)",
+  "valid_duration_derived_from_certificate_dates": true,
+  "valid_duration_size_corrected": true
 }

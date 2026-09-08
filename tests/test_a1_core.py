@@ -378,7 +378,7 @@ class A1CheckboxPositionTests(unittest.TestCase):
         expected_mapping = {
             "gender_male": {"page": 0, "display_y_top": 379.13},
             "gender_female": {"page": 0, "display_y_top": 379.13},
-            "valid_duration": {"page": 0, "display_y_top": 653.48},
+            "valid_duration": {"page": 0, "display_y_top": 653.47},
             "status_osv_c_multistate": {"page": 1, "display_y_top": 236.42},
             "employer_type_self_employed": {"page": 1, "display_y_top": 424.49},
         }

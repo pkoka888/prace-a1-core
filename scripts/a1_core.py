@@ -376,9 +376,8 @@ def build_form_data(
         # Gender: from person
         "gender_male": person.get("sex") == "M",
         "gender_female": person.get("sex") == "F",
-        # Valid duration and provisional are intentionally unchecked without source data.
-        # We'll leave them unchecked for now.
-        "valid_duration": False,
+        # Valid duration: checked when certificate has a specific validity period.
+        "valid_duration": bool(certificate.get("start_date") and certificate.get("end_date")),
         "provisional": False,
         "transitional_rules": False,
         # No reviewed source field exists for this checkbox yet.
