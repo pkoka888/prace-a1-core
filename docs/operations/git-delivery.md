@@ -3,6 +3,42 @@
 Parent: PLAN-INFRA. Scope: existing GitHub CI and local Git tooling only.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Approval validation and fixture isolation — 2026-09-08
+
+The shared approval validator now preserves CLI catalog-state/date checks, rejects
+cycles and unmet dependency states, and makes each gate decision from one validated
+register snapshot. Dirty review scope, mismatched commit/hash and an incorrect Git
+root fail closed when requested. Malformed JSON shapes fail cleanly. Technical
+validation may pass while human approval remains proposed; that never opens a gate.
+Approval records, catalog IDs and human/activation decisions were not changed.
+
+Publication provenance: a concurrent session included the five staged governance
+files in its A1 commit `95ade12` and published it. This was not the intended scope
+split. Its governance-only exported acceptance passed 74 tests; no A1 geometry,
+artifact generation or visual acceptance is established by this report.
+Follow-up `1cdec5f` isolates Git commands from caller/hook environment overrides.
+
+The original planning fixture helper copied runtime files into its temporary test
+root and exhausted /tmp. Only the copies created by that failed run were removed.
+The helper now uses committed text fixtures and excludes protected paths, unreviewed
+fixture data, environment files, binaries and symlinks. Gitless exported snapshots
+prune protected directories before reading. Regression tests assert these boundaries.
+An isolated-worktree hook exposed inherited Git variables redirecting fixture
+commands; the disposable checkout was rebuilt and the accidentally changed shared
+`core.bare` flag restored to false. The delivery-tool fixture suite required the
+same isolation; its accidental local test identity was restored to the original
+repository identity. Main-worktree status was checked afterward.
+
+Acceptance command: `venv/bin/python -m pytest tests/test_validate_approvals.py tests/test_validate_planning.py -q`.
+Both the isolated hook run and exported `1cdec5f` snapshot passed **75 tests**.
+Final planning/asset checks are verified before Git publication. Detailed synthetic logs
+remain under `runtime/portal/temporary/approval-*.log` (not tracked).
+
+Next owner: primary engineering, to review the remaining verifier/browser/seed
+packages and unrelated planning work. Use isolated checkouts while another session
+is active; never share staging. No service deployment or real-data activation is
+included. The current A1 binary remains outside this governance acceptance scope.
+
 ## Shared intake delivery — 2026-09-08
 
 Implementation: `9ab6f46` publishes the shared offline core; `a52363a` publishes

@@ -7,6 +7,14 @@
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
+## Approval validation delivery — 2026-09-08
+
+Shared approval checks preserve catalog consistency and enforce dependency states
+from one validated register snapshot. Planning fixtures exclude protected runtime
+and secret paths. See the [delivery record](docs/operations/git-delivery.md) for
+commit provenance, synthetic acceptance and the concurrent-session limitation.
+Plan status, catalog IDs and all human/activation gates remain unchanged.
+
 ## Shared intake Git delivery — 2026-09-08
 
 Shared offline processing and synthetic runtime dependencies are committed in

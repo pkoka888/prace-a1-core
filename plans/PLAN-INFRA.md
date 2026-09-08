@@ -3,6 +3,14 @@
 **Status**: active
 **Milestone**: M0–M2
 
+## Approval validation delivery — 2026-09-08
+
+Shared approval checks preserve catalog consistency and enforce dependency states
+from one validated register snapshot. Planning fixtures exclude protected runtime
+and secret paths. See the [delivery record](../docs/operations/git-delivery.md) for
+commit provenance, synthetic acceptance and the concurrent-session limitation.
+Plan status, catalog IDs and all human/activation gates remain unchanged.
+
 ## Git delivery safeguards — 2026-09-07
 
 Existing GitHub CI now propagates test, dependency and lint failures. The local

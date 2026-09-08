@@ -1,10 +1,20 @@
 from __future__ import annotations
 
 import json
+import os
+import pytest
 import subprocess
 from pathlib import Path
 
 from scripts.validate_change_packages import validate
+
+
+@pytest.fixture(autouse=True)
+def isolated_git_environment(monkeypatch):
+    """Synthetic repository tests must never inherit the invoking hook's Git state."""
+    for name in tuple(os.environ):
+        if name.startswith("GIT_"):
+            monkeypatch.delenv(name)
 
 
 def run(root: Path, *args: str) -> None:
