@@ -541,8 +541,8 @@ def _draw_form_header(c: canvas.Canvas, page_number: int, doc_id: str, font: str
     if doc_id:
         c.setFillColorRGB(0.07, 0.07, 0.07)
         c.setFont(font, 9)
-        # Document ID at top-left of every page
-        c.drawString(96, PAGE_SIZE[1] - 67, doc_id)
+        # Keep the number in the white margin above the static A1/EU banner.
+        c.drawString(72, PAGE_SIZE[1] - 42, doc_id)
 
 
 def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:

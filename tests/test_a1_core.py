@@ -345,6 +345,9 @@ class A1CoreIntegrationTests(unittest.TestCase):
             with pymupdf.open(output) as rendered:
                 for page in rendered:
                     self.assertGreater(len(page.get_pixmap().samples), 0)
+                    numbers = page.search_for(form["certificate"]["document_id"])
+                    self.assertEqual(len(numbers), 1)
+                    self.assertLess(numbers[0].y1, 55)
 
 
 if __name__ == "__main__":
