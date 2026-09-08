@@ -3,6 +3,18 @@
 **Status**: active
 **Milestone**: M1A–M3
 
+## Shared intake Git delivery — 2026-09-08
+
+Child: [shared document intake](2026-09-06-ocr-shared-core-local-web.md),
+OCR-CORE-1 through OCR-CORE-14.
+
+Shared offline processing and synthetic runtime dependencies are committed in
+separate scopes. Document replacement now uses the shared intake pipeline with
+version preservation, retry reuse and rejection of obsolete OCR acceptance.
+The [current delivery record](../docs/operations/git-delivery.md) separates exported-snapshot tests,
+Git publication and remaining gates. No deployment or real-data activation is
+included; all existing plan IDs and approval states remain unchanged.
+
 ## Purpose
 
 Single governing plan for who works for the operator, the roles and data they

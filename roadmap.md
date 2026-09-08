@@ -7,6 +7,15 @@
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
+## Shared intake Git delivery — 2026-09-08
+
+Shared offline processing and synthetic runtime dependencies are committed in
+separate scopes. Document replacement now uses the shared intake pipeline with
+version preservation, retry reuse and rejection of obsolete OCR acceptance.
+The [current delivery record](docs/operations/git-delivery.md) separates exported-snapshot tests,
+Git publication and remaining gates. No deployment or real-data activation is
+included; all existing plan IDs and approval states remain unchanged.
+
 ## Git delivery safeguards — 2026-09-07
 
 Staged-byte validation, fail-closed existing GitHub CI, runtime ignore rules and
@@ -24,7 +33,7 @@ J4 stores actual canonical PDF bytes, automated QA, immutable snapshots and all-
 previews, with protected audited delivery and source/template/layout/renderer/QA/build staleness.
 Preparation alone produces no PDF hash. Migration 0011 is implementation/test evidence,
 not a service migration. Exact results and limitations are recorded in the
-[engineering delivery](docs/research/2026-09-07-runtime-j4-engineering.md).
+engineering delivery (unpublished local material: `docs/research/2026-09-07-runtime-j4-engineering.md`).
 
 Visual acceptance, the remaining ENG-001 checks and deployment remain gated.
 No automatic ENG-001 opening follows; retain prerequisites including J4 → ENG-001
@@ -210,7 +219,7 @@ The focused pre-repair acceptance run was **5 failed, 33 passed**. Earlier
 Bounded stabilization is now **synthetic-accepted**: the final focused suite passed
 **157 tests and 19 subtests**; document core passed **75 tests**. Final isolated-storage/cache reruns passed **15 PostgreSQL intake tests** and
 **33 affected M2 tests**, with no model/migration drift. Exact commands and scope
-are in the [stabilization report](docs/research/2026-09-07-a1-stabilization.md).
+are in the stabilization report (unpublished local material: `docs/research/2026-09-07-a1-stabilization.md`).
 Implementation, test acceptance and deployment are separate evidence states.
 Deployment was not performed. The wider A1 repair plan remains active.
 
@@ -237,7 +246,7 @@ RapidOCR/ONNX is the existing backend; do not install Tesseract for this pipelin
 
 Next: functioning engineering prerequisites including
 minimum J4 → ENG-001 → REV-002 → remaining hardening/activation gates → REV-003.
-The [operator workflow contract](docs/architecture/operator-a1-workflow.md) separates
+The operator workflow contract (unpublished local material: `docs/architecture/operator-a1-workflow.md`) separates
 application preparation from issued A1 and limits Jan's choices to facts and a
 consolidated confirmation. Its subsequent interface is not part of this repair.
 
@@ -247,20 +256,20 @@ references, never the hash of the whole growing audit log. Missing or invalid po
 shape fails with sanitized diagnostics and registered staging cleanup; readiness
 protects institution-profile sources too.
 
-[Work orders](docs/operations/opencode-work-orders/README.md) distinguish current
+Work orders (unpublished local material: `docs/operations/opencode-work-orders/README.md`) distinguish current
 regression/audit work from gated implementation. Source inventory is read-only;
 unknown research/runtime artifacts must be classified before any move or deletion.
 
 ## Infrastructure packet review — 2026-09-07
 
 **Implementation:** scoped application repairs integrated in the working tree.
-**Acceptance:** see [independent review](docs/research/2026-09-07-infra-application-review.md)
+**Acceptance:** see independent review (unpublished local material: `docs/research/2026-09-07-infra-application-review.md`)
 for exact synthetic suites, actual Chromium/OCR evidence and limitations.
 **Deployment:** BLOCKED; no selected service identity, confined supervised settings,
 SOPS/database delivery or recovery proof. Existing review settings share document
 storage; the synthetic liveness marker does not establish isolation.
 
-Next: complete the [runtime return contract](docs/operations/infra-return-work-order-2026-09-07.md)
+Next: complete the runtime return contract (unpublished local material: `docs/operations/infra-return-work-order-2026-09-07.md`)
 and minimum J4. Fixes include anonymous smoke false-pass and OCR review URL mismatch.
 Optional Tesseract is a tested local extension, not the default or an accepted field
 source. There is no configured ORM broker/queue. Infrastructure's 104 tests/14
@@ -271,7 +280,7 @@ remaining hardening/activation gates → REV-003. Preserve 34 catalog entries.
 
 ## Runtime handoff correction — 2026-09-07
 
-The reviewed [runtime manifest](docs/operations/runtime-manifest.md) separates source/test evidence from target
+The reviewed runtime manifest (unpublished local material: `docs/operations/runtime-manifest.md`) separates source/test evidence from target
 activation. `/health/` exists and returns a constant synthetic liveness marker;
 `/readiness/` now checks database connectivity and the complete installed-app
 migration graph, with sanitized failures and no-cache responses. The isolated

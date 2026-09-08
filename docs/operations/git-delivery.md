@@ -1,7 +1,55 @@
-# Git delivery safeguards — 2026-09-07
+# Git delivery safeguards — 2026-09-08
 
 Parent: PLAN-INFRA. Scope: existing GitHub CI and local Git tooling only.
 No deployment, new runner/remote, history rewrite or real-data processing.
+
+## Shared intake delivery — 2026-09-08
+
+Implementation: `9ab6f46` publishes the shared offline core; `a52363a` publishes
+synthetic runtime dependencies; `5a96935` publishes the portal adapter and required
+J4 integration. Catalog commits `10b6099` and `5612cd7` define their reviewed
+boundaries. No intended core/runtime/portal paths remain dirty after these commits.
+The parent PLAN-WORKERS checkpoint is staged separately from its inherited edits.
+
+Upload and supersession now use the same validation, protected storage and OCR
+pipeline. Supersession preserves old bytes/receipts, serializes version creation,
+reuses identical retries and cleans up a new source on transaction failure. Late
+OCR cannot overwrite the latest document state; obsolete proposals/associations
+cannot be accepted. Output-storage failure leaves a retryable failed run.
+J4 preparation retains an empty PDF hash until actual canonical artifact attachment.
+
+Acceptance from exported Git objects (installed project venv; synthetic data only):
+
+| Object | Command | Result |
+|---|---|---|
+| `9ab6f46` | `unshare -Urn venv/bin/python -m pytest tests/test_document_core -q` | 87 passed; networking disabled |
+| `a52363a` | `env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py -q` | 82 passed |
+| `5a96935` | `env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1` | 101 run; 98 passed, 3 PostgreSQL-only skips |
+| `5a96935` | `venv/bin/python scripts/test_document_intake.py` | 30 passed on disposable PostgreSQL 18, including all three skipped cases |
+| `5a96935` | `env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py tests/test_release1a_migration_chain.py -q` | 46 passed; five expected database-override warnings |
+
+The PostgreSQL run covers concurrent replacement, late OCR completion, bounded
+query cancellation and historical MigrationExecutor transitions. All disposable
+clusters are stopped and removed by their harness. Artifact tests use the committed
+template, not the unrelated modified template in the working tree. They establish
+synthetic integrity/behavior, not all-page visual acceptance or certificate issuance.
+The missing-database side-effect test now allows cold subprocess startup separately
+from the strict deadline/cancellation tests; no production timeout was increased.
+
+The benchmark-specific contract test stays with the unpublished benchmark script;
+it was moved to `tests/test_ocr_benchmark_contract.py`, not discarded or promoted.
+The planning checkpoint publishes the reviewed child plan and architecture contract.
+References to other unpublished local reports are labelled explicitly. Existing
+34 catalog IDs and approval states are preserved. Working-tree planning passed
+24/24; final documentation-object checks and remote SHA are verified before the
+handoff claims publication. No full-repository CI or deployment acceptance is claimed.
+
+Synthetic logs: `runtime/portal/temporary/intake-delivery-20260908/`; exported
+objects: `runtime/s-<commit>/`. Publication targets only the existing GitHub feature
+branch. Next owner: primary engineering, to review remaining governance, planning,
+benchmark/research and fixture scopes, then reconcile draft PR #1 against CI.
+Unrelated template changes and employee artifacts remain untouched. Deployment,
+observed review, real-data activation and all existing human gates remain pending.
 
 ## Bounded dependency repair — 2026-09-08
 
