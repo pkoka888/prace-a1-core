@@ -3,6 +3,26 @@
 Parent: PLAN-INFRA. Scope: existing GitHub CI and local Git tooling only.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Checkbox alignment repair — 2026-09-08
+
+The original PDF and the working raster background had different box geometry;
+3.4 and 4.1.2 outlines were absent. Restored all ten blank outlines at the original
+vector coordinates, corrected the corresponding layout, and inset X strokes by
+1 point. No employee values or original selection marks were copied.
+
+The previous blank background is retained in protected runtime. The one-time
+repair rejects any other input hash; 300-DPI comparisons on all three pages found
+zero changed pixels outside the checkbox repair regions. All three synthetic
+pages and the four reported problem crops were visually reviewed. Tests now check
+all ten X/Y/page/size values, actual background outlines, full rendered stroke
+containment and hashes binding template/layout/renderer/reference. They need no
+ignored employee/reference PDF. Receipt: `config/a1_checkbox_fix_receipt.json`.
+
+Employee PDFs were not regenerated. Existing packages remain unchanged; their
+canonical source/approval/visual gates still apply. The synthetic review artifact
+is `runtime/portal/temporary/checkbox-alignment-review/synthetic-checkboxes.pdf`.
+The background and coordinates must be changed and accepted together from now on.
+
 ## Approval validation and fixture isolation — 2026-09-08
 
 The shared approval validator now preserves CLI catalog-state/date checks, rejects
