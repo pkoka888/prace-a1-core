@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import random
 import re
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import ArrayObject, NameObject, NullObject, StreamObject
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -613,10 +615,27 @@ def generate_a1_pdf(
     # pymupdf re-encodes the overlay's text into a Form XObject and
     # can split comma-separated text operands. The overlay buffer
     # is a known good PDF; the merge step below preserves its text.
-    writer = PdfWriter(clone_from=background)
+    # Build a fresh page tree, as in the original generator. Attach pages
+    # before merging so pypdf owns their content streams.
+    writer = PdfWriter()
     overlay = PdfReader(overlay_buffer)
-    for index, page in enumerate(writer.pages):
+    for index, source_page in enumerate(background.pages):
+        page = writer.add_page(source_page)
         page.merge_page(overlay.pages[index])
+    # The original image-backed PDF used ASCII85 around its image data.
+    # Apply the same lossless transport encoding to images so compressed
+    # bytes cannot look like Unicode line/paragraph separators to consumers.
+    for obj in writer._objects:
+        if not isinstance(obj, StreamObject) or obj.get("/Subtype") != "/Image":
+            continue
+        filters = obj.get("/Filter")
+        filters = list(filters) if isinstance(filters, ArrayObject) else ([filters] if filters else [])
+        params = obj.get("/DecodeParms")
+        if params is not None:
+            params = list(params) if isinstance(params, ArrayObject) else [params]
+            obj[NameObject("/DecodeParms")] = ArrayObject([NullObject(), *params])
+        obj._data = base64.a85encode(obj._data, adobe=True)[2:]
+        obj[NameObject("/Filter")] = ArrayObject([NameObject("/ASCII85Decode"), *filters])
     with output.open("wb") as stream:
         writer.write(stream)
     reopened = PdfReader(str(output))

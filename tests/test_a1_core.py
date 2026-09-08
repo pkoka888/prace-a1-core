@@ -338,6 +338,13 @@ class A1CoreIntegrationTests(unittest.TestCase):
             self.assertNotIn("OTHER-C", text)
             self.assertNotIn("{{", text)
             self.assertFalse(reader.get_fields())
+            # Compressed binary data previously contained UTF-8 PS bytes,
+            # producing an unusual-line-terminator warning when inspected.
+            self.assertNotIn(b"\xe2\x80\xa8", output.read_bytes())
+            self.assertNotIn(b"\xe2\x80\xa9", output.read_bytes())
+            with pymupdf.open(output) as rendered:
+                for page in rendered:
+                    self.assertGreater(len(page.get_pixmap().samples), 0)
 
 
 if __name__ == "__main__":
