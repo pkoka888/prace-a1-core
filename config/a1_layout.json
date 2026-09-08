@@ -325,7 +325,7 @@
       "section": "3.2",
       "area": "section_3_status_checkboxes.boxes.3.2_employee_multistate",
       "page": 1,
-      "x": 269.5,
+      "x": 275.0,
       "y": 605.0,
       "size": 7.4
     },
@@ -341,8 +341,8 @@
       "section": "3.4",
       "area": "section_3_status_checkboxes.boxes.3.4_self_employed_multistate",
       "page": 1,
-      "x": 269.5,
-      "y": 584.0,
+      "x": 275.0,
+      "y": 605.0,
       "size": 7.4
     },
     "employer_type_employee": {
@@ -350,15 +350,15 @@
       "area": "section_4_employer_type_checkboxes.boxes.4.1.1_employee",
       "page": 1,
       "x": 72.5,
-      "y": 432.5,
+      "y": 390.0,
       "size": 7.4
     },
     "employer_type_self_employed": {
       "section": "4.1.2",
       "area": "section_4_employer_type_checkboxes.boxes.4.1.2_self_employed",
       "page": 1,
-      "x": 288.0,
-      "y": 432.5,
+      "x": 278.0,
+      "y": 390.0,
       "size": 7.4
     },
     "gender_female": {
