@@ -2,6 +2,7 @@
   "schema_version": 1,
   "accepted_checkpoint": "c01aa2b",
   "packages": {
+    "a1_checkbox_alignment": {"purpose": "Canonical blank checkbox outlines at original geometry and inset data-driven crosses; synthetic acceptance only.", "paths": ["config/a1_layout.json", "config/a1_checkbox_reference.json", "config/a1_checkbox_fix_receipt.json", "templates/a1_background.pdf", "scripts/a1_core.py", "scripts/a1_restore_checkbox_outlines.py", "tests/test_a1_core.py"], "checks": ["venv/bin/python -m pytest tests/test_a1_core.py tests/test_pdf_named_fields.py -q"], "dependencies": ["Original vector geometry recorded as non-personal metadata; previous blank background retained in protected runtime"], "rollback": "Restore template/layout/renderer/receipt together; preserve employee artifacts."},
     "shared_document_core": {
       "purpose": "Offline framework-independent synthetic document processing and optional local adapters.",
       "paths": [
@@ -175,7 +176,7 @@
     },
     "a1_named_field_experiment": {
       "purpose": "Named PDF token experiment and shared personal-name display casing. No canonical template migration or employee publication.",
-      "paths": ["scripts/pdf_named_fields.py", "tests/test_pdf_named_fields.py", "scripts/a1_core.py", "tests/test_a1_core.py"],
+      "paths": ["scripts/pdf_named_fields.py", "tests/test_pdf_named_fields.py"],
       "checks": ["venv/bin/python -m pytest tests/test_pdf_named_fields.py tests/test_a1_core.py -q"],
       "dependencies": ["Source reference and experimental PDFs remain in protected storage", "Canonical acceptance requirements unchanged"],
       "rollback": "Revert helper, renderer name-formatting call and associated tests together; preserve all source PDFs."

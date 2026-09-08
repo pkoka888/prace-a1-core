@@ -1,67 +1,30 @@
 {
-  "fix_type": "checkbox_position_correction",
-  "date": "2026-09-08",
-  "source_sha256": "12fe1d3ab12f93407858d1f4daca09ff84f8e7e37d08376a487e840073e34bac",
-  "layout_sha256": "735c2fcb1013559ab02c57f3aa7ff431a01888a0303a912468ffc6a4938dc84d",
-  "extraction_script": "scripts/extract_a1_checkbox_positions.py",
-  "fixed_positions": {
-    "gender_male": {
-      "x": 459.22,
-      "y": 452.83,
-      "size": 9.96
+  "fix_type": "original_checkbox_outlines_and_inset_marks",
+  "template_sha256": "c816d97525cd9070d00c1984c486e73fbf1fa08b8a507df32459dbaf9c23d27a",
+  "layout_sha256": "9ac1b8bc27e68e84b82a8697f81b77633160cf051fab3b41ba6c8b45762fd025",
+  "renderer_sha256": "e0302c96badb013abbae70afe4e9bfbf8e796faf26cb9f21c4be42cdac8c9974",
+  "reference_sha256": "2d1a2b142b74920f0ef81d2197064cdeed1617a5a56976d05b0b0f05861e3f1d",
+  "checks": [
+    {
+      "page": 0,
+      "dpi": 300,
+      "outside_changed_pixels": 0
     },
-    "gender_female": {
-      "x": 402.46,
-      "y": 452.83,
-      "size": 9.96
+    {
+      "page": 1,
+      "dpi": 300,
+      "outside_changed_pixels": 0
     },
-    "status_osv_c_multistate": {
-      "x": 296.11,
-      "y": 598.06,
-      "size": 7.44
-    },
-    "employer_type_self_employed": {
-      "x": 296.11,
-      "y": 409.99,
-      "size": 7.44
-    },
-    "status_posted_employee": {
-      "x": 76.46,
-      "y": 614.86,
-      "size": 7.44
-    },
-    "status_employee_multistate": {
-      "x": 296.11,
-      "y": 614.86,
-      "size": 7.44
-    },
-    "status_posted_self_employed": {
-      "x": 76.46,
-      "y": 598.06,
-      "size": 7.44
-    },
-    "employer_type_employee": {
-      "x": 76.46,
-      "y": 409.99,
-      "size": 7.44
-    },
-    "valid_duration": {
-      "x": 83.42,
-      "y": 180.98,
-      "size": 7.46
-    },
-    "no_fixed_address": {
-      "x": 76.46,
-      "y": 409.39,
-      "size": 7.44
+    {
+      "page": 2,
+      "dpi": 300,
+      "outside_changed_pixels": 0
     }
+  ],
+  "synthetic_visual_review": {
+    "pages": 3,
+    "checkboxes": 10,
+    "result": "PASS"
   },
-  "verification": "All X marks match original A1 2025.pdf vector positions",
-  "validation_passed": true,
-  "provisional_pdfs_regenerated": true,
-  "previews_regenerated": true,
-  "a1_core_sha256": "ac133b0b5f3167aafdee1d2194ce883a0d74b1dacf43ffb754cb0a20ed3a592c",
-  "fix_description": "Fixed valid_duration checkbox: derived from certificate start/end dates instead of hardcoded False; corrected size from 7.46 to 7.44 to match original template; corrected y from 180.98 to 180.98 (verified against A1 2025.pdf)",
-  "valid_duration_derived_from_certificate_dates": true,
-  "valid_duration_size_corrected": true
+  "employee_pdfs_regenerated": false
 }

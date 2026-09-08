@@ -458,9 +458,8 @@ def _fit_font(text: str, font: str, size: float, max_width: float) -> float:
 # A1 2025 form's dark blue X over the gray checkbox squares.
 CHECKBOX_X_COLOR = (0.05, 0.35, 0.48)
 CHECKBOX_X_LINE_WIDTH = 0.8
-# Inset < 0 means the X arms extend slightly past the box edges, matching
-# the manual "tick" the operator would draw with a pen.
-CHECKBOX_X_INSET = -0.12
+# Keep the full stroke inside the original template's checkbox border.
+CHECKBOX_X_INSET = 1.0
 
 
 def _draw_check_x(c: canvas.Canvas, x: float, y: float, size: float) -> None:
