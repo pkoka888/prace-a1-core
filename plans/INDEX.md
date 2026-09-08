@@ -29,6 +29,15 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | [Plan PLAN-WORKERS-MIGRATE-TO-DB — worker data from JSON/CSV to database](PLAN-WORKERS-MIGRATE-TO-DB.md) | planned | M2–M5 | product engineering + primary agent | Critical Release 1A (subordinate to PLAN-WORKERS) | ENG-001 opens, observed Release 1A acceptance, JSON/CSV freeze plan approved | Single dashboard write path; CSV/JSON frozen for archive; CI gate blocks scripts reading legacy files | DB-MIG-1 through DB-MIG-7 acceptance commands; DB-MIG-7 byte-equality round-trip on synthetic data |
 | [Plan PLAN-REAL-DATA — real-data activation after Sprint 4 gates](PLAN-REAL-DATA.md) | active | M5 | product engineering + product owner + legal + sysadmin | Critical Release 1A | Sprint 1–3 → `ENG-001` → `REV-002` → Sprint 4 → `OPS-001`/`LEG-001`/`INF-001` → `REV-003`; Sprint 4 follows REV-002, not ENG-001 | Prerequisites and evidence defined; explicit operator/legal/sysadmin activation decision deferred | All Sprint 1–4 acceptance criteria green; `REV-003` approved in `planning/approvals.json` |
 
+## Local automation design
+
+Local automation design (2026-09-08):
+[scan intake to worker database and A1 drafts](2026-09-08-local-a1-automation.md)
+specifies one-command local processing, pending BO verification, deterministic
+matching, protected storage and resume behaviour under existing J2/J4 and
+DB-MIG-1 through DB-MIG-7. Proposed implementation contract only; parent status,
+the 34 top-level entries and activation gates are unchanged.
+
 ## Historical
 
 | Plan | Status | Milestone | Successor |

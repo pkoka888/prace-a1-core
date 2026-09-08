@@ -7,6 +7,14 @@
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
+## Local automation design — 2026-09-08
+
+Local automation proposal: [one-command scan intake to database and A1 drafts](plans/2026-09-08-local-a1-automation.md).
+Reuse J2/J4 and DB-MIG-1 through DB-MIG-7. Automatic processing records machine
+checks and prepares unverified drafts; BO confirmation records actor/time/revision
+without making the batch wait. This is a design checkpoint, not implemented
+automation, a database migration or real-data activation.
+
 ## Approval validation delivery — 2026-09-08
 
 Shared approval checks preserve catalog consistency and enforce dependency states
