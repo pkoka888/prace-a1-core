@@ -3,6 +3,42 @@
 Parent: PLAN-INFRA. Scope: existing GitHub CI and local Git tooling only.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Bounded dependency repair — 2026-09-08
+
+Implementation commits `c322e8a` and `153cf05`, with dependency follow-up
+`ab43d27`, restore migration stages 0008–0011, preserve the committed 0012
+dependency, add 0013 for the confirmation reverse relation, and publish the
+canonical A1 audit/path modules. The institution inventory test now runs without
+Git metadata and rejects an empty inventory. Louny's unresolved code keeps its
+profile at NEEDS_VERIFICATION. No institution or certificate evidence was approved.
+
+Acceptance from an exported `ab43d27` snapshot without `.git`: **57 passed** with
+`venv/bin/python -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py tests/test_release1a_migration_chain.py tests/test_validate_change_packages.py -q`
+(the existing project venv interpreter was invoked by absolute path). The first
+A1 snapshot failed because its template-repair receipt dependency was absent;
+`ab43d27` includes that metadata-only historical receipt. This is not fresh
+template visual acceptance. The snapshot test exercises historical app states
+through MigrationExecutor, preserves document/J4 data, and checks model parity.
+
+The existing two historical intake/J4 tests also passed on a disposable SQLite
+test database in the working tree. Planning validation passed 24/24 there;
+neither result establishes acceptance of the remaining unpublished portal modules.
+Detailed synthetic logs and exported snapshots are in protected project runtime
+storage under `runtime/portal/temporary/delivery-20260908/`.
+
+Git publication is tracked separately from implementation and acceptance; the
+remote SHA must be verified after pushing these bounded commits. No persistent
+database migration, deployment, employee generation, promotion or activation was
+performed. Databases created from the withdrawn local squash require their own
+history review before use; they were not migrated by this repair.
+
+Next owner: primary engineering, for the remaining shared document/runtime/J4
+source packages and supersession integration. Preserve unrelated work. The initial
+inventory contained 262 dirty files (27 modified, 235 untracked), including 134
+untracked research files; that inventory is not a staging approval. Research,
+unreviewed fixtures, template changes and unrelated planning work remain outside
+this bounded delivery. Parent plan statuses and activation gates are unchanged.
+
 ## Current delivery
 
 The pre-commit gate validates exact staged bytes and the staged package catalog.
