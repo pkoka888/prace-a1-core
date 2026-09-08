@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "review_status": "NEEDS_VERIFICATION",
+  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/ustecky-kraj/louny",
+  "verified_on": "06.09.2026",
+  "current_office_contact": {
+    "name": "Ing. Petr Burdych",
+    "role": "ředitel OSSZ",
+    "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
+  },
+  "expected_ossz": "OSSZ Louny",
+  "institution": {
+    "name": "OSSZ Louny",
+    "street": "Pod Nemocnicí",
+    "house_number": "2378",
+    "city": "Louny",
+    "postal_code": "440 01",
+    "country_code": "CZ",
+    "code": "TBD"
+  }
+}

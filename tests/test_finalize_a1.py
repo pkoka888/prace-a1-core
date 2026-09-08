@@ -290,18 +290,9 @@ class FinalizationTests(unittest.TestCase):
 
     def test_verified_project_profiles_contain_no_placeholder_values(self):
         markers = ("tbd", "doplnit", "placeholder")
-        import subprocess
-        try:
-            tracked = subprocess.check_output(
-                ["git", "ls-files", "--", "config/institutions/"],
-                text=True, stderr=subprocess.DEVNULL
-            ).strip().splitlines()
-            tracked = {ROOT / p for p in tracked}
-        except subprocess.CalledProcessError:
-            tracked = set()
-        for path in (ROOT / "config/institutions").glob("*.json"):
-            if path not in tracked:
-                continue
+        profiles = sorted((ROOT / "config/institutions").glob("*.json"))
+        self.assertTrue(profiles, "institution profile inventory must not be empty")
+        for path in profiles:
             profile = json.loads(path.read_text(encoding="utf-8"))
             if profile.get("review_status") != "VERIFIED":
                 continue
