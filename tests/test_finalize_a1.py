@@ -160,6 +160,18 @@ class FinalizationTests(unittest.TestCase):
         with self.assertRaisesRegex(FinalizationError, "approved_for_pdf must be YES"):
             validate_review(read_review(self.review_path), self.employees_path, self.profile_dir)
 
+    def test_provisional_self_employed_allows_blank_51_but_requires_52(self):
+        rows = [review_row(self.employees[0], "DOC-A"), review_row(self.employees[1], "DOC-B")]
+        for row in rows:
+            row.update(activity_name="", activity_address="DE, CZ")
+        validated = validate_review(rows, self.employees_path, self.profile_dir, provisional=True)
+        self.assertEqual(len(validated), 2)
+        self.assertEqual(validated[0][0]["activity_name"], "")
+        self.assertEqual(validated[0][0]["activity_address"], "DE, CZ")
+        rows[0]["activity_address"] = ""
+        with self.assertRaisesRegex(FinalizationError, "activity_address"):
+            validate_review(rows, self.employees_path, self.profile_dir, provisional=True)
+
     def test_duplicate_document_id_blocks_finalization(self):
         rows = [review_row(self.employees[0], "DOC-A"), review_row(self.employees[1], "DOC-A")]
         self.write_rows(rows)

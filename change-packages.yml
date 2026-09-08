@@ -105,6 +105,7 @@
         "config/a1_template_repair_2026-09-06.json",
         "scripts/a1_paths.py",
         "scripts/a1_audit.py",
+        "scripts/finalize_a1.py",
         "tests/test_a1_stabilization.py",
         "tests/test_finalize_a1.py",
         "config/institutions/louny.json"

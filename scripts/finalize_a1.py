@@ -345,10 +345,13 @@ def validate_review(
         "employment_house_number", "employment_city", "employment_postal_code",
         "employment_country_code",
     )
-    activity_required = ("activity_name", "activity_address")
     for row in rows:
         employee_id = _slug(row["employee_id"])
         status = row.get("status_profile", "")
+        # Section 5.1 is intentionally blank in the provisional self-employed
+        # presentation; section 5.2 still requires the reviewed territory.
+        activity_required = (("activity_address",) if provisional and status == "self_employed_multi_state"
+                             else ("activity_name", "activity_address"))
         required = (*base_required, *activity_required, *employment_required)
         missing = [field for field in required if not row.get(field)]
         if missing:
