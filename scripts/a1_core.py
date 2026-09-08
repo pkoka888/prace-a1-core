@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader, PdfWriter
-import pymupdf
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -551,6 +550,21 @@ def generate_a1_pdf(
     layout_json: str | Path,
     output_pdf: str | Path,
 ) -> Path:
+    """Render the A1 form data onto the official A1 2025 background.
+
+    Two PDF frameworks are available for this task:
+
+    - ``scripts.pdf_named_fields`` (preferred default): placeholder
+      search-and-replace against a vector-backed template.
+    - The coordinate overlay in this file (fallback): rendered text
+      drawn at fixed coordinates on top of the image-backed A1 2025
+      background.
+
+    The current A1 2025 background is image-backed, so we use the
+    coordinate overlay. The page merge re-uses the canonical
+    overlay buffer so values flow through a single source of truth
+    (``build_form_data``).
+    """
     validate_form_data(form)
     layout = load_json(layout_json)
     background = PdfReader(str(background_pdf))
@@ -559,19 +573,17 @@ def generate_a1_pdf(
     overlay_buffer = render_overlay(form, layout)
     output = Path(output_pdf)
     output.parent.mkdir(parents=True, exist_ok=True)
-    # Use pymupdf for the page merge: ``pypdf.PdfWriter.merge_page`` can drop
-    # comma-separated text operands (e.g. ``(DE, CZ) Tj`` -> ``(DE) Tj``) when
-    # rewriting content streams. ``show_pdf_page`` reproduces the overlay's
-    # text layer verbatim, which is what the A1 release artefacts require.
-    bg = pymupdf.open(str(background_pdf))
-    overlay = pymupdf.open(stream=overlay_buffer.getvalue(), filetype="pdf")
-    try:
-        for index in range(len(bg)):
-            bg[index].show_pdf_page(bg[index].rect, overlay, index)
-        bg.save(str(output), garbage=4, deflate=True, clean=True)
-    finally:
-        bg.close()
-        overlay.close()
+    # Merge the overlay onto the background using pypdf's merge_page.
+    # Earlier experiments with pymupdf's show_pdf_page showed that
+    # pymupdf re-encodes the overlay's text into a Form XObject and
+    # can split comma-separated text operands. The overlay buffer
+    # is a known good PDF; the merge step below preserves its text.
+    writer = PdfWriter(clone_from=background)
+    overlay = PdfReader(overlay_buffer)
+    for index, page in enumerate(writer.pages):
+        page.merge_page(overlay.pages[index])
+    with output.open("wb") as stream:
+        writer.write(stream)
     reopened = PdfReader(str(output))
     if len(reopened.pages) != 3 or reopened.get_fields():
         raise A1ValidationError("Generated A1 failed static-PDF structural verification")
