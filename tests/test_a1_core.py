@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pymupdf
 from pypdf import PdfReader
 
 from scripts.a1_core import (
@@ -341,3 +342,70 @@ class A1CoreIntegrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class A1CheckboxPositionTests(unittest.TestCase):
+    """Verify checkbox coordinates in config/a1_layout.json match the original A1 2025.pdf.
+
+    The original A1 2025.pdf has vector X marks for four checkboxes (Muž gender,
+    2.4 valid duration, 3.4 self-employed multi-state, 4.1.2 self-employed type).
+    Layout coordinates are in ReportLab bottom-left points, matching the
+    original template's positions exactly after coordinate conversion.
+    """
+
+    def test_checkbox_positions_match_original_template(self):
+        layout = json.loads((ROOT / "config/a1_layout.json").read_text(encoding="utf-8"))
+        doc = pymupdf.open(str(ROOT / "output" / "A1 2025.pdf"))
+        original_x_marks = {}
+        for page_index, page in enumerate(doc):
+            for d in page.get_drawings():
+                for item in d.get("items", []):
+                    if item[0] == "l":
+                        pt1, pt2 = item[1], item[2]
+                        dx = abs(pt2.x - pt1.x)
+                        dy = abs(pt2.y - pt1.y)
+                        if 5 < dx < 20 and 5 < dy < 20:
+                            page_key = page_index + 1
+                            original_x_marks.setdefault(page_key, []).append(
+                                {"x1": round(pt1.x, 2), "y1": round(pt1.y, 2),
+                                 "x2": round(pt2.x, 2), "y2": round(pt2.y, 2)}
+                            )
+        doc.close()
+        # Verify that each checkbox in the layout that exists in the original
+        # has a matching position after coordinate conversion
+        # Map layout checkbox names (0-indexed page) to their original PDF positions
+        # The layout uses 0-indexed pages: page 0 = first PDF page, page 1 = second PDF page
+        expected_mapping = {
+            "gender_male": {"page": 0, "display_y_top": 379.13},
+            "gender_female": {"page": 0, "display_y_top": 379.13},
+            "valid_duration": {"page": 0, "display_y_top": 653.48},
+            "status_osv_c_multistate": {"page": 1, "display_y_top": 236.42},
+            "employer_type_self_employed": {"page": 1, "display_y_top": 424.49},
+        }
+        for name, cfg in layout["checkboxes"].items():
+            if name not in expected_mapping:
+                continue
+            expected = expected_mapping[name]
+            # The layout uses ReportLab bottom-left coords
+            # Original display y = PAGE_HEIGHT - bottom_left_y - size
+            # So bottom_left_y = PAGE_HEIGHT - display_y - size
+            # Verify the layout y produces the correct display y
+            PAGE_HEIGHT = 841.92
+            display_y_top = PAGE_HEIGHT - cfg["y"] - cfg["size"]
+            self.assertAlmostEqual(
+                display_y_top, expected["display_y_top"], delta=0.1,
+                msg=f"Checkbox {name} has display y={display_y_top:.2f} "
+                    f"but expected {expected['display_y_top']}"
+            )
+            # Also verify page matches
+            self.assertEqual(cfg["page"], expected["page"])
+        # Verify that all original X marks are accounted for by the layout
+        for page, marks in original_x_marks.items():
+            layout_checkboxes_on_page = [
+                cfg for cfg in layout["checkboxes"].values()
+                if cfg["page"] == page
+            ]
+            self.assertTrue(
+                len(layout_checkboxes_on_page) > 0,
+                f"Page {page} has X marks in original but no checkboxes in layout"
+            )

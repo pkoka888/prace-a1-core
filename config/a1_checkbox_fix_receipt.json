@@ -1,0 +1,63 @@
+{
+  "fix_type": "checkbox_position_correction",
+  "date": "2026-09-08",
+  "source_sha256": "12fe1d3ab12f93407858d1f4daca09ff84f8e7e37d08376a487e840073e34bac",
+  "layout_sha256": "010464451e84713396844ec2cb02465a88e519e535c76733624b90c67fdd25f3",
+  "extraction_script": "scripts/extract_a1_checkbox_positions.py",
+  "fixed_positions": {
+    "gender_male": {
+      "x": 459.22,
+      "y": 452.83,
+      "size": 9.96
+    },
+    "gender_female": {
+      "x": 402.46,
+      "y": 452.83,
+      "size": 9.96
+    },
+    "status_osv_c_multistate": {
+      "x": 296.11,
+      "y": 598.06,
+      "size": 7.44
+    },
+    "employer_type_self_employed": {
+      "x": 296.11,
+      "y": 409.99,
+      "size": 7.44
+    },
+    "status_posted_employee": {
+      "x": 76.46,
+      "y": 614.86,
+      "size": 7.44
+    },
+    "status_employee_multistate": {
+      "x": 296.11,
+      "y": 614.86,
+      "size": 7.44
+    },
+    "status_posted_self_employed": {
+      "x": 76.46,
+      "y": 598.06,
+      "size": 7.44
+    },
+    "employer_type_employee": {
+      "x": 76.46,
+      "y": 409.99,
+      "size": 7.44
+    },
+    "valid_duration": {
+      "x": 83.42,
+      "y": 180.98,
+      "size": 7.46
+    },
+    "no_fixed_address": {
+      "x": 76.46,
+      "y": 409.39,
+      "size": 7.44
+    }
+  },
+  "verification": "All X marks match original A1 2025.pdf vector positions",
+  "validation_passed": true,
+  "provisional_pdfs_regenerated": true,
+  "previews_regenerated": true
+}

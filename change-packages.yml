@@ -135,8 +135,8 @@
     },
     "planning_cockpit": {
       "purpose": "Planning catalog, validator, and derived visual assets.",
-      "paths": ["planning/", "scripts/generate_planning_asset.py", "scripts/validate_planning.py", "tests/test_validate_planning.py", "tests/fixtures/planning/", "docs/prototypes/roadmap-portal/"],
-      "checks": ["venv/bin/python scripts/validate_planning.py", "venv/bin/python -m pytest tests/test_validate_planning.py -q"],
+      "paths": ["scripts/validate_approvals.py", "tests/test_validate_approvals.py", "planning/", "scripts/generate_planning_asset.py", "scripts/validate_planning.py", "tests/test_validate_planning.py", "tests/fixtures/planning/", "docs/prototypes/roadmap-portal/"],
+      "checks": ["venv/bin/python scripts/validate_planning.py", "venv/bin/python -m pytest tests/test_validate_planning.py tests/test_validate_approvals.py -q"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert generator, validator, catalog, and derived assets together."
       ,"intended_commit": "feat: validate planning catalog and cockpit assets"

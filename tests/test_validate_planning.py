@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the deterministic planning validator and catalog.
 
-Positive cases run against a faithful working-tree copy of the authorized
+Positive cases run against a committed text-only fixture of the authorized
 repository (no real data, no secrets). Negative cases mutate a copy of the
 valid catalog and re-run the validator by subprocess, asserting exact exit
 codes and that the targeted check is reported. The missing-jsonschema case is
@@ -30,7 +30,7 @@ IGNORE_DIRS = {
     ".git", "venv", ".venv", "node_modules", "__pycache__", ".pytest_cache",
     ".playwright-mcp", "archive", "build", "dist", "output", "data",
     "employees", "a1", "scans", "ocr", "evidence", ".history-remediation",
-    "public-site", "templates",
+    "public-site", "templates", "runtime", "secrets",
 }
 IGNORE_FILES = {".env", "práce-v-německu.zip", "pytest.ini"}
 
@@ -44,29 +44,69 @@ def load_valid():
     return json.loads(VALID_CATALOG.read_text(encoding="utf-8"))
 
 
+def _planning_path(rel):
+    synthetic_evidence = rel.parts[:4] == ("docs", "decisions", "evidence", "plan-e")
+    return (not any(part in IGNORE_DIRS for part in rel.parts) or synthetic_evidence) and (
+        rel.name not in IGNORE_FILES and not rel.name.startswith(".env")
+        and rel.suffix.lower() in {".md", ".json", ".py", ".js", ".sh", ".yml", ".yaml", ".toml", ".txt", ".html", ".css"}
+        and (rel.parts[0] != "tests" or rel.suffix == ".py" or rel.parts[:3] == ("tests", "fixtures", "planning")))
+
+
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
+def _planning_fixture():
+    """Use committed text fixtures, never arbitrary working-tree artifacts."""
+    import io
+    import tarfile
+    try:
+        top = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "--show-toplevel"],
+                                      text=True, stderr=subprocess.DEVNULL).strip()
+        if Path(top).resolve() != REPO.resolve():
+            raise ValueError("exported snapshot")
+        listing = subprocess.check_output(["git", "-C", str(REPO), "ls-tree", "-rz", "HEAD"],
+                                          stderr=subprocess.DEVNULL)
+        paths = []
+        for entry in listing.split(b"\0"):
+            if not entry:
+                continue
+            metadata, raw = entry.split(b"\t", 1)
+            rel = Path(raw.decode())
+            if metadata.split()[0] in {b"100644", b"100755"} and _planning_path(rel):
+                paths.append(str(rel))
+        archive = subprocess.check_output(["git", "-C", str(REPO), "archive", "HEAD", "--", *paths])
+        with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
+            return {member.name: bundle.extractfile(member).read()
+                    for member in bundle if member.isfile()}
+    except (subprocess.CalledProcessError, ValueError):
+        # Gitless exported acceptance snapshot: prune protected roots before reads.
+        result = {}
+        for current, dirs, files in os.walk(REPO, followlinks=False):
+            dirs[:] = [name for name in dirs if not (Path(current) / name).is_symlink()
+                       and (name not in IGNORE_DIRS or
+                            Path(current).relative_to(REPO).parts == ("docs", "decisions") and name == "evidence")]
+            for name in files:
+                path = Path(current) / name
+                rel = path.relative_to(REPO)
+                if _planning_path(rel) and not path.is_symlink():
+                    result[str(rel)] = path.read_bytes()
+        return result
+
+
 def copy_repo(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    for path in REPO.rglob("*"):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(REPO)
-        synthetic_plan_e_evidence = rel.parts[:4] == ("docs", "decisions", "evidence", "plan-e")
-        if any(part in IGNORE_DIRS for part in rel.parts) and not synthetic_plan_e_evidence:
-            continue
-        if rel.name in IGNORE_FILES:
-            continue
-        dest = root / rel
+    for name, payload in _planning_fixture().items():
+        dest = root / name
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(path, dest)
-    # Planning artifacts under test (overwrite any stale copies).
-    (root / "planning").mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(VALID_CATALOG, root / "planning" / "catalog.json")
-    shutil.copyfile(VALID_SCHEMA, root / "planning" / "catalog.schema.json")
+        dest.write_bytes(payload)
 
 
 def git_init_commit(root: Path):
     subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
-    subprocess.run(["git", "-C", str(root), "add", "-A"], check=True)
+    paths = sorted(str(p.relative_to(root)) for p in root.rglob("*")
+                   if p.is_file() and ".git" not in p.parts)
+    subprocess.run(["git", "-C", str(root), "add", "--", *paths], check=True)
     env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
     subprocess.run(["git", "-C", str(root), "commit", "-q", "-m", "test base"],
@@ -512,3 +552,33 @@ def test_no_real_names_in_changed_paths():
         text = path.read_text(encoding="utf-8", errors="ignore")
         for token in forbidden:
             assert token not in text, "%s contains real name %s" % (path, token)
+
+
+def test_planning_fixture_excludes_protected_and_unreviewed_paths():
+    for name in ("runtime/portal/receipt.json", "secrets/config.json", ".env.local",
+                 "tests/fixtures/release_1a/unreviewed.json", "scans/source.txt"):
+        assert not _planning_path(Path(name))
+    assert _planning_path(Path("docs/decisions/evidence/plan-e/receipt.json"))
+    assert _planning_path(Path("plans/INDEX.md"))
+
+
+def test_gitless_fixture_never_reads_runtime_or_symlink(tmp_path, monkeypatch):
+    source = tmp_path / "export"
+    (source / "plans").mkdir(parents=True)
+    (source / "plans/INDEX.md").write_text("synthetic plan")
+    (source / "runtime/portal").mkdir(parents=True)
+    hidden = source / "runtime/portal/receipt.json"
+    hidden.write_text("synthetic private sentinel")
+    (source / "plans/alias.md").symlink_to(hidden)
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "REPO", source)
+    original = Path.read_bytes
+    def guarded(path):
+        assert not path.is_relative_to(source / "runtime")
+        return original(path)
+    monkeypatch.setattr(Path, "read_bytes", guarded)
+    _planning_fixture.cache_clear()
+    try:
+        assert _planning_fixture() == {"plans/INDEX.md": b"synthetic plan"}
+    finally:
+        _planning_fixture.cache_clear()
