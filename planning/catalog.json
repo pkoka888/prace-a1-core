@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "generated_or_reviewed_at": "2026-08-30T00:00:00Z",
+  "generated_or_reviewed_at": "2026-09-07T00:00:00Z",
   "items": [
     {
       "risks": [],
@@ -237,7 +237,9 @@
       "risks": [
         "ADR-001 technical validation pending; acceptance with DEC-006 evidence incomplete",
         "Server62 backup/restore and capacity evidence incomplete until DEC-013/DEC-016 gates pass",
-        "Provisional A1 lane operates as a separate lane and must not be disturbed"
+        "Provisional A1 lane operates as a separate lane and must not be disturbed",
+        "2026-09-07 bounded stabilization synthetic-accepted: 157 focused tests/19 subtests and 75 document-core tests; initial 5 failed/33 passed retained as history. Broader J4/promotion/authority and deployment gates remain pending.",
+        "Runtime manifest reviewed 2026-09-07: DB/migration readiness implemented and checked across installed apps; storage/model/release/timeouts and selected runtime evidence remain pending. Reported synthetic review migrations and PostgreSQL tests do not prove deployment readiness."
       ],
       "quality_gates": [
         "ADR-001 validated and hash-bound in planning/approvals.json",
@@ -262,10 +264,18 @@
       "evidence_state": "synthetic-tested",
       "executable": true,
       "successor": null,
-      "last_reviewed": "2026-08-30",
+      "last_reviewed": "2026-09-07",
       "source_links": [
         "plans/PLAN-INFRA.md",
-        "AGENTS.md"
+        "AGENTS.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/research/2026-09-06-a1-engineering-delivery.md",
+        "docs/operations/opencode-work-orders/README.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/operations/runtime-manifest.md",
+        "docs/research/2026-09-07-infra-application-review.md",
+        "docs/operations/infra-return-work-order-2026-09-07.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md"
       ],
       "exit_evidence": "E/L/M/checkpoint acceptance consolidated: validated ADR-001, approved operating model and planning cockpit, functional prototype and M2 foundation, server62/GitLab-CI readiness evidence with separate approvals"
     },
@@ -277,8 +287,10 @@
       "decision_evidence": null,
       "dependencies": [],
       "risks": [
-        "17/17 A1 rows blocked in finalize_a1.py readiness until the operator populates per-row certificate, signatory, source-status, and review-flag fields",
-        "PII-bearing outputs must never be staged, copied outside the repo, or moved into a tracked archive"
+        "Authoritative identity/employer/certificate/cohort reconciliation remains pending; prior 2026-09-06 baseline: 25/25 blocked rows and 26 provisional/25 final PDFs.",
+        "2026-09-07 engineering guards and employee support implemented; final promotion/J4 and fresh-preview proof remain pending. Generation cannot target final directories.",
+        "Private data must not be staged or copied outside the project; previously reported /tmp incident requires primary/operator containment.",
+        "2026-09-07 bounded stabilization synthetic-accepted: 157 focused tests/19 subtests and 75 document-core tests; initial 5 failed/33 passed retained as history. Broader J4/promotion/authority and deployment gates remain pending."
       ],
       "quality_gates": [
         "A1_PRIVATE_DIR required and fail-closed",
@@ -304,12 +316,19 @@
       "evidence_state": "operator-verified",
       "executable": false,
       "successor": null,
-      "last_reviewed": "2026-08-30",
+      "last_reviewed": "2026-09-07",
       "source_links": [
         "plans/PLAN-A1.md",
-        "AGENTS.md"
+        "plans/2026-09-06-a1-evidence-status-repair.md",
+        "AGENTS.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/research/2026-09-06-a1-engineering-delivery.md",
+        "docs/operations/opencode-work-orders/README.md",
+        "docs/architecture/operator-a1-workflow.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md"
       ],
-      "exit_evidence": "Canonical cohort reproducible from authorized sources with validated_by_user=1 and authoritative certificate/signatory evidence; repository baseline c01aa2b confirmed; PII never staged"
+      "exit_evidence": "Canonical cohort reproducible from authorized sources with validated_by_user=1 and authoritative certificate/signatory evidence; repository baseline c01aa2b confirmed; PII never staged; child work package 2026-09-06-a1-evidence-status-repair.md addresses investigation findings"
     },
     {
       "id": "PLAN-WORKERS",
@@ -331,7 +350,8 @@
       ],
       "risks": [
         "Observed Jan journeys and M3 workflow maturity remain outstanding",
-        "OCR/document workflow behavior is only testable on the synthetic vertical slice"
+        "OCR/document workflow behavior is only testable on the synthetic vertical slice",
+        "2026-09-07 bounded stabilization synthetic-accepted: 157 focused tests/19 subtests and 75 document-core tests; initial 5 failed/33 passed retained as history. Broader J4/promotion/authority and deployment gates remain pending."
       ],
       "quality_gates": [
         "Release 1A catalog frozen and reviewed",
@@ -353,14 +373,20 @@
       "evidence_state": "primary-source-verified",
       "executable": true,
       "successor": "M3",
-      "last_reviewed": "2026-08-30",
+      "last_reviewed": "2026-09-07",
       "source_links": [
         "plans/PLAN-WORKERS.md",
+        "plans/2026-09-06-ocr-shared-core-local-web.md",
         "AGENTS.md",
         "roadmap.md",
-        "docs/decisions/2026-08-12-jan-release-1-solution-brief.md"
+        "docs/decisions/2026-08-12-jan-release-1-solution-brief.md",
+        "docs/architecture/shared-document-intake.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/architecture/operator-a1-workflow.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md"
       ],
-      "exit_evidence": "Approved Jan Release 1A scenarios, traceability matrix, and frozen catalog; M3 employee/document/OCR/assignment workflows complete on the synthetic slice"
+      "exit_evidence": "Approved Jan Release 1A scenarios, traceability matrix, and frozen catalog; M3 employee/document/OCR/assignment workflows complete on the synthetic slice; child work package 2026-09-06-ocr-shared-core-local-web.md addresses document-first intake and shared core"
     },
     {
       "id": "PLAN-INVOICE",
@@ -519,13 +545,14 @@
       "evidence_state": "synthetic-tested",
       "executable": true,
       "successor": null,
-      "last_reviewed": "2026-08-30",
+      "last_reviewed": "2026-09-06",
       "source_links": [
         "plans/PLAN-FREE-MODEL.md",
+        "plans/2026-09-06-free-vision-provider-safety.md",
         "config/free-model-eval/policy.json",
         "docs/research/2026-08-15-af2-free-model-trace-review-report.md"
       ],
-      "exit_evidence": "Three repeated synthetic trace/review/code-draft runs per model/control with validated receipts; no model promoted and no skill activated"
+      "exit_evidence": "Three repeated synthetic trace/review/code-draft runs per model/control with validated receipts; no model promoted and no skill activated; child work package 2026-09-06-free-vision-provider-safety.md addresses OCR-provider safety"
     },
     {
       "id": "PLAN-HISTORY",

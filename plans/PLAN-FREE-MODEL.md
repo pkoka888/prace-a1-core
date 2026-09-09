@@ -10,6 +10,29 @@ OpenCode models with Codex control and deterministic safety gates: the initial
 evaluation, the exact-manifest trace protocol repair, the evidence-integrity
 repair, and the Luna exact-read adapter with capsule isolation.
 
+## OCR-provider workstream
+
+A distinct OCR-provider workstream (2026-09-06-FREE-VISION-PROVIDER-SAFETY)
+handles free-vision provider discovery, metadata-only capability testing,
+quota accounting, bounded fallback, and sanitized audit. This workstream is
+separate from the AF2 synthetic agent evaluation lane.
+
+## Child work packages
+
+- [2026-09-06-FREE-VISION-PROVIDER-SAFETY](2026-09-06-free-vision-provider-safety.md) —
+  free-vision provider safety: remove paid/full-scan paths, metadata-only discovery,
+  synthetic capability tests, exact free-model eligibility, quota accounting,
+  bounded fallback, sanitized audit (FREE-VISION-1 through FREE-VISION-8)
+
+## AF2 synthetic agent evaluation (separate lane)
+
+AF2 evaluation (synthetic receipt review, code draft, trace protocol) runs
+under `tests/test_free_model_eval_af2_*` and remains a separate workstream.
+AF2 evaluation shares the same quota pool where it shares upstream limits with the
+vision/OCR evaluation lane, and reports independently via `workload_tag`.
+AF2 results are not used for OCR provider eligibility determination.
+AF2 synthetic agent evaluation is not covered by the FREE-VISION workstream.
+
 Replaces and consolidates the dated plans:
 
 - `plans/2026-08-15-plan-af-free-model-evaluation.md`

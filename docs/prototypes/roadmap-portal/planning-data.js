@@ -129,7 +129,7 @@ window.PLANNING_CATALOG = {
       "title": "GitLab secondary backup and CI activation with GitHub authoritative"
     }
   ],
-  "generated_or_reviewed_at": "2026-08-30T00:00:00Z",
+  "generated_or_reviewed_at": "2026-09-07T00:00:00Z",
   "historical_or_superseded": [
     {
       "id": "PLAN-HISTORY",
@@ -247,7 +247,14 @@ window.PLANNING_CATALOG = {
       "owner": "primary A1 production agent; operator approval required for regeneration",
       "sources": [
         "plans/PLAN-A1.md",
-        "AGENTS.md"
+        "plans/2026-09-06-a1-evidence-status-repair.md",
+        "AGENTS.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/research/2026-09-06-a1-engineering-delivery.md",
+        "docs/operations/opencode-work-orders/README.md",
+        "docs/architecture/operator-a1-workflow.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md"
       ],
       "status": "active",
       "title": "A1 production, repository history, and privacy baseline"
@@ -260,6 +267,7 @@ window.PLANNING_CATALOG = {
       "owner": "primary agent; Codex integrates and accepts",
       "sources": [
         "plans/PLAN-FREE-MODEL.md",
+        "plans/2026-09-06-free-vision-provider-safety.md",
         "config/free-model-eval/policy.json",
         "docs/research/2026-08-15-af2-free-model-trace-review-report.md"
       ],
@@ -288,7 +296,15 @@ window.PLANNING_CATALOG = {
       "owner": "product engineering + primary agent + server sysadmin",
       "sources": [
         "plans/PLAN-INFRA.md",
-        "AGENTS.md"
+        "AGENTS.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/research/2026-09-06-a1-engineering-delivery.md",
+        "docs/operations/opencode-work-orders/README.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/operations/runtime-manifest.md",
+        "docs/research/2026-09-07-infra-application-review.md",
+        "docs/operations/infra-return-work-order-2026-09-07.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md"
       ],
       "status": "active",
       "title": "Architecture, operating model, planning cockpit, prototype, and infrastructure foundation"
@@ -330,9 +346,15 @@ window.PLANNING_CATALOG = {
       "owner": "product owner + product design + product engineering",
       "sources": [
         "plans/PLAN-WORKERS.md",
+        "plans/2026-09-06-ocr-shared-core-local-web.md",
         "AGENTS.md",
         "roadmap.md",
-        "docs/decisions/2026-08-12-jan-release-1-solution-brief.md"
+        "docs/decisions/2026-08-12-jan-release-1-solution-brief.md",
+        "docs/architecture/shared-document-intake.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/architecture/operator-a1-workflow.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md"
       ],
       "status": "active",
       "title": "Worker, role, data, UX, and OCR workflow discovery"

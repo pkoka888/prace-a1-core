@@ -9,7 +9,7 @@ description: Generate, recover, inspect, and visually validate Czech A1 provisio
 
 1. Read the repository `AGENTS.md` and [field-policy.md](references/field-policy.md).
 2. Inspect `git status`; preserve unrelated and historical work.
-3. Resolve the current provisional cohort only from `$A1_PRIVATE_DIR/a1/review.csv` plus `$A1_PRIVATE_DIR/a1/cohort.json`. Require the current documented validation contract of 11 unique people unless the protected authoritative inputs and higher-level policy intentionally change together. `config/a1_provisional.json` contains non-personal provisional policy/placeholders only and is never an identity source. Operational inputs resolve only through `A1_PRIVATE_DIR`; set it to the repository root so the in-repo gitignored `a1/`, `scans/`, `evidence/`, and `ocr/` directories serve as inputs (see `AGENTS.md`). There is no tracked fallback, and canonical commands fail closed when `A1_PRIVATE_DIR` is unset.
+3. Resolve the current provisional cohort only from `$A1_PRIVATE_DIR/a1/review.csv` plus `$A1_PRIVATE_DIR/a1/cohort.json`. Require exact unique cohort agreement between the reviewed CSV, normalized identity source, and cohort maps. The former 11-person count is historical; observed directory counts never authorize cohort additions. `config/a1_provisional.json` contains non-personal provisional policy/placeholders only and is never an identity source. Operational inputs resolve only through `A1_PRIVATE_DIR`; set it to the repository root so the in-repo gitignored `a1/`, `scans/`, `evidence/`, and `ocr/` directories serve as inputs (see `AGENTS.md`). There is no tracked fallback, and canonical commands fail closed when `A1_PRIVATE_DIR` is unset.
 4. Use `config/institutions/` for office profiles. Never derive issuance fields by copying another person's completed form.
 5. Treat scans, CSV rows, PDFs, previews, and extracted text as PII. Keep them local unless the repository policy explicitly permits a minimal redacted external-model crop.
 
@@ -20,12 +20,12 @@ description: Generate, recover, inspect, and visually validate Czech A1 provisio
 3. Use `templates/a1_background.pdf` and `config/a1_layout.json` unless a tested migration changes both canonical references.
 4. Place text with per-field coordinates and measured font metrics. Do not apply a global baseline correction or opaque background rectangle.
 5. Draw checkbox state from form data on the declared page. Never reconstruct template line art during employee generation.
-6. Generate into staging and publish atomically only after all gates pass. Keep provisional output in `output/provisional/`; only operator-approved artifacts may enter `output/pdf/`.
+6. Generate into staging and publish atomically only after all gates pass. Keep provisional output in `output/provisional/`; generation cannot enter reserved `output/final/` or `output/pdf/`; a separately implemented receipt-bound promotion must enforce QA and explicit artifact approval.
 
 ## Validate every package
 
 1. Run the repository unit and integration tests relevant to A1 generation.
-2. Require 11 three-page PDFs and 33 previews for the current cohort.
+2. Require one three-page PDF and three previews per member of the authorized input cohort; do not use a historical fixed count.
 3. Verify PDF readability, page count, expected per-person values, unique certificate IDs, absence of legacy/cross-person values, and hashes tying inputs, template, layout, PDFs, and previews together.
 4. Render fresh fixed-DPI previews from the just-generated PDFs. Never approve old previews by filename alone.
 5. Apply [visual-qa.schema.json](references/visual-qa.schema.json) to every page and field. Fail closed on clipping, overlap, hidden colored rules, incorrect checkboxes, unknown hashes, or pending review.

@@ -15,6 +15,74 @@ operator-only A1 work remains separate. Capacity, recovery and production provis
 do not block safe synthetic implementation. Preserve current databases and working
 PDF packages; any future production root must be aligned with policy §5 before use.
 
+## Stabilization checkpoint — 2026-09-07
+
+Bounded stabilization is synthetic-accepted: **157 passed, 19 subtests** in the
+final focused suite; document core **75 passed**. Preserve the initial failed
+baseline (**5 failed, 33 passed**) as history. Deployment is not performed or
+implied. Final isolated-storage/cache reruns passed **15 PostgreSQL intake tests**
+and **33 affected M2 tests**, with no model/migration drift. See the
+[stabilization report](../docs/research/2026-09-07-a1-stabilization.md).
+The broader A1 repair and engineering gates remain active/pending.
+See [roadmap stabilization](../roadmap.md#stabilization-synthetic-acceptance--2026-09-07).
+Next bounded J4/promotion engineering may start with sequential file ownership;
+this does not approve final promotion or activation. Minimum functioning
+J4 remains before ENG-001 → REV-002 → remaining activation gates → REV-003.
+No service migration is authorized: identify service settings/database separately;
+use fresh PostgreSQL and historical MigrationExecutor states for test evidence.
+RapidOCR/ONNX does not require Tesseract. Organization work is read-only inventory,
+with unknown artifacts classified before any relocation or deletion.
+
+## Execution sequence
+
+The authoritative execution sequence is:
+
+```
+Sprint 1–3 tasks (including minimum J4 implementation)
+  → ENG-001 (implementation_gate: open)
+  → REV-002 (human_decision: approved) — Jan/operator J1–J4 observed
+  → Sprint 4 tasks (A1 hardening, encrypted backup)
+  → operational/legal/infrastructure gates (OPS-001, LEG-001, INF-001)
+  → REV-003 (human_decision: approved)
+  → real-data activation
+```
+
+Minimum J4 implementation (snapshot model, preview/artifact generation, state machine)
+is part of Sprint 3 and is required before ENG-001 opens. Sprint 4 contains
+A1 hardening and artifact production after REV-002 approval, plus encrypted backup.
+REV-002 is a human-decision gate; it does not map to an engineering check.
+
+Sprint labels denote ordered delivery batches, with acceptance evidence tracked
+in the tables below; no separate sprint-plan files are required. Shared OCR/J2
+synthetic implementation precedes ENG-001 and supplies its evidence. Passing its
+tests does not complete minimum J4 or authorize real-data activation.
+
+## Activation prerequisite mapping
+
+Individual prerequisites map to actual engineering check IDs as recorded in
+`planning/approvals.json` and `scripts/release_verifier.py`. Sprint 3 includes
+minimum J4 implementation required before ENG-001 opens. Sprint 4 items follow
+REV-002 approval.
+
+| Prerequisite | Maps to | Notes |
+|---|---|---|
+| Sprint 1: Protected storage | ENG-J2-STORAGE | Django Storage backend; bytes from storage |
+| Sprint 1: Scanner fail-closed | ENG-J2-SCANNER | Size/MIME/scan structural checks |
+| Sprint 1: FieldDecision immutability | ENG-J2-IMMUTABLE | No mutation path after creation |
+| Sprint 1: Identity revisions | ENG-J2-REVISION | WorkerIdentityRevision created on confirmation |
+| Sprint 1: Capability checks | ENG-AUTH | Role × action matrix; cross-org zero-bytes |
+| Sprint 1: Concurrency | ENG-J3-CONCURRENCY | Optimistic locking on PostgreSQL |
+| Sprint 2: Migrations | ENG-MIGRATION | MigrationExecutor transitions from 0005 on PostgreSQL |
+| Sprint 3: WCAG engineering baseline | ENG-A11Y | axe-core automated + manual spot checks |
+| Sprint 3: Minimum J4 snapshot model | ENG-J4-SNAPSHOT | A1InputSnapshot model exists; schema migrated |
+| Sprint 3: Minimum J4 preview/artifact | ENG-J4-PREVIEW | A1Artifact and preview generation defined |
+| Sprint 3: Minimum J4 state machine | ENG-J4-STATE | Deterministic generation; fail-closed pipeline defined |
+| Sprint 4: A1 artifact production | Follows REV-002 | Full A1 snapshot/artifact generation after approval |
+| Sprint 4: Encrypted backup | (INF-001) | Separate operator/sysadmin gate |
+| Sprint 4: Review observation | Follows ENG-001 | REV-002 human decision; follows ENG-001 opening |
+| REV-002 | Human decision gate | Jan/operator J1–J4; follows ENG-001 opening |
+| OPS-001, LEG-001, INF-001 | Activation-only gates | Operator/legal/sysadmin; outside ENG-001 |
+
 ## Purpose
 
 Define prerequisites and evidence for a later, explicit real-data activation

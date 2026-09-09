@@ -448,6 +448,54 @@ def test_staged_readme_documentation_paths_allowed(root):
     assert "staged forbidden-path and PII/secret indicators" not in failures(p.stdout)
 
 
+@pytest.mark.parametrize("path", [
+    "scripts/run_ocr_benchmark.py",
+    "scripts/evaluate_a1_pdf_tools.py",
+    "scripts/seed_release1a_dev.py",
+])
+def test_staged_tracked_scripts_allowed(root, path):
+    document = root / path
+    document.parent.mkdir(parents=True, exist_ok=True)
+    document.write_text("# tracked source script\n")
+    subprocess.run(["git", "-C", str(root), "add", path], check=True)
+    result = run(root, json_out=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("path", [
+    "scripts/ocr/ocr_engine.py",
+    "scripts/scans/upload.py",
+    "scripts/evidence/inventory.py",
+    "scripts/output/render.py",
+    "scripts/runtime/portal/setup.py",
+])
+def test_scripts_exemption_does_not_allow_synthetic_protected_paths(root, path):
+    candidate = root / path
+    if candidate.parent.is_file():
+        candidate.parent.unlink()
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.write_text("synthetic private-path sentinel\n")
+    subprocess.run(["git", "-C", str(root), "add", path], check=True)
+    result = run(root, json_out=True)
+    assert result.returncode == 1
+    assert "staged forbidden-path and PII/secret indicators" in failures(result.stdout)
+    assert "synthetic private-path sentinel" not in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("path", [
+    ".agents/skills/a1-pdf-production/SKILL.md",
+    ".agents/skills/a1-pdf-production/references/field-policy.md",
+    ".opencode/skills/market-research-evidence/SKILL.md",
+])
+def test_staged_skill_paths_allowed(root, path):
+    document = root / path
+    document.parent.mkdir(parents=True, exist_ok=True)
+    document.write_text("# tracked skill file\n")
+    subprocess.run(["git", "-C", str(root), "add", path], check=True)
+    result = run(root, json_out=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 # --------------------------------------------------------------------------
 # Cycle logic unit checks
 # --------------------------------------------------------------------------

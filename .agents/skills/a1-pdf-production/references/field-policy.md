@@ -13,7 +13,8 @@
 - Preserve Czech and Slovak diacritics.
 - Display personal names in natural case, for example the synthetic names `Jan Novák` and `Eva Horáková`; do not force source uppercase into the PDF.
 - Apply Czech address casing without changing abbreviations, house numbers, postal codes, or legal spelling.
-- Keep `DE, CZ` exactly where the provisional activity territory is required.
+- Preserve the reviewed activity territory, including the requested `DE` scope; global policy defaults never overwrite accepted row values.
+- Employee-copy presentation omits Section 5 values and leaves 5.3 unselected; Section 5 applies to employees too, so this is a requested copy presentation, not a legal applicability rule. Required activity evidence remains in the reviewed input.
 - Fit by choosing a documented field-specific font size within limits. Never cover the template with a white text box, erase a colored rule, or silently truncate content.
 - Position from the actual font ascent/descent and the field's declared row bounds. A field-specific adjustment is allowed only when recorded and regression-tested.
 
@@ -21,17 +22,17 @@
 
 - Checkbox coordinates declare both page and rectangle.
 - Checkbox values come from normalized form state, not from pixels in another employee PDF.
-- For the current provisional self-employed multi-state profile, the intended state includes sections 3.4 and 4.1.2; all other selections must follow explicit form data.
+- `posted_employee` selects 3.1 and 4.1.1; `employee_multi_state` selects 3.2 and 4.1.1; `self_employed_multi_state` selects 3.4 and 4.1.2. Section 3.3 denotes posted self-employment, not employees.
+- Gender marks come from person data. The repaired template has no baked gender/2.4/5.3 selection; validity and no-fixed-address remain unselected without explicit evidence.
 - Draw a mark inside an existing canonical box. Do not redraw nearby labels, green squares, rules, or page artwork during population.
 
 ## Dates and identifiers
 
-- Provisional issue dates must be different per employee, fall on Monday or Thursday, and be 61–180 days before the configured reference date.
-- Sections 2.2 and 2.3 use the configured one-year provisional period; the end date is one day before the anniversary.
+- Preserve authoritative reviewed issue/start/end dates. The former Monday/Thursday/backdated placeholder policy is historical; never synthesize or replace accepted certificate dates.
 - Certificate IDs must be unique across the cohort. Their format or apparent sequence is not evidence that OSSZ issued them.
 
 ## Release states
 
 - `output/provisional/` is for client/operator confirmation and may contain unconfirmed issuance fields.
-- A row with `validated_by_user=0`, an unverified source status, or pending visual QA cannot be promoted to `output/pdf/`.
+- A row with `validated_by_user=0` or an unverified source status fails canonical generation. Pending visual QA or missing artifact approval prevents promotion. Generation writes candidate/provisional packages, never reserved final destinations.
 - Removing a visible draft notice does not convert a provisional document into an issued certificate; preserve that status in the manifest and checklist.

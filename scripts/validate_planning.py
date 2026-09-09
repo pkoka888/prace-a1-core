@@ -51,7 +51,11 @@ VALID_GATES = {
 # explicitly excluded from cycle detection.
 BLOCKING_GATES = VALID_GATES - {"evidence-only"}
 
-# Exact required catalog IDs (34 after the 2026-08-30 plan re-model).
+# Exact required catalog IDs (34 — top-level set as of 2026-08-30).
+# Subordinate work-package plans (OCR-SHARED-CORE-LOCAL, FREE-VISION-PROVIDER-SAFETY,
+# A1-EVIDENCE-STATUS-REPAIR) are registered in the catalog and linked from parent
+# plans, but are NOT top-level ID set members and do not appear in REQUIRED_IDS.
+# They are validated through parent-plan source_links and the index entry.
 REQUIRED_IDS = [
     # Milestones
     "M0", "M1A", "M1B", "M2", "M3", "M4", "M5", "M6",
@@ -97,6 +101,27 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
     "docs/architecture/A1_FRAMEWORKS.md",
     "docs/architecture/readme-a1-forms.md",
     "docs/architecture/release-1a-field-mapping.md",
+})
+# Tracked source skill files. Skills are versioned agent instructions, not PII;
+# their filenames legitimately embed pipeline words. The token guard stays active
+# for any non-listed file under these skill directories.
+APPROVED_STAGED_SKILL_PATHS = frozenset({
+    ".agents/skills/a1-pdf-production/SKILL.md",
+    ".agents/skills/a1-pdf-production/references/field-policy.md",
+    ".opencode/skills/market-research-evidence/SKILL.md",
+})
+# Tracked source scripts. Filenames legitimately embed pipeline words
+# (ocr, evidence, scans, etc.). The token guard stays active for any non-listed
+# file under scripts/.
+APPROVED_STAGED_SCRIPT_PATHS = frozenset({
+    "scripts/run_ocr_benchmark.py",
+    "scripts/evaluate_a1_pdf_tools.py",
+    "scripts/seed_release1a_dev.py",
+    "scripts/release_verifier.py",
+    "scripts/seed_verification_db.py",
+    "scripts/repair_a1_template_checkboxes.py",
+    "scripts/reset_synthetic_reviewer_password.py",
+    "scripts/playwright_smoke.py",
 })
 
 DEFAULT_CATALOG = "planning/catalog.json"
@@ -708,7 +733,10 @@ def check_staged_forbidden_and_pii(catalog, root):
     staged = get_staged_paths(root)
     matched_tokens = set()
     for path in staged:
-        if path.startswith(APPROVED_STAGED_PATH_PREFIXES) or path in APPROVED_STAGED_DOCUMENT_PATHS:
+        if (path.startswith(APPROVED_STAGED_PATH_PREFIXES)
+                or path in APPROVED_STAGED_DOCUMENT_PATHS
+                or path in APPROVED_STAGED_SKILL_PATHS
+                or path in APPROVED_STAGED_SCRIPT_PATHS):
             continue
         low = path.lower()
         for tok in FORBIDDEN_PATH_TOKENS:
