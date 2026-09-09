@@ -36,12 +36,16 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Migration 0015 adds structured assignment facts. Synthetic version-checked updates and `a1_exports.py` prepare immutable input cases and export all 44 canonical CSV fields plus JSON provenance. Inbox records case references and missing-fact blockers. Accepted identity revisions override pending OCR; retries reuse inputs and stale exports fail closed. Assignment dates are pinned but never silently become certificate dates |
-| Validation | Focused input tests pass, including malformed pending dates, accepted overrides, stale assignment periods, corruption, authorization, audit rollback and Section 5 defaults/overrides. Planning/tooling regression: 124 tests passed; model/migration parity reports no changes. 80 PostgreSQL integration tests passed, including concurrency and historical 0014→0015→0014 migration. Planning is 24/24 after adding exact synthetic test paths to the existing allow-list; committed-source receipt remains pending |
-| Publication | Local implementation delivery in progress. Inherited outgoing history still requires content/provenance review before private-origin publication |
+| Validation | Focused input tests pass, including malformed pending dates, accepted overrides, stale assignment periods, corruption, authorization, audit rollback and Section 5 defaults/overrides. Planning/tooling regression: 124 tests passed; model/migration parity reports no changes. 80 PostgreSQL integration tests passed, including concurrency and historical 0014→0015→0014 migration. Planning is 24/24 after adding exact synthetic test paths to the existing allow-list. Required hooks passed. Committed-source `d83fc0d` acceptance passed all three commands: 23 applicable planning checks, 91 tooling/A1 tests plus 9 subtests, and 41 inbox/identity/input tests; source integrity remained intact |
+| Publication | Implementation committed locally as `d83fc0d`; this documentation checkpoint records its completed acceptance. Inherited outgoing history still requires content/provenance review before private-origin publication |
 | Deployment | None. Migration 0015 is exercised only in disposable test databases; supervised development remains at recorded migration 0013. Existing databases, services and PDF packages are preserved |
 | Activation | Unchanged; new input services are synthetic-only and capability checked. No machine action creates human verification or official issuance |
 | Limitations | Input preparation only: no PDF, number reservation, complete compatibility package, institution-profile pinning or BO UI adapter. Canonical readiness retains its current human flags; this service does not forge them. The richer target snapshot/export contract and legacy cutover remain incomplete |
 | Next owner | Engineering: explicit unverified application-draft mode through the shared publisher/core, DB-stable provisional numbering and artifact-specific deterministic/all-page visual checks. BO revision integration proceeds in parallel. Apply 0014/0015 through the selected supervised release before runtime use |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/1eb55479d4014569be04b90c8c2aede6/receipt.json`.
+This evidence-only checkpoint preserves the tested implementation blobs.
 
 ### J2 durable identity and unconfirmed drafts — 2026-09-09
 
