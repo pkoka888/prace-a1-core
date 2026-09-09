@@ -59,6 +59,10 @@ Archive acceptance omits the inapplicable staged-index check explicitly; mandato
 publication hooks remain intact. Actual committed-source and supervised bootstrap
 results belong in the [delivery record](../docs/operations/git-delivery.md).
 
+Fresh `runtime/portal/supervised-development/` now has all 13 Release 1A migrations
+and passed seed/apply/verify twice. Committed-source acceptance passed on `6e37d6c`;
+see the delivery record for receipts and the separate, inactive operator state.
+
 Bounded J2 intake is implemented through `portal/release1a/inbox.py` and the thin
 management command. Completed documents/proposals are reused; failed or expired
 OCR jobs use the existing retry/lease rules. An organization-bound local file lock

@@ -85,12 +85,20 @@ claim was corrected by `3e31594`; the implementation below supersedes that repai
 | Field | Evidence / state |
 |---|---|
 | Implementation | Exact sanctioned seed settings; explicit private verification roots; read-only SQLite verify; independent role/profile/state expectations and multiset worker/assignment/case reconciliation. Reproducer verifies exact Git blobs and uses an isolated acceptance copy, single-attempt command results and protected hash-bound receipts. J2 uses shared intake/OCR with private organization roots, completed manifests, hash/type checks, local locking, per-item recovery and opaque receipts. |
-| Validation | Seed/containment: 31 tests passed; final diagnostic change: one affected test passed. Reproducer: 13 behavioral tests passed. J2: 14 SQLite integration tests passed. Supervised settings: 43 existing checks plus five inbox-configuration checks passed (an inherited setgid bit on newly created inbox directories was corrected). PostgreSQL integration: 44 tests passed in an ephemeral cluster, including J2 and historical migration paths. Planning: 24/24 checks passed. Committed-source acceptance is recorded below when completed. |
-| Publication | This scoped source commit contains the implemented repair and J2 increment. Earlier outgoing commits remain unpublished pending content review; no history rewrite or force-push is authorized. Exact delivered SHA and reproduction receipt are recorded in the subsequent evidence checkpoint. |
-| Deployment | No service or production deployment. Fresh supervised development is a synthetic bootstrap, separate from historical SQLite stores and operator PDF packages; its result is recorded below. |
+| Validation | Seed/containment: 31 tests passed; final diagnostic change: one affected test passed. Reproducer: 13 behavioral tests passed. J2: 14 SQLite integration tests passed. Supervised settings: 43 existing checks plus five inbox-configuration checks passed (an inherited setgid bit on newly created inbox directories was corrected). PostgreSQL integration: 44 tests passed in an ephemeral cluster, including J2 and historical migration paths. Planning: 24/24 checks passed. Committed source `6e37d6c`: 91 pytest tests and 9 subtests plus 14 J2 Django tests passed; all 23 archive-applicable planning checks passed and source integrity remained unchanged. |
+| Publication | Implementation commit `4797352`, entrypoint repair `d57ad18`, and directory-mode repair `6e37d6c` are local. Accepted source is `6e37d6c`; this documentation checkpoint records its evidence. Earlier outgoing commits remain unpublished pending content review; no history rewrite or force-push is authorized. |
+| Deployment | No service or production deployment. Fresh `runtime/portal/supervised-development/` was built from all 13 on-disk Release 1A migrations and passed apply/verify twice: 3 synthetic organizations, 4 workers, 5 assignments, 2 A1 cases. Bootstrap source `d57ad18` has the same seed/models/supervised-settings blobs as accepted `6e37d6c`. Existing historical databases/PDFs are untouched; accounts remain inactive and inbox operator defaults unprovisioned. |
 | Activation | Unchanged. The inbox adapter explicitly refuses real-data activation and uses existing actor/membership/MFA capability checks. Configuration creates no operator or human confirmation. |
 | Limitations | J2 intake leaves identities unassigned with requires_review; no worker auto-merge, A1 draft generation, BO completion or scheduler is included. Originals remain protected in the inbox pending retention review. Local file locking is not distributed coordination; existing OCR retry/dependency policies still apply. |
 | Next owner | Engineering: J2 identity/conflict handling and DB-MIG-1/2/5 revision mapping, then J4 unverified drafts and BO confirmation, preserving DB-MIG-6/7 cutover dependencies and real-data-rules §14. |
+
+Protected evidence: `runtime/portal/temporary/release-reproducer/523088de500044b5a90a13e44ab85e14/receipt.json`
+and `runtime/portal/supervised-development/bootstrap-receipt.json`. The first
+committed-source run on `d57ad18` exposed inherited setgid on newly created receipt
+directories; its failed receipt is retained. `6e37d6c` clears that flag only on new
+directories and adds the corresponding synthetic regression; the later run passed.
+The synthetic bootstrap's `environment.json` contains a development-only test key,
+not production credentials or an activated operator. No service is started by it.
 
 Selected verification commands:
 
