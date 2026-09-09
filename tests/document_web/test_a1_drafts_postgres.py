@@ -62,7 +62,7 @@ class PostgresA1DraftMigrationTests(TransactionTestCase):
             org = old.get_model("release1a", "Organization").objects.create(
                 key="synthetic-generation-migration", label="Synthetic Generation Migration")
             worker = old.get_model("release1a", "Worker").objects.create(
-                organization_id=org.pk, given_name="Synthetic", family_name="Generation")
+                organization_id=org.pk, given_name="Synthetic", family_name="Generation", birth_date="1991-03-02")
             originals = []
             for published in (False, True):
                 package_key = uuid.uuid4()
@@ -124,7 +124,7 @@ class PostgresA1DraftMigrationTests(TransactionTestCase):
             org = old.get_model("release1a", "Organization").objects.create(
                 key="synthetic-inconsistent-generation", label="Synthetic Inconsistent Generation")
             worker = old.get_model("release1a", "Worker").objects.create(
-                organization_id=org.pk, given_name="Synthetic", family_name="Mismatch")
+                organization_id=org.pk, given_name="Synthetic", family_name="Mismatch", birth_date="1991-03-02")
             Case = old.get_model("release1a", "A1Case")
             case = Case.objects.create(organization_id=org.pk, worker_id=worker.pk,
                 artifact_reference={"key": "f" * 32})
