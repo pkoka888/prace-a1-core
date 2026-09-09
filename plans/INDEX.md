@@ -35,7 +35,7 @@ Local automation contract (consolidated 2026-09-08):
 [scan intake to worker database and A1 drafts](2026-09-08-local-a1-automation.md),
 with the [complete field mapping](../docs/architecture/release-1a-field-mapping.md).
 One editable source tree, fixed development/release paths, explicit data owners,
-fresh `runtime/portal/supervised-development/` DB, planned seed `--verify` and
+fresh `runtime/portal/supervised-development/` DB, seed `--verify` and
 release reproduction precede remaining J2/J4 automation and DB-MIG-1 through
 DB-MIG-7 implementation. Shared intake, protected OCR derivatives, PostgreSQL
 concurrency and J4 stored artifacts already have committed synthetic evidence in
@@ -45,6 +45,13 @@ accepted cutover still follows ENG-001 and observed Release 1A acceptance. One-c
 proposals separate from BO confirmation. AGENTS.md defines proportional checks and
 one delivery record. The 2026-09-09 evidence/priorities correction changes documentation only; parent statuses,
 the 34 top-level entries and registered approval/activation gates remain unchanged.
+
+Repair review, 2026-09-09: seed/reproducer source repairs are uncommitted and only
+partially validated. Finish settings selection, fixture-role/duplicate reconciliation
+and actual export verification before claiming reproducible readiness. Then accept
+fresh supervised development and deliver J2 completed-batch intake/retry/proposals.
+Independent synthetic J2 work is not blocked by the reproducer. Current evidence
+and the bounded repair scope are in the local automation contract and delivery record.
 
 ## Historical
 

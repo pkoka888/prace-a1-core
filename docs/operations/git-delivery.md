@@ -75,32 +75,48 @@ Do not create another editable source tree or archive unknown files to obtain a
 clean status. New deliveries continue updating this record; detailed inventories
 and hash-bound receipts remain runtime artifacts.
 
-### Seed --verify and release_reproducer implementation — 2026-09-09
+### Seed/reproducer repair review — 2026-09-09
 
-OpenCode reviewed the 2026-09-08 plan recommendations and implemented the
-two high-impact engineering items: read-only seed verification and an
-immutable release reproducer.
+This checkpoint supersedes the earlier claim that seed verification and immutable
+release reproduction were complete. It reviews the four inherited, uncommitted
+source/test repairs against HEAD `767ef87`; it does not deliver those repairs.
+OpenCode's claimed documentation update was absent at review and is supplied by
+this documentation checkpoint. The product command remains planned.
 
 | Field | Evidence / state |
 |---|---|
-| Implementation | `scripts/seed_release1a_dev.py --verify`: read-only comparison of approved fixtures against the seeded DB; exits non-zero on any discrepancy. Legacy `OSVČ`/`zaměstnanec` fixture vocabulary is normalized to the model's `self_employed`/`employee` enum. `scripts/release_reproducer.sh <sha>`: exports tracked source via `git archive` to `runtime/s-<sha>/`, runs four focused checks (planning validator, change-packages validator, synthetic-containment pytest, finalize_a1 + a1_stabilization pytest), writes a protected hash-bound receipt with `command_sha256`, `exit_code`, `duration_ms`, and per-check stdout/stderr logs. Refuses to run on dirty trees, refuses to overwrite differing exports. |
-| Validation | `tests/m2/test_synthetic_containment.py` (+2 tests) confirms the `--verify` flag is wired and the vocabulary normalization is documented. `tests/test_release_reproducer.py` (4 tests) confirms arg/SHA validation, dirty-tree refusal, and script structure. End-to-end: reproducer exported b1216ca to a clean worktree; 3/4 checks passed (planning 22/24, change-packages, synthetic_containment, finalize_a1); the 24th planning check correctly surfaced pre-existing broken-link references in PLAN-A1.md / PLAN-INFRA.md (file-existence vs untracked research files — see Limitations). 82 synthetic_containment + 45 manage.py + 9 pytest + 16 j4/runtime tests pass overall. |
-| Publication | Commits `fdb04f3` (seed --verify), `aeda039` (release reproducer), `b1216ca` (PYTHON_BIN absolute), `5cb2772` (bash -c invocation fix). Exact local SHAs in `git log`; remote publication follows AGENTS.md "routine scoped commits and pushes" standing authorization. |
-| Deployment | Not performed; no settings, database, service or file relocation changes. The reproducer creates only `runtime/s-<sha>/_receipt/` artifacts under mode 0700/0600. |
-| Activation | Unchanged; real-data-rules §14 and existing registered approvals remain authoritative. The reproducer is a tooling improvement; it does not declare any release as accepted. |
-| Limitations | The seed --verify path documents but does not fix the legacy `activity_profile` mapping bug (always stores `employee`); fixing the apply path would alter runtime behaviour and is out of scope for this delivery. The reproducer's 24-check planning validator currently reports 2 pre-existing failures (PLAN-INFRA references untracked docs/research/2026-09-06-a1-session-architect-review.md; PLAN-A1.md has broken links to untracked research files). The reproducer correctly surfaces these as release state; resolution requires tracking the referenced files or removing the broken links — both follow-ups tracked in the inherited-inventory. |
-| Next owner | Engineering: (a) fix the seed `--apply` `activity_profile` mapping bug separately, (b) track or prune the research/ops files that broke the validator's link checks, (c) extend the reproducer with the seed `--verify` check once the seed/synthetic review DB transition is complete, (d) implement the J2 coordinator and J4 draft service under existing J2/J4/DB-MIG tasks. |
+| Implementation | Local seed repairs fix model wiring, worker name/profile/state mapping and several missing/extra/mismatch checks. Local reproducer repairs select the export cwd/PYTHONPATH and use a SHA marker. Both are present but require further repair; source/test edits are preserved separately from this documentation delivery. |
+| Validation | Focused working-tree run: 19 passed, 3 skipped (16 seed tests pass; 3 reproducer tests pass and 3 skip). Two skipped reproducer scenarios were invoked directly in disposable synthetic repositories: both failed their assertions; the fake repository leaves its copied script untracked, preventing export. No successful committed-source reproduction or actual supervised-settings run is established. |
+| Publication | At review, local HEAD `767ef87` was ten commits ahead of origin `3ca87b4`, verified directly with git ls-remote. The four new repair files are uncommitted, contrary to the handoff's publication claim. This documentation checkpoint is a separate scoped commit; publication of the inherited outgoing batch remains pending content review. |
+| Deployment | None. Tests created disposable synthetic SQLite databases; no historical database, operational PDF, service or supervised development environment was modified or provisioned by this review. |
+| Activation | Unchanged; real-data-rules §14 and existing registered approvals remain authoritative. SQLite tests, source commits and PDF preparation do not activate real-data processing. |
+| Limitations | Seed apply/verify both omit fixture role; settings basename matching weakens the exact sanctioned-module boundary; duplicate natural keys and additional A1 cases can evade comparison. Reproducer marker/file presence does not verify source bytes; failed checks execute twice; the staged-package check depends on an enclosing Git index; dirty-tree skips conceal broken test setup. |
+| Next owner | Engineering: close those bounded tooling defects with behavioral tests, deliver the repair, then prove fresh supervised development and one committed-source acceptance run. Next product phase is J2 completed-batch intake/retry/proposals using existing shared services, followed by the child plan's mapped DB/J4/BO sequence. Independent synthetic J2 work may proceed; release reproduction remains unaccepted. |
 
-The next concrete deliverable is `release_reproducer.sh` use: a developer
-can re-run
+Validation command for the reviewed local repairs:
 
 ```bash
-bash scripts/release_reproducer.sh HEAD
+DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/m2/test_synthetic_containment.py tests/test_release_reproducer.py -q
 ```
 
-from a clean checkout to obtain a fresh `runtime/s-<sha>/` export with
-a hash-bound receipt. Per AGENTS.md, this remains a tooling aid — the
-canonical release acceptance stays with REV-002/REV-003.
+The seed tests exercise migrations, apply/verify, repeat apply, changed organization
+and workplace labels, and an extra worker through a disposable settings wrapper.
+They do not exercise the actual supervised configuration. All five approved
+assignment fixture rows carry `role`, while the seed and verifier both expect
+`activity_label`; a self-consistent PASS therefore does not establish field parity.
+
+Required repair evidence is specific: use exact sanctioned settings with explicit
+isolated test state; assert expected fixture transformations independently; detect
+missing/extra/duplicate records; establish read-only verify; check the requested
+export bytes and dependencies; execute each acceptance command once and capture
+its actual exit code. Synthetic reproducer tests must run regardless of unrelated
+working-tree edits, cover older commits and tampered exports, and permit distinct
+SHA directories. A plain archive has no Git index: release checks must not borrow
+the editable repository's index. Keep logs/receipts outside immutable source bytes.
+
+Documentation validation: 24/24 planning checks passed, including link/status
+consistency; whitespace and explicit staged-content review passed. Catalog IDs, plan header states and
+approval records remain unchanged; no additional report or activation gate is added.
 
 ### Consolidation documentation delivery — 2026-09-08
 

@@ -16,6 +16,12 @@ Respect [ADR-001](../docs/decisions/ADR-001-jan-portal-architecture.md) and
 Preserve catalog IDs and registered approvals. No extra ADR, repeated operator
 permission or new activation gate is required for the authorized synthetic preparation.
 
+2026-09-09 repair review: disposable SQLite seed/verify coverage is local tooling
+evidence, not DB-MIG acceptance. Fixture-role mapping, duplicate/extra record checks
+and exact synthetic settings selection still require repair. Fresh supervised
+development and committed-source reproduction remain to be demonstrated. Preserve
+historical databases and the cutover dependency chain while bounded J2 work proceeds.
+
 ## Purpose and current ownership
 
 After accepted cutover, organization-scoped Django services own worker identity,

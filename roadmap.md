@@ -3,7 +3,7 @@
 **Status:** Authoritative
 **Original date:** 2026-08-19
 **Last status update:** 2026-09-09 (consolidated source evidence and next implementation scope)
-**Current stage:** M2 synthetic engineering; shared intake, runtime confinement/readiness and J4 stored artifacts have committed synthetic evidence. Fresh supervised-development preparation and remaining J2/J4 journey acceptance are next; ENG-001, human review, cutover, deployment and activation remain separate.
+**Current stage:** M2 synthetic engineering; shared intake, runtime confinement/readiness and J4 stored artifacts have committed synthetic evidence. Seed/reproducer repairs have partial local evidence; finish their bounded repair and fresh supervised-development acceptance before claiming reproducible readiness. J2/J4 journeys, ENG-001, human review, cutover, deployment and activation remain separate.
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
@@ -12,8 +12,8 @@ This is the sole authoritative execution roadmap. Dated files under `plans/` def
 Consolidated [local automation contract](plans/2026-09-08-local-a1-automation.md)
 and [44-field mapping](docs/architecture/release-1a-field-mapping.md): one editable
 source tree; immutable release exports; explicit development/production data roots;
-reconciled inputs followed by fresh supervised-development DB, seed `--verify`
-and release reproduction work, then remaining J2/J4 automation and DB-MIG-1
+reconciled inputs followed by fresh supervised-development DB, completion of the
+local seed `--verify` and release reproducer repairs, then remaining J2/J4 automation and DB-MIG-1
 through DB-MIG-7. Existing shared intake and J4 artifact components have the
 committed synthetic evidence in the [delivery record](docs/operations/git-delivery.md). Automatic processing will save proposals and
 prepare eligible unverified drafts; BO records actor/time/revision confirmation.
@@ -76,8 +76,8 @@ the first usable increment and must not wait for later module activation.
 
 | Category | Work |
 |---|---|
-| **Now** | Mode-aware A1 readiness is implemented with `readiness --provisional` and the unchanged authoritative default. Engineering: reconcile source dependencies and explicit input ownership under the [local automation contract](plans/2026-09-08-local-a1-automation.md). Shared intake, runtime and J4 artifact components have committed synthetic evidence in the [delivery record](docs/operations/git-delivery.md); this does not establish a current runnable service or observed J1–J4 acceptance. |
-| **Next on Release 1A** | Prepare a fresh `runtime/portal/supervised-development/` database from the on-disk migration graph; extend the seed with read-only `--verify`; implement the planned immutable-commit release reproducer. Then complete remaining J2/J4 coordinator/draft and BO journeys and DB-MIG-1 through DB-MIG-7, with cutover acceptance dependencies preserved. |
+| **Now** | Finish the local seed/reproducer repair under the [local automation contract](plans/2026-09-08-local-a1-automation.md): exact settings selection, fixture-role and duplicate reconciliation, byte-verified exports and first-attempt exit codes. Disposable SQLite tests show partial progress; reproducible release and supervised-environment acceptance remain unproven. Mode-aware A1 readiness and the committed shared intake/J4 evidence remain valid for their recorded scopes. |
+| **Next on Release 1A** | Deliver the repaired tooling and prove fresh `runtime/portal/supervised-development/` from the on-disk graph with seed/verify and committed-source acceptance. Next product phase: J2 completed-batch intake through existing services, per-file retry/recovery and proposals, with organization isolation and confirmed-fact protection. Independent synthetic J2 work may proceed; J4 drafts, BO and DB-MIG-1 through DB-MIG-7 retain their existing sequence and cutover dependencies. |
 | **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-LEGAL (G/J) + PLAN-INVOICE (P) research; Plan AC integrity lane (PLAN-INVOICE): Integrity 1.3 repair + Pilot 1/2; PLAN-INVOICE (Plan AD) synthetic contract; PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). |
 | **Gated** | `ENG-001` and observed Release 1A acceptance remain prerequisites for accepted DB cutover; synthetic preparation may proceed. PLAN-A1 authoritative-input reconciliation and receipt-bound final promotion remain unresolved; current scoped evidence belongs in [PLAN-A1](plans/PLAN-A1.md) and the delivery record, without inferring authority from historical counts. PLAN-INVOICE persistence/acceptance waits DEC-015. Deployment, new real-data portal migration/activation, GitLab/CI changes and history rewrite retain their existing authorization requirements. Routine reviewed private-origin feature-branch publication follows AGENTS.md. |
 | **Cleanup (this cycle)** | Read-only source inventory and dependency analysis only. Unknown research/runtime artifacts require classification; no moves, deletions, backup cleanup or legacy-script execution in stabilization scope. |

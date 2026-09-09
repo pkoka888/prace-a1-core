@@ -12,8 +12,11 @@ proposals, decisions and identity/case revisions; the review's missing-column
 estimate is not a schema specification. One command will prepare proposals and
 eligible unverified drafts without waiting for BO; human confirmation remains an
 actor/time/revision decision. No new coordinator or data import is implemented
-by this checkpoint. Next engineering work is the source/input inventory and fresh
-synthetic development setup, then the existing bounded coordinator/DB tasks.
+by this checkpoint. The 2026-09-09 tooling review finds partial local seed coverage
+with role reconciliation and settings-boundary repairs outstanding. Complete these
+and fresh synthetic development acceptance. The next product phase is J2 completed
+batch intake, per-file recovery and proposals through existing shared services;
+independent synthetic work may proceed while release reproduction is repaired.
 
 ## Shared intake Git delivery — 2026-09-08
 

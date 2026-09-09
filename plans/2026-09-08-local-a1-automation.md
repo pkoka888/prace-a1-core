@@ -1,7 +1,7 @@
 # Local scan intake to worker database and A1 drafts
 
-Status: planned. Consolidated implementation contract, updated 2026-09-08;
-this documentation delivery does not implement the command or activate a service.
+Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
+tooling repairs are in progress locally; the coordinator is not implemented.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -28,6 +28,48 @@ renderer. The organization, account mapping, inbox and database are configured
 once by engineering. No API keys, model selection or repeated approval prompts
 belong in routine operator use. Start with explicit runs; a scheduled invocation
 or watcher can call the same coordinator later.
+
+## Current engineering checkpoint — 2026-09-09
+
+The OpenCode repair handoff is partially supported by source and tests. At review,
+HEAD remains `767ef87`, origin remains `3ca87b4`, and the two tooling scripts and
+their two test files have uncommitted repairs. The delivery record and this plan
+had not been updated by that repair. See the [delivery record](../docs/operations/git-delivery.md)
+for the exact validation scope; passing local tests do not establish publication.
+
+Seed model wiring, worker vocabulary mapping and several mismatch checks now have
+disposable SQLite coverage. Assignment `role` is still omitted from `activity_label`
+in both apply and verify; duplicate natural keys and extra A1 cases can evade
+verification. The settings basename exception added for tests is not proof that
+the sanctioned supervised environment is confined or runnable.
+
+The reproducer now selects the export as its working directory and Python import
+path, but its marker does not verify file bytes. Failed checks execute twice to
+obtain an exit code, and the staged-package check still depends on an enclosing
+Git index. Its end-to-end tests are skipped for an unrelated dirty source tree;
+direct invocation in disposable synthetic repositories exposes broken test setup.
+These are remaining implementation defects, not new operator approval gates.
+
+Next bounded engineering delivery:
+
+1. Restore exact sanctioned settings selection with explicit isolated test state;
+   map fixture roles; reject missing, extra and duplicate records with independently
+   asserted expected values. Keep verify read-only and repeat apply idempotent.
+2. Verify export bytes against the requested commit, capture each check's first exit
+   code without rerunning it, and remove reliance on the working repository/index.
+   Permit unrelated dirty files when only committed inputs are exported. Test older
+   commits, tampered exports, distinct SHA directories and one failing invocation.
+3. Deliver those source/test repairs, then prove fresh supervised development from
+   the on-disk graph and one committed-source acceptance run. Keep PostgreSQL
+   migration/concurrency evidence separate from disposable SQLite tests.
+
+The next product phase remains J2: one explicit command processes a completed
+synthetic inbox batch through existing intake/OCR services, persists per-file
+outcomes and proposals, resumes partial failure, and retries without duplicates.
+Organization isolation, identity conflicts and confirmed-fact protection are the
+first acceptance scenarios. Reproducer defects block release reproduction, not
+independent synthetic coordinator work. J4 drafts and BO confirmation follow the
+existing mapping/DB-MIG sequence below; no watcher or real-data cutover is implied.
 
 ## Consolidation scope and owners
 
@@ -246,7 +288,8 @@ Consolidation prerequisites for implementation:
    checks, and write a protected hash-bound receipt with commands/results/dependencies.
    Never overwrite a differing existing export or export dirty/untracked inputs.
    Use isolated synthetic test state; no deployment, historic DB mutation or secret
-   copying. The command is planned, not currently available.
+   copying. The command exists with local repairs in progress; committed-source
+   acceptance is not established by its current tests or marker file.
 
 Then deliver the existing automation tasks in bounded increments:
 
@@ -300,7 +343,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, starting with the bounded dependency/input inventory and
-fresh synthetic development setup, then J2/J4 and DB-MIG tasks above. Jan supplies
+Next owner: engineering, completing the bounded tooling repairs and fresh synthetic
+development acceptance above, then J2/J4 and DB-MIG tasks. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.
