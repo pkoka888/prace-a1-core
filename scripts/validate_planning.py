@@ -98,6 +98,7 @@ APPROVED_STAGED_PATH_PREFIXES = ("plans/", "readme-")
 # Exact reviewed architecture documents, also owned by change-packages.yml.
 # Do not exempt the whole directory: nearby private files still fail below.
 APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
+    "config/a1_checkbox_fix_receipt.json",
     "docs/architecture/A1_FRAMEWORKS.md",
     "docs/architecture/readme-a1-forms.md",
     "docs/architecture/release-1a-field-mapping.md",
@@ -140,9 +141,15 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 # (ocr, evidence, scans, etc.). The token guard stays active for any non-listed
 # file under scripts/.
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
+    "scripts/a1_core.py",
+    "scripts/finalize_a1.py",
+    "scripts/generate_provisional_a1.py",
     "portal/release1a/inbox.py",
     "portal/release1a/identity.py",
     "portal/release1a/a1_exports.py",
+    "portal/release1a/a1_drafts.py",
+    "portal/release1a/migrations/0016_a1_draft_reservation.py",
+    "portal/release1a/management/commands/a1_prepare_draft.py",
     "portal/release1a/migrations/0015_assignment_a1_facts.py",
     "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
     "portal/release1a/management/commands/a1_process_inbox.py",
@@ -164,6 +171,9 @@ APPROVED_STAGED_SETTINGS_PATHS = frozenset({
 # Tracked source test files. Filenames legitimately embed pipeline words.
 APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/document_web/test_a1_exports.py",
+    "tests/document_web/test_a1_drafts.py",
+    "tests/document_web/test_a1_drafts_postgres.py",
+    "tests/test_a1_application_draft.py",
     "tests/document_web/test_a1_exports_postgres.py",
     "tests/document_web/test_browser_journey.py",
     "tests/test_a1_cli_journey.py",

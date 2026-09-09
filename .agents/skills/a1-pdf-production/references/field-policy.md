@@ -14,7 +14,7 @@
 - Display personal names in natural case, for example the synthetic names `Jan Novák` and `Eva Horáková`; do not force source uppercase into the PDF.
 - Apply Czech address casing without changing abbreviations, house numbers, postal codes, or legal spelling.
 - Preserve the reviewed activity territory, including the requested `DE` scope; global policy defaults never overwrite accepted row values.
-- Employee-copy presentation omits Section 5 values and leaves 5.3 unselected; Section 5 applies to employees too, so this is a requested copy presentation, not a legal applicability rule. Required activity evidence remains in the reviewed input.
+- The separately requested employee client-copy presentation omits Section 5 values and leaves 5.3 unselected; Section 5 applies to employees too, so this is a requested copy presentation, not a legal applicability rule. Required activity evidence remains in the reviewed input. The explicit unverified application-draft mode renders the supplied employee activity fields through the shared core; it does not apply that copy-specific omission.
 - Fit by choosing a documented field-specific font size within limits. Never cover the template with a white text box, erase a colored rule, or silently truncate content.
 - Position from the actual font ascent/descent and the field's declared row bounds. A field-specific adjustment is allowed only when recorded and regression-tested.
 
@@ -34,5 +34,7 @@
 ## Release states
 
 - `output/provisional/` is for client/operator confirmation and may contain unconfirmed issuance fields.
-- A row with `validated_by_user=0` or an unverified source status fails canonical generation. Pending visual QA or missing artifact approval prevents promotion. Generation writes candidate/provisional packages, never reserved final destinations.
+- Accepted-evidence/final generation retains its human/source approval gates. The explicit synthetic application-draft contract accepts pending inputs through `validate_application_draft_row` and `render_application_draft`, with a mandatory all-page UNVERIFIED DRAFT notice; it never sets review flags or invents missing certificate dates. Pending visual QA or missing artifact approval prevents promotion. Generation writes candidate/provisional packages, never reserved final destinations.
 - Removing a visible draft notice does not convert a provisional document into an issued certificate; preserve that status in the manifest and checklist.
+
+Synthetic portal drafts use immutable DB input/reservation snapshots under the local automation plan; operational CSV/cohort authority above remains unchanged until accepted cutover. Their private package layout is owned by `portal/release1a/j4_artifacts.py`.

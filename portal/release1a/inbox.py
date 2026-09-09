@@ -29,6 +29,7 @@ from .document_intake import authorize, audit, intake, execute_run
 from .document_storage import document_storage
 from .identity import persist_identity_evaluation, prepare_identity_draft
 from .a1_exports import prepare_input_case
+from .a1_drafts import prepare_application_draft, DraftInputBlocked
 from .models import Document
 from .services import Forbidden
 
@@ -188,6 +189,15 @@ def _process_batches(root_fd, user, organization, processor):
                                                           claim_id=draft.get("claim_ref"))
                                 draft["a1_input"] = {"case_ref": case.pk, "source_sha256": case.source_hash,
                                                      "blockers": case.source_snapshot_json["blockers"]}
+                                try:
+                                    rendered = prepare_application_draft(user, organization, case.pk)
+                                    draft["a1_draft"] = {"status": "unverified_draft", "case_ref": case.pk,
+                                        "package_key": rendered.artifact_reference["key"],
+                                        "pdf_sha256": rendered.prepared_artifact_hash, "visual_review": "pending"}
+                                except DraftInputBlocked as error:
+                                    draft["a1_draft"] = {"status": "blocked", "reason": str(error)}
+                                except Exception:
+                                    draft["a1_draft"] = {"status": "unavailable", "reason": "A1_DRAFT_PUBLICATION_UNAVAILABLE"}
                             except Exception:
                                 draft["a1_input"] = {"status": "unavailable", "reason": "A1_INPUT_PREPARATION_UNAVAILABLE"}
                         result["drafts"].append(draft)
@@ -196,7 +206,7 @@ def _process_batches(root_fd, user, organization, processor):
             result["status"] = "completed" if (
                 all(i["status"] == "completed" for i in result["items"])
                 and result.get("identity_evaluation", {}).get("status") != "unavailable"
-                and not any((d.get("reason") == "DRAFT_PREPARATION_UNAVAILABLE" or d.get("a1_input", {}).get("status") == "unavailable")
+                and not any((d.get("reason") == "DRAFT_PREPARATION_UNAVAILABLE" or d.get("a1_input", {}).get("status") == "unavailable" or d.get("a1_draft", {}).get("status") == "unavailable")
                             for d in result.get("drafts", []))) else "partial"
         except Exception:
             result["status"] = "rejected"

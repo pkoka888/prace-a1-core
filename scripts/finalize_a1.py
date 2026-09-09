@@ -265,6 +265,11 @@ def readiness_receipt_path(requested: Path | None) -> Path:
 
 def load_profile(profile_dir: Path, profile_id: str, provisional: bool = False) -> dict[str, Any]:
     profile = load_json(profile_dir / f"{_slug(profile_id)}.json")
+    return validate_profile(profile, profile_id, provisional=provisional)
+
+
+def validate_profile(profile: dict[str, Any], profile_id: str, *, provisional: bool = False) -> dict[str, Any]:
+    """Validate loaded profile bytes as well as profiles supplied by DB adapters."""
     if profile.get("review_status") != "VERIFIED":
         raise FinalizationError(f"institution profile {profile_id!r} is not VERIFIED")
     if not profile.get("source_url") or not profile.get("verified_on"):
@@ -402,6 +407,39 @@ def validate_review(
     return validated
 
 
+def validate_application_draft_row(row: dict[str, str], profile: dict[str, Any]) -> dict[str, Any]:
+    """Prepare an explicitly unverified application; never grant review or issuance."""
+    if set(row) != set(CSV_FIELDS) or any(not isinstance(value, str) for value in row.values()):
+        raise FinalizationError("APPLICATION_DRAFT_CANONICAL_ROW_REQUIRED")
+    _slug(row["employee_id"])
+    required = _required_review_fields(row["status_profile"], provisional=True)
+    missing = [field for field in required if field != "issue_date" and not row[field].strip()]
+    if missing:
+        raise FinalizationError("APPLICATION_DRAFT_MISSING: " + ", ".join(missing))
+    dates = {}
+    for field in ("dob", "start_date", "end_date", "issue_date"):
+        if row[field]:
+            dates[field] = datetime.strptime(_date(row[field], field), "%d.%m.%Y")
+    if dates.get("start_date") and dates.get("end_date") and dates["start_date"] > dates["end_date"]:
+        raise FinalizationError("APPLICATION_DRAFT_DATE_ORDER")
+    if row["sex"] not in {"M", "F"}:
+        raise FinalizationError("APPLICATION_DRAFT_SEX_INVALID")
+    if row["status_profile"] not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
+        raise FinalizationError("APPLICATION_DRAFT_PROFILE_INVALID")
+    if row["status_profile"] != "self_employed_multi_state" and "osvč" in row["employment_name"].casefold():
+        raise FinalizationError("employee profile has self-employed employer data")
+    validate_profile(profile, row["institution_profile"])
+    if not str(profile["institution"]["code"]).isascii() or not str(profile["institution"]["code"]).isdigit():
+        raise FinalizationError("APPLICATION_DRAFT_INSTITUTION_CODE_INVALID")
+    if not 1 <= int(profile["institution"]["code"]) <= 99999:
+        raise FinalizationError("APPLICATION_DRAFT_INSTITUTION_CODE_INVALID")
+    if profile.get("expected_ossz", "").casefold() != row["resolved_ossz"].casefold():
+        raise FinalizationError("APPLICATION_DRAFT_INSTITUTION_MISMATCH")
+    if row["resolved_ossz"].casefold() not in profile["institution"]["name"].casefold():
+        raise FinalizationError("APPLICATION_DRAFT_INSTITUTION_NAME_MISMATCH")
+    return row_to_form(row, profile, application_draft=True)
+
+
 def display_row(row: dict[str, str]) -> dict[str, str]:
     """Display-only casing: preserve evidence, employer legal names and prose."""
     result = dict(row)
@@ -413,7 +451,7 @@ def display_row(row: dict[str, str]) -> dict[str, str]:
     return result
 
 
-def row_to_form(row: dict[str, str], profile: dict[str, Any]) -> dict[str, Any]:
+def row_to_form(row: dict[str, str], profile: dict[str, Any], *, application_draft: bool = False) -> dict[str, Any]:
     row = display_row(row)
     employee = {
         "id": row["employee_id"],
@@ -455,7 +493,7 @@ def row_to_form(row: dict[str, str], profile: dict[str, Any]) -> dict[str, Any]:
         "issue_date": row["issue_date"],
         "signed_by": row["signed_by"],
     }
-    return build_form_data(employee, institution_config)
+    return build_form_data(employee, institution_config, application_draft=application_draft)
 
 
 def verify_pdf(

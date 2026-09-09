@@ -134,6 +134,8 @@ export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
   `scripts/finalize_a1.py` (input/readiness contract), `scripts/a1_core.py`
   (policy/renderer), `scripts/a1_quality_gate.py` (render/validate/record-review).
   Inspect `--help` before operational use; do not create alternate generators.
+- Synthetic DB drafts use `manage.py a1_prepare_draft` through the same publisher/core
+  and protected J4 packages; explicit unverified mode never sets human review flags.
 - Baseline inputs are `$A1_PRIVATE_DIR/a1/review.csv` and `a1/cohort.json`.
   Reconcile explicitly selected scoped snapshots before use; record hashes and
   cohort identity. Never choose authority by modification time or output counts.

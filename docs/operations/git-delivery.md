@@ -31,6 +31,24 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Unverified application-draft publication — 2026-09-09
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Synthetic inbox and `a1_prepare_draft` use the new explicit pending-input contract in the existing canonical publisher/core. Migration 0016 reserves immutable numbers, source/profile/dependencies and package keys. J4 publication recovers the same package after a DB/audit failure. Every page displays UNVERIFIED DRAFT; unknown certificate dates and human flags are preserved |
+| Validation | 87 PostgreSQL integration tests passed, including simultaneous reservation, historical 0015→0016→0015 and package recovery. 37 focused inbox/identity/draft tests and 13 artifact tests passed. Core/finalize/stabilization tests passed; normal-mode comparison across three profiles/nine pages has zero changed pixels at 300 DPI. Three synthetic draft PDFs/nine fresh previews were locally inspected; checkboxes, blank dates, notices and Section 5 output match the explicit draft contract. Models match migrations; planning is 24/24. The required hook exposed four stale comprehensive expectations, reproduced unchanged on the prior renderer; fixtures/assertions now follow explicit posting and established natural casing without altering renderer behavior. Final staged hooks and committed-source acceptance pending |
+| Publication | Local source delivery in progress. Inherited outgoing history requires content/provenance review before private-origin publication |
+| Deployment | None; disposable synthetic databases only. Existing supervised DB remains at recorded 0013 and needs selected-release 0014–0016 before runtime use. No employee PDFs or services changed |
+| Activation | Unchanged; synthetic-only capability-checked adapter. Application drafts are not human-verified, visually approved, submitted or issued certificates |
+| Limitations | One reservation/package per immutable input case. A changed template/profile/code dependency fails closed; a replacement generation-revision lifecycle for unchanged inputs is not implemented. BO artifact access/confirmation still uses the earlier J4 contract. Source changes require process restart, avoiding loaded-code/font mismatch. Local command returns private paths; no public links or production activation |
+| Next owner | Engineering: generation revisions preserving prior numbers/packages across dependency changes, then BO artifact access and revision-checked confirmation. Legacy reconciliation/cutover remains separate |
+
+Protected synthetic visual manifest:
+`runtime/portal/temporary/a1-draft-visual-j7ktekp1/visual-manifest.json`.
+Local visual inspection is engineering evidence, not a human identity decision or
+an artifact promotion. The canonical checkbox receipt records the unchanged
+normal-mode pixel comparison against the previous renderer.
+
 ### Revision-bound A1 input preparation — 2026-09-09
 
 | Field | Evidence / state |

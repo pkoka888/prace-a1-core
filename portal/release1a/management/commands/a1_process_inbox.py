@@ -12,7 +12,7 @@ class Command(BaseCommand):
             "requires DOCUMENT_INBOX_ROOTS[organization_id] beneath DOCUMENT_STORAGE_ROOT. "
             "Manifest: organization_id and files [{name: <uuidhex>.png, sha256: <digest>}]. "
             "Optional per-file activity_profile (employee/self_employed) permits eligible unconfirmed worker drafts. "
-            "Stores OCR proposals and private receipts; does not confirm facts or generate A1 PDFs.")
+            "Stores OCR proposals and private receipts; generates eligible UNVERIFIED A1 drafts, without confirming facts.")
 
     def add_arguments(self, parser):
         parser.add_argument("--organization-id", type=int,

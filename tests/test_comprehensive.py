@@ -193,7 +193,7 @@ class ProfileUnitTests(unittest.TestCase):
                 "start_date": "01.01.2026",
                 "end_date": "31.12.2026",
             },
-            "a1": {"status_profile": "employee_multi_state"},
+            "a1": {"status_profile": "posted_employee"},
         }
         
         form = build_form_data(with_explicit_employment(employee), self.institution)
@@ -319,12 +319,12 @@ class ProfileUnitTests(unittest.TestCase):
 
         # Check direct mapping
         self.assertEqual(form["employment"]["employer_id"], "EMP-123")
-        self.assertEqual(form["employment"]["employer_name"], "TEST EMPLOYER")
+        self.assertEqual(form["employment"]["employer_name"], "Test Employer")
         self.assertEqual(
             f"{form['employment']['street']} {form['employment']['house_number']}",
-            "WORK STREET 456",
+            "Work Street 456",
         )
-        self.assertEqual(form["employment"]["city"], "WORK CITY")
+        self.assertEqual(form["employment"]["city"], "Work City")
         self.assertEqual(form["employment"]["postal_code"], "543 21")
         self.assertEqual(form["employment"]["country_code"], "CZ")
 
@@ -599,13 +599,9 @@ class StructuralPDFTests(unittest.TestCase):
             reader = PdfReader(str(output_path))
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
             
-            # Every uppercase diacritic present in the rendered source fields must
-            # appear. ČENĚK -> Č Ě, ŠÉVA -> Š É, KOŠŤANY -> Š Ť, PŘÍBRAM -> Ř Í,
-            # NOVÁK -> Á, and the institution name ÚSSZ -> Ú.
-            required_diacritics = ["Á", "Č", "Ě", "É", "Í", "Ř", "Š", "Ť", "Ú"]
-            for diacritic in required_diacritics:
-                self.assertIn(diacritic, text,
-                            f"Expected diacritic {diacritic} not found in PDF text")
+            # Display casing preserves complete Czech words and their accents.
+            for value in ("Novák", "Čeněk", "Příbram", "Šéva", "Košťany", "ÚSSZ"):
+                self.assertIn(value, text, f"Expected Czech display value {value} not found")
 
     def test_zero_old_identities_placeholders_in_output(self):
         """Ensure zero old identities/placeholders in output PDF."""
@@ -892,10 +888,10 @@ class ShadowGenerationTests(unittest.TestCase):
 
         employment = form["employment"]
         self.assertEqual(employment["employer_id"], "900101/0007")
-        self.assertEqual(employment["employer_name"], "TESTOVÁ ALENA - OSVČ")
-        self.assertEqual(employment["street"], "BYTOVÁ")
+        self.assertEqual(employment["employer_name"], "Testová Alena")
+        self.assertEqual(employment["street"], "Bytová")
         self.assertEqual(employment["house_number"], "1")
-        self.assertEqual(employment["city"], "TESTOV")
+        self.assertEqual(employment["city"], "Testov")
         self.assertEqual(employment["postal_code"], "100 00")
         self.assertEqual(employment["country_code"], "CZ")
 

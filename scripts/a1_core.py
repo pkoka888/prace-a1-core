@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import random
 import re
@@ -28,6 +29,7 @@ except ImportError:
 
 
 PAGE_SIZE = (595.2, 841.92)
+APPLICATION_DRAFT_NOTICE = "UNVERIFIED DRAFT – NEOVĚŘENÝ NÁVRH, NENÍ VYDANÉ A1"
 PROVISIONAL_NOTICE = "NÁVRH – ČEKÁ NA POTVRZENÍ OSSZ"
 ROOT = Path(__file__).resolve().parents[1]
 FONT_CANDIDATES = (
@@ -271,7 +273,7 @@ def _apply_display_casing(section: dict[str, Any], fields: tuple[str, ...] = _DI
 
 
 def build_form_data(
-    employee: dict[str, Any], institution_config: dict[str, Any]
+    employee: dict[str, Any], institution_config: dict[str, Any], *, application_draft: bool = False
 ) -> dict[str, Any]:
     """Create the only flat data model accepted by the renderer."""
     person = deepcopy(employee.get("person", {}))
@@ -327,6 +329,7 @@ def build_form_data(
     form = {
         "meta": {
             "employee_id": employee.get("id", ""),
+            "application_draft": application_draft,
             "status_profile": status_profile,
             "resolved_ossz": residence.get("ossz", ""),
             "institution_source": (
@@ -409,6 +412,8 @@ def validate_form_data(form: dict[str, Any]) -> None:
         "residence": ("street", "house_number", "city", "postal_code", "country_code"),
         "certificate": ("member_state", "start_date", "end_date", "document_id"),
     }
+    if form.get("meta", {}).get("application_draft") is True:
+        required["certificate"] = ("member_state", "document_id")
     missing = [
         f"{section}.{field}"
         for section, fields in required.items()
@@ -440,13 +445,27 @@ def _get_path(data: dict[str, Any], path: str) -> str:
     return str(current or "")
 
 
-def _register_font() -> str:
+_A1_FONT_SIGNATURE = None
+
+
+def _register_font(*, require_current: bool = False) -> str:
+    """Pin cached reportlab font bytes for reproducible application drafts."""
+    global _A1_FONT_SIGNATURE
+    candidate = next((path for path in FONT_CANDIDATES if path.exists()), None)
+    signature = ((str(candidate), hashlib.sha256(candidate.read_bytes()).hexdigest())
+                 if candidate is not None else None)
     if "A1Sans" in pdfmetrics.getRegisteredFontNames():
+        if require_current and (signature is None or signature != _A1_FONT_SIGNATURE):
+            raise A1ValidationError("APPLICATION_DRAFT_FONT_CACHE_CHANGED")
         return "A1Sans"
-    for candidate in FONT_CANDIDATES:
-        if candidate.exists():
-            pdfmetrics.registerFont(TTFont("A1Sans", str(candidate)))
-            return "A1Sans"
+    if candidate is not None:
+        pdfmetrics.registerFont(TTFont("A1Sans", str(candidate)))
+        _A1_FONT_SIGNATURE = signature
+        if require_current and hashlib.sha256(candidate.read_bytes()).hexdigest() != signature[1]:
+            raise A1ValidationError("APPLICATION_DRAFT_FONT_CHANGED")
+        return "A1Sans"
+    if require_current:
+        raise A1ValidationError("APPLICATION_DRAFT_FONT_UNAVAILABLE")
     return "Helvetica"
 
 
@@ -546,9 +565,10 @@ def _draw_form_header(c: canvas.Canvas, page_number: int, doc_id: str, font: str
 
 
 def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
-    font = _register_font()
+    font = _register_font(require_current=form.get("meta", {}).get("application_draft") is True)
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=PAGE_SIZE)
+    c = canvas.Canvas(buffer, pagesize=PAGE_SIZE,
+                      invariant=form.get("meta", {}).get("application_draft") is True)
     fields_by_page: dict[int, list[tuple[str, dict[str, Any]]]] = {}
     for field_name, cfg in layout["fields"].items():
         fields_by_page.setdefault(int(cfg["page"]), []).append((field_name, cfg))
@@ -568,12 +588,15 @@ def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
         _draw_form_header(c, page_number, doc_id, font)
         _draw_checkboxes_for_page(c, layout, form, page_number, font)
         c.restoreState()
-        if form.get("meta", {}).get("provisional_notice_visible"):
+        if (form.get("meta", {}).get("application_draft") is True
+                or form.get("meta", {}).get("provisional_notice_visible")):
             c.saveState()
             c.setFillColorRGB(0.78, 0.12, 0.12)
             c.setFillAlpha(0.75)
             c.setFont(font, 7)
-            c.drawRightString(PAGE_SIZE[0] - 35, 18, PROVISIONAL_NOTICE)
+            c.drawRightString(PAGE_SIZE[0] - 35, 18,
+                              APPLICATION_DRAFT_NOTICE if form.get("meta", {}).get("application_draft") is True
+                              else PROVISIONAL_NOTICE)
             c.restoreState()
         c.showPage()
     c.save()

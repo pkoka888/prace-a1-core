@@ -1,3 +1,4 @@
+import uuid
 from django.conf import settings
 from django.db import models
 
@@ -206,6 +207,22 @@ class A1Case(TenantModel):
                         if previous[field] != getattr(self, field):
                             raise ValueError("A1_ARTIFACT_IMMUTABLE")
         return super().save(*args, **kwargs)
+
+class A1DraftReservation(TenantModel):
+    """Immutable machine draft identity; never an issued certificate or approval."""
+    case = models.OneToOneField(A1Case, on_delete=models.PROTECT, related_name="draft_reservation")
+    document_id = models.CharField(max_length=64, unique=True)
+    reference_date = models.DateField()
+    package_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    snapshot = models.JSONField()
+    snapshot_sha256 = models.CharField(max_length=64)
+    dependencies = models.JSONField()
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValueError("A1_DRAFT_RESERVATION_IMMUTABLE")
+        return super().save(*args, **kwargs)
+
 
 class AuditEvent(TenantModel):
     actor_ref = models.CharField(max_length=80)

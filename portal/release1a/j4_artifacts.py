@@ -66,7 +66,7 @@ def _pages(content, dpi):
         raise ArtifactError("ARTIFACT_PDF_INVALID") from None
 
 
-def publish_artifact(root, pdf_bytes, snapshot, dependencies, *, dpi=150):
+def publish_artifact(root, pdf_bytes, snapshot, dependencies, *, dpi=150, operation_key=None):
     """Atomically preserve an already-authorized PDF and every-page evidence.
 
     Snapshot and dependencies are deep-copied through canonical serialization.
@@ -76,7 +76,9 @@ def publish_artifact(root, pdf_bytes, snapshot, dependencies, *, dpi=150):
     if dpi not in (150, 300):
         raise ArtifactError("ARTIFACT_DPI_INVALID")
     root = _root(root)
-    operation = uuid.uuid4().hex
+    operation = uuid.uuid4().hex if operation_key is None else operation_key
+    if not isinstance(operation, str) or len(operation) != 32 or any(c not in "0123456789abcdef" for c in operation):
+        raise ArtifactError("ARTIFACT_KEY_INVALID")
     stage = Path(tempfile.mkdtemp(prefix=f".stage-{operation}-", dir=root))
     try:
         _write(stage / "artifact.pdf", pdf_bytes)
@@ -105,7 +107,19 @@ def publish_artifact(root, pdf_bytes, snapshot, dependencies, *, dpi=150):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX)
             if (root / operation).exists() or (root / operation).is_symlink():
-                raise ArtifactError('ARTIFACT_DESTINATION_EXISTS')
+                if operation_key is None:
+                    raise ArtifactError('ARTIFACT_DESTINATION_EXISTS')
+                existing = root / operation
+                if existing.is_symlink() or (existing / "receipt.json").is_symlink():
+                    raise ArtifactError("ARTIFACT_SYMLINK")
+                old_receipt = (existing / "receipt.json").read_bytes()
+                reference = {"key": operation, "pdf_sha256": _hash(pdf_bytes),
+                             "receipt_sha256": _hash(old_receipt)}
+                verified = verify_artifact(root, reference, dependencies)
+                if (verified["stale"] or (existing / "snapshot.json").read_bytes() != snapshot_bytes
+                        or json.loads(old_receipt)["dpi"] != dpi):
+                    raise ArtifactError("ARTIFACT_RETRY_MISMATCH")
+                return reference
             os.rename(stage, root / operation)
         finally:
             os.close(lock)

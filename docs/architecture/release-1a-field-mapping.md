@@ -86,8 +86,10 @@ claims/assignments remain pinned on export; changed evidence fails closed.
 Machine claims and worker projections remain unconfirmed. Accepted individual
 identity fields override OCR without setting whole-form approval flags. Assignment
 inputs are unconfirmed, absent facts remain blank, and source references are opaque.
-Stable draft-number reservation, profile pinning, legacy-key reconciliation,
-cohort export and the unverified PDF publisher adapter remain follow-up work.
+Migration 0016 and `portal/release1a/a1_drafts.py` now reserve a draft number and
+pin the profile/input/dependencies for the canonical unverified PDF publisher.
+Legacy-key reconciliation, cohort export and replacement generation revisions
+after dependency changes remain follow-up work.
 
 ## Complete CSV mapping
 

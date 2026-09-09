@@ -18,6 +18,7 @@ from pathlib import Path
 
 try:
     from .a1_core import (
+        APPLICATION_DRAFT_NOTICE,
         czech_display_case,
         document_id_for_issue_year,
         generate_a1_pdf,
@@ -28,6 +29,7 @@ try:
     from .finalize_a1 import (
         DEFAULT_REVIEW, ROOT, FinalizationError, load_profile, read_review,
         row_to_form, verify_pdf, validate_review, generation_dependencies, snapshot_hash,
+        validate_application_draft_row,
     )
     from .a1_paths import (
         PathValidationError, validate_output_path, unique_staging_path,
@@ -37,6 +39,7 @@ try:
     from .a1_private import A1PrivateInputError, private_path, private_root
 except ImportError:  # Direct CLI execution.
     from a1_core import (
+        APPLICATION_DRAFT_NOTICE,
         czech_display_case,
         document_id_for_issue_year,
         generate_a1_pdf,
@@ -47,6 +50,7 @@ except ImportError:  # Direct CLI execution.
     from finalize_a1 import (
         DEFAULT_REVIEW, ROOT, FinalizationError, load_profile, read_review,
         row_to_form, verify_pdf, validate_review, generation_dependencies, snapshot_hash,
+        validate_application_draft_row,
     )
     from a1_paths import (
         PathValidationError, validate_output_path, unique_staging_path,
@@ -54,6 +58,39 @@ except ImportError:  # Direct CLI execution.
     )
     from a1_audit import AuditWriteError, audited, current_run_id
     from a1_private import A1PrivateInputError, private_path, private_root
+
+
+def render_application_draft(row: dict[str, str], profile: dict, workspace: Path) -> tuple[bytes, dict]:
+    """Render a DB-authorized pending input in caller-owned protected staging.
+
+    This has no CLI/cohort side effects and does not claim visual acceptance.
+    """
+    from pypdf import PdfReader
+    try:
+        from .a1_quality_gate import validate_pdf
+    except ImportError:
+        from a1_quality_gate import validate_pdf
+
+    workspace = Path(workspace)
+    if not workspace.is_dir() or workspace.is_symlink() or workspace.stat().st_mode & 0o077:
+        raise FinalizationError("APPLICATION_DRAFT_PROTECTED_WORKSPACE_REQUIRED")
+    form = validate_application_draft_row(row, profile)
+    with tempfile.TemporaryDirectory(prefix="application-draft-", dir=workspace) as staging:
+        path = Path(staging) / "draft.pdf"
+        # Reserve the file privately before the renderer opens it for writing.
+        path.touch(mode=0o600, exist_ok=False)
+        generate_a1_pdf(form, ROOT / "templates/a1_background.pdf", ROOT / "config/a1_layout.json", path)
+        checks = verify_pdf(path, row, profile, [row])
+        pages = PdfReader(str(path)).pages
+        if not all(APPLICATION_DRAFT_NOTICE in (page.extract_text() or "") for page in pages):
+            raise FinalizationError("APPLICATION_DRAFT_NOTICE_MISSING")
+        qa = validate_pdf(path, row, {row["employee_id"]: row}, ROOT / "templates/a1_background.pdf", 24)
+        if not qa.passed or qa.checks.get("ghostscript") is not True:
+            raise FinalizationError("APPLICATION_DRAFT_CANONICAL_QA_FAILED")
+        checks["canonical_qa"] = {"sha256": qa.sha256, "checks": qa.checks, "passed": qa.passed}
+        checks.update({"application_draft": True, "notice_on_all_pages": True,
+                       "visual_review": "pending", "issued": False})
+        return path.read_bytes(), checks
 
 
 def sha256(path: Path) -> str:

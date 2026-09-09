@@ -3,7 +3,8 @@
 Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
-revision-bound A1 input preparation is implemented; BO integration and PDF draft generation remain planned.
+revision-bound inputs and synthetic unverified PDF draft generation are implemented;
+BO integration and generation revisions remain planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -65,6 +66,42 @@ wrong hashes and cross-organization roots are rejected. Incomplete batches are
 ignored; rejected items do not stop valid items. A nonzero exit reports unresolved
 items. Originals remain in the private inbox pending retention review.
 
+## Unverified PDF draft checkpoint — 2026-09-09
+
+The synthetic inbox now attempts eligible A1 generation after preparing an input
+case. `portal/release1a/a1_drafts.py` owns authorization, immutable number/profile/
+input/dependency reservations (migration 0016), and retry recovery through the
+existing canonical publisher and `portal/release1a/j4_artifacts.py`. Missing facts
+block only that draft; unexpected publication failures leave a retryable partial
+batch. No human confirmation is manufactured, and BO completion is not a gate.
+
+One-case command after configuring an authorized synthetic environment:
+
+```bash
+venv/bin/python manage.py a1_prepare_draft --case-id <case-id> --organization-id <organization-id> --actor-id <actor-id>
+```
+
+The command returns exact private PDF/receipt paths under
+`<DOCUMENT_STORAGE_ROOT>/j4/<reserved-uuidhex>/`, with `artifact.pdf`,
+`snapshot.json`, three `page-<n>.png` previews and `receipt.json`. The inbox reports
+opaque case/package references. Profile configuration defaults to
+`config/institutions/`; isolated synthetic tests may set `A1_DRAFT_PROFILE_ROOT`.
+The generated number uses core formatting and a frozen reference date; that date
+is not written into the certificate issue-date field. Retry reuses the number and
+package, including recovery after publication succeeded but DB attachment failed.
+
+Canonical PDF checks, Ghostscript, source hashes and preview integrity are required;
+visual and identity confirmation stay pending in the package. Current BO download/
+confirmation paths still use their earlier J4 snapshot contract. Use the local
+command/private paths for this bounded increment; no environment is activated.
+
+Next: generation revisions for changed template/profile/code dependencies. Current
+reservations reject such changes; there is no replacement revision for unchanged
+input cases yet. Preserve earlier packages and numbers when implementing this.
+Then integrate BO artifact access and expected-revision confirmation. Apply
+0014–0016 through the selected supervised release before runtime use; the existing
+development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
+
 ## A1 input preparation checkpoint — 2026-09-09
 
 `portal/release1a/a1_exports.py` now owns synthetic DB-to-CSV/JSON input
@@ -81,10 +118,10 @@ approval flags remain false, generated numbers/dates are absent, and legacy J4
 snapshots are preserved. `source_scans` uses opaque document/version references;
 a DB-native publisher adapter still needs to resolve those references and pin
 institution profiles. Canonical readiness reports existing gate blockers honestly.
-Next: implement an explicit unverified application-draft mode through the existing
-shared core/publisher, stable DB-bound draft numbering and artifact QA. BO UI
+The subsequent draft checkpoint above implements the unverified publisher mode,
+stable DB-bound numbering and artifact QA. Generation revisions remain next. BO UI
 revision checks proceed in parallel; BO completion is not a future draft gate.
-Migrations 0014/0015 require application in the selected supervised release before
+Migrations 0014–0016 require application in the selected supervised release before
 runtime use; the existing development database remains at its recorded 0013 state.
 Validation, publication and deployment evidence are in the delivery record.
 
@@ -120,12 +157,11 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: connect the implemented revision-bound input service
-to the existing publisher for J4 unverified A1 generation, with stable numbers
-and artifact QA. Complete legacy reconciliation separately before cutover. In parallel, wire BO
+Next functional phase: add generation revisions for changed dependencies and BO
+access to unverified packages. Complete legacy reconciliation separately before cutover. In parallel, wire BO
 association forms to revision-checked resolution and protect field confirmation
 with expected revisions. BO UI completion is not a gate for eligible unverified
-A1 drafts. Apply 0014/0015 through the selected supervised development release workflow
+A1 drafts. Apply 0014–0016 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.
@@ -265,13 +301,11 @@ confirm newer OCR it did not display. Later changed evidence reopens the relevan
 verification state; the old confirmation stays in history. A machine actor is
 never recorded as the human verifier.
 
-The existing canonical publisher currently requires human approval flags, so
-fully unattended preparation from fresh OCR needs an explicit draft service
-contract under J4. Do not set those flags automatically or route around validation.
-Reuse the core renderer through that service with a visible UNVERIFIED DRAFT
-notice and separate draft status. Official issuance, submission, final approval
-and human verification remain distinct. This plan does not declare that missing
-draft contract already implemented.
+The existing accepted-evidence CLI still requires human approval flags. The explicit
+application-draft contract is now implemented in `scripts/finalize_a1.py` and
+`scripts/generate_provisional_a1.py`, using the same core renderer. It accepts
+pending facts without forging those flags; unknown certificate dates remain blank.
+Every page carries UNVERIFIED DRAFT, and final promotion remains separate.
 
 ## Protected storage and names
 

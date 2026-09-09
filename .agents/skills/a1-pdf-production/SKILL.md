@@ -13,6 +13,16 @@ description: Generate, recover, inspect, and visually validate Czech A1 provisio
 4. Use `config/institutions/` for office profiles. Never derive issuance fields by copying another person's completed form.
 5. Treat scans, CSV rows, PDFs, previews, and extracted text as PII. Keep them local unless the repository policy explicitly permits a minimal redacted external-model crop.
 
+## Synthetic application drafts
+
+The approved local automation plan also permits DB-bound synthetic drafts through
+`portal/release1a/a1_drafts.py` and `manage.py a1_prepare_draft`. It calls the explicit
+unverified contract in the existing publisher/core. Source/profile/dependency hashes
+and stable reservations replace operational CSV/cohort selection for this synthetic
+path only. Protected J4 packages contain the PDF, snapshot, all-page previews and
+receipt; human confirmation and issuance remain pending. Keep the validation steps
+below, including local all-page visual inspection. No real-data activation follows.
+
 ## Generate safely
 
 1. Validate inputs and cohort uniqueness before rendering.

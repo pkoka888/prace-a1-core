@@ -97,3 +97,17 @@ def test_existing_empty_destination_is_not_replaced(root, monkeypatch):
         publish_artifact(root, pdf(), {}, {})
     assert target.is_dir() and not list(target.iterdir())
     assert not list(root.glob('.stage-*'))
+
+
+def test_reserved_key_recovers_published_package_and_rejects_changed_inputs(root):
+    key = "a" * 32
+    data = pdf()
+    ref = publish_artifact(root, data, {"synthetic": True}, {"revision": 1}, operation_key=key)
+    assert publish_artifact(root, data, {"synthetic": True}, {"revision": 1}, operation_key=key) == ref
+    assert len([p for p in root.iterdir() if p.is_dir()]) == 1
+    with pytest.raises(ArtifactError, match="RETRY_MISMATCH"):
+        publish_artifact(root, data, {"synthetic": False}, {"revision": 1}, operation_key=key)
+    with pytest.raises(ArtifactError, match="RETRY_MISMATCH"):
+        publish_artifact(root, data, {"synthetic": True}, {"revision": 2}, operation_key=key)
+    with pytest.raises(ArtifactError, match="KEY_INVALID"):
+        publish_artifact(root, data, {}, {}, operation_key="../escape")
