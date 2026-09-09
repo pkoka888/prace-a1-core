@@ -16,11 +16,12 @@ Respect [ADR-001](../docs/decisions/ADR-001-jan-portal-architecture.md) and
 Preserve catalog IDs and registered approvals. No extra ADR, repeated operator
 permission or new activation gate is required for the authorized synthetic preparation.
 
-2026-09-09 repair review: disposable SQLite seed/verify coverage is local tooling
-evidence, not DB-MIG acceptance. Fixture-role mapping, duplicate/extra record checks
-and exact synthetic settings selection still require repair. Fresh supervised
-development and committed-source reproduction remain to be demonstrated. Preserve
-historical databases and the cutover dependency chain while bounded J2 work proceeds.
+2026-09-09 implementation checkpoint: seed/reproducer repairs and bounded J2
+synthetic intake have behavioral coverage. Fixture role mapping, duplicate/case
+reconciliation and exact settings selection are implemented; evidence belongs in
+the delivery record. No DB-MIG cutover is accepted. Next is J2 identity/conflict
+handling with DB-MIG-1/2/5 revision mapping, preserving historical databases and
+existing cutover dependencies.
 
 ## Purpose and current ownership
 

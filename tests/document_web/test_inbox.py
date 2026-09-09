@@ -1,0 +1,226 @@
+"""Behavioral synthetic inbox tests; isolated Django database and private temp files."""
+from datetime import timedelta
+import fcntl
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
+from uuid import uuid4
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings_document_tests")
+import django
+django.setup()
+from allauth.mfa.models import Authenticator
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import TransactionTestCase, override_settings
+from django.utils import timezone
+from portal.release1a.inbox import process_inbox
+from portal.release1a.document_intake import intake
+from portal.release1a.models import (Organization, Membership, Document, OcrRun, Worker,
+    FieldProposal, FieldDecision, WorkerIdentityRevision, AuditEvent)
+from portal.release1a.services import Forbidden
+from src.document_core.pipeline import DocumentProcessor
+from tests.test_document_core.helpers import OP, card, png, ScriptedEngine
+
+
+def processor():
+    return DocumentProcessor(lambda: ScriptedEngine([OP, OP]))
+
+
+class InboxTests(TransactionTestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.storage = Path(temporary.name)
+        self.root = self.storage / "inbox"
+        self.root.mkdir(mode=0o700)
+        self.org = Organization.objects.create(key="inbox-synthetic", label="Synthetic Inbox")
+        self.other = Organization.objects.create(key="inbox-other", label="Synthetic Other")
+        self.user = get_user_model().objects.create_user("inbox-operator")
+        Membership.objects.create(user=self.user, organization=self.org, role="organization_admin")
+        Authenticator.objects.create(user=self.user, type=Authenticator.Type.TOTP, data={})
+        self.override = override_settings(DOCUMENT_STORAGE_ROOT=self.storage,
+            DOCUMENT_INBOX_ROOTS={self.org.pk: self.root}, M2_SYNTHETIC_ONLY=True)
+        self.override.enable()
+        self.addCleanup(self.override.disable)
+        self.content = png(card(OP))
+
+    def write(self, path, content):
+        path.write_bytes(content)
+        path.chmod(0o600)
+
+    def batch(self, contents=None, ready=True, org=None):
+        path = self.root / uuid4().hex
+        path.mkdir(mode=0o700)
+        items = []
+        for content in contents if contents is not None else [self.content]:
+            name = uuid4().hex + ".png"
+            self.write(path / name, content)
+            items.append({"name": name, "sha256": hashlib.sha256(content).hexdigest()})
+        if ready:
+            self.write(path / "ready.json", json.dumps({"organization_id": (org or self.org).pk,
+                "files": items}).encode())
+        return path, items
+
+    def run_inbox(self, proc=None):
+        return process_inbox(self.user, self.org, processor=proc or processor())
+
+    def test_retry_reuses_completed_proposals_and_never_confirms(self):
+        self.batch()
+        first = self.run_inbox()[0]
+        count = FieldProposal.objects.count()
+        second = self.run_inbox()[0]
+        self.assertEqual(first["items"], second["items"])
+        self.assertEqual(first["status"], "completed")
+        self.assertEqual(first["identity_resolution"], "requires_review")
+        self.assertEqual(Document.objects.count(), 1)
+        self.assertEqual(OcrRun.objects.get().retry_count, 1)
+        self.assertEqual(FieldProposal.objects.count(), count)
+        self.assertGreater(count, 0)
+        self.assertFalse(FieldDecision.objects.exists())
+        self.assertFalse(WorkerIdentityRevision.objects.exists())
+        self.assertIsNone(Document.objects.get().worker_id)
+        receipt = self.storage / first["receipt_key"]
+        self.assertEqual(receipt.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(json.loads(receipt.read_text())["items"], first["items"])
+
+    def test_failed_ocr_resumes_existing_run(self):
+        class Broken:
+            def process(self, *args, **kwargs):
+                raise RuntimeError("SENSITIVE_SYNTHETIC_FAILURE")
+        self.batch()
+        first = self.run_inbox(Broken())[0]
+        self.assertEqual(first["items"][0]["status"], "failed")
+        second = self.run_inbox()[0]
+        self.assertEqual(second["items"][0]["status"], "completed")
+        self.assertEqual(first["items"][0]["run_ref"], second["items"][0]["run_ref"])
+        self.assertEqual(OcrRun.objects.get().retry_count, 2)
+        self.assertNotIn("SENSITIVE", json.dumps(first))
+
+    def test_incomplete_ignored_bad_file_does_not_stop_good(self):
+        self.batch(ready=False)
+        self.batch([b"SENSITIVE_INVALID_FILE", self.content])
+        results = self.run_inbox()
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["status"], "partial")
+        self.assertEqual([r["status"] for r in results[0]["items"]], ["rejected", "completed"])
+        self.assertEqual(Document.objects.count(), 1)
+        self.assertNotIn("SENSITIVE", json.dumps(results))
+        self.assertNotIn("SENSITIVE", str(list(AuditEvent.objects.values())))
+
+    def test_authorization_and_activation_precede_filesystem(self):
+        with patch("portal.release1a.inbox._private_fd") as access:
+            with self.assertRaises(Forbidden):
+                process_inbox(self.user, self.other)
+            with override_settings(M2_SYNTHETIC_ONLY=False):
+                with self.assertRaises(Forbidden):
+                    self.run_inbox()
+            access.assert_not_called()
+
+    def test_manifest_scope_and_shared_root_are_rejected(self):
+        self.batch(org=self.other)
+        self.assertEqual(self.run_inbox()[0]["status"], "rejected")
+        with override_settings(DOCUMENT_INBOX_ROOTS={self.org.pk: self.root, self.other.pk: self.root}):
+            with self.assertRaisesRegex(ValueError, "DISJOINT"):
+                self.run_inbox()
+        self.assertFalse(Document.objects.exists())
+
+    def test_symlink_source_and_modified_hash_rejected(self):
+        path, items = self.batch([self.content, self.content])
+        source = path / items[0]["name"]
+        source.unlink()
+        source.symlink_to(path / items[1]["name"])
+        self.write(path / items[1]["name"], b"modified")
+        results = self.run_inbox()[0]
+        self.assertEqual([r["status"] for r in results["items"]], ["rejected", "rejected"])
+        self.assertFalse(Document.objects.exists())
+
+    def test_traversal_manifest_and_root_escape_fail_closed(self):
+        path, items = self.batch()
+        items[0]["name"] = "../private.png"
+        self.write(path / "ready.json", json.dumps({"organization_id": self.org.pk, "files": items}).encode())
+        self.assertEqual(self.run_inbox()[0]["status"], "rejected")
+        with override_settings(DOCUMENT_INBOX_ROOTS={self.org.pk: self.storage.parent}):
+            with self.assertRaisesRegex(ValueError, "OUTSIDE_PRIVATE"):
+                self.run_inbox()
+        self.assertFalse(Document.objects.exists())
+
+    def test_command_reports_partial_as_failure_without_source_details(self):
+        self.batch([b"SENSITIVE_INVALID_FILE"])
+        output = io.StringIO()
+        with self.assertRaisesRegex(CommandError, "UNRESOLVED"):
+            call_command("a1_process_inbox", organization_id=self.org.pk, actor_id=self.user.pk, stdout=output)
+        self.assertEqual(json.loads(output.getvalue())[0]["status"], "partial")
+        self.assertNotIn("SENSITIVE", output.getvalue())
+
+    def test_same_root_concurrent_invocation_is_not_claimed_twice(self):
+        self.batch()
+        lock = os.open(self.root / ".process.lock", os.O_CREAT | os.O_RDWR, 0o600)
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaisesRegex(ValueError, "INBOX_BUSY"):
+                self.run_inbox()
+        finally:
+            os.close(lock)
+        self.assertFalse(Document.objects.exists())
+        self.assertEqual(self.run_inbox()[0]["status"], "completed")
+
+    def test_expired_ocr_lease_is_reclaimed_without_new_document(self):
+        self.batch()
+        self.run_inbox()
+        run = OcrRun.objects.get()
+        # Simulate an interrupted attempt before persistence, using the existing lease contract.
+        FieldProposal.objects.all().delete()
+        run.document.documentclassification_set.all().delete()
+        OcrRun.objects.filter(pk=run.pk).update(state="running", retry_count=1,
+            lease_expires_at=timezone.now() - timedelta(seconds=1), output_key="", output_sha256="")
+        self.assertEqual(self.run_inbox()[0]["status"], "completed")
+        self.assertEqual(Document.objects.count(), 1)
+        self.assertEqual(OcrRun.objects.get().retry_count, 2)
+
+    def test_duplicate_with_worker_context_is_not_silently_reassociated(self):
+        worker = Worker.objects.create(organization=self.org, given_name="SYNTHETIC",
+            family_name="EXAMPLE", birth_date="1990-01-01", activity_profile="employee")
+        document, _, _, _ = intake(self.user, self.org, worker, "synthetic.png", "image/png",
+            self.content, processor=processor())
+        self.batch()
+        self.assertEqual(self.run_inbox()[0]["items"][0]["status"], "rejected")
+        document.refresh_from_db()
+        self.assertEqual(document.worker_id, worker.pk)
+        self.assertEqual(Document.objects.count(), 1)
+        self.assertFalse(FieldDecision.objects.exists())
+
+    def test_private_modes_and_byte_limit_are_enforced(self):
+        path, items = self.batch()
+        (path / items[0]["name"]).chmod(0o644)
+        self.assertEqual(self.run_inbox()[0]["items"][0]["status"], "rejected")
+        (path / items[0]["name"]).chmod(0o600)
+        with patch("portal.release1a.inbox.MAX_BYTES", 10):
+            self.assertEqual(self.run_inbox()[0]["items"][0]["status"], "rejected")
+        self.assertFalse(Document.objects.exists())
+
+    def test_command_uses_explicitly_configured_operator_and_org(self):
+        self.batch([b"SYNTHETIC_INVALID"])
+        output = io.StringIO()
+        with override_settings(DOCUMENT_INBOX_ORGANIZATION_ID=self.org.pk, DOCUMENT_INBOX_ACTOR_ID=self.user.pk):
+            with self.assertRaisesRegex(CommandError, "UNRESOLVED"):
+                call_command("a1_process_inbox", stdout=output)
+        result = json.loads(output.getvalue())[0]
+        self.assertEqual(result["organization_id"], self.org.pk)
+        self.assertEqual(result["actor_ref"], f"user:{self.user.pk}")
+        with override_settings(DOCUMENT_INBOX_ORGANIZATION_ID=self.org.pk, DOCUMENT_INBOX_ACTOR_ID=self.user.pk):
+            with self.assertRaisesRegex(CommandError, "DENIED_OR_UNAVAILABLE"):
+                call_command("a1_process_inbox", organization_id=self.other.pk, stdout=io.StringIO())
+
+    def test_command_never_invents_operator_configuration(self):
+        with override_settings(DOCUMENT_INBOX_ORGANIZATION_ID=None, DOCUMENT_INBOX_ACTOR_ID=None):
+            with self.assertRaisesRegex(CommandError, "DENIED_OR_UNAVAILABLE"):
+                call_command("a1_process_inbox", stdout=io.StringIO())
+        with override_settings(DOCUMENT_INBOX_ORGANIZATION_ID=self.org.pk, DOCUMENT_INBOX_ACTOR_ID=True):
+            with self.assertRaisesRegex(CommandError, "DENIED_OR_UNAVAILABLE"):
+                call_command("a1_process_inbox", stdout=io.StringIO())

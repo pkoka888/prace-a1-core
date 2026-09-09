@@ -75,48 +75,46 @@ Do not create another editable source tree or archive unknown files to obtain a
 clean status. New deliveries continue updating this record; detailed inventories
 and hash-bound receipts remain runtime artifacts.
 
-### Seed/reproducer repair review — 2026-09-09
+### Tooling repair and bounded J2 intake — 2026-09-09
 
-This checkpoint supersedes the earlier claim that seed verification and immutable
-release reproduction were complete. It reviews the four inherited, uncommitted
-source/test repairs against HEAD `767ef87`; it does not deliver those repairs.
-OpenCode's claimed documentation update was absent at review and is supplied by
-this documentation checkpoint. The product command remains planned.
+This delivery completes the reviewed seed/reproducer repairs and adds the first
+synthetic completed-batch inbox increment. It preserves the earlier unrelated OCR
+benchmark test and historical databases/packages. The original report's completion
+claim was corrected by `3e31594`; the implementation below supersedes that repair list.
 
 | Field | Evidence / state |
 |---|---|
-| Implementation | Local seed repairs fix model wiring, worker name/profile/state mapping and several missing/extra/mismatch checks. Local reproducer repairs select the export cwd/PYTHONPATH and use a SHA marker. Both are present but require further repair; source/test edits are preserved separately from this documentation delivery. |
-| Validation | Focused working-tree run: 19 passed, 3 skipped (16 seed tests pass; 3 reproducer tests pass and 3 skip). Two skipped reproducer scenarios were invoked directly in disposable synthetic repositories: both failed their assertions; the fake repository leaves its copied script untracked, preventing export. No successful committed-source reproduction or actual supervised-settings run is established. |
-| Publication | At review, local HEAD `767ef87` was ten commits ahead of origin `3ca87b4`, verified directly with git ls-remote. The four new repair files are uncommitted, contrary to the handoff's publication claim. This documentation checkpoint is a separate scoped commit; publication of the inherited outgoing batch remains pending content review. |
-| Deployment | None. Tests created disposable synthetic SQLite databases; no historical database, operational PDF, service or supervised development environment was modified or provisioned by this review. |
-| Activation | Unchanged; real-data-rules §14 and existing registered approvals remain authoritative. SQLite tests, source commits and PDF preparation do not activate real-data processing. |
-| Limitations | Seed apply/verify both omit fixture role; settings basename matching weakens the exact sanctioned-module boundary; duplicate natural keys and additional A1 cases can evade comparison. Reproducer marker/file presence does not verify source bytes; failed checks execute twice; the staged-package check depends on an enclosing Git index; dirty-tree skips conceal broken test setup. |
-| Next owner | Engineering: close those bounded tooling defects with behavioral tests, deliver the repair, then prove fresh supervised development and one committed-source acceptance run. Next product phase is J2 completed-batch intake/retry/proposals using existing shared services, followed by the child plan's mapped DB/J4/BO sequence. Independent synthetic J2 work may proceed; release reproduction remains unaccepted. |
+| Implementation | Exact sanctioned seed settings; explicit private verification roots; read-only SQLite verify; independent role/profile/state expectations and multiset worker/assignment/case reconciliation. Reproducer verifies exact Git blobs and uses an isolated acceptance copy, single-attempt command results and protected hash-bound receipts. J2 uses shared intake/OCR with private organization roots, completed manifests, hash/type checks, local locking, per-item recovery and opaque receipts. |
+| Validation | Seed/containment: 31 tests passed; final diagnostic change: one affected test passed. Reproducer: 13 behavioral tests passed. J2: 14 SQLite integration tests passed. Supervised settings: 43 existing checks plus five inbox-configuration checks passed (an inherited setgid bit on newly created inbox directories was corrected). PostgreSQL integration: 44 tests passed in an ephemeral cluster, including J2 and historical migration paths. Planning: 24/24 checks passed. Committed-source acceptance is recorded below when completed. |
+| Publication | This scoped source commit contains the implemented repair and J2 increment. Earlier outgoing commits remain unpublished pending content review; no history rewrite or force-push is authorized. Exact delivered SHA and reproduction receipt are recorded in the subsequent evidence checkpoint. |
+| Deployment | No service or production deployment. Fresh supervised development is a synthetic bootstrap, separate from historical SQLite stores and operator PDF packages; its result is recorded below. |
+| Activation | Unchanged. The inbox adapter explicitly refuses real-data activation and uses existing actor/membership/MFA capability checks. Configuration creates no operator or human confirmation. |
+| Limitations | J2 intake leaves identities unassigned with requires_review; no worker auto-merge, A1 draft generation, BO completion or scheduler is included. Originals remain protected in the inbox pending retention review. Local file locking is not distributed coordination; existing OCR retry/dependency policies still apply. |
+| Next owner | Engineering: J2 identity/conflict handling and DB-MIG-1/2/5 revision mapping, then J4 unverified drafts and BO confirmation, preserving DB-MIG-6/7 cutover dependencies and real-data-rules §14. |
 
-Validation command for the reviewed local repairs:
+Selected verification commands:
 
 ```bash
-DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/m2/test_synthetic_containment.py tests/test_release_reproducer.py -q
+venv/bin/python -m pytest tests/m2/test_synthetic_containment.py tests/test_release_reproducer.py -q
+venv/bin/python scripts/test_document_intake.py
+bash scripts/release_reproducer.sh <delivered-source-sha>
 ```
 
-The seed tests exercise migrations, apply/verify, repeat apply, changed organization
-and workplace labels, and an extra worker through a disposable settings wrapper.
-They do not exercise the actual supervised configuration. All five approved
-assignment fixture rows carry `role`, while the seed and verifier both expect
-`activity_label`; a self-consistent PASS therefore does not establish field parity.
+The PostgreSQL harness owns an ephemeral in-project cluster with Unix sockets and
+no network listener; it now includes J2 inbox scenarios alongside existing intake,
+historical migration, readiness and J4 service tests. No system database is used.
+The release reproducer omits only the index-specific staged check in a plain archive;
+mandatory source publication hooks remain effective. Its receipt binds the actual
+source commit, invoking runner/interpreter, installed dependencies, environment,
+first command exit codes, logs and before/after source integrity. Runtime writes
+occur in a separate disposable acceptance copy, not the immutable source export.
 
-Required repair evidence is specific: use exact sanctioned settings with explicit
-isolated test state; assert expected fixture transformations independently; detect
-missing/extra/duplicate records; establish read-only verify; check the requested
-export bytes and dependencies; execute each acceptance command once and capture
-its actual exit code. Synthetic reproducer tests must run regardless of unrelated
-working-tree edits, cover older commits and tampered exports, and permit distinct
-SHA directories. A plain archive has no Git index: release checks must not borrow
-the editable repository's index. Keep logs/receipts outside immutable source bytes.
-
-Documentation validation: 24/24 planning checks passed, including link/status
-consistency; whitespace and explicit staged-content review passed. Catalog IDs, plan header states and
-approval records remain unchanged; no additional report or activation gate is added.
+The [local automation contract](../../plans/2026-09-08-local-a1-automation.md) specifies
+the completed-manifest format and one-time supervisor inbox configuration. After
+configuration, the bare management command uses existing authorized actor/org IDs;
+explicit CLI overrides still require the same authorization and root segregation.
+A completed intake means persisted machine proposals, not confirmed identity or
+certificate issuance. No approval states or top-level catalog IDs are changed.
 
 ### Consolidation documentation delivery — 2026-09-08
 

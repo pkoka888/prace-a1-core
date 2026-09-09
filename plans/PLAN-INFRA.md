@@ -11,12 +11,11 @@ source tree, immutable `runtime/s-<full-commit-sha>/` exports and fresh
 Preserve historical databases; rebuild development from the on-disk migration graph.
 Future `runtime/portal/production/` and `portal.settings_production` require separate
 provisioning. Engineering owns settings/manifests; sysadmin owns credentials/host state.
-Seed `--verify` and `scripts/release_reproducer.sh <sha>` exist, with uncommitted
-repairs reviewed on 2026-09-09. Partial disposable SQLite evidence does not establish
-supervised-environment or committed-source acceptance. Complete exact settings
-selection, export-byte verification, first-attempt exit capture and isolated
-behavioral tests under the child plan before claiming reproducible readiness.
-No environment is provisioned by this documentation update.
+Seed `--verify` and `scripts/release_reproducer.sh <sha>` are implemented with
+exact settings selection, role/duplicate reconciliation and verified committed
+source. Supervised inbox defaults select existing operator/organization IDs only.
+The delivery record separates synthetic tests, committed-source reproduction,
+fresh development bootstrap, publication and activation. No service is deployed.
 Use AGENTS.md's proportional checks and one delivery record; historical duplicate
 export-test requirements do not add a new gate. Existing hooks/activation checks
 remain effective. Optional skills/MCPs/client hooks do not block this work.

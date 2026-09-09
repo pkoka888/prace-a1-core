@@ -140,6 +140,8 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 # (ocr, evidence, scans, etc.). The token guard stays active for any non-listed
 # file under scripts/.
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
+    "portal/release1a/inbox.py",
+    "portal/release1a/management/commands/a1_process_inbox.py",
     "scripts/run_ocr_benchmark.py",
     "scripts/evaluate_a1_pdf_tools.py",
     "scripts/seed_release1a_dev.py",

@@ -11,12 +11,11 @@ The [44-field mapping](../docs/architecture/release-1a-field-mapping.md) reuses
 proposals, decisions and identity/case revisions; the review's missing-column
 estimate is not a schema specification. One command will prepare proposals and
 eligible unverified drafts without waiting for BO; human confirmation remains an
-actor/time/revision decision. No new coordinator or data import is implemented
-by this checkpoint. The 2026-09-09 tooling review finds partial local seed coverage
-with role reconciliation and settings-boundary repairs outstanding. Complete these
-and fresh synthetic development acceptance. The next product phase is J2 completed
-batch intake, per-file recovery and proposals through existing shared services;
-independent synthetic work may proceed while release reproduction is repaired.
+actor/time/revision decision. Bounded synthetic J2 inbox intake is implemented:
+completed batches reuse the shared intake/OCR adapter, preserve proposals and
+resume failed runs. It leaves identities unassigned and creates no PDF. Next is
+identity/conflict handling and DB-MIG revision mapping, then J4 drafts and BO;
+see the child contract and delivery record for the precise acceptance scope.
 
 ## Shared intake Git delivery — 2026-09-08
 

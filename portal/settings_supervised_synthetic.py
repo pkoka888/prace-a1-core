@@ -221,6 +221,32 @@ SECURE_REFERRER_POLICY = "same-origin"
 # Synthetic-only posture is fixed
 M2_SYNTHETIC_ONLY = True
 
+# Optional one-time synthetic inbox configuration. Both IDs refer to existing
+# records; importing settings never creates an operator, membership or MFA proof.
+_inbox_org = os.environ.get("PRACE_INBOX_ORGANIZATION_ID", "").strip()
+_inbox_actor = os.environ.get("PRACE_INBOX_ACTOR_ID", "").strip()
+DOCUMENT_INBOX_ROOTS = {}
+if _inbox_org or _inbox_actor:
+    if not all(__import__("re").fullmatch(r"[1-9][0-9]*", value)
+               for value in (_inbox_org, _inbox_actor)):
+        raise ImproperlyConfigured("Inbox organization and actor IDs must both be positive integers")
+    DOCUMENT_INBOX_ORGANIZATION_ID = int(_inbox_org)
+    DOCUMENT_INBOX_ACTOR_ID = int(_inbox_actor)
+    _inbox_parent = DOCUMENT_STORAGE_ROOT / "inbox"
+    _inbox_root = _inbox_parent / ("org-" + _inbox_org)
+    for _child in (_inbox_parent, _inbox_root):
+        no_symlinks(_child)
+        try:
+            _child.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        else:
+            _child.chmod(0o700)  # Clear an inherited setgid bit on our new directory.
+        if (not _child.is_dir() or _child.stat().st_uid != os.getuid()
+                or _child.stat().st_mode & 0o077):
+            raise ImproperlyConfigured("Inbox directories must be private and operator-owned")
+    DOCUMENT_INBOX_ROOTS[DOCUMENT_INBOX_ORGANIZATION_ID] = _inbox_root
+
 # Database: confined SQLite by default; PostgreSQL when all four DB_* are set
 if _db_present:
     _db_conf = {

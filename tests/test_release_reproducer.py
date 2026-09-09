@@ -1,93 +1,137 @@
-"""
-test_release_reproducer.py
-
-Confirms scripts/release_reproducer.sh refuses unsafe invocations and
-otherwise exports committed source to runtime/s-<sha>/ with a
-protected receipt. Tests use a tmp worktree-like copy so they do not
-mutate the real runtime directory.
-"""
+"""Behavioral reproduction checks use disposable, wholly synthetic Git trees."""
 import json
-import subprocess
+import os
 from pathlib import Path
+import stat
+import subprocess
+import sys
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "release_reproducer.sh"
+from scripts.run_release_reproducer import digest, reproduce
 
 
-def _git_clean(repo_root: Path) -> bool:
-    """True when the git working tree has no dirty or untracked entries."""
-    proc = subprocess.run(
-        ["git", "-C", str(repo_root), "status", "--porcelain"],
-        capture_output=True, text=True, check=True,
-    )
-    return proc.stdout.strip() == ""
+@pytest.fixture
+def repo(tmp_path):
+    root = tmp_path / "synthetic-repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    for key, value in (("user.name", "Synthetic"), ("user.email", "synthetic@example.invalid")):
+        git(root, "config", key, value)
+    yield root
+    for directory, _, _ in os.walk(root):
+        Path(directory).chmod(0o700)
 
 
-@pytest.mark.skipif(
-    not _git_clean(REPO_ROOT),
-    reason="working tree is dirty; refuse to test the reproducer against an unreleased state"
-)
-def test_release_reproducer_refuses_dirty_tree(tmp_path):
-    """A synthetic dirty marker file in tmp_path must cause the reproducer to exit non-zero."""
-    # We cannot mutate the real repo to be dirty; instead, exercise the
-    # dirty-check by copying the script to a tmp dir with a fake git wrapper.
-    script_text = SCRIPT.read_text()
-    script_text = script_text.replace(
-        "REPO_ROOT=\"$(cd \"$(dirname \"$0\")/..\" && pwd)\"",
-        f"REPO_ROOT=\"{tmp_path}\"",
-        1,
-    )
-    fake_script = tmp_path / "release_reproducer.sh"
-    fake_script.write_text(script_text)
-    fake_script.chmod(0o755)
-
-    # Set up a fake git dir with dirty status
-    (tmp_path / "runtime").mkdir()
-    subprocess.run(["git", "-C", str(tmp_path), "init", "--quiet"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "t@t"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "t"], check=True)
-    (tmp_path / "a").write_text("hi")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "a"], check=True)
-    subprocess.run(["git", "-C", str(tmp_path), "commit", "--quiet", "-m", "init"], check=True)
-    (tmp_path / "dirty").write_text("uncommitted")
-
-    proc = subprocess.run(
-        ["bash", str(fake_script), "HEAD"], capture_output=True, text=True,
-    )
-    assert proc.returncode != 0, proc.stdout + proc.stderr
-    assert "dirty" in proc.stderr.lower()
-    assert not (tmp_path / "runtime" / "s-").exists() or not list(
-        (tmp_path / "runtime" / "s-").iterdir()
-    )
+def git(repo, *args):
+    return subprocess.check_output(["git", "-C", str(repo), *args]).decode().strip()
 
 
-def test_release_reproducer_requires_one_arg():
-    proc = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True)
-    assert proc.returncode == 2
-    assert "Usage" in proc.stderr
+def commit(repo, value):
+    (repo / "value.py").write_text(f"VALUE = {value!r}\n")
+    git(repo, "add", "value.py")
+    git(repo, "commit", "-qm", "synthetic source")
+    return git(repo, "rev-parse", "HEAD")
 
 
-def test_release_reproducer_rejects_invalid_sha():
-    proc = subprocess.run(
-        ["bash", str(SCRIPT), "definitely-not-a-real-sha-12345"],
-        capture_output=True, text=True,
-    )
-    assert proc.returncode == 2
-    assert "cannot resolve" in proc.stderr
+def test_old_commit_dirty_tree_and_untracked_inputs_are_isolated(repo):
+    sha = commit(repo, "old")
+    commit(repo, "new")
+    (repo / "value.py").write_text("raise RuntimeError('dirty source imported')")
+    (repo / "untracked.txt").write_text("excluded")
+    commands = [[sys.executable, "-c", "import value; print(value.VALUE); assert value.VALUE == 'old'"]]
+    path, receipt = reproduce(repo, sha, commands=commands)
+    assert receipt["passed"]
+    assert (path.parent / "check-1.stdout").read_text().strip() == "old"
+    export = Path(receipt["export_dir"])
+    assert set(p.name for p in export.iterdir()) == {"value.py"}
+    assert receipt["environment"]["PYTHONPATH"] == receipt["test_cwd"]
+    assert not path.is_relative_to(export)
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+    assert receipt["checks"][0]["stdout_sha256"] == digest((path.parent / "check-1.stdout").read_bytes())
+    assert receipt["dependencies"] and receipt["runner_sha256"]
+    assert reproduce(repo, sha, commands=commands)[1]["passed"]
 
 
-def test_release_reproducer_script_has_safety_guards():
-    """The script must fail closed on missing args, bad SHA, dirty tree,
-    and must not delete an existing export of a different commit."""
-    content = SCRIPT.read_text()
-    assert "set -euo pipefail" in content
-    assert "git status --porcelain" in content
-    assert "git archive" in content, "must use git archive, not worktree copy"
-    assert "already contains commit" in content, (
-        "must refuse to overwrite an existing differing export"
-    )
-    assert "chmod 0700" in content
-    assert "chmod 0600" in content
-    assert "RECEIPT" in content and ".json" in content
+def test_failure_runs_exactly_once_and_records_actual_exit_code(repo):
+    sha = commit(repo, "fixture")
+    code = "import os,pathlib; p=pathlib.Path(os.environ['HOME'])/'counter'; p.write_text(p.read_text()+'x' if p.exists() else 'x'); raise SystemExit(7)"
+    path, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
+    assert not receipt["passed"]
+    assert receipt["checks"][0]["exit_code"] == 7
+    assert (path.parent / "home/counter").read_text() == "x"
+
+
+@pytest.mark.parametrize("damage", ["bytes", "extra", "missing", "symlink", "extra_dir"])
+def test_tampered_export_refused_before_commands(repo, damage):
+    sha = commit(repo, "fixture")
+    _, receipt = reproduce(repo, sha, commands=[])
+    export = Path(receipt["export_dir"])
+    export.chmod(0o700)
+    source = export / "value.py"
+    if damage == "bytes":
+        source.chmod(0o600)
+        source.write_text("changed")
+    elif damage == "extra":
+        (export / "extra").write_text("unexpected")
+    elif damage == "extra_dir":
+        (export / "extra").mkdir()
+    elif damage == "missing":
+        source.unlink()
+    else:
+        source.unlink()
+        source.symlink_to(repo / "value.py")
+    export.chmod(0o500)
+    with pytest.raises(ValueError, match="integrity"):
+        reproduce(repo, sha, commands=[])
+
+
+def test_git_symlink_rejected_before_export(repo):
+    commit(repo, "fixture")
+    (repo / "escape").symlink_to("../outside")
+    git(repo, "add", "escape")
+    git(repo, "commit", "-qm", "synthetic symlink")
+    with pytest.raises(ValueError, match="symlinks"):
+        reproduce(repo, "HEAD", commands=[])
+    assert not (repo / "runtime").exists()
+
+
+def test_checks_cannot_use_enclosing_git_index(repo):
+    sha = commit(repo, "fixture")
+    code = "import subprocess; r=subprocess.run(['git','rev-parse','--show-toplevel'],capture_output=True); assert r.returncode != 0"
+    assert reproduce(repo, sha, commands=[[sys.executable, "-c", code]])[1]["passed"]
+
+
+def test_invalid_revision_has_no_runtime_side_effect(repo):
+    commit(repo, "fixture")
+    with pytest.raises(ValueError, match="cannot resolve"):
+        reproduce(repo, "--invalid", commands=[])
+    assert not (repo / "runtime").exists()
+
+
+def test_shell_requires_one_argument():
+    script = Path(__file__).resolve().parents[1] / "scripts/release_reproducer.sh"
+    result = subprocess.run(["bash", str(script)], capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "Usage" in result.stderr
+
+
+def test_disposable_runtime_is_allowed_but_source_changes_fail(repo):
+    sha = commit(repo, "fixture")
+    code = "from pathlib import Path; Path('runtime').mkdir(); Path('runtime/state').write_text('synthetic')"
+    path, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
+    assert receipt["passed"]
+    assert not (Path(receipt["export_dir"]) / "runtime").exists()
+    code = "from pathlib import Path; Path('value.py').write_text('changed')"
+    _, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
+    assert not receipt["passed"]
+    assert not receipt["source_integrity_after_checks"]
+
+
+def test_unstartable_command_still_gets_receipt(repo):
+    sha = commit(repo, "fixture")
+    path, receipt = reproduce(repo, sha, commands=[["/synthetic/nonexistent-command"]])
+    assert path.exists()
+    assert receipt["checks"][0]["exit_code"] == 127
+    assert not receipt["passed"]

@@ -50,6 +50,8 @@
       "purpose": "Protected synthetic intake, version supersession and dependent J4/runtime routes with acceptance tests.",
       "paths": [
         "portal/release1a/document_intake.py",
+        "portal/release1a/inbox.py",
+        "portal/release1a/management/commands/a1_process_inbox.py",
         "portal/release1a/document_storage.py",
         "portal/release1a/document_labels.py",
         "portal/release1a/intake_views.py",
@@ -65,6 +67,7 @@
         "portal/templates/portal/a1_evidence_intake.html",
         "tests/document_web/__init__.py",
         "tests/document_web/test_intake.py",
+        "tests/document_web/test_inbox.py",
         "tests/document_web/test_readiness_postgres.py",
         "tests/document_web/test_browser_journey.py",
         "tests/m2/test_synthetic_containment.py",
@@ -81,7 +84,7 @@
         "scripts/test_document_intake.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_inbox tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
         "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q",
         "venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
       ],
@@ -219,8 +222,8 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
-      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
+      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
+      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
       "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
       "rollback": "Revert local workflow files; this package never changes remotes."
       ,"intended_commit": "test: add fail-closed change-package validation"

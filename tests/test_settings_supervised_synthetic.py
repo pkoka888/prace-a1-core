@@ -423,3 +423,25 @@ class TestReadinessBudget:
             _import_with(_valid_env(PRACE_READINESS_BUDGET_MS="120000")),
             "PRACE_READINESS_BUDGET_MS",
         )
+
+
+def test_optional_inbox_defaults_use_existing_ids_and_private_root():
+    env = _valid_env(PRACE_INBOX_ORGANIZATION_ID="12", PRACE_INBOX_ACTOR_ID="34")
+    code = (
+        "from portal import settings_supervised_synthetic as s; "
+        "import stat; "
+        "assert s.DOCUMENT_INBOX_ORGANIZATION_ID == 12; "
+        "assert s.DOCUMENT_INBOX_ACTOR_ID == 34; "
+        "root=s.DOCUMENT_INBOX_ROOTS[12]; "
+        "assert root == s.DOCUMENT_STORAGE_ROOT / 'inbox' / 'org-12'; "
+        "assert stat.S_IMODE(root.stat().st_mode) == 0o700"
+    )
+    result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                            env={**os.environ, **env}, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("org,actor", [("12", ""), ("", "34"), ("0", "34"), ("12", "../34")])
+def test_inbox_configuration_requires_positive_id_pair(org, actor):
+    result = _import_with(_valid_env(PRACE_INBOX_ORGANIZATION_ID=org, PRACE_INBOX_ACTOR_ID=actor))
+    _assert_failure(result, "Inbox organization and actor IDs")

@@ -452,6 +452,8 @@ def test_staged_readme_documentation_paths_allowed(root):
     "scripts/run_ocr_benchmark.py",
     "scripts/evaluate_a1_pdf_tools.py",
     "scripts/seed_release1a_dev.py",
+    "portal/release1a/inbox.py",
+    "portal/release1a/management/commands/a1_process_inbox.py",
 ])
 def test_staged_tracked_scripts_allowed(root, path):
     document = root / path
@@ -468,6 +470,7 @@ def test_staged_tracked_scripts_allowed(root, path):
     "scripts/evidence/inventory.py",
     "scripts/output/render.py",
     "scripts/runtime/portal/setup.py",
+    "portal/release1a/management/commands/a1/review.csv",
 ])
 def test_scripts_exemption_does_not_allow_synthetic_protected_paths(root, path):
     candidate = root / path

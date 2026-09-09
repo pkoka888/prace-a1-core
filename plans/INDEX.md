@@ -46,12 +46,12 @@ proposals separate from BO confirmation. AGENTS.md defines proportional checks a
 one delivery record. The 2026-09-09 evidence/priorities correction changes documentation only; parent statuses,
 the 34 top-level entries and registered approval/activation gates remain unchanged.
 
-Repair review, 2026-09-09: seed/reproducer source repairs are uncommitted and only
-partially validated. Finish settings selection, fixture-role/duplicate reconciliation
-and actual export verification before claiming reproducible readiness. Then accept
-fresh supervised development and deliver J2 completed-batch intake/retry/proposals.
-Independent synthetic J2 work is not blocked by the reproducer. Current evidence
-and the bounded repair scope are in the local automation contract and delivery record.
+Implementation checkpoint, 2026-09-09: seed/reproducer repairs and bounded
+synthetic J2 inbox intake are implemented. Intake reuses shared services and saves
+proposals without identity confirmation or PDF generation. Exact validation and
+publication/bootstrap state are in the delivery record. Next is J2 identity/conflict
+handling with DB-MIG-1/2/5 revision mapping, then J4 drafts and BO confirmation;
+existing catalog IDs, plan headers and cutover/activation approvals are unchanged.
 
 ## Historical
 
