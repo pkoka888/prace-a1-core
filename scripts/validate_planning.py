@@ -119,8 +119,14 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
     "docs/operations/opencode-work-orders/review-and-tests.md",
     "docs/research/2026-09-06-a1-engineering-delivery.md",
     "docs/research/2026-09-06-a1-session-architect-review.md",
+    "docs/research/2026-09-06-ocr-local-web-workflow-report.md",
     "docs/research/2026-09-07-a1-stabilization.md",
+    "docs/research/2026-09-07-infra-application-review.md",
+    "docs/research/2026-09-07-research-audit.md",
     "docs/research/2026-09-07-runtime-j4-engineering.md",
+    "docs/research/2026-09-08-agents-md-audit-and-skill-plan.md",
+    "docs/research/2026-09-08-consolidation-plan-feedback.md",
+    "docs/research/2026-09-08-local-a1-automation-review.md",
 })
 # Tracked source skill files. Skills are versioned agent instructions, not PII;
 # their filenames legitimately embed pipeline words. The token guard stays active
