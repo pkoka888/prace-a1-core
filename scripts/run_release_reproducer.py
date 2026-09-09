@@ -138,7 +138,7 @@ def acceptance_commands(python, state):
         [python, "-m", "pytest", "-p", "no:cacheprovider", "--basetemp", str(state / "pytest"),
          "tests/m2/test_synthetic_containment.py", "tests/test_release_reproducer.py",
          "tests/test_finalize_a1.py", "tests/test_a1_stabilization.py", "tests/test_a1_application_draft.py", "-q"],
-        [python, "manage.py", "test", "tests.document_web.test_inbox", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "--noinput", "--verbosity", "1"],
+        [python, "manage.py", "test", "tests.document_web.test_inbox", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "--noinput", "--verbosity", "1"],
     ]
 
 

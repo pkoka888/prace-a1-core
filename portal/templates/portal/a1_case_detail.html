@@ -47,7 +47,14 @@
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Rozhodnutí operátora</h3>
 
         {% if is_application_draft %}
-        <p class="text-sm text-gray-600">Potvrzení konkrétní verze návrhu zatím není dostupné. Stažení ani náhled nemění ověření údajů nebo stav podání.</p>
+        <p class="text-sm text-gray-600">Vizuální kontrola se vztahuje pouze na konkrétní verzi. Nemění ověření údajů nebo stav podání.</p>
+        {% if generation %}
+        {% if generation.visual_confirmation %}
+        <p>Vzhled verze {{ generation.revision }} potvrzen {{ generation.visual_confirmation.confirmed_at }}.</p>
+        {% else %}
+        <a href="{% url 'a1_artifact_confirm' pk=case.pk %}?generation={{ generation.pk }}">Zkontrolovat a potvrdit vzhled verze {{ generation.revision }}</a>
+        {% endif %}
+        {% endif %}
         {% else %}
         {% if case.readiness == 'blocked' %}
         <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">

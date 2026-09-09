@@ -91,7 +91,9 @@ pin the profile/input/dependencies for the canonical unverified PDF publisher.
 Migration 0017 retains that stable number while binding each generation to its own
 profile/dependencies and immutable package; historical packages remain available.
 BO now reads the applicable generation through `portal/release1a/a1_generation_access.py`.
-Legacy-key reconciliation, cohort export and expected-generation confirmation remain follow-up work.
+Migration 0018 stores the operator/time and exact source/fingerprint/PDF/receipt
+for each visual confirmation. Identity facts and case issuance state remain separate.
+Legacy-key reconciliation, cohort export and identity/field BO integration remain follow-up work.
 
 ## Complete CSV mapping
 

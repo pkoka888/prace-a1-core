@@ -1914,6 +1914,63 @@ def a1_artifact_download(request, pk, page=None):
 # J4 Visual Confirmation & Evidence Intake
 # =============================================================================
 
+def _a1_generation_confirm(request, case):
+    from django.core.exceptions import ObjectDoesNotExist
+    from .a1_generation_confirmation import confirmation_context, confirm_generation
+    from .j4_artifacts import ArtifactError
+    from .services import Forbidden, StaleWrite
+
+    class InvalidConfirmation(ValueError):
+        pass
+
+    def denied(status, code):
+        AuditEvent.objects.create(
+            organization=request.organization, actor_ref=f"user:{request.user.pk}",
+            event_type="a1.generation_visual_confirmed", object_ref=f"a1:{case.pk}", outcome="denied")
+        return JsonResponse({"error": code}, status=status)
+
+    try:
+        values = request.POST if request.method == "POST" else request.GET
+        key = "generation_id" if request.method == "POST" else "generation"
+        raw = values.getlist(key)
+        generation_id = None
+        if raw:
+            if (len(raw) != 1 or not raw[0].isascii() or not raw[0].isdigit() or
+                    len(raw[0]) > 19 or not 1 <= int(raw[0]) <= 9223372036854775807):
+                raise InvalidConfirmation("INVALID_GENERATION")
+            generation_id = int(raw[0])
+        if request.method == "POST":
+            if generation_id is None:
+                raise InvalidConfirmation("GENERATION_REQUIRED")
+            tokens = {}
+            for field in ("source_hash", "fingerprint", "receipt_sha256", "pdf_sha256"):
+                entries = values.getlist("expected_" + field)
+                if (len(entries) != 1 or len(entries[0]) != 64 or
+                        any(c not in "0123456789abcdef" for c in entries[0])):
+                    raise InvalidConfirmation("INVALID_CONFIRMATION_TOKEN")
+                tokens["expected_" + field] = entries[0]
+            if any(values.getlist(f"check_{page}") != ["on"] for page in (1, 2, 3)):
+                raise InvalidConfirmation("ALL_PAGES_REQUIRED")
+            confirm_generation(request.user, request.organization, case.pk,
+                               generation_id=generation_id, pages=[1, 2, 3], **tokens)
+            return redirect("a1_case_detail", pk=case.pk)
+        generation, expected = confirmation_context(
+            request.user, request.organization, case.pk, generation_id=generation_id)
+        return render(request, "portal/a1_generation_confirm.html", {
+            "case": case, "generation": generation, "expected": expected, "pages": [1, 2, 3],
+        })
+    except Forbidden:
+        return denied(403, "ACCESS_DENIED")
+    except ObjectDoesNotExist:
+        return denied(404, "GENERATION_NOT_FOUND")
+    except InvalidConfirmation:
+        return denied(400, "INVALID_CONFIRMATION_INPUT")
+    except (StaleWrite, ArtifactError, ValueError, OSError):
+        return denied(409, "ARTIFACT_UNAVAILABLE_OR_STALE")
+
+
+@never_cache
+@require_http_methods(["GET", "POST"])
 @require_org_membership
 def a1_artifact_confirm(request, pk):
     """Visual confirmation of A1 artifact by operator.
@@ -1925,7 +1982,7 @@ def a1_artifact_confirm(request, pk):
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
 
     if hasattr(case, "draft_reservation"):
-        return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
+        return _a1_generation_confirm(request, case)
 
     if not case.artifact_reference:
         return JsonResponse({"error": "No artifact attached to this case"}, status=400)

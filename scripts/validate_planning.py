@@ -142,6 +142,7 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 # file under scripts/.
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/templates/portal/a1_case_detail.html",
+    "portal/templates/portal/a1_generation_confirm.html",
     "scripts/a1_core.py",
     "scripts/finalize_a1.py",
     "scripts/generate_provisional_a1.py",
@@ -150,8 +151,10 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/release1a/a1_exports.py",
     "portal/release1a/a1_drafts.py",
     "portal/release1a/a1_generation_access.py",
+    "portal/release1a/a1_generation_confirmation.py",
     "portal/release1a/migrations/0016_a1_draft_reservation.py",
     "portal/release1a/migrations/0017_a1_draft_generation.py",
+    "portal/release1a/migrations/0018_a1_generation_confirmation.py",
     "portal/release1a/management/commands/a1_prepare_draft.py",
     "portal/release1a/migrations/0015_assignment_a1_facts.py",
     "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
@@ -176,6 +179,7 @@ APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/document_web/test_a1_exports.py",
     "tests/document_web/test_a1_drafts.py",
     "tests/document_web/test_a1_generation_access.py",
+    "tests/document_web/test_a1_generation_confirmation.py",
     "tests/document_web/test_a1_drafts_postgres.py",
     "tests/test_a1_application_draft.py",
     "tests/document_web/test_a1_exports_postgres.py",

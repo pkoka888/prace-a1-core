@@ -4,7 +4,7 @@ Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
 revision-bound inputs and synthetic unverified PDF draft generation are implemented;
-generation revisions and BO draft access are implemented; BO confirmation remains planned.
+generation revisions, BO draft access and visual confirmation are implemented; identity/field BO integration remains planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -96,9 +96,8 @@ PDF/preview downloads now use `portal/release1a/a1_generation_access.py` to sele
 the exact applicable generation from current input/dependency fingerprints. Links
 pin `?generation=<id>`; stale links fail instead of serving a replacement. GET does
 not reserve, render or confirm. Reads enforce tenant/capability checks, package
-integrity and no-store responses. Draft cases cannot use legacy approval,
-regeneration or visual-confirmation endpoints; expected-generation confirmation
-is the next bounded task. Older non-draft case workflows retain their existing path.
+integrity and no-store responses. Draft cases use generation-bound visual confirmation and cannot use legacy approval
+or regeneration endpoints; identity/field BO integration is the next bounded task. Older non-draft case workflows retain their existing path.
 
 Migration `0017_a1_draft_generation` separates stable numbering from render generations.
 Each distinct snapshot/dependency fingerprint reserves a unique generation and package;
@@ -111,9 +110,25 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO access to applicable draft generations is implemented. Next: expected-generation confirmation. Apply
-0014–0017 through the selected supervised release before runtime use; the existing
+BO generation access and generation-bound visual confirmation are implemented. Next: expected-revision identity/field confirmation in BO. Apply
+0014–0018 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
+
+## Generation visual confirmation checkpoint — 2026-09-09
+
+`portal/release1a/a1_generation_confirmation.py` verifies the exact applicable
+generation, source hash, fingerprint, PDF hash and package receipt before accepting
+an operator's explicit review of all three pages. BO uses pinned previews, CSRF
+protection and submitted expected tokens; stale forms fail. Migration 0018 adds
+an immutable structured confirmation with actor/time; retries retain the original
+record. It does not populate confirmations for historical cases or infer human
+review. Rollback refuses to discard existing confirmations. New generations start
+without confirmation; dependency reversion may reuse the original exact generation
+and its evidence. Visual confirmation does not verify identity, approve source
+facts, alter readiness or mark submission/issuance. The package bytes stay immutable.
+
+Next: wire expected-revision identity and field confirmation into BO, preserving
+confirmed facts against OCR overwrite and unresolved conflict handling.
 
 ## A1 input preparation checkpoint — 2026-09-09
 
@@ -134,7 +149,7 @@ institution profiles. Canonical readiness reports existing gate blockers honestl
 The subsequent draft checkpoint above implements the unverified publisher mode,
 stable DB-bound numbering, generation revisions and artifact QA. BO UI
 revision checks proceed in parallel; BO completion is not a future draft gate.
-Migrations 0014–0017 require application in the selected supervised release before
+Migrations 0014–0018 require application in the selected supervised release before
 runtime use; the existing development database remains at its recorded 0013 state.
 Validation, publication and deployment evidence are in the delivery record.
 
@@ -170,10 +185,10 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: expected-generation confirmation and stale-confirmation rejection. Complete legacy reconciliation separately before cutover. In parallel, wire BO
+Next functional phase: expected-revision identity/field confirmation in BO. Complete legacy reconciliation separately before cutover. In parallel, wire BO
 association forms to revision-checked resolution and protect field confirmation
 with expected revisions. BO UI completion is not a gate for eligible unverified
-A1 drafts. Apply 0014–0017 through the selected supervised development release workflow
+A1 drafts. Apply 0014–0018 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.

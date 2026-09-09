@@ -259,6 +259,24 @@ class A1DraftGeneration(TenantModel):
         return super().save(*args, **kwargs)
 
 
+class A1GenerationConfirmation(TenantModel):
+    """Operator visual review of one exact package, never identity verification."""
+    generation = models.OneToOneField(A1DraftGeneration, models.PROTECT, related_name="visual_confirmation")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT)
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+    source_hash = models.CharField(max_length=64)
+    fingerprint = models.CharField(max_length=64)
+    receipt_sha256 = models.CharField(max_length=64)
+    pdf_sha256 = models.CharField(max_length=64)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("A1_GENERATION_CONFIRMATION_IMMUTABLE")
+        if self.organization_id != self.generation.organization_id:
+            raise ValueError("A1_GENERATION_CONFIRMATION_ORGANIZATION_MISMATCH")
+        return super().save(*args, **kwargs)
+
+
 class AuditEvent(TenantModel):
     actor_ref = models.CharField(max_length=80)
     event_type = models.CharField(max_length=80)

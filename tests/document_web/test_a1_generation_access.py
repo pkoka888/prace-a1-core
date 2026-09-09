@@ -70,8 +70,9 @@ class GenerationAccessTests(TransactionTestCase):
         self.assertNotContains(self.client.get(self.url), 'Stáhnout PDF')
         self.assertEqual(self.client.get(self.url + 'artifact/').status_code, 409)
         for suffix, payload in (('', {'decision':'approve','external_status':'issued'}),
-                                ('regenerate/', {}), ('confirm/', {'action':'confirm','check_1':'on','check_2':'on','check_3':'on'})):
+                                ('regenerate/', {})):
             self.assertEqual(self.client.post(self.url + suffix, payload).status_code, 409)
+        self.assertEqual(self.client.post(self.url + 'confirm/', {'check_1':'on','check_2':'on','check_3':'on'}).status_code, 400)
         self.assertEqual(A1DraftGeneration.objects.count(), 1)
         self.assertEqual(A1DraftReservation.objects.count(), 1)
         self.assertFalse((self.storage/'j4').exists())
