@@ -222,8 +222,11 @@ class IntakeTests(TransactionTestCase):
         image=self.client.get(f"/documents/ocr/{run.pk}/{region['document_id']}/original/")
         self.assertEqual(image.status_code,200)
         self.assertTrue(image.content.startswith(b"\x89PNG"))
-        response=self.client.post(f"/documents/{document.pk}/",{"action":"associate","worker_id":self.worker.pk,
-                                   "run_id":run.pk,"region_id":region["document_id"]})
+        review=self.client.get(f"/documents/{document.pk}/")
+        options=review.context["regions"][0]["worker_options"]
+        token=next(option["token"] for option in options if option["worker"].pk == self.worker.pk)
+        response=self.client.post(f"/documents/{document.pk}/",{"action":"associate","worker_choice":token,
+                                   "reason":"Synthetic source checked"})
         self.assertEqual(response.status_code,302)
         # Empty confirmation is never an implicit document acceptance.
         self.assertEqual(self.client.post(f"/documents/{document.pk}/",{"action":"confirm"}).status_code,200)

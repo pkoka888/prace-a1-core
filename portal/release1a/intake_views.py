@@ -2,12 +2,22 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse
 from .models import Document, OcrRun, Worker, FieldProposal, DocumentRegionAssociation, IntakeSession
-from .document_intake import (authorize, intake, read_result, execute_run, associate_region,
+from .document_intake import (authorize, intake, read_result, execute_run,
                               download_original, audit, read_session)
 from .services import Forbidden, StaleWrite
 from .field_review import review_context, confirm_review_batch
+from .identity_review import association_review_context, confirm_association
 from django.views.decorators.cache import never_cache
 from .document_labels import FIELD_LABELS
+
+
+def _association_run_ids(organization, run, session):
+    """A failed or superseded batch member must not block reviewable documents."""
+    runs = (session.ocr_runs.filter(organization=organization) if session else
+            OcrRun.objects.filter(pk=run.pk, organization=organization))
+    return [candidate.pk for candidate in runs.filter(state=OcrRun.State.COMPLETED).select_related("document")
+            if candidate.output_key and candidate.version_id ==
+            candidate.document.documentversion_set.order_by("-version_number").values_list("pk", flat=True).first()]
 
 
 @never_cache
@@ -26,10 +36,12 @@ def detail(request, pk):
             if request.POST.get("action") == "retry" and run:
                 execute_run(request.user, request.organization, run.pk)
             elif request.POST.get("action") == "associate" and run:
-                worker = get_object_or_404(Worker, organization=request.organization, pk=request.POST.get("worker_id"))
-                allowed_runs = session.ocr_runs.filter(organization=request.organization) if session else OcrRun.objects.filter(pk=run.pk, organization=request.organization)
-                target_run = get_object_or_404(allowed_runs, pk=request.POST.get("run_id", run.pk))
-                associate_region(request.user, request.organization, target_run.pk, request.POST.get("region_id"), worker)
+                tokens = request.POST.getlist("worker_choice")
+                if len(tokens) != 1:
+                    raise StaleWrite("IDENTITY_REVIEW_TOKEN_REQUIRED")
+                confirm_association(request.user, request.organization, token=tokens[0],
+                    reason=request.POST.get("reason", ""),
+                    allowed_run_ids=_association_run_ids(request.organization, run, session))
             else:
                 proposals = FieldProposal.objects.filter(organization=request.organization)
                 proposals = proposals.filter(ocr_run__in=session.ocr_runs.all()) if session else proposals.filter(ocr_run=run)
@@ -80,9 +92,15 @@ def detail(request, pk):
     regions = []
     if payload and payload.get("result"):
         analysis = read_session(request.user, request.organization, session) if session else payload["result"]
+        allowed_run_ids = _association_run_ids(request.organization, run, session)
+        try:
+            association_contexts = association_review_context(request.user, request.organization, allowed_run_ids)
+        except (Forbidden, StaleWrite, ValueError, OSError):
+            association_contexts = {}
         for region in analysis["documents"]:
             region_run = region.get("ocr_run_id", run.pk)
             region["ocr_run_id"] = region_run
+            region["worker_options"] = association_contexts.get((region_run, region["document_id"]), {}).get("worker_options", [])
             region["proposals"] = FieldProposal.objects.filter(organization=request.organization, ocr_run_id=region_run,
                                                                document_region_id=region["document_id"],
                                                                state__in=[FieldProposal.State.PROPOSED, FieldProposal.State.CONFLICT],

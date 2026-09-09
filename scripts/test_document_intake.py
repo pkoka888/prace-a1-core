@@ -30,7 +30,7 @@ def main():
             subprocess.run([str(BIN/"pg_ctl"), "-D", str(data), "-l", str(root/"server.log"),
                             "-o", f"-k {root} -p 55439 -c listen_addresses=''", "-w", "start"], check=True, stdout=subprocess.DEVNULL)
             started = True
-            return subprocess.run([sys.executable, "manage.py", "test", "tests.document_web.test_intake", "tests.document_web.test_inbox", "tests.document_web.test_field_review", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "tests.document_web.test_a1_drafts_postgres", "tests.document_web.test_a1_exports_postgres", "tests.document_web.test_identity_postgres", "tests.document_web.test_readiness_postgres", "tests.test_j4_service", "--noinput", "-v", "1"],
+            return subprocess.run([sys.executable, "manage.py", "test", "tests.document_web.test_intake", "tests.document_web.test_inbox", "tests.document_web.test_field_review", "tests.document_web.test_identity_review", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "tests.document_web.test_a1_drafts_postgres", "tests.document_web.test_a1_exports_postgres", "tests.document_web.test_identity_postgres", "tests.document_web.test_readiness_postgres", "tests.test_j4_service", "--noinput", "-v", "1"],
                                   cwd=ROOT, env=env).returncode
         finally:
             if started:

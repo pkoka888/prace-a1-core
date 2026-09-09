@@ -370,6 +370,8 @@ def evaluate_identity_proposals(user, organization, run_ids):
         payload = read_result(user, organization, run.pk)
         if not payload or payload.get("status") != "completed":
             raise ValueError("IDENTITY_RESULT_UNAVAILABLE")
+        if payload.get("source_hash") != run.version.sha256:
+            raise ValueError("IDENTITY_SOURCE_HASH_MISMATCH")
         sources.append({"run_ref": run.pk, "version_ref": run.version_id,
                         "source_sha256": run.version.sha256, "output_sha256": run.output_sha256})
         for document in payload["result"]["documents"]:

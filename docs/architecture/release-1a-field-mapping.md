@@ -96,7 +96,7 @@ for each visual confirmation. Identity facts and case issuance state remain sepa
 BO field confirmation now uses `portal/release1a/field_review.py` and existing
 FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
 and the current confirmed revision; replacement of a confirmed value requires reason.
-Legacy-key reconciliation, cohort export and identity association/conflict BO integration remain follow-up work.
+BO identity association uses signed choices and the canonical revision-checked resolution service. Legacy-key reconciliation and cohort export remain follow-up work.
 
 ## Complete CSV mapping
 
@@ -302,4 +302,6 @@ are recorded in the protected receipt. Existing confirmed revisions remain autho
 `IdentityResolution` binds explicit human association to evaluated evidence and
 expected worker version/revision. It does not confirm individual identity fields.
 These records supplement the row mappings above; they do not change the canonical
-CSV contract or establish DB cutover. BO form integration remains a follow-up.
+CSV contract or establish DB cutover. BO now uses signed actor/org/source/worker
+choices through `portal/release1a/identity_review.py`; persisted evaluations and
+resolutions remain owned by the existing identity models.
