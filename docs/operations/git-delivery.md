@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Migration 0018 adds an immutable generation-specific visual confirmation with actor/time and source/fingerprint/PDF/receipt hashes. BO requires explicit review of all three pinned previews and submitted expected tokens. The service verifies current source/package/dependencies under organization locks, rechecks after insertion, and records an atomic audit. Retries retain the original confirmation. Historical packages receive no automatic confirmation; rollback refuses to discard review records |
-| Validation | All 15 PostgreSQL service/access/HTTP tests passed, including authorization, stale input, CSRF, audit rollback, independent-connection concurrency and MigrationExecutor preservation/rollback protection. The existing 17-test J4 delivery workflow passed. Initial route-wiring errors were corrected before this acceptance; the legacy regenerate guard remains separate. Required hooks and committed-source results follow. Model/migration parity and 24 planning checks pass. Renderer and package bytes are unchanged |
-| Publication | Local scoped delivery; inherited outgoing history still needs content/provenance review before private-origin publication |
+| Validation | All 15 PostgreSQL service/access/HTTP tests passed, including authorization, stale input, CSRF, audit rollback, independent-connection concurrency and MigrationExecutor preservation/rollback protection. The existing 17-test J4 delivery workflow passed. Initial route-wiring errors were corrected before this acceptance; the legacy regenerate guard remains separate. Required hooks passed, including 180 Django tests with 20 environment-specific skips. Committed-source `bbbbf4c` acceptance passed 23 applicable planning checks, 98 tooling/A1 tests plus 18 subtests, and 64 workflow tests with two PostgreSQL-only skips covered by the separate PostgreSQL run; source integrity remained intact. Model/migration parity and 24 planning checks pass. Renderer and package bytes are unchanged |
+| Publication | Implementation committed locally as `bbbbf4c`; this evidence-only checkpoint preserves its tested source blobs. Inherited outgoing history still needs content/provenance review before private-origin publication |
 | Deployment | None; migration is exercised only on disposable synthetic databases. Selected supervised release needs 0014–0018; its existing database remains at recorded 0013 |
 | Activation | Unchanged. These tests use synthetic actors/data. Production identity verification, readiness, case visual fields and submission/issuance are untouched; visual review does not establish correct identity facts |
 | Limitations | Confirmation belongs to one exact generation. A replacement has no inherited review; reusing an identical earlier generation retains its original evidence. The protected package is immutable and its initial pending marker is historical; the structured DB confirmation owns subsequent visual-review evidence. Legacy non-draft case behavior is preserved |
 | Next owner | Engineering: BO identity/field confirmation using expected revisions, explicit source associations, conflict handling and protection against OCR overwrite. Reconciled legacy cutover remains separate |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/fe8f1eaf45f048098c62fd88a8edacda/receipt.json`.
 
 ### BO access to applicable A1 generations — 2026-09-09
 
