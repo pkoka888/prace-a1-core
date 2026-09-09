@@ -101,6 +101,26 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
     "docs/architecture/A1_FRAMEWORKS.md",
     "docs/architecture/readme-a1-forms.md",
     "docs/architecture/release-1a-field-mapping.md",
+    "docs/architecture/operator-a1-workflow.md",
+    "docs/operations/runtime-manifest.md",
+    "docs/operations/infra-return-work-order-2026-09-07.md",
+    "docs/operations/infra-review-20260907T0230Z/HOST-READINESS.md",
+    "docs/operations/infra-review-20260907T0230Z/INFRA-HANDOFF.md",
+    "docs/operations/infra-review-20260907T0230Z/OCR-ROLLOUT.md",
+    "docs/operations/infra-review-20260907T0230Z/PROMPT.md",
+    "docs/operations/infra-review-20260907T0230Z/SECRETS-DATABASE.md",
+    "docs/operations/infra-review-20260907T0230Z/SHA256SUMS",
+    "docs/operations/infra-review-20260907T0230Z/VALIDATION.json",
+    "docs/operations/opencode-work-orders/README.md",
+    "docs/operations/opencode-work-orders/artifact-and-j4.md",
+    "docs/operations/opencode-work-orders/organization-audit.md",
+    "docs/operations/opencode-work-orders/provider-safety.md",
+    "docs/operations/opencode-work-orders/release-audit.md",
+    "docs/operations/opencode-work-orders/review-and-tests.md",
+    "docs/research/2026-09-06-a1-engineering-delivery.md",
+    "docs/research/2026-09-06-a1-session-architect-review.md",
+    "docs/research/2026-09-07-a1-stabilization.md",
+    "docs/research/2026-09-07-runtime-j4-engineering.md",
 })
 # Tracked source skill files. Skills are versioned agent instructions, not PII;
 # their filenames legitimately embed pipeline words. The token guard stays active
@@ -122,6 +142,30 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "scripts/repair_a1_template_checkboxes.py",
     "scripts/reset_synthetic_reviewer_password.py",
     "scripts/playwright_smoke.py",
+    "scripts/smoke_synthetic_review_ui.mjs",
+})
+# Tracked source settings modules. Filenames legitimately embed pipeline words.
+APPROVED_STAGED_SETTINGS_PATHS = frozenset({
+    "portal/settings_browser_tests.py",
+    "portal/settings_verification.py",
+})
+# Tracked source test files. Filenames legitimately embed pipeline words.
+APPROVED_STAGED_TEST_PATHS = frozenset({
+    "tests/document_web/test_browser_journey.py",
+    "tests/test_a1_cli_journey.py",
+    "tests/test_a1_employee_delivery.py",
+    "tests/test_playwright_smoke.py",
+    "tests/test_release_verifier.py",
+    "tests/test_ocr_benchmark_contract.py",
+})
+# Tracked synthetic fixture files. Synthetic personal identifiers under
+# tests/fixtures/release_1a/orgonik_zivot_* are conspicuously fictional and
+# belong to the explicit orgonik_zivot_pdfs cohort in the same directory.
+APPROVED_STAGED_FIXTURE_PATHS = frozenset({
+    "tests/fixtures/release_1a/workers_orgonik_zivot.json",
+    "tests/fixtures/release_1a/assignments_orgonik_zivot.json",
+    "tests/fixtures/release_1a/a1_inputs_orgonik_zivot.json",
+    "tests/fixtures/release_1a/review_orgonik_zivot.csv",
 })
 
 DEFAULT_CATALOG = "planning/catalog.json"
@@ -736,7 +780,10 @@ def check_staged_forbidden_and_pii(catalog, root):
         if (path.startswith(APPROVED_STAGED_PATH_PREFIXES)
                 or path in APPROVED_STAGED_DOCUMENT_PATHS
                 or path in APPROVED_STAGED_SKILL_PATHS
-                or path in APPROVED_STAGED_SCRIPT_PATHS):
+                or path in APPROVED_STAGED_SCRIPT_PATHS
+                or path in APPROVED_STAGED_SETTINGS_PATHS
+                or path in APPROVED_STAGED_TEST_PATHS
+                or path in APPROVED_STAGED_FIXTURE_PATHS):
             continue
         low = path.lower()
         for tok in FORBIDDEN_PATH_TOKENS:

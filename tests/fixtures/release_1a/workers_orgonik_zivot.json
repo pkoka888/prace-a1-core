@@ -1,0 +1,94 @@
+[
+  {
+    "id": "worker-milan-orgonik",
+    "organization_id": "org-synthetic-alpha",
+    "first_name": "MILAN",
+    "last_name": "ORGANIK",
+    "birth_date": "1988-03-15",
+    "nationality": "CZ",
+    "personal_id_number": "8803150001",
+    "_identifier_expectation": "synthetic posted employee to Germany",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-MO-001",
+    "address": {
+      "street": "Syntetická",
+      "house_number": "42",
+      "city": "Plzeň",
+      "postal_code": "301 00",
+      "country": "CZ"
+    },
+    "status": "active",
+    "employment_type": "zaměstnanec",
+    "created_at": "2026-07-01",
+    "_fiction": "Conspicuously synthetic. Not a real person. Created for Jan pilot testing."
+  },
+  {
+    "id": "worker-robin-orgonik",
+    "organization_id": "org-synthetic-alpha",
+    "first_name": "ROBIN",
+    "last_name": "ORGANIK",
+    "birth_date": "1991-07-22",
+    "nationality": "CZ",
+    "personal_id_number": "9107220002",
+    "_identifier_expectation": "synthetic multi-state self-employed",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-RO-002",
+    "address": {
+      "street": "Fiktivní",
+      "house_number": "17",
+      "city": "Most",
+      "postal_code": "434 01",
+      "country": "CZ"
+    },
+    "status": "active",
+    "employment_type": "OSVČ",
+    "created_at": "2026-07-01",
+    "_fiction": "Conspicuously synthetic. Not a real person. Created for Jan pilot testing."
+  },
+  {
+    "id": "worker-filip-orgonik",
+    "organization_id": "org-synthetic-beta",
+    "first_name": "FILIP",
+    "last_name": "ORGANIK",
+    "birth_date": "1995-11-08",
+    "nationality": "CZ",
+    "personal_id_number": "9511080003",
+    "_identifier_expectation": "synthetic employee to Austria",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-FO-003",
+    "address": {
+      "street": "Umělá",
+      "house_number": "9",
+      "city": "Chomutov",
+      "postal_code": "430 01",
+      "country": "CZ"
+    },
+    "status": "active",
+    "employment_type": "zaměstnanec",
+    "created_at": "2026-07-15",
+    "_fiction": "Conspicuously synthetic. Not a real person. Created for Jan pilot testing."
+  },
+  {
+    "id": "worker-patrik-zivot",
+    "organization_id": "org-synthetic-beta",
+    "first_name": "PATRIK",
+    "last_name": "ŽIVOT",
+    "birth_date": "1983-02-28",
+    "nationality": "CZ",
+    "personal_id_number": "8302280004",
+    "_identifier_expectation": "synthetic posted employee to Germany",
+    "id_document_type": "občanský průkaz",
+    "id_document_number": "SYNTH-PZ-004",
+    "address": {
+      "street": "Nepravá",
+      "house_number": "55",
+      "city": "Ústí nad Labem",
+      "postal_code": "400 01",
+      "country": "CZ"
+    },
+    "status": "active",
+    "employment_type": "zaměstnanec",
+    "created_at": "2026-07-01",
+    "_fiction": "Conspicuously synthetic. Not a real person. Created for Jan pilot testing."
+  }
+]

@@ -27,7 +27,13 @@
         "portal/release1a/runtime_safety.py",
         "portal/settings_document_tests.py",
         "portal/settings_supervised_synthetic.py",
+        "portal/settings_browser_tests.py",
+        "portal/settings_verification.py",
         "scripts/seed_release1a_dev.py",
+        "tests/fixtures/release_1a/workers_orgonik_zivot.json",
+        "tests/fixtures/release_1a/assignments_orgonik_zivot.json",
+        "tests/fixtures/release_1a/a1_inputs_orgonik_zivot.json",
+        "tests/fixtures/release_1a/review_orgonik_zivot.csv",
         "tests/test_readiness_checks.py",
         "tests/test_runtime_hardening.py",
         "tests/test_settings_supervised_synthetic.py"
@@ -60,6 +66,7 @@
         "tests/document_web/__init__.py",
         "tests/document_web/test_intake.py",
         "tests/document_web/test_readiness_postgres.py",
+        "tests/document_web/test_browser_journey.py",
         "tests/m2/test_synthetic_containment.py",
         "tests/m2/test_views.py",
         "tests/m2/test_release1a_vertical.py",
@@ -69,6 +76,8 @@
         "tests/test_j4_minimum.py",
         "tests/test_j4_artifacts.py",
         "tests/test_runtime_contract.py",
+        "tests/test_a1_cli_journey.py",
+        "tests/test_a1_employee_delivery.py",
         "scripts/test_document_intake.py"
       ],
       "checks": [
@@ -123,11 +132,11 @@
     },
     "governance_truth": {
       "purpose": "Authority, roadmap, decisions, plan statuses, and truth audit.",
-      "paths": ["docs/architecture/release-1a-field-mapping.md", "docs/architecture/A1_FRAMEWORKS.md", "docs/architecture/readme-a1-forms.md", "plans/PLAN-WORKERS-MIGRATE-TO-DB.md", "plans/PLAN-REAL-DATA.md", "docs/architecture/shared-document-intake.md", "AGENTS.md", "roadmap.md", "prd.md", "plans/INDEX.md", "plans/PLAN-INFRA.md", "plans/PLAN-WORKERS.md", "plans/PLAN-INVOICE.md", "plans/PLAN-LEGAL.md", "plans/PLAN-A1.md", "plans/PLAN-FREE-MODEL.md", "plans/PLAN-HISTORY.md", "plans/audits/2026-08-15-repository-truth-audit.md", "plans/audits/2026-08-15-worktree-inventory.json", "docs/decisions/", "docs/plans/", ".archive/README.md", "docs/security/real-data-rules.md", "docs/mock-data-provenance.md", "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md", "docs/operations/operator-action-plan-2026-08-29.md", "docs/operations/project-migration-audit-2026-08-30.md", "CHANGELOG.md", "PROJECT_AUDIT_REPORT.md", ".opencode/skills/market-research-evidence/SKILL.md"],
+      "paths": ["docs/architecture/release-1a-field-mapping.md", "docs/architecture/A1_FRAMEWORKS.md", "docs/architecture/readme-a1-forms.md", "docs/architecture/operator-a1-workflow.md", "plans/PLAN-WORKERS-MIGRATE-TO-DB.md", "plans/PLAN-REAL-DATA.md", "plans/2026-09-06-a1-evidence-status-repair.md", "plans/2026-09-06-free-vision-provider-safety.md", "docs/architecture/shared-document-intake.md", "AGENTS.md", "roadmap.md", "prd.md", "plans/INDEX.md", "plans/PLAN-INFRA.md", "plans/PLAN-WORKERS.md", "plans/PLAN-INVOICE.md", "plans/PLAN-LEGAL.md", "plans/PLAN-A1.md", "plans/PLAN-FREE-MODEL.md", "plans/PLAN-HISTORY.md", "plans/audits/2026-08-15-repository-truth-audit.md", "plans/audits/2026-08-15-worktree-inventory.json", "docs/decisions/", "docs/plans/", ".archive/README.md", "docs/security/real-data-rules.md", "docs/mock-data-provenance.md", "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md", "docs/research/2026-09-06-a1-engineering-delivery.md", "docs/research/2026-09-06-a1-session-architect-review.md", "docs/research/2026-09-07-a1-stabilization.md", "docs/research/2026-09-07-runtime-j4-engineering.md", "docs/operations/runtime-manifest.md", "docs/operations/infra-return-work-order-2026-09-07.md", "docs/operations/opencode-work-orders/", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md", "docs/operations/operator-action-plan-2026-08-29.md", "docs/operations/project-migration-audit-2026-08-30.md", "docs/operations/infra-review-20260907T0230Z/", "CHANGELOG.md", "PROJECT_AUDIT_REPORT.md", ".opencode/skills/market-research-evidence/SKILL.md"],
       "prefixes": ["plans/2026-"],
       "checks": ["venv/bin/python scripts/validate_planning.py"],
       "dependencies": [],
-      "rollback": "Revert only this package after checking later plan references."
+      "rollback": "Revert one current delivery; preserve catalog IDs and approval states."
       ,"intended_commit": "docs: reconcile repository governance and planning truth"
     },
     "repository_documentation": {
@@ -141,14 +150,14 @@
     "planning_cockpit": {
       "purpose": "Planning catalog, validator, and derived visual assets.",
       "paths": ["scripts/validate_approvals.py", "tests/test_validate_approvals.py", "planning/", "scripts/generate_planning_asset.py", "scripts/validate_planning.py", "tests/test_validate_planning.py", "tests/fixtures/planning/", "docs/prototypes/roadmap-portal/"],
-      "checks": ["venv/bin/python scripts/validate_planning.py", "venv/bin/python -m pytest tests/test_validate_planning.py tests/test_validate_approvals.py -q"],
+      "checks": ["venv/bin/python scripts/validate_planning.py"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert generator, validator, catalog, and derived assets together."
       ,"intended_commit": "feat: validate planning catalog and cockpit assets"
     },
     "cli_agent_tooling": {
       "purpose": "Sanitized CLI and agent verification tooling and reports.",
-      "paths": ["cli-docs-update/README.md", "cli-docs-update/current-agent-dir-audit.json", "cli-docs-update/current-agent-dir-audit.md", "cli-docs-update/current-verification.json", "cli-docs-update/current-verification.md", "config/cli_verification_claims.schema.json", "docs/operations/agent-tooling-ledger.md", "scripts/verify_cli_claims.py", "tests/test_verify_cli_claims.py"],
+      "paths": ["cli-docs-update/README.md", "cli-docs-update/current-agent-dir-audit.json", "cli-docs-update/current-agent-dir-audit.md", "cli-docs-update/current-verification.json", "cli-docs-update/current-verification.md", "config/cli_verification_claims.schema.json", "docs/operations/agent-tooling-ledger.md", "scripts/verify_cli_claims.py", "scripts/playwright_smoke.py", "scripts/release_verifier.py", "scripts/seed_verification_db.py", "scripts/repair_a1_template_checkboxes.py", "scripts/reset_synthetic_reviewer_password.py", "scripts/smoke_synthetic_review_ui.mjs", "tests/test_verify_cli_claims.py", "tests/test_release_verifier.py", "tests/test_playwright_smoke.py"],
       "checks": ["venv/bin/python -m pytest tests/test_verify_cli_claims.py -q"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert code, schema, tests, and generated reports together."

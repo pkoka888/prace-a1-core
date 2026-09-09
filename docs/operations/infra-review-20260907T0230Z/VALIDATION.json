@@ -1,0 +1,48 @@
+{
+  "readiness": {
+    "command": [
+      "/workspace/servers-infra/scripts/ssh62",
+      "cd /var/www/prace-v-nemecku.tvoje.info && env -u DOCUMENT_TEST_PG_SOCKET -u DOCUMENT_TEST_PG_USER PYTHONDONTWRITEBYTECODE=1 DJANGO_SETTINGS_MODULE=portal.settings_document_tests timeout 180 unshare --user --map-root-user --net venv/bin/python -m django test tests.m2.test_readiness --noinput -v 1"
+    ],
+    "exit_code": 0,
+    "stdout": "Found 10 test(s).\nSystem check identified no issues (0 silenced).\n",
+    "stderr": "Creating test database for alias 'default'...\n..........\n----------------------------------------------------------------------\nRan 10 tests in 0.097s\n\nOK\nDestroying test database for alias 'default'...\n",
+    "timestamp": "2026-09-07T02:28:32.888589+00:00",
+    "authority": "application isolated synthetic readiness tests via legacy registered wrapper"
+  },
+  "playwright_tooling": {
+    "command": [
+      "/workspace/servers-infra/scripts/ssh62",
+      "cd /var/www/prace-v-nemecku.tvoje.info && timeout 60 unshare --user --map-root-user --net node -e 'const {chromium}=require(\"./.opencode/node_modules/playwright\"); (async()=>{let browser;try{browser=await chromium.launch({headless:true});const page=await browser.newPage();await page.setContent('\"'\"'<title>Synthetic infrastructure smoke</title><p>synthetic only</p>'\"'\"');if(await page.title()!==\"Synthetic infrastructure smoke\")throw new Error(\"title mismatch\");console.log(JSON.stringify({browserLaunch:\"pass\",domCheck:\"pass\",applicationJourney:\"not_run\"}));}finally{if(browser)await browser.close();}})().catch(e=>{console.error(e.message);process.exitCode=1;});'"
+    ],
+    "exit_code": 0,
+    "stdout": "{\"browserLaunch\":\"pass\",\"domCheck\":\"pass\",\"applicationJourney\":\"not_run\"}\n",
+    "stderr": "",
+    "timestamp": "2026-09-07T02:28:49.276586+00:00",
+    "authority": "application tooling synthetic browser smoke via registered wrapper"
+  },
+  "ocr": {
+    "rapidocr": {
+      "command": [
+        "/workspace/servers-infra/scripts/ssh62",
+        "timeout 180 unshare --user --map-root-user --net /var/www/prace-v-nemecku.tvoje.info/venv/bin/python /var/tmp/prace-ocr-reviewed-20260907/ans/scripts/diagnostics/prace-ocr-benchmark.py --engine rapidocr"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"engine\": \"rapidocr\", \"synthetic_only\": true, \"cases\": [{\"name\": \"czech\", \"seconds\": 5.8175, \"expected_synthetic\": \"SYNTHETIC TEST Příliš žluťoučký kůň Číslo: TEST-012345 Datum: 07.09.2026\", \"actual_synthetic\": \"SYNTHETIC TEST Příliš žlutoučký kůň Číslo: TEST-012345 Datum: 07.09.2026\", \"character_error_rate\": 0.0139, \"exact_match\": false, \"nonempty\": true}, {\"name\": \"german\", \"seconds\": 5.1396, \"expected_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Nummer: TEST-012345 Betrag: 123,45 EUR\", \"actual_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Nummer: TEST-012345 Betrag: 123,45 EUR\", \"character_error_rate\": 0.0, \"exact_match\": true, \"nonempty\": true}, {\"name\": \"mixed\", \"seconds\": 5.1158, \"expected_synthetic\": \"SYNTHETIC TEST Česká republika / Deutschland Žluťoučký / Überprüfung TEST-987654\", \"actual_synthetic\": \"SYNTHETIC TEST Česká republika / Deutschland Žlutoučký / Überprüfung TEST-987654\", \"character_error_rate\": 0.0125, \"exact_match\": false, \"nonempty\": true}, {\"name\": \"skewed\", \"seconds\": 4.6336, \"expected_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Číslo: TEST-012345\", \"actual_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Číslo: TEST-012345\", \"character_error_rate\": 0.0, \"exact_match\": true, \"nonempty\": true}], \"model_hashes\": {\"PP-OCRv6_det_small.onnx\": \"090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f\", \"PP-OCRv6_rec_small.onnx\": \"6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884\", \"ch_ppocr_mobile_v2.0_cls_mobile.onnx\": \"e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c\"}, \"exit_code\": 0, \"next_actions\": [{\"when\": \"benchmark finished\", \"command\": \"review synthetic OCR metrics\", \"purpose\": \"Define application field thresholds and review adapter behavior; no automatic production acceptance\", \"severity\": \"INFO\"}], \"network_namespace\": \"net:[4026533596]\", \"version\": \"3.9.2\", \"initialization_seconds\": 1.7135, \"quality_acceptance\": \"unproven: four synthetic fixtures are a smoke test only\", \"total_seconds\": 22.5705, \"process_peak_rss_kib\": 559260, \"child_peak_rss_kib\": 0}\n",
+      "stderr": "",
+      "timestamp": "2026-09-07T02:14:29.187721+00:00",
+      "authority": "legacy isolated-network synthetic OCR evaluation"
+    },
+    "tesseract": {
+      "command": [
+        "/workspace/servers-infra/scripts/ssh62",
+        "timeout 180 unshare --user --map-root-user --net /var/www/prace-v-nemecku.tvoje.info/venv/bin/python /var/tmp/prace-ocr-reviewed-20260907/ans/scripts/diagnostics/prace-ocr-benchmark.py --engine tesseract"
+      ],
+      "exit_code": 0,
+      "stdout": "{\"engine\": \"tesseract\", \"synthetic_only\": true, \"cases\": [{\"name\": \"czech\", \"seconds\": 0.4886, \"expected_synthetic\": \"SYNTHETIC TEST Příliš žluťoučký kůň Číslo: TEST-012345 Datum: 07.09.2026\", \"actual_synthetic\": \"SYNTHETIC TEST Příliš žlučoučký kůň Číslo: TEST-012345 Datum: 07.09.2026\", \"character_error_rate\": 0.0139, \"exact_match\": false, \"nonempty\": true}, {\"name\": \"german\", \"seconds\": 0.5547, \"expected_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Nummer: TEST-012345 Betrag: 123,45 EUR\", \"actual_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Nummer: TEST-012345 Betrag: 123,45 EUR\", \"character_error_rate\": 0.0, \"exact_match\": true, \"nonempty\": true}, {\"name\": \"mixed\", \"seconds\": 0.4714, \"expected_synthetic\": \"SYNTHETIC TEST Česká republika / Deutschland Žluťoučký / Überprüfung TEST-987654\", \"actual_synthetic\": \"SYNTHETIC TEST Česká republika / Deutschland Žluťoučký / Úberprůfung TEST-987654\", \"character_error_rate\": 0.025, \"exact_match\": false, \"nonempty\": true}, {\"name\": \"skewed\", \"seconds\": 0.6594, \"expected_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Číslo: TEST-012345\", \"actual_synthetic\": \"SYNTHETIC TEST Prüfung: Größe und Straße Číslo: TEST-012345\", \"character_error_rate\": 0.0, \"exact_match\": true, \"nonempty\": true}], \"model_hashes\": {}, \"exit_code\": 0, \"next_actions\": [{\"when\": \"benchmark finished\", \"command\": \"review synthetic OCR metrics\", \"purpose\": \"Define application field thresholds and review adapter behavior; no automatic production acceptance\", \"severity\": \"INFO\"}], \"network_namespace\": \"net:[4026533596]\", \"version\": \"tesseract 5.5.0\", \"languages\": [\"ces\", \"deu\", \"eng\", \"osd\"], \"initialization_seconds\": 0.1104, \"quality_acceptance\": \"unproven: four synthetic fixtures are a smoke test only\", \"total_seconds\": 2.4602, \"process_peak_rss_kib\": 35492, \"child_peak_rss_kib\": 67180}\n",
+      "stderr": "",
+      "timestamp": "2026-09-07T02:20:31.875578+00:00",
+      "authority": "legacy isolated-network synthetic OCR evaluation"
+    }
+  }
+}

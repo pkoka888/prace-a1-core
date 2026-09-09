@@ -1,0 +1,50 @@
+[
+  {
+    "id": "assignment-milan-orgonik-001",
+    "organization_id": "org-synthetic-alpha",
+    "worker_id": "worker-milan-orgonik",
+    "start": "2026-10-01",
+    "end": "2026-12-31",
+    "workplace_label": "Mnichov",
+    "activity_label": "Montážní dělník",
+    "state": "planned",
+    "version": 1,
+    "_fiction": "Conspicuously synthetic. Not a real assignment."
+  },
+  {
+    "id": "assignment-robin-orgonik-001",
+    "organization_id": "org-synthetic-alpha",
+    "worker_id": "worker-robin-orgonik",
+    "start": "2026-09-01",
+    "end": "2027-02-28",
+    "workplace_label": "Drážďany",
+    "activity_label": "IT konzultant",
+    "state": "planned",
+    "version": 1,
+    "_fiction": "Conspicuously synthetic. Not a real assignment."
+  },
+  {
+    "id": "assignment-filip-orgonik-001",
+    "organization_id": "org-synthetic-beta",
+    "worker_id": "worker-filip-orgonik",
+    "start": "2026-11-01",
+    "end": "2027-04-30",
+    "workplace_label": "Linec",
+    "activity_label": "Stavební technik",
+    "state": "planned",
+    "version": 1,
+    "_fiction": "Conspicuously synthetic. Not a real assignment."
+  },
+  {
+    "id": "assignment-patrik-zivot-001",
+    "organization_id": "org-synthetic-beta",
+    "worker_id": "worker-patrik-zivot",
+    "start": "2026-10-15",
+    "end": "2027-03-14",
+    "workplace_label": "Drážďany",
+    "activity_label": "Svářeč",
+    "state": "planned",
+    "version": 1,
+    "_fiction": "Conspicuously synthetic. Not a real assignment."
+  }
+]

@@ -1,0 +1,226 @@
+[
+  {
+    "case_id": "A1-SYNTH-MO-001",
+    "organization_id": "org-synthetic-alpha",
+    "worker_id": "worker-milan-orgonik",
+    "worker_profile": {
+      "first_name": "MILAN",
+      "last_name": "ORGANIK",
+      "birth_date": "1988-03-15",
+      "birth_number": "8803150001",
+      "_identifier_expectation": "synthetic posted employee to Germany",
+      "nationality": "CZ",
+      "address": {
+        "street": "Syntetická 42",
+        "city": "Plzeň",
+        "postal_code": "301 00",
+        "country": "CZ"
+      },
+      "employment_type": "zaměstnanec",
+      "id_document": {
+        "type": "občanský průkaz",
+        "number": "SYNTH-MO-001"
+      }
+    },
+    "institution": {
+      "name": "SYNTHETICKÁ s.r.o.",
+      "registration_number": "CZ-00000011",
+      "address": {
+        "street": "Syntetická 1",
+        "city": "Plzeň",
+        "postal_code": "301 00",
+        "country": "CZ"
+      },
+      "source": "employer.example.invalid"
+    },
+    "assignment": {
+      "workplace": "Mnichov",
+      "country": "DE",
+      "role": "Montážní dělník",
+      "start_date": "2026-10-01",
+      "end_date": "2026-12-31"
+    },
+    "section4_employment": {
+      "activity_type": "vysílání zaměstnance",
+      "employer_country": "CZ",
+      "worker_state": "cz",
+      "legislation_applied": "cz",
+      "partial_exemption": false,
+      "multiple_states": false,
+      "posted_worker": true
+    },
+    "status": "prepared",
+    "prepared_at": "2026-09-07T10:00:00Z",
+    "prepared_by": "user-synthetic-01",
+    "generation_hash": "sha256:bbbb2222cccc3333dddd4444eeee5555ffff66660001aaaabbbbccccddddeeeeffff0000",
+    "_fiction": "Conspicuously synthetic A1 case. Not a real A1 application."
+  },
+  {
+    "case_id": "A1-SYNTH-RO-002",
+    "organization_id": "org-synthetic-alpha",
+    "worker_id": "worker-robin-orgonik",
+    "worker_profile": {
+      "first_name": "ROBIN",
+      "last_name": "ORGANIK",
+      "birth_date": "1991-07-22",
+      "birth_number": "9107220002",
+      "_identifier_expectation": "synthetic multi-state self-employed to Germany",
+      "nationality": "CZ",
+      "address": {
+        "street": "Fiktivní 17",
+        "city": "Most",
+        "postal_code": "434 01",
+        "country": "CZ"
+      },
+      "employment_type": "OSVČ",
+      "id_document": {
+        "type": "občanský průkaz",
+        "number": "SYNTH-RO-002"
+      }
+    },
+    "institution": {
+      "name": "SYNTHETICKÁ s.r.o.",
+      "registration_number": "CZ-00000011",
+      "address": {
+        "street": "Syntetická 1",
+        "city": "Plzeň",
+        "postal_code": "301 00",
+        "country": "CZ"
+      },
+      "source": "employer.example.invalid"
+    },
+    "assignment": {
+      "workplace": "Drážďany",
+      "country": "DE",
+      "role": "IT konzultant",
+      "start_date": "2026-09-01",
+      "end_date": "2027-02-28"
+    },
+    "section4_employment": {
+      "activity_type": "vysílání zaměstnance",
+      "employer_country": "CZ",
+      "worker_state": "cz",
+      "legislation_applied": "cz",
+      "partial_exemption": false,
+      "multiple_states": false,
+      "posted_worker": true
+    },
+    "status": "prepared",
+    "prepared_at": "2026-09-07T10:00:00Z",
+    "prepared_by": "user-synthetic-01",
+    "generation_hash": "sha256:cccc3333dddd4444eeee5555ffff66660001aaaabbbbccccddddeeeeffff0000aaaa1111",
+    "_fiction": "Conspicuously synthetic A1 case. Not a real A1 application."
+  },
+  {
+    "case_id": "A1-SYNTH-FO-003",
+    "organization_id": "org-synthetic-beta",
+    "worker_id": "worker-filip-orgonik",
+    "worker_profile": {
+      "first_name": "FILIP",
+      "last_name": "ORGANIK",
+      "birth_date": "1995-11-08",
+      "birth_number": "9511080003",
+      "_identifier_expectation": "synthetic employee to Austria",
+      "nationality": "CZ",
+      "address": {
+        "street": "Umělá 9",
+        "city": "Chomutov",
+        "postal_code": "430 01",
+        "country": "CZ"
+      },
+      "employment_type": "zaměstnanec",
+      "id_document": {
+        "type": "občanský průkaz",
+        "number": "SYNTH-FO-003"
+      }
+    },
+    "institution": {
+      "name": "SYNTHETICKÁ Beta GmbH",
+      "registration_number": "CZ-00000012",
+      "address": {
+        "street": "Umělá 3",
+        "city": "Chomutov",
+        "postal_code": "430 01",
+        "country": "CZ"
+      },
+      "source": "employer.example.invalid"
+    },
+    "assignment": {
+      "workplace": "Linec",
+      "country": "AT",
+      "role": "Stavební technik",
+      "start_date": "2026-11-01",
+      "end_date": "2027-04-30"
+    },
+    "section4_employment": {
+      "activity_type": "vysílání zaměstnance",
+      "employer_country": "CZ",
+      "worker_state": "cz",
+      "legislation_applied": "cz",
+      "partial_exemption": false,
+      "multiple_states": false,
+      "posted_worker": true
+    },
+    "status": "prepared",
+    "prepared_at": "2026-09-07T10:00:00Z",
+    "prepared_by": "user-synthetic-01",
+    "generation_hash": "sha256:dddd4444eeee5555ffff66660001aaaabbbbccccddddeeeeffff0000aaaa1111bbbb2222",
+    "_fiction": "Conspicuously synthetic A1 case. Not a real A1 application."
+  },
+  {
+    "case_id": "A1-SYNTH-PZ-004",
+    "organization_id": "org-synthetic-beta",
+    "worker_id": "worker-patrik-zivot",
+    "worker_profile": {
+      "first_name": "PATRIK",
+      "last_name": "ŽIVOT",
+      "birth_date": "1983-02-28",
+      "birth_number": "8302280004",
+      "_identifier_expectation": "synthetic posted employee to Germany",
+      "nationality": "CZ",
+      "address": {
+        "street": "Nepravá 55",
+        "city": "Ústí nad Labem",
+        "postal_code": "400 01",
+        "country": "CZ"
+      },
+      "employment_type": "zaměstnanec",
+      "id_document": {
+        "type": "občanský průkaz",
+        "number": "SYNTH-PZ-004"
+      }
+    },
+    "institution": {
+      "name": "SYNTHETICKÁ Beta GmbH",
+      "registration_number": "CZ-00000012",
+      "address": {
+        "street": "Umělá 3",
+        "city": "Chomutov",
+        "postal_code": "430 01",
+        "country": "CZ"
+      },
+      "source": "employer.example.invalid"
+    },
+    "assignment": {
+      "workplace": "Drážďany",
+      "country": "DE",
+      "role": "Svářeč",
+      "start_date": "2026-10-15",
+      "end_date": "2027-03-14"
+    },
+    "section4_employment": {
+      "activity_type": "vysílání zaměstnance",
+      "employer_country": "CZ",
+      "worker_state": "cz",
+      "legislation_applied": "cz",
+      "partial_exemption": false,
+      "multiple_states": false,
+      "posted_worker": true
+    },
+    "status": "prepared",
+    "prepared_at": "2026-09-07T10:00:00Z",
+    "prepared_by": "user-synthetic-01",
+    "generation_hash": "sha256:eeee5555ffff66660001aaaabbbbccccddddeeeeffff0000aaaa1111bbbb2222cccc3333",
+    "_fiction": "Conspicuously synthetic A1 case. Not a real A1 application."
+  }
+]
