@@ -142,6 +142,8 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/release1a/inbox.py",
     "portal/release1a/identity.py",
+    "portal/release1a/a1_exports.py",
+    "portal/release1a/migrations/0015_assignment_a1_facts.py",
     "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
     "portal/release1a/management/commands/a1_process_inbox.py",
     "scripts/run_ocr_benchmark.py",
@@ -161,6 +163,8 @@ APPROVED_STAGED_SETTINGS_PATHS = frozenset({
 })
 # Tracked source test files. Filenames legitimately embed pipeline words.
 APPROVED_STAGED_TEST_PATHS = frozenset({
+    "tests/document_web/test_a1_exports.py",
+    "tests/document_web/test_a1_exports_postgres.py",
     "tests/document_web/test_browser_journey.py",
     "tests/test_a1_cli_journey.py",
     "tests/test_a1_employee_delivery.py",

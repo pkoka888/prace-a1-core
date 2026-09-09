@@ -77,7 +77,7 @@ the first usable increment and must not wait for later module activation.
 | Category | Work |
 |---|---|
 | **Now** | Seed/reproducer repairs and bounded synthetic J2 intake are implemented under the [local automation contract](plans/2026-09-08-local-a1-automation.md). The command reuses shared intake/OCR, retains proposals and opaque receipts, resumes failed runs and preserves unconfirmed identity status. Exact tests, committed-source acceptance and fresh supervised bootstrap are distinguished in the [delivery record](docs/operations/git-delivery.md). |
-| **Next on Release 1A** | J2 now persists identity evaluations, deduplicates conditional unconfirmed drafts, and provides a revision-checked resolution service. Next: continue DB-MIG-1/2/5 mapping and connect worker drafts to DB-MIG-3/4 shared exports/J4 unverified A1 generation. Integrate BO forms and expected-revision field confirmation in parallel; BO completion is not a draft-generation gate. Apply 0014 in the selected supervised release before using durable intake there; DB-MIG-6/7 cutover follows its existing acceptance dependencies. No scheduler, worker auto-merge, automatic human confirmation or real-data activation follows from intake success. |
+| **Next on Release 1A** | J2 now persists identity evaluations, deduplicates conditional unconfirmed drafts, and provides a revision-checked resolution service. DB-MIG now has a synthetic revision-bound 44-field input export and versioned assignment facts (0015). Next: connect those inputs to an explicit shared-publisher unverified J4 draft mode, stable numbering and artifact QA. Integrate BO forms and expected-revision field confirmation in parallel; BO completion is not a draft-generation gate. Apply 0014/0015 in the selected supervised release before using durable intake there; DB-MIG-6/7 cutover follows its existing acceptance dependencies. No scheduler, worker auto-merge, automatic human confirmation or real-data activation follows from intake success. |
 | **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-LEGAL (G/J) + PLAN-INVOICE (P) research; Plan AC integrity lane (PLAN-INVOICE): Integrity 1.3 repair + Pilot 1/2; PLAN-INVOICE (Plan AD) synthetic contract; PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). |
 | **Gated** | `ENG-001` and observed Release 1A acceptance remain prerequisites for accepted DB cutover; synthetic preparation may proceed. PLAN-A1 authoritative-input reconciliation and receipt-bound final promotion remain unresolved; current scoped evidence belongs in [PLAN-A1](plans/PLAN-A1.md) and the delivery record, without inferring authority from historical counts. PLAN-INVOICE persistence/acceptance waits DEC-015. Deployment, new real-data portal migration/activation, GitLab/CI changes and history rewrite retain their existing authorization requirements. Routine reviewed private-origin feature-branch publication follows AGENTS.md. |
 | **Cleanup (this cycle)** | Read-only source inventory and dependency analysis only. Unknown research/runtime artifacts require classification; no moves, deletions, backup cleanup or legacy-script execution in stabilization scope. |
@@ -186,8 +186,9 @@ identity-review evidence. There is no `Approval` model.
   (planned) tracks DB-MIG-1 through DB-MIG-7 under the
   [local automation contract](plans/2026-09-08-local-a1-automation.md) and
   [44-field mapping](docs/architecture/release-1a-field-mapping.md).
-  Mapping/schema and shared export adapters remain implementation work; the
-  present dashboard snapshot is not yet the complete mapped A1 input contract.
+  Synthetic revision-bound 44-field inputs and assignment facts are implemented;
+  legacy reconciliation, complete package export and the J4 publisher adapter remain
+  implementation work. The existing dashboard still uses its earlier snapshot path.
 - Fresh synthetic development setup, seed reconciliation and release reproduction
   proceed under existing authority. Preserve historical databases; rebuild the
   fresh development database from the on-disk graph without fabricated history.

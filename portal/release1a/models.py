@@ -138,6 +138,7 @@ class Assignment(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
     workplace_label = models.CharField(max_length=160)
     activity_label = models.CharField(max_length=120)
+    a1_facts_json = models.JSONField(default=dict, blank=True)
     start = models.DateField(); end = models.DateField()
 
     class State(models.TextChoices):

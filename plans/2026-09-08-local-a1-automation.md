@@ -3,7 +3,7 @@
 Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
-BO integration and A1 draft generation remain planned.
+revision-bound A1 input preparation is implemented; BO integration and PDF draft generation remain planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -65,6 +65,29 @@ wrong hashes and cross-organization roots are rejected. Incomplete batches are
 ignored; rejected items do not stop valid items. A nonzero exit reports unresolved
 items. Originals remain in the private inbox pending retention review.
 
+## A1 input preparation checkpoint — 2026-09-09
+
+`portal/release1a/a1_exports.py` now owns synthetic DB-to-CSV/JSON input
+preparation. Migration 0015 adds `Assignment.a1_facts_json`; updates require the
+expected assignment version and invalidate prior inputs. Inbox-created drafts now
+receive an immutable `a1-input-1` case snapshot and missing-fact reason codes.
+The shared service exports all 44 canonical CSV columns and per-field provenance;
+confirmed identity revisions override OCR proposals. Assignment dates never become
+certificate dates implicitly. Selection is explicit when multiple claims or
+assignments exist; subsequent export pins that selection and rejects changed inputs.
+
+This is an input service, not a PDF publisher or an accepted DB cutover. Human
+approval flags remain false, generated numbers/dates are absent, and legacy J4
+snapshots are preserved. `source_scans` uses opaque document/version references;
+a DB-native publisher adapter still needs to resolve those references and pin
+institution profiles. Canonical readiness reports existing gate blockers honestly.
+Next: implement an explicit unverified application-draft mode through the existing
+shared core/publisher, stable DB-bound draft numbering and artifact QA. BO UI
+revision checks proceed in parallel; BO completion is not a future draft gate.
+Migrations 0014/0015 require application in the selected supervised release before
+runtime use; the existing development database remains at its recorded 0013 state.
+Validation, publication and deployment evidence are in the delivery record.
+
 ## Current engineering checkpoint — 2026-09-09 implementation
 
 Seed verification now uses exact sanctioned settings and read-only SQLite access.
@@ -97,11 +120,12 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: complete DB-MIG-1/2/5 input mapping and connect draft workers
-to DB-MIG-3/4 shared exports and J4 unverified A1 generation. In parallel, wire BO
+Next functional phase: connect the implemented revision-bound input service
+to the existing publisher for J4 unverified A1 generation, with stable numbers
+and artifact QA. Complete legacy reconciliation separately before cutover. In parallel, wire BO
 association forms to revision-checked resolution and protect field confirmation
 with expected revisions. BO UI completion is not a gate for eligible unverified
-A1 drafts. Apply 0014 through the selected supervised development release workflow
+A1 drafts. Apply 0014/0015 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.

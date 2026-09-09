@@ -28,6 +28,7 @@ from src.document_core.images import MAX_BYTES
 from .document_intake import authorize, audit, intake, execute_run
 from .document_storage import document_storage
 from .identity import persist_identity_evaluation, prepare_identity_draft
+from .a1_exports import prepare_input_case
 from .models import Document
 from .services import Forbidden
 
@@ -181,13 +182,21 @@ def _process_batches(root_fd, user, organization, processor):
                                     run_id, region["region_ref"], activity_profile=profiles[run_id], activity_profiles=profiles))
                             except Exception:
                                 draft.update(status="requires_review", reason="DRAFT_PREPARATION_UNAVAILABLE")
+                        if draft.get("worker_ref"):
+                            try:
+                                case = prepare_input_case(user, organization, draft["worker_ref"],
+                                                          claim_id=draft.get("claim_ref"))
+                                draft["a1_input"] = {"case_ref": case.pk, "source_sha256": case.source_hash,
+                                                     "blockers": case.source_snapshot_json["blockers"]}
+                            except Exception:
+                                draft["a1_input"] = {"status": "unavailable", "reason": "A1_INPUT_PREPARATION_UNAVAILABLE"}
                         result["drafts"].append(draft)
                 except Exception:
                     result["identity_evaluation"] = {"status": "unavailable", "accepted": False}
             result["status"] = "completed" if (
                 all(i["status"] == "completed" for i in result["items"])
                 and result.get("identity_evaluation", {}).get("status") != "unavailable"
-                and not any(d.get("reason") == "DRAFT_PREPARATION_UNAVAILABLE"
+                and not any((d.get("reason") == "DRAFT_PREPARATION_UNAVAILABLE" or d.get("a1_input", {}).get("status") == "unavailable")
                             for d in result.get("drafts", []))) else "partial"
         except Exception:
             result["status"] = "rejected"

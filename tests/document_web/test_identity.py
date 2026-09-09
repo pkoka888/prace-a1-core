@@ -148,6 +148,10 @@ class IdentityTests(TransactionTestCase):
         self.write(path / "ready.json", json.dumps({"organization_id": self.org.pk, "files": items}).encode())
         result = self.run_inbox()[0]
         self.assertEqual(result["drafts"][0]["status"], "draft")
+        prepared = result["drafts"][0]["a1_input"]
+        self.assertTrue(prepared["case_ref"])
+        self.assertEqual(len(prepared["source_sha256"]), 64)
+        self.assertIn("assignment_missing", prepared["blockers"])
         self.assertEqual(Worker.objects.get().activity_profile, "self_employed")
         self.assertEqual(result["identity_evaluation"]["evaluation_ref"], IdentityEvaluation.objects.get().pk)
         self.assertEqual(result["drafts"], self.run_inbox()[0]["drafts"])

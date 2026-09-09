@@ -15,8 +15,9 @@ actor/time/revision decision. Bounded synthetic J2 inbox intake is implemented:
 completed batches reuse the shared intake/OCR adapter, preserve proposals and
 resume failed runs. Durable evaluations and typed-identifier claims now support
 conditional unconfirmed drafts; explicit resolution has source/revision checks.
-Next is DB-MIG mapping and shared exports/J4 unverified drafts, with BO revision
-integration in parallel. The selected supervised environment needs migration 0014;
+Revision-bound canonical input snapshots/exports and assignment facts (0015) are implemented.
+Next is the unverified J4 publisher adapter, stable numbering and artifact QA, with BO revision
+integration in parallel. The selected supervised environment needs migrations 0014/0015;
 see the child contract and delivery record for the precise acceptance scope.
 
 ## Shared intake Git delivery — 2026-09-08

@@ -51,10 +51,10 @@ The table uses these explicit destinations:
   document/version/proposal/decision references where available, import run and
   row reference, original value reference, accepted revision and authority status.
   Protected values stay in their owning records/snapshot, never audit messages.
-- **A+**: **planned** `Assignment.a1_facts_json`, one versioned JSON field for
+- **A+**: migration 0015 implements `Assignment.a1_facts_json`, one versioned JSON field for
   structured Section 4 employer/self-employment facts and Section 5 facts which
-  the existing display labels cannot represent. It holds values and evidence
-  references; changes increment `Assignment.version`. S freezes the selected
+  the existing display labels cannot represent. It currently holds unconfirmed values; structured source references remain in
+  snapshot provenance/owning records. Changes through the service increment `Assignment.version`. S freezes the selected
   values and assignment IDs/versions. It is not an independent worker master.
 - **W+**: **planned** nullable `Worker.legacy_employee_id`, with a conditional
   uniqueness constraint on organization plus nonempty key. It is an explicit
@@ -65,10 +65,29 @@ The table uses these explicit destinations:
   export, and fail on a collision rather than remapping a confirmed association.
   Never derive this key from a name, filename or another personal identifier.
 
-W+ and A+ are concrete schema gaps. Other listed destinations reuse existing
+W+ remains a schema gap; A+ has an additive migration and version-checked service. Other listed destinations reuse existing
 columns with planned validation/service contracts. DB-MIG must prove historical
 migration transitions with `MigrationExecutor`, add constraints only after
 reconciliation, and enforce organization ownership on every referenced object.
+
+## Implemented input snapshot and export
+
+`portal/release1a/a1_exports.py` implements synthetic `prepare_input_case`,
+`update_assignment_facts` and `export_input_case`. Version `a1-input-1` stores
+`row` (all 44 CSV columns), `provenance` keyed directly by CSV field,
+`dependencies`, `blockers`, `organization_ref`, `employee_id` and `scope`.
+The S/P nested shapes below describe the broader target contract, not this first
+version's JSON paths. No existing snapshot is rewritten. Exports return UTF-8
+CSV/JSON bytes to an authorized caller; they do not publish files or PDFs.
+
+Dependencies bind worker version/state, selected assignment facts hash/version,
+selected claim/run/version/output hash and accepted identity revision. Selected
+claims/assignments remain pinned on export; changed evidence fails closed.
+Machine claims and worker projections remain unconfirmed. Accepted individual
+identity fields override OCR without setting whole-form approval flags. Assignment
+inputs are unconfirmed, absent facts remain blank, and source references are opaque.
+Stable draft-number reservation, profile pinning, legacy-key reconciliation,
+cohort export and the unverified PDF publisher adapter remain follow-up work.
 
 ## Complete CSV mapping
 
@@ -200,9 +219,11 @@ full comparison data remains protected under the
 binds input hashes, selected decisions, DB revisions and rejected/unresolved rows.
 Only DB-MIG acceptance and the applicable activation approval permit cutover.
 
-## One future export service
+## Shared export service extension
 
-Proposed interface, **not implemented**:
+The input-only `export_input_case` interface above is implemented. Extend that
+owner for complete packages/direct-core mapping; do not add a competing exporter.
+The following richer interface remains **not implemented**:
 
 ```python
 portal.release1a.a1_exports.export_a1_snapshot(

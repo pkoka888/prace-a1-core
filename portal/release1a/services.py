@@ -100,6 +100,7 @@ def upload_document(user, organization, worker, filename, content_type, content,
 @transaction.atomic
 def create_assignment(user, organization, worker, *, start, end, workplace_label, activity_label):
     require_capability(user, organization, "assignment:create")
+    Organization.objects.select_for_update(no_key=True).get(pk=organization.pk)
     if worker.organization_id != organization.id: raise Forbidden("cross-organization worker")
     overlap = Assignment.objects.filter(worker=worker).filter(Q(start__lte=end) & Q(end__gte=start)).exists()
     assignment = Assignment.objects.create(organization=organization, worker=worker, start=start, end=end, workplace_label=workplace_label, activity_label=activity_label)
@@ -111,8 +112,9 @@ def current_a1_source(worker, organization):
     if worker.organization_id != organization.id:
         raise Forbidden("cross-organization worker")
     assignments = list(Assignment.objects.filter(organization=organization, worker=worker).order_by("pk")
-                       .values("id", "start", "end", "workplace_label", "activity_label", "state", "version"))
-    normalized = [{**a, "start": str(a["start"]), "end": str(a["end"])} for a in assignments]
+                       .values("id", "start", "end", "workplace_label", "activity_label", "state", "version", "a1_facts_json"))
+    normalized = [{**{k: v for k, v in a.items() if k != "a1_facts_json" or v},
+                   "start": str(a["start"]), "end": str(a["end"])} for a in assignments]
 
     profile = {
         "given_name": worker.given_name,

@@ -141,6 +141,16 @@ incomplete**:
 required engineering deliverable before any gate opening. Child task
 IDs are unchanged.
 
+## Synthetic input integration — 2026-09-09
+
+The inbox now prepares revision-bound A1 input cases using
+`portal/release1a/a1_exports.py`: canonical 44-field CSV/JSON export, structured
+provenance and explicit missing-fact blockers. Migration 0015 stores versioned
+assignment facts. This creates no PDF or human approval. Next: the explicit
+unverified draft mode in the shared publisher/core, DB-stable provisional numbers
+and all-page artifact acceptance; BO revision checks proceed in parallel.
+Existing environments remain unchanged; see the delivery record for test evidence.
+
 ## Current session review and next implementation
 
 [Architect review — 2026-09-06](../docs/research/2026-09-06-a1-session-architect-review.md)

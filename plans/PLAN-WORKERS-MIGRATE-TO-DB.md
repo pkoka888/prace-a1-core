@@ -21,9 +21,10 @@ synthetic intake have behavioral coverage. Fixture role mapping, duplicate/case
 reconciliation and exact settings selection are implemented; evidence belongs in
 the delivery record. J2 now persists evaluated evidence and unconfirmed identifier
 claims, creates eligible drafts and exposes revision-checked explicit resolution.
-Migration 0014 is tested on disposable databases; existing environments are preserved.
-No DB-MIG cutover is accepted. Next: DB-MIG-1/2/5 mapping and shared exports/J4
-unverified drafts, with BO revision integration in parallel and selected supervised
+Migrations 0014/0015 are tested on disposable databases; existing environments are preserved.
+Synthetic input snapshots and all 44 canonical CSV columns are exported by
+`portal/release1a/a1_exports.py`, with versioned assignment facts and provenance.
+No DB-MIG cutover is accepted. Next: the unverified shared-publisher J4 adapter, stable numbering and artifact QA, with BO revision integration in parallel and selected supervised
 migration before runtime use. Existing cutover dependencies remain unchanged.
 
 ## Purpose and current ownership
@@ -44,7 +45,8 @@ hold review evidence. There is no Approval model or dedicated A1Case.document_id
 or issue_date column. Case facts fit versioned snapshots with structured provenance
 and input decisions; visual confirmation is separate. The mapping proposes only
 `Worker.legacy_employee_id` and `Assignment.a1_facts_json` as additional columns,
-with the required constraints and revision/service contracts. These are not implemented.
+with the required constraints and revision/service contracts. Assignment facts now
+have migration 0015 and a synthetic update/export service; the legacy key remains planned.
 
 ## Implementation milestones
 
