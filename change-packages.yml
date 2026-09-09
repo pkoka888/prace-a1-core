@@ -27,6 +27,7 @@
         "portal/release1a/runtime_safety.py",
         "portal/settings_document_tests.py",
         "portal/settings_supervised_synthetic.py",
+        "scripts/seed_release1a_dev.py",
         "tests/test_readiness_checks.py",
         "tests/test_runtime_hardening.py",
         "tests/test_settings_supervised_synthetic.py"
@@ -59,6 +60,7 @@
         "tests/document_web/__init__.py",
         "tests/document_web/test_intake.py",
         "tests/document_web/test_readiness_postgres.py",
+        "tests/m2/test_synthetic_containment.py",
         "tests/m2/test_views.py",
         "tests/m2/test_release1a_vertical.py",
         "tests/m2/test_review_fixes.py",
@@ -71,7 +73,8 @@
       ],
       "checks": [
         "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
-        "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q"
+        "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q",
+        "venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
       ],
       "dependencies": [
         "shared_document_core",
@@ -79,7 +82,7 @@
         "release1a_historical_migration_repair",
         "a1_audit_path_dependencies"
       ],
-      "rollback": "Keep protected versions and receipts; revert source only after checking dependent routes."
+      "rollback": "Keep protected versions and receipts; revert only after checking dependent routes."
     },
     "release1a_historical_migration_repair": {
       "purpose": "Restore historical document/J4 migrations and model parity; disposable synthetic databases only.",

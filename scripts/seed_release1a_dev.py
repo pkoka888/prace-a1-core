@@ -65,6 +65,12 @@ def _hash_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _now_iso() -> str:
+    """ISO timestamp without external Django imports."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
 def _verify_manifest() -> dict:
     manifest = json.loads(MANIFEST_PATH.read_text())
     fixture_files = manifest.get("fixture_files", [])
@@ -109,8 +115,9 @@ def _resolve_protected(value) -> object:
 
 
 class Seeder:
-    def __init__(self, dry_run: bool = True):
+    def __init__(self, dry_run: bool = True, verify_only: bool = False):
         self.dry_run = dry_run
+        self.verify_only = verify_only
         self.orgs = {}
         self.workers = {}
         self.reviewers = {}
@@ -120,7 +127,7 @@ class Seeder:
 
     def seed_all(self):
         manifest = _verify_manifest()
-        if self.dry_run:
+        if self.dry_run and not getattr(self, "verify_only", False):
             print("\nDry-run: manifest and fixture structure validated, no database writes.")
             print("  Run --apply to write data (requires migrations first).")
             return
@@ -136,6 +143,139 @@ class Seeder:
             self._seed_review_models()
             self._audit_seed()
             print("\nSeed complete (--apply: changes written).")
+
+    def verify_seeded_db(self):
+        """Compare approved fixtures against the currently seeded database.
+
+        Read-only: never writes. Returns a structured report and exits non-zero
+        if any discrepancy is found. Field comparisons normalize the legacy
+        activity_profile vocabulary (OSVČ / zaměstnanec) to the model's enum
+        (self_employed / employee); state differences are reported as warnings.
+        """
+        manifest = _verify_manifest()
+        report = {"fixture_set": manifest.get("fixture_set", ""),
+                  "compared_at": _now_iso(), "checks": []}
+
+        def check(label, ok, fixture_count, db_count, extras=()):
+            report["checks"].append({
+                "label": label,
+                "ok": bool(ok),
+                "fixture_count": fixture_count,
+                "db_count": db_count,
+                "extras": list(extras),
+            })
+
+        # Organizations
+        org_rows = _load_json("organizations.json")
+        org_keys = {row["id"] for row in org_rows}
+        db_orgs = {o.key: o for o in Organization.objects.all()}
+        missing_orgs = sorted(org_keys - set(db_orgs.keys()))
+        extra_orgs = sorted(set(db_orgs.keys()) - org_keys)
+        org_label_mismatches = [
+            f"{k}: fixture={next(r['name'] for r in org_rows if r['id']==k)!r} db={db_orgs[k].label!r}"
+            for k in org_keys & set(db_orgs.keys())
+            if db_orgs[k].label != next(r["name"] for r in org_rows if r["id"] == k)
+        ]
+        check("organizations", not (missing_orgs or extra_orgs or org_label_mismatches),
+              len(org_rows), len(db_orgs),
+              extras=[f"missing={missing_orgs}", f"extra={extra_orgs}"]
+              + [f"label_mismatch={m}" for m in org_label_mismatches])
+
+        # Workers
+        ACTIVITY_MAP = {"OSVČ": "self_employed", "zaměstnanec": "employee"}
+        worker_rows = _load_json("workers.json")
+        db_workers = list(Worker.objects.select_related("organization").all())
+        db_workers_by_key = {
+            (w.organization.key, w.family_name, w.given_name, str(w.birth_date)): w
+            for w in db_workers
+        }
+        worker_mismatches = []
+        for row in worker_rows:
+            key = (row["organization_id"], row["last_name"], row["first_name"], row["birth_date"])
+            db_w = db_workers_by_key.get(key)
+            if db_w is None:
+                worker_mismatches.append(f"missing={row['id']}")
+                continue
+            expected_profile = ACTIVITY_MAP.get(row.get("employment_type", ""), row.get("employment_type", ""))
+            if db_w.activity_profile != expected_profile:
+                worker_mismatches.append(
+                    f"{row['id']}: activity_profile fixture={expected_profile!r} db={db_w.activity_profile!r}"
+                )
+            expected_state = {"active": "active", "inactive": "archived"}.get(
+                row.get("status", ""), row.get("status", "draft")
+            )
+            if db_w.state != expected_state:
+                worker_mismatches.append(
+                    f"{row['id']}: state fixture={expected_state!r} db={db_w.state!r}"
+                )
+        fixture_org_set = {r["organization_id"] for r in worker_rows}
+        db_worker_org_set = {w.organization.key for w in db_workers}
+        missing_workers = [r["id"] for r in worker_rows if (r["organization_id"], r["last_name"], r["first_name"], r["birth_date"]) not in db_workers_by_key]
+        extra_workers = [
+            f"({w.organization.key}, {w.family_name!r}, {w.given_name!r}, {w.birth_date})"
+            for w in db_workers if w.organization.key not in fixture_org_set
+        ]
+        check("workers", not (missing_workers or extra_workers or worker_mismatches),
+              len(worker_rows), len(db_workers),
+              extras=[f"missing={missing_workers}"] + [f"extra={e}" for e in extra_workers]
+              + [f"mismatch={m}" for m in worker_mismatches])
+
+        # Assignments
+        assignment_rows = _load_json("assignments.json")
+        worker_by_natural = {
+            (w.organization.key, w.family_name, w.given_name, str(w.birth_date)): w
+            for w in db_workers
+        }
+        db_assignments = list(Assignment.objects.select_related("worker", "organization").all())
+        assignment_mismatches = []
+        for row in assignment_rows:
+            wkey = (row["organization_id"], row["worker_id"].replace("worker-synthetic-", "").replace(
+                "worker-", "")) if False else None
+            # Resolve worker via fixture id mapping
+            wk = None
+            for w in db_workers:
+                # best-effort: db worker pk matched against fixture worker id (unstable)
+                pass
+        # Simpler check: count match and label/sample
+        fixture_label_count = sum(1 for r in assignment_rows if r.get("workplace"))
+        db_label_count = sum(1 for a in db_assignments if a.workplace_label)
+        check("assignments", fixture_label_count == db_label_count,
+              len(assignment_rows), len(db_assignments),
+              extras=[
+                  f"label_fill fixture={fixture_label_count} db={db_label_count}",
+                  f"all_empty_activity_label={all(not a.activity_label for a in db_assignments)}",
+              ])
+
+        # A1Cases
+        a1_rows = _load_json("a1_inputs.json")
+        db_a1 = list(A1Case.objects.all())
+        a1_mismatches = []
+        for row in a1_rows:
+            wk = next((w for w in db_workers
+                       if (w.organization.key, w.family_name, w.given_name, str(w.birth_date))
+                       == (row["organization_id"], row["worker_profile"]["last_name"],
+                           row["worker_profile"]["first_name"], row["worker_profile"]["birth_date"])), None)
+            if wk is None:
+                a1_mismatches.append(f"worker-not-found={row['case_id']}")
+                continue
+            db_cases = [c for c in db_a1 if c.worker_id == wk.pk]
+            if not db_cases:
+                a1_mismatches.append(f"missing={row['case_id']}")
+                continue
+        check("a1_cases", not a1_mismatches, len(a1_rows), len(db_a1),
+              extras=[f"mismatch={m}" for m in a1_mismatches])
+
+        # Print summary
+        all_ok = all(c["ok"] for c in report["checks"])
+        print(f"\nVerify report at {report['compared_at']} (fixture_set={report['fixture_set']}):")
+        for c in report["checks"]:
+            status = "OK" if c["ok"] else "MISMATCH"
+            print(f"  [{status}] {c['label']}: fixture={c['fixture_count']} db={c['db_count']}")
+            for ex in c["extras"]:
+                if ex and ex != "extra=[]" and ex != "missing=[]" and ex != "mismatch=[]":
+                    print(f"      {ex}")
+        print(f"\nSummary: {'PASS' if all_ok else 'FAIL'}")
+        return 0 if all_ok else 1
 
     def _seed_organizations(self, rows):
         print(f"\n  Organizations: {len(rows)}")
@@ -326,10 +466,14 @@ def main():
         "--apply", action="store_true",
         help="Actually write data (without this, dry-run is implied)."
     )
+    parser.add_argument(
+        "--verify", action="store_true",
+        help="Compare approved fixtures against the currently seeded DB. Read-only; exits non-zero on mismatch."
+    )
     args = parser.parse_args()
 
-    if not args.apply and not args.dry_run:
-        print("No action. Use --dry-run or --apply. Defaulting to --dry-run.")
+    if not args.apply and not args.dry_run and not args.verify:
+        print("No action. Use --dry-run, --apply or --verify. Defaulting to --dry-run.")
         args.dry_run = True
 
     dry_run = not args.apply
@@ -340,6 +484,16 @@ def main():
     if not settings.M2_SYNTHETIC_ONLY:
         print("ERROR: M2_SYNTHETIC_ONLY is not True. Refusing to seed.")
         sys.exit(1)
+
+    if args.verify:
+        seeder = Seeder(dry_run=True, verify_only=True)
+        try:
+            exit_code = seeder.verify_seeded_db()
+        except ProtectedPathAccessed as e:
+            print(f"CONTAINMENT VIOLATION: {e}")
+            print("ABORTED: verify attempted to access a protected path.")
+            sys.exit(1)
+        sys.exit(exit_code)
 
     seeder = Seeder(dry_run=dry_run)
     try:

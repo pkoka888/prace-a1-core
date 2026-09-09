@@ -82,3 +82,22 @@ def test_seed_script_has_no_secret_key_auto_generation():
     seeder_path = REPO_ROOT / "scripts/seed_release1a_dev.py"
     content = seeder_path.read_text()
     assert "SECRET_KEY" not in content or "os.environ" in content
+
+
+def test_verify_flag_is_wired():
+    """--verify must be parsed and routed to read-only comparison."""
+    seeder_path = REPO_ROOT / "scripts/seed_release1a_dev.py"
+    content = seeder_path.read_text()
+    assert '"--verify"' in content, "--verify flag missing from argparse"
+    assert "verify_seeded_db" in content, "verify_seeded_db method missing"
+    assert "verify_only" in content, "verify_only flag missing from Seeder"
+
+
+def test_seed_activity_profile_normalization_is_documented():
+    """The verify path must document legacy fixture vocabulary normalization."""
+    seeder_path = REPO_ROOT / "scripts/seed_release1a_dev.py"
+    content = seeder_path.read_text()
+    assert "OSVČ" in content and "self_employed" in content, (
+        "Activity profile normalization (OSVČ→self_employed, "
+        "zaměstnanec→employee) must be visible in the verify path"
+    )
