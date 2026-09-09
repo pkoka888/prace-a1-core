@@ -36,8 +36,8 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Migration 0017 adds immutable render generations under each stable number reservation. Exact snapshot/dependency fingerprints deduplicate retries; changed profiles/templates/builds receive their own package. Earlier packages and the original case projection are preserved. Inbox and command return the matching generation reference/revision. Migration copies existing reservations/packages and prevents rollback that would lose generation-only evidence |
-| Validation | Eight focused draft tests passed. Model/migration parity and 24 planning checks passed. Two synthetic generations/six pages were inspected locally; number, boxes, blank dates and Section 5 remain correct, and only the intended institution address changes. The 94-test PostgreSQL run passed 92 tests and exposed two incomplete historical test fixtures (missing required birth dates), corrected without changing runtime code. The affected PostgreSQL migration/concurrency module then passed all six tests. Required implementation hooks passed; committed-source acceptance follows this fixture correction |
-| Publication | Implementation committed locally as `1fb8da1`; fixture/evidence correction follows. Inherited outgoing history still requires content/provenance review before private-origin publication |
+| Validation | Eight focused draft tests passed. Model/migration parity and 24 planning checks passed. Two synthetic generations/six pages were inspected locally; number, boxes, blank dates and Section 5 remain correct, and only the intended institution address changes. The 94-test PostgreSQL run passed 92 tests and exposed two incomplete historical test fixtures (missing required birth dates), corrected without changing runtime code. The affected PostgreSQL migration/concurrency module then passed all six tests. Required hooks passed. Committed-source `67559c8` acceptance passed all three commands (planning, tooling/A1 and inbox/identity/input/generation); source integrity remained intact |
+| Publication | Implementation committed locally as `1fb8da1`; historical fixtures corrected in `67559c8`. Inherited outgoing history still requires content/provenance review before private-origin publication |
 | Deployment | None. Migration 0017 runs only in disposable synthetic tests. Selected supervised release needs 0014–0017; its existing database remains at recorded 0013 |
 | Activation | Unchanged; all generations remain unverified. No human confirmation, submission, issuance or real-data portal activation |
 | Limitations | BO still reads the older case artifact projection. Dependency reversion reuses the matching prior generation; numeric revision order alone does not establish current applicability. Changed source facts require a new immutable input case. Running processes must restart after code changes |
@@ -46,6 +46,9 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 Protected synthetic visual manifest:
 `runtime/portal/temporary/a1-generation-visual-dfe8o90t/manifest.json`.
 Local engineering review does not set human confirmation or promote an artifact.
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/293d0b27f5a844c4be0a3a58fdf0945e/receipt.json`.
+This evidence-only checkpoint preserves the accepted implementation blobs.
 
 ### Unverified application-draft publication — 2026-09-09
 
