@@ -36,12 +36,16 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Inbox recomputes shared-core identity suggestions across completed batch regions. Protected receipts bind run/version/output hashes, confirmed-worker snapshot hash and decision/revision references. Conflicting identity field evidence blocks suggestions; matching failures remain retryable partial batches. Confirmed fields, worker links and human decisions are unchanged |
-| Validation | Full shared core: 92 tests passed. Ephemeral PostgreSQL intake/inbox/readiness/J4: 49 tests passed, including all 19 inbox tests. Planning: 24/24 checks passed. Static scoped review found no additional defects. Committed-source receipt follows after commit |
-| Publication | Local feature-branch delivery; private-origin publication remains pending review of the inherited outgoing batch, not engineering permission |
+| Validation | Full shared core: 92 tests passed. Ephemeral PostgreSQL intake/inbox/readiness/J4: 49 tests passed, including all 19 inbox tests. Planning: 24/24 checks passed. Static scoped review found no additional defects. Required hooks passed. Committed-source `db6c472` acceptance passed all three commands: 23 export-applicable planning checks, 91 tooling/A1 tests plus 9 subtests, and 19 inbox tests; source integrity remained intact |
+| Publication | Implementation committed locally as `db6c472`; this documentation checkpoint records its completed acceptance. Private-origin publication remains pending review of the inherited outgoing batch, not engineering permission |
 | Deployment | None; isolated synthetic test databases only. Existing supervised, historical and production databases/packages are unchanged |
 | Activation | Unchanged; existing real-data-rules §14 remains the portal gate |
 | Limitations | Derived suggestions are not durable identity decisions or BO acceptance tokens. Name-only matches/new identities remain unresolved; no worker creation or A1 draft generation. Receipt evidence must be revalidated before future revision-checked writes |
 | Next owner | Engineering: durable J2 identity/conflict resolution and safe draft-worker creation under DB-MIG-1/2/5, with PostgreSQL uniqueness/concurrency and stale-revision acceptance, then J4 drafts/BO |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/f6a08e372b914983918443c9bbcdc793/receipt.json`.
+The documentation-only evidence checkpoint preserves the tested implementation blobs.
 
 ### Readiness and roadmap repair — 2026-09-09
 
