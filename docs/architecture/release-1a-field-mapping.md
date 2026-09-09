@@ -259,3 +259,17 @@ unverified drafts, unchanged official IDs and four-way snapshot hash binding.
 Compare renderer inputs first; compare PDF bytes only with pinned template,
 renderer, dependencies and deterministic metadata. Document-only coverage and
 link checks do not establish DB-MIG runtime acceptance or deployment.
+
+
+## Machine draft provenance — 2026-09-09
+
+`portal/release1a/identity.py` persists `IdentityEvaluation` evidence and
+`WorkerIdentityClaim` source links for unconfirmed worker drafts. The claim's
+organization/type/issuer/identifier hash is a deduplication key, not a confirmed
+identifier. Draft name/date fields originate in the referenced OCR run/region;
+activity profile must come explicitly from the batch manifest whose hash and actor
+are recorded in the protected receipt. Existing confirmed revisions remain authoritative.
+`IdentityResolution` binds explicit human association to evaluated evidence and
+expected worker version/revision. It does not confirm individual identity fields.
+These records supplement the row mappings above; they do not change the canonical
+CSV contract or establish DB cutover. BO form integration remains a follow-up.

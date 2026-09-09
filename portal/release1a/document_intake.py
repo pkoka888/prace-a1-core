@@ -18,7 +18,7 @@ from src.document_core.serialization import canonical_json, content_hash, result
 from src.document_core.cli import error_tag
 from .document_storage import document_storage
 from .models import (Document, DocumentVersion, DocumentClassification, OcrRun,
-                     FieldProposal, FieldDecision, DocumentRegionAssociation, AuditEvent, WorkerIdentityRevision)
+                     FieldProposal, FieldDecision, DocumentRegionAssociation, AuditEvent, WorkerIdentityRevision, Organization)
 
 
 def authorize(user, organization, capability):
@@ -273,6 +273,7 @@ def associate_region(user, organization, run_id, region_id, worker):
         raise ValueError("REGION_NOT_FOUND")
     classification = next(d["classification"] for d in payload["result"]["documents"] if d["document_id"] == region_id)
     with transaction.atomic():
+        Organization.objects.select_for_update(no_key=True).get(pk=organization.pk)
         run = OcrRun.objects.select_for_update().get(pk=run_id, organization=organization)
         document = Document.objects.select_for_update().get(pk=run.document_id, organization=organization)
         if document.documentversion_set.order_by("-version_number").first().pk != run.version_id:

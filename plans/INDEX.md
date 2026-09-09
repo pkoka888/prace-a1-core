@@ -48,9 +48,11 @@ the 34 top-level entries and registered approval/activation gates remain unchang
 
 Implementation checkpoint, 2026-09-09: seed/reproducer repairs and bounded
 synthetic J2 inbox intake are implemented. Intake reuses shared services and saves
-proposals and source-bound identity suggestions without human confirmation or PDF generation. Exact validation and
-publication/bootstrap state are in the delivery record. Next is durable J2 identity/conflict
-resolution and safe draft-worker creation with DB-MIG-1/2/5 revision mapping, then J4 drafts and BO confirmation;
+durable identity evaluations and conditional unconfirmed worker drafts. Explicit
+resolution checks current sources and worker revisions; BO form integration and
+A1 generation remain planned. Validation and migration/publication state belong in
+the delivery record. Next is BO revision integration and DB-MIG-1/2/5 mapping,
+then shared exports/J4 drafts;
 existing catalog IDs, plan headers and cutover/activation approvals are unchanged.
 
 ## Historical

@@ -11,6 +11,7 @@ class Command(BaseCommand):
     help = ("Process synthetic UUID batches with atomically published ready.json; "
             "requires DOCUMENT_INBOX_ROOTS[organization_id] beneath DOCUMENT_STORAGE_ROOT. "
             "Manifest: organization_id and files [{name: <uuidhex>.png, sha256: <digest>}]. "
+            "Optional per-file activity_profile (employee/self_employed) permits eligible unconfirmed worker drafts. "
             "Stores OCR proposals and private receipts; does not confirm facts or generate A1 PDFs.")
 
     def add_arguments(self, parser):

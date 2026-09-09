@@ -141,6 +141,8 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 # file under scripts/.
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/release1a/inbox.py",
+    "portal/release1a/identity.py",
+    "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
     "portal/release1a/management/commands/a1_process_inbox.py",
     "scripts/run_ocr_benchmark.py",
     "scripts/evaluate_a1_pdf_tools.py",

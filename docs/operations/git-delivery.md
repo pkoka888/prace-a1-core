@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### J2 durable identity and unconfirmed drafts — 2026-09-09
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Additive migration 0014 adds immutable service-level evaluation/claim/resolution records. Inbox persists evaluated evidence, preserves manifest hashes and explicit per-file profiles, and creates or reuses eligible unconfirmed drafts. Conflicting batch profiles propagate to all identifier peers. Explicit resolution rechecks source fingerprints and expected worker version/revision, requires an override reason, and binds the human association to its evidence. Organization mutexes use PostgreSQL NO KEY UPDATE to coexist with OCR foreign-key checks |
+| Validation | 68 PostgreSQL integration tests passed, including simultaneous evaluation/draft/resolution, competing decisions, OCR completion overlap, and historical 0013→0014 migration/uniqueness. 32 focused SQLite workflow tests, 14 historical-migration/reproducer tests and 76 planning/catalog tests passed; model/migration parity reports no changes; planning is 24/24. Committed-source receipt follows after commit. Review found and corrected profile propagation and an OCR/organization lock interaction |
+| Publication | Local feature-branch delivery; inherited outgoing history still requires content/provenance review before private-origin publication |
+| Deployment | No existing environment migrated; supervised development remains at its recorded 0013 state. New migration tested only in disposable databases; no services or PDF packages changed |
+| Activation | Unchanged; new identity services are synthetic-only and require active authorized operators. No new real-data activation |
+| Limitations | BO forms still use their existing association/field-confirmation paths; new revision-checked resolution is a service ready for UI integration. New drafts are not confirmed identities, active workers, issued certificates or A1 PDFs. Missing profile, incomplete/conflicting evidence and possible existing workers defer only draft creation |
+| Next owner | Engineering: integrate BO association with durable resolution and expected-revision field confirmation; apply 0014 through the selected supervised development release, then DB-MIG mapping/shared exports and J4 drafts |
+
 ### J2 derived identity suggestions — 2026-09-09
 
 | Field | Evidence / state |

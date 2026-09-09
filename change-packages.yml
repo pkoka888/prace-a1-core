@@ -51,6 +51,7 @@
       "paths": [
         "portal/release1a/document_intake.py",
         "portal/release1a/inbox.py",
+        "portal/release1a/identity.py",
         "portal/release1a/management/commands/a1_process_inbox.py",
         "portal/release1a/document_storage.py",
         "portal/release1a/document_labels.py",
@@ -68,6 +69,8 @@
         "tests/document_web/__init__.py",
         "tests/document_web/test_intake.py",
         "tests/document_web/test_inbox.py",
+        "tests/document_web/test_identity.py",
+        "tests/document_web/test_identity_postgres.py",
         "tests/document_web/test_readiness_postgres.py",
         "tests/document_web/test_browser_journey.py",
         "tests/m2/test_synthetic_containment.py",
@@ -84,7 +87,7 @@
         "scripts/test_document_intake.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_inbox tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_inbox tests.document_web.test_identity tests.document_web.test_identity_postgres tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
         "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q",
         "venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
       ],
@@ -104,6 +107,7 @@
         "portal/release1a/migrations/0010_a1case_j4_minimum.py",
         "portal/release1a/migrations/0011_a1case_artifact_evidence.py",
         "portal/release1a/migrations/0013_alter_a1case_visual_confirmed_by.py",
+        "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
         "tests/test_release1a_migration_chain.py"
       ],
       "checks": [

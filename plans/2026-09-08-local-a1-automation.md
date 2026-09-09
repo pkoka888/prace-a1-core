@@ -2,7 +2,8 @@
 
 Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
-derived identity suggestions are implemented; worker creation, A1 drafts and BO completion remain planned.
+durable identity evaluations and conditional unconfirmed worker drafts are implemented;
+BO integration and A1 draft generation remain planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -29,11 +30,24 @@ through the shared matcher using explicitly confirmed document identifiers. Rece
 contain region/run/version references, OCR output hashes, a confirmed-worker snapshot
 hash and decision/revision references. Exact consistent matches are `proposed`;
 conflicts/multiple candidates remain unresolved. OCR field conflicts block suggestions.
-These are derived machine evaluations, not durable worker links or acceptance tokens;
-BO must revalidate current source and worker revisions before applying any decision.
-No worker creation or A1 generation is implemented. Batch identity state remains
-`requires_review`; existing confirmations are unchanged. Matching failures report a
-partial batch and can retry without repeating completed OCR.
+Evaluations now persist in `IdentityEvaluation`, deduplicated by organization and
+input fingerprint. They remain machine evidence. The `identity.py` resolution service
+rechecks source hashes and expected worker version/confirmation revision, records
+`IdentityResolution` against the explicit human association, and requires a reason
+for overriding the proposed match. Existing BO forms still use their legacy services;
+wiring them to this revision-checked service is the next UI increment.
+
+An optional per-file manifest `activity_profile` (`employee` or `self_employed`)
+allows the inbox to create an unconfirmed draft from complete, consistent identity
+fields. No profile is inferred from OCR. `WorkerIdentityClaim` deduplicates the typed,
+issuer-scoped identifier within the organization and records its evaluated source.
+Retries and another copy of the same identifier reuse the draft; conflicts, possible
+existing workers and missing facts defer creation with reason codes. Profiles and
+the original manifest hash are preserved in private receipts. Claims are excluded
+from confirmed-identifier matching, and no human field decision or confirmation
+revision is created by the machine. No A1 generation is implemented in this step.
+Batch identity state remains `requires_review`. Unexpected draft/matching failures
+report a partial batch without repeating completed OCR.
 Engineering configures the inbox and an existing authorized active operator once.
 In supervised settings, set `PRACE_INBOX_ORGANIZATION_ID` and
 `PRACE_INBOX_ACTOR_ID`; the private root is
@@ -45,7 +59,7 @@ Publish each private 32-character UUID-hex batch directory by writing its source
 files first, then atomically renaming `ready.json` into place last. Files use
 opaque `<uuidhex>.png` (or supported PDF/JPEG/TIFF) names, not employee names.
 The manifest is `{"organization_id": 1, "files": [{"name": "<uuidhex>.png",
-"sha256": "<64-hex-digest>"}]}` with the configured synthetic organization ID.
+"sha256": "<64-hex-digest>", "activity_profile": "self_employed"}]}` with the configured synthetic organization ID.
 Directories/files are private and operator-owned; arbitrary paths, symlinks,
 wrong hashes and cross-organization roots are rejected. Incomplete batches are
 ignored; rejected items do not stop valid items. A nonzero exit reports unresolved
@@ -77,11 +91,16 @@ OCR jobs use the existing retry/lease rules. An organization-bound local file lo
 serializes inbox invocations. This is not a distributed scheduler or a replacement
 for shared intake, matching, storage or rendering services.
 
-Next phase: persist revision-checked J2 identity resolution and conflict review,
-including safe draft-worker creation and DB-MIG-1/2/5 mapping through existing
-proposals/decisions. Derived receipt suggestions are implemented; durable decisions
-and concurrency acceptance remain. Then implement J4 unverified drafts and BO
-confirmation. Add PostgreSQL concurrency evidence for new database write paths;
+Migration `0014_identity_evaluation_and_draft_claim` adds the three identity records;
+it is additive and reverse operations remove only those new tables. Reversing after
+use discards their evidence and therefore requires retention/export review first.
+The existing supervised development database remains at its recorded 0013 state;
+this delivery tests migration on disposable databases, not a deployed environment.
+
+Next phase: wire BO association forms to revision-checked resolution and extend
+field confirmation with expected-revision checks. Apply 0014 through the selected
+supervised development release workflow before using durable intake there. Continue
+DB-MIG-1/2/5 mapping, then DB-MIG-3/4 shared exports and J4 unverified A1 drafts. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.
 

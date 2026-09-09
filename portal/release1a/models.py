@@ -416,6 +416,70 @@ class WorkerIdentityRevision(TenantModel):
     confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True)
 
 
+class IdentityEvaluation(TenantModel):
+    """Source-bound machine evidence; never a human identity confirmation."""
+
+    evaluation_sha256 = models.CharField(max_length=64)
+    evidence = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["organization", "evaluation_sha256"], name="unique_org_identity_evaluation"
+        )]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("IdentityEvaluation is immutable")
+        return super().save(*args, **kwargs)
+
+
+class WorkerIdentityClaim(TenantModel):
+    """Machine draft origin claim, distinct from a confirmed identifier.
+
+    The service hashes the organization, identifier type, issuer and normalized
+    identifier into identifier_sha256 before creating the claim.
+    """
+
+    identifier_sha256 = models.CharField(max_length=64)
+    worker = models.ForeignKey(Worker, models.PROTECT)
+    evaluation = models.ForeignKey(IdentityEvaluation, models.PROTECT)
+    ocr_run = models.ForeignKey(OcrRun, models.PROTECT)
+    region_id = models.CharField(max_length=36)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["organization", "identifier_sha256"], name="unique_org_identity_claim"
+        )]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("WorkerIdentityClaim is immutable")
+        return super().save(*args, **kwargs)
+
+
+class IdentityResolution(TenantModel):
+    """Bind evaluated evidence and worker revision to a human association.
+
+    The association retains the confirming actor, time and document source.
+    """
+
+    evaluation = models.ForeignKey(IdentityEvaluation, models.PROTECT)
+    association = models.OneToOneField(DocumentRegionAssociation, models.PROTECT)
+    worker_version = models.PositiveIntegerField()
+    reason = models.TextField(blank=True, default="")
+    worker_revision = models.ForeignKey(
+        WorkerIdentityRevision, models.PROTECT, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("IdentityResolution is immutable")
+        return super().save(*args, **kwargs)
+
+
 class ReviewTask(TenantModel):
     """Task for human review of proposals or conflicts."""
 
@@ -482,4 +546,3 @@ class StatusEvent(TenantModel):
         if self.pk:
             raise ValueError("StatusEvent is append-only")
         return super().save(*args, **kwargs)
-

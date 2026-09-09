@@ -19,11 +19,11 @@ permission or new activation gate is required for the authorized synthetic prepa
 2026-09-09 implementation checkpoint: seed/reproducer repairs and bounded J2
 synthetic intake have behavioral coverage. Fixture role mapping, duplicate/case
 reconciliation and exact settings selection are implemented; evidence belongs in
-the delivery record. Derived J2 identity suggestions now bind OCR and confirmed-worker
-inputs in protected receipts. No DB-MIG cutover is accepted. Next is durable
-revision-checked identity/conflict resolution and safe draft-worker creation with
-DB-MIG-1/2/5 mapping, preserving historical databases and
-existing cutover dependencies.
+the delivery record. J2 now persists evaluated evidence and unconfirmed identifier
+claims, creates eligible drafts and exposes revision-checked explicit resolution.
+Migration 0014 is tested on disposable databases; existing environments are preserved.
+No DB-MIG cutover is accepted. Next: BO revision integration, selected supervised
+migration and DB-MIG-1/2/5 mapping, preserving existing cutover dependencies.
 
 ## Purpose and current ownership
 

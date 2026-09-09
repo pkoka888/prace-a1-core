@@ -298,7 +298,7 @@ class InboxTests(TransactionTestCase):
 
     def test_matching_failure_is_partial_and_retry_preserves_completed_ocr(self):
         self.batch()
-        with patch("portal.release1a.inbox.evaluate_identity_proposals", side_effect=ValueError("SENSITIVE")):
+        with patch("portal.release1a.inbox.persist_identity_evaluation", side_effect=ValueError("SENSITIVE")):
             result = self.run_inbox()[0]
         self.assertEqual(result["status"], "partial")
         self.assertEqual(result["items"][0]["status"], "completed")

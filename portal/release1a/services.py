@@ -8,7 +8,7 @@ from prototypes.architecture.adr001.proof_contract import a1_prepare, stable_has
 from .models import (
     A1Case, Assignment, AuditEvent, Document, DocumentVersion, DocumentClassification,
     FieldProposal, FieldDecision, IntakeSession, Membership, OcrRun,
-    ReviewTask, StatusEvent, Worker
+    ReviewTask, StatusEvent, Worker, Organization
 )
 
 class Forbidden(Exception): pass
@@ -83,6 +83,7 @@ def require_membership(user, organization, role=None):
 @transaction.atomic
 def create_worker(user, organization, **fields):
     require_capability(user, organization, "worker:create")
+    Organization.objects.select_for_update(no_key=True).get(pk=organization.pk)
     worker = Worker.objects.create(organization=organization, **fields)
     AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}", event_type="worker.created", object_ref=f"worker:{worker.pk}", outcome="success")
     return worker
@@ -195,6 +196,7 @@ def confirm_field_proposal(user, organization, field_proposal, corrected_value=N
     from .models import DocumentRegionAssociation, WorkerIdentityRevision
     from src.document_core.interpretation import valid_value
     require_capability(user, organization, "document:confirm")
+    Organization.objects.select_for_update(no_key=True).get(pk=organization.pk)
     proposal = FieldProposal.objects.select_for_update().get(pk=field_proposal.pk, organization=organization)
     if proposal.version.organization_id != organization.pk or proposal.document.organization_id != organization.pk:
         raise Forbidden("cross-organization proposal")

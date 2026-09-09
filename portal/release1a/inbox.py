@@ -25,8 +25,9 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from src.document_core.images import MAX_BYTES
-from .document_intake import authorize, audit, intake, execute_run, evaluate_identity_proposals
+from .document_intake import authorize, audit, intake, execute_run
 from .document_storage import document_storage
+from .identity import persist_identity_evaluation, prepare_identity_draft
 from .models import Document
 from .services import Forbidden
 
@@ -58,7 +59,8 @@ def _read(name, parent, limit):
 
 
 def _manifest(batch_fd, organization):
-    manifest = json.loads(_read("ready.json", batch_fd, 128 * 1024))
+    manifest_bytes = _read("ready.json", batch_fd, 128 * 1024)
+    manifest = json.loads(manifest_bytes)
     if not isinstance(manifest, dict) or manifest.get("organization_id") != organization.pk:
         raise ValueError("INBOX_ORGANIZATION_MISMATCH")
     files = manifest.get("files")
@@ -70,10 +72,11 @@ def _manifest(batch_fd, organization):
                 or not NAME.fullmatch(item["name"])
                 or not isinstance(item.get("sha256"), str)
                 or not re.fullmatch(r"[a-f0-9]{64}", item["sha256"])
-                or item["name"] in seen):
+                or item["name"] in seen
+                or ("activity_profile" in item and item["activity_profile"] not in ("employee", "self_employed"))):
             raise ValueError("INBOX_INVALID_MANIFEST")
         seen.add(item["name"])
-    return files
+    return files, hashlib.sha256(manifest_bytes).hexdigest()
 
 
 def process_inbox(user, organization, *, processor=None):
@@ -125,7 +128,7 @@ def _process_batches(root_fd, user, organization, processor):
         try:
             batch_fd = _private_fd(batch, root_fd, directory=True)
             try:
-                files = _manifest(batch_fd, organization)
+                files, result["manifest_sha256"] = _manifest(batch_fd, organization)
             except FileNotFoundError:
                 continue  # No atomically published ready manifest yet.
             for item in files:
@@ -153,12 +156,39 @@ def _process_batches(root_fd, user, organization, processor):
             completed = [item["run_ref"] for item in result["items"] if item["status"] == "completed"]
             if completed:
                 try:
-                    result["identity_evaluation"] = evaluate_identity_proposals(user, organization, completed)
+                    evaluation = persist_identity_evaluation(user, organization, completed)
+                    result["identity_evaluation"] = {**evaluation.evidence, "evaluation_ref": evaluation.pk}
+                    result["drafts"] = []
+                    profiles = {outcome["run_ref"]: item.get("activity_profile")
+                                for item, outcome in zip(files, result["items"])
+                                if outcome["status"] == "completed" and item.get("activity_profile")}
+                    # Contradictory business defaults for the same source are unresolved.
+                    conflicting = {run_id for run_id in profiles if len({item.get("activity_profile")
+                        for item, outcome in zip(files, result["items"])
+                        if outcome.get("run_ref") == run_id and item.get("activity_profile")}) > 1}
+                    for run_id in conflicting:
+                        profiles[run_id] = None  # Preserve conflicts for identifier peers too.
+                    for region in evaluation.evidence["regions"]:
+                        run_id = region["run_ref"]
+                        draft = {"run_ref": run_id, "region_ref": region["region_ref"]}
+                        if run_id not in profiles or run_id in conflicting:
+                            draft.update(status="requires_review", reason=("ACTIVITY_PROFILE_CONFLICT"
+                                         if run_id in conflicting else "ACTIVITY_PROFILE_REQUIRED"))
+                        else:
+                            draft.update(activity_profile=profiles[run_id], profile_source="batch_manifest")
+                            try:
+                                draft.update(prepare_identity_draft(user, organization, evaluation.pk,
+                                    run_id, region["region_ref"], activity_profile=profiles[run_id], activity_profiles=profiles))
+                            except Exception:
+                                draft.update(status="requires_review", reason="DRAFT_PREPARATION_UNAVAILABLE")
+                        result["drafts"].append(draft)
                 except Exception:
                     result["identity_evaluation"] = {"status": "unavailable", "accepted": False}
             result["status"] = "completed" if (
                 all(i["status"] == "completed" for i in result["items"])
-                and result.get("identity_evaluation", {}).get("status") != "unavailable") else "partial"
+                and result.get("identity_evaluation", {}).get("status") != "unavailable"
+                and not any(d.get("reason") == "DRAFT_PREPARATION_UNAVAILABLE"
+                            for d in result.get("drafts", []))) else "partial"
         except Exception:
             result["status"] = "rejected"
             result["reason"] = "INBOX_BATCH_REJECTED"
