@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 import uuid
+from datetime import datetime, timezone
 
 
 def digest(data):
@@ -143,6 +144,7 @@ def acceptance_commands(python, state):
 def reproduce(repo, revision, *, commands=None):
     """commands is an internal injection seam for synthetic unit fixtures only."""
     os.umask(0o077)
+    started_at = datetime.now(timezone.utc).isoformat()
     repo = Path(repo).resolve()
     try:
         sha = git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}").decode().strip()
@@ -173,6 +175,7 @@ def reproduce(repo, revision, *, commands=None):
            "GIT_CEILING_DIRECTORIES": str(work.parent), "LC_ALL": "C.UTF-8"}
     commands = commands if commands is not None else acceptance_commands(sys.executable, state)
     receipt = {"schema_version": "2.0", "commit_sha": sha, "git_tree": git(repo, "rev-parse", sha + "^{tree}").decode().strip(),
+               "started_at": started_at,
                "export_dir": str(export), "test_cwd": str(work), "runner_sha256": digest(Path(__file__).read_bytes()),
                "python": {"executable": sys.executable, "executable_sha256": digest(Path(sys.executable).read_bytes()), "version": sys.version},
                "dependencies": sorted(f"{d.metadata['Name']}=={d.version}" for d in importlib.metadata.distributions()),
@@ -202,6 +205,7 @@ def reproduce(repo, revision, *, commands=None):
     except ValueError:
         receipt["source_integrity_after_checks"] = False
     receipt["passed"] = receipt["source_integrity_after_checks"] and all(c["exit_code"] == 0 for c in receipt["checks"])
+    receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
     receipt_path = state / "receipt.json"
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
     return receipt_path, receipt
