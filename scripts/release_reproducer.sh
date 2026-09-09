@@ -78,10 +78,10 @@ RECEIPT_TMP="${RECEIPT}.tmp"
 : > "${RECEIPT_TMP}"
 
 CHECKS=(
-    "${PYTHON_BIN} scripts/validate_planning.py"
-    "${PYTHON_BIN} scripts/validate_change_packages.py --staged --run-checks"
-    "DJANGO_SETTINGS_MODULE=portal.settings_document_tests ${PYTHON_BIN} -m pytest tests/m2/test_synthetic_containment.py -q"
-    "DJANGO_SETTINGS_MODULE=portal.settings_document_tests ${PYTHON_BIN} -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py -q"
+    "PYTHONPATH=${REPO_ROOT} ${PYTHON_BIN} scripts/validate_planning.py"
+    "PYTHONPATH=${REPO_ROOT} ${PYTHON_BIN} scripts/validate_change_packages.py --staged --run-checks"
+    "DJANGO_SETTINGS_MODULE=portal.settings_document_tests PYTHONPATH=${REPO_ROOT} ${PYTHON_BIN} -m pytest tests/m2/test_synthetic_containment.py -q"
+    "DJANGO_SETTINGS_MODULE=portal.settings_document_tests PYTHONPATH=${REPO_ROOT} ${PYTHON_BIN} -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py -q"
 )
 
 echo "Running ${#CHECKS[@]} acceptance checks against ${EXPORT_DIR} (using source venv ${PYTHON_BIN})..."
@@ -102,11 +102,13 @@ FAIL_COUNT=0
         stderr_path="${RECEIPT_DIR}/check-${FIRST}.stderr"
         : > "${stdout_path}"
         : > "${stderr_path}"
-        # Run with a clean environment to avoid leaking parent shell vars
-        # into the reproducer's stdout/stderr capture. PYTHONPATH is set so
-        # the venv interpreter can import scripts/.manage-less imports work
-        # because PYTHON_BIN itself carries the venv site-packages.
-        if env -i PATH="${PATH}" PYTHONPATH="${REPO_ROOT}" "${cmd}" \
+        # env -i would treat "${cmd}" as one executable name; expand PYTHONPATH
+        # inline and run the python binary directly so its argv is correct.
+        # The script command lines include the absolute PYTHON_BIN and a
+        # PYTHONPATH=/repo assignment so the venv interpreter finds scripts/
+        # and portal/.
+        if env -i PATH="${PATH}" PYTHONPATH="${REPO_ROOT}" \
+                bash -c "${cmd}" \
                 >"${stdout_path}" 2>"${stderr_path}"; then
             status="PASS"
             PASS_COUNT=$((PASS_COUNT + 1))
