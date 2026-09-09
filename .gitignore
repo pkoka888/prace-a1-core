@@ -116,3 +116,17 @@ scans/
 *.sqlite3-wal
 *.sqlite3-shm
 /:memory:.ses
+
+# Plan AC research corpora — experimental market-research-evidence skill
+# Per docs/research/2026-09-07-research-audit.md disposition: retain pending review.
+# Skill activation requires the four-gate checklist (Pilot 1 + Pilot 2 evidence,
+# review, safety, reproducibility) before any of these can be tracked.
+/research/acquisition/
+!/research/acquisition/synthetic-mini-pilot/
+/research/benchmark-experimental/
+/research/pilot/
+/research/processed/
+/research/review/*.json
+!/research/review/operator-review.template.json
+!/research/review/review-queue.schema.json
+!/research/review/review-response.schema.json
