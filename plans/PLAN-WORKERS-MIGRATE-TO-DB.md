@@ -22,8 +22,9 @@ reconciliation and exact settings selection are implemented; evidence belongs in
 the delivery record. J2 now persists evaluated evidence and unconfirmed identifier
 claims, creates eligible drafts and exposes revision-checked explicit resolution.
 Migration 0014 is tested on disposable databases; existing environments are preserved.
-No DB-MIG cutover is accepted. Next: BO revision integration, selected supervised
-migration and DB-MIG-1/2/5 mapping, preserving existing cutover dependencies.
+No DB-MIG cutover is accepted. Next: DB-MIG-1/2/5 mapping and shared exports/J4
+unverified drafts, with BO revision integration in parallel and selected supervised
+migration before runtime use. Existing cutover dependencies remain unchanged.
 
 ## Purpose and current ownership
 

@@ -97,10 +97,12 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next phase: wire BO association forms to revision-checked resolution and extend
-field confirmation with expected-revision checks. Apply 0014 through the selected
-supervised development release workflow before using durable intake there. Continue
-DB-MIG-1/2/5 mapping, then DB-MIG-3/4 shared exports and J4 unverified A1 drafts. Add PostgreSQL concurrency evidence for new database write paths;
+Next functional phase: complete DB-MIG-1/2/5 input mapping and connect draft workers
+to DB-MIG-3/4 shared exports and J4 unverified A1 generation. In parallel, wire BO
+association forms to revision-checked resolution and protect field confirmation
+with expected revisions. BO UI completion is not a gate for eligible unverified
+A1 drafts. Apply 0014 through the selected supervised development release workflow
+before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.
 

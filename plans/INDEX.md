@@ -51,8 +51,8 @@ synthetic J2 inbox intake are implemented. Intake reuses shared services and sav
 durable identity evaluations and conditional unconfirmed worker drafts. Explicit
 resolution checks current sources and worker revisions; BO form integration and
 A1 generation remain planned. Validation and migration/publication state belong in
-the delivery record. Next is BO revision integration and DB-MIG-1/2/5 mapping,
-then shared exports/J4 drafts;
+the delivery record. Next is DB-MIG-1/2/5 mapping and shared exports/J4 drafts,
+with BO revision integration in parallel;
 existing catalog IDs, plan headers and cutover/activation approvals are unchanged.
 
 ## Historical

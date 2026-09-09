@@ -36,12 +36,17 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Additive migration 0014 adds immutable service-level evaluation/claim/resolution records. Inbox persists evaluated evidence, preserves manifest hashes and explicit per-file profiles, and creates or reuses eligible unconfirmed drafts. Conflicting batch profiles propagate to all identifier peers. Explicit resolution rechecks source fingerprints and expected worker version/revision, requires an override reason, and binds the human association to its evidence. Organization mutexes use PostgreSQL NO KEY UPDATE to coexist with OCR foreign-key checks |
-| Validation | 68 PostgreSQL integration tests passed, including simultaneous evaluation/draft/resolution, competing decisions, OCR completion overlap, and historical 0013→0014 migration/uniqueness. 32 focused SQLite workflow tests, 14 historical-migration/reproducer tests and 76 planning/catalog tests passed; model/migration parity reports no changes; planning is 24/24. Committed-source receipt follows after commit. Review found and corrected profile propagation and an OCR/organization lock interaction |
-| Publication | Local feature-branch delivery; inherited outgoing history still requires content/provenance review before private-origin publication |
+| Validation | 68 PostgreSQL integration tests passed, including simultaneous evaluation/draft/resolution, competing decisions, OCR completion overlap, and historical 0013→0014 migration/uniqueness. 32 focused SQLite workflow tests, 14 historical-migration/reproducer tests and 76 planning/catalog tests passed; model/migration parity reports no changes; planning is 24/24. Required hooks passed. Committed-source `165491c` acceptance passed 23 export-applicable planning checks, 91 tooling/A1 tests plus 9 subtests, and all 32 inbox/identity tests with source integrity intact. Review found and corrected profile propagation and an OCR/organization lock interaction |
+| Publication | Implementation committed locally as `165491c`; this documentation checkpoint records its completed acceptance. Inherited outgoing history still requires content/provenance review before private-origin publication |
 | Deployment | No existing environment migrated; supervised development remains at its recorded 0013 state. New migration tested only in disposable databases; no services or PDF packages changed |
 | Activation | Unchanged; new identity services are synthetic-only and require active authorized operators. No new real-data activation |
 | Limitations | BO forms still use their existing association/field-confirmation paths; new revision-checked resolution is a service ready for UI integration. New drafts are not confirmed identities, active workers, issued certificates or A1 PDFs. Missing profile, incomplete/conflicting evidence and possible existing workers defer only draft creation |
-| Next owner | Engineering: integrate BO association with durable resolution and expected-revision field confirmation; apply 0014 through the selected supervised development release, then DB-MIG mapping/shared exports and J4 drafts |
+| Next owner | Engineering: connect draft workers to DB-MIG input mapping/shared exports and J4 unverified A1 generation; integrate BO revision checks in parallel, without gating eligible drafts on BO completion. Apply 0014 through the selected supervised development release before runtime use |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/b98a200ed2634096ac4cd0c6b84cd825/receipt.json`.
+The documentation-only checkpoint preserves the tested implementation blobs and
+clarifies that BO UI work runs in parallel with the next A1 generation increment.
 
 ### J2 derived identity suggestions — 2026-09-09
 
