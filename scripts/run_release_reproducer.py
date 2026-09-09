@@ -85,6 +85,7 @@ def private_dir(path):
         raise ValueError("Private directory must not be a symlink")
     if not path.exists():
         path.mkdir(mode=0o700)
+        path.chmod(0o700)  # Clear inherited setgid on directories created by this run.
     if not path.is_dir():
         raise ValueError("Private directory is not a directory")
 

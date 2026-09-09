@@ -15,6 +15,7 @@ from scripts.run_release_reproducer import digest, reproduce
 def repo(tmp_path):
     root = tmp_path / "synthetic-repo"
     root.mkdir()
+    root.chmod(0o2700)  # Mirror the workspace's inherited group-directory flag.
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     for key, value in (("user.name", "Synthetic"), ("user.email", "synthetic@example.invalid")):
         git(root, "config", key, value)
