@@ -75,6 +75,13 @@ human confirmation, certificate status or existing artifacts.
 
 ## Current evidence and review corrections
 
+2026-09-09 bounded repair: `scripts/finalize_a1.py readiness --provisional`
+uses the same required-field policy as provisional validation, allowing blank
+self-employed 5.1 while retaining Section 5.2, verified profile status and human
+input flags. Default readiness remains authoritative. Reports label their mode
+and `review_preflight` scope; they do not replace full input reconciliation,
+artifact QA or promotion. This does not implement the unattended draft service.
+
 The 2026-09-08 schema inspection found the synthetic-review SQLite database at
 migration 0009, with 0010–0013 on disk. The root SQLite history includes an absent
 `0008_squashed_document_intake_and_j4` and duplicate

@@ -31,7 +31,54 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
-### Consolidation documentation delivery
+### Readiness and roadmap repair — 2026-09-09
+
+OpenCode's cross-reference feedback confirms the bounded `cba3e50` delivery.
+Its remaining-work concern is valid: inherited work is not delivered merely
+because it exists locally. The review also found older roadmap sections that
+contradicted the new contract despite passing structural validation; these are
+corrected here. A new Recent Learnings section is optional, not another gate.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Explicit `readiness --provisional`; one shared CSV required-field helper used by readiness and validation; report/summary mode and review_preflight scope; authoritative default and human flags retained. Roadmap/index now distinguish implemented components, fresh synthetic preparation and gated cutover; M4-A model/export/dashboard claims corrected |
+| Validation | Exported A1 source: 47 tests and 9 subtests passed; required hook repeated that focused suite successfully. Documentation source checks: 44 field rows, 97 relative links and 24/24 planning checks passed from the staged-source export |
+| Publication | A1 implementation `445aee1`; separate documentation checkpoint carries this record. Exact commits/remote SHA and result are in protected runtime receipt and operator handoff |
+| Deployment | Not performed; no service, historical database, employee PDF or migration changes |
+| Activation | Unchanged; existing real-data-rules §14 and registered approvals remain in force |
+| Limitations | Readiness is review preflight, not normalized-source reconciliation or artifact QA; unattended drafts, seed --verify, fresh development bootstrap and reproducer still planned |
+| Next owner | Engineering: repair seed/fixture shape mapping and verify idempotence, then fresh supervised development and immutable-source reproducer under the existing plan |
+
+A missing 5.1 still blocks authoritative readiness and provisional employee
+profiles. Provisional mode follows existing validation requirements for missing
+issuance evidence; it never sets approval flags or creates PDFs. Regression cases
+cover mode/profile selection, missing territory, duplicate IDs, unverified office
+profiles, all four human flags, unchanged input bytes and audited mode-labelled CLI
+receipts. Existing publisher, normalized-source and promotion checks remain active.
+
+Acceptance command: `venv/bin/python -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py -q`.
+The tested export and resulting A1 Git object contain identical source/test blobs.
+The old planning filename-token check rejects A1 source filenames in a mixed
+code/documentation staging set; keep this A1 code and the planning update as
+separate reviewed commits with their configured hooks. No check is disabled or
+redefined by this repair. The documentation checkpoint runs the planning validator
+with the A1 source already committed. This legacy mixed-batch limitation remains
+a scoped tooling follow-up, not a new application or activation gate.
+
+The metadata-only inventory retained 81 inherited entries (12 modified, 69 untracked)
+in planning, A1-policy, tooling and research/report scopes. These are classified as
+preserve pending scoped content review, not declared stale or approved for staging.
+The inventory includes no copied employee content and remains under protected
+`runtime/portal/temporary/readiness-roadmap-20260909/`. Existing parent-plan edits
+are preserved; only the small readiness correction to PLAN-A1 is included here.
+Do not create another editable source tree or archive unknown files to obtain a
+clean status. New deliveries continue updating this record; detailed inventories
+and hash-bound receipts remain runtime artifacts.
+
+### Consolidation documentation delivery — 2026-09-08
+
+Historical delivery state at `cba3e50`; the 2026-09-09 repair above supersedes its
+reported readiness discrepancy.
 
 | Field | Evidence / state |
 |---|---|

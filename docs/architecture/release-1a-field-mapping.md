@@ -98,7 +98,7 @@ text is preserved; display casing belongs to the shared renderer.
 | `postal_code` | Existing I.postal_code; freeze S.identity.residence.postal_code | String; preserve accepted formatting/leading zeroes | P: source or versioned enrichment plus decision | Missing allowed pending review; required by canonical gate |
 | `country_code` | Existing I.country_code; freeze S.identity.residence.country_code | Validate supported country code; preserve residence distinction | P + residence field decision | Unknown allowed pending review; required by canonical gate |
 | `status_profile` | A+.status_profile; freeze S.activity.status_profile; W.activity_profile remains broad projection | Preserve all three canonical values; self_employed_multi_state maps to W self_employed, other two to employee | P + explicit activity decision, never scan/name inference | Unknown blocks profile-specific rendering; broad W profile cannot reconstruct this field |
-| `activity_name` | A+.activity.name; freeze S.activity.name | Section 5.1; preserve explicit blank for provisional self-employed multi-state policy | P: activity evidence or versioned policy default | Blank intentionally permitted for that provisional policy; current readiness_report is stricter, so do not claim all gates pass |
+| `activity_name` | A+.activity.name; freeze S.activity.name | Section 5.1; preserve explicit blank for provisional self-employed multi-state policy | P: activity evidence or versioned policy default | Blank permitted in provisional validation/readiness mode for this profile; authoritative mode still requires a value; neither result establishes artifact acceptance |
 | `activity_address` | A+.activity.address; freeze S.activity.address | Section 5.2 territory list, not a street address; default DE, CZ only as labelled policy proposal | P: explicit territory evidence/override or policy version | Required territory; explicit confirmed override wins; generated default remains unverified |
 | `employment_id` | A+.employment.employer_id; freeze S.employment.employer_id | CSV employment_id becomes core employer_id; preserve identifier string | P: Section 4 employer/self-employment evidence | Required by current canonical gate; never use tenant Organization.key as employer evidence |
 | `employment_name` | A+.employment.employer_name; freeze S.employment.employer_name | CSV employment_name becomes core employer_name; preserve legal name casing | P: Section 4 evidence and decision | Required; employee profiles must not receive self-employed employer data |
@@ -159,8 +159,10 @@ Neither `pdf_created`, a generated identifier, readiness nor visual PASS supplie
 Both current `validate_review` modes require `identity_reviewed`,
 `certificate_reviewed` and `approved_for_pdf` to equal YES, and
 `validated_by_user` to equal 1; provisional mode does not waive these flags.
-The generic `readiness_report` also requires them and nonempty Section 5.1,
-whereas provisional self-employed validation permits the intentional 5.1 blank.
+`readiness_report(provisional=True)` and `readiness --provisional` retain those
+flags and share provisional required fields, including the intentional blank 5.1
+for self-employed multi-state rows. Default readiness checks authoritative inputs.
+Receipts label their mode and review-preflight scope, not artifact acceptance.
 `pdf_created` is not an input-approval gate. Nullable/absent facts in the proposed
 storage contract therefore do not imply acceptance by either current validator.
 

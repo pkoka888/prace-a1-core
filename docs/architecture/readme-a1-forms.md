@@ -67,11 +67,21 @@ new human decision. Missing facts are routed to the affected record's review.
 
 For the current self-employed multi-state provisional presentation, Section 5.1
 may be blank; Section 5.2 defaults to `DE, CZ`. Preserve explicitly reviewed
-territory overrides and keep employee/self-employed profiles distinct. Generic
-`readiness_report()` still lists activity_name as required, whereas provisional
-validation permits blank 5.1. This is a focused follow-up discrepancy, not evidence
-that every provisional generation path is blocked. Do not add blanket rejection
-rules in documentation or weaken the actual validation functions.
+territory overrides and keep employee/self-employed profiles distinct.
+`readiness --provisional` now uses the same required-field contract as provisional
+validation; default readiness still checks authoritative review requirements.
+Both retain all human input flags. Provisional preflight does not demand evidence
+of issuance; it never upgrades unverified facts or authorizes final promotion.
+
+```bash
+venv/bin/python scripts/finalize_a1.py readiness --provisional
+```
+
+This uses the selected protected inputs and writes an audited private readiness
+receipt. The JSON receipt and sanitized console summary identify `mode` and
+`scope=review_preflight`. A ready result is not full normalized-source reconciliation,
+PDF generation or artifact QA. The canonical publisher still performs those checks.
+Use `readiness` without the flag for the authoritative-evidence preflight.
 
 The proposed unattended draft service must prepare visibly unverified artifacts
 without pretending canonical approval flags were confirmed. That new contract

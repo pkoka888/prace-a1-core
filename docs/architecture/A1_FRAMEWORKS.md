@@ -58,10 +58,10 @@ For the current self-employed multi-state provisional presentation,
 `config/a1_provisional.json` defaults `activity_name` (5.1) to blank and
 `activity_address` (5.2) to `DE, CZ`. Preserve explicitly reviewed row-specific
 territory overrides and distinguish employee from self-employed profiles.
-Provisional validation and QA support blank 5.1; the generic readiness report
-still lists activity_name as required. Record that discrepancy as a focused
-follow-up, not proof that provisional generation is universally blocked. Do not
-introduce an additional documentation-only rejection rule or interpret this display default
+Provisional validation, `readiness --provisional` and QA support blank 5.1.
+Default readiness checks authoritative review requirements, including activity_name.
+The mode is explicit in the JSON receipt and console summary; readiness is a
+review preflight, not generation or artifact approval. Do not interpret this display default
 as a legal determination. Explicit values must follow the implemented field policy.
 
 ## Data and storage ownership

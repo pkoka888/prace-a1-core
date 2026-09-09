@@ -10,7 +10,8 @@ The [local automation contract](2026-09-08-local-a1-automation.md) and
 J2/J4/DB-MIG follow-up. Reconcile baseline/scoped inputs explicitly; preserve working
 provisional packages. The canonical renderer and both frameworks remain in place.
 Blank provisional self-employed 5.1 and default 5.2 `DE, CZ` follow existing core
-policy; generic readiness discrepancies stay scoped to that path. Artifact creation,
+policy; readiness now selects provisional mode explicitly with `--provisional`.
+Its default authoritative-evidence mode and human input flags remain intact. Artifact creation,
 input acceptance, visual review and external issuance are distinct.
 This documentation checkpoint changes no PDFs or readiness/approval states. Current
 instructions in AGENTS.md supersede repetitive historical validation procedures.

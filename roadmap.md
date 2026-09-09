@@ -2,8 +2,8 @@
 
 **Status:** Authoritative
 **Original date:** 2026-08-19
-**Last status update:** 2026-09-07 (runtime/J4 engineering acceptance recorded)
-**Current stage:** M2 synthetic engineering; runtime confinement/readiness and J4 stored artifact implementation delivered; exact synthetic acceptance in the engineering report; remaining ENG-001 checks, visual acceptance and deployment gated.
+**Last status update:** 2026-09-09 (consolidated source evidence and next implementation scope)
+**Current stage:** M2 synthetic engineering; shared intake, runtime confinement/readiness and J4 stored artifacts have committed synthetic evidence. Fresh supervised-development preparation and remaining J2/J4 journey acceptance are next; ENG-001, human review, cutover, deployment and activation remain separate.
 
 This is the sole authoritative execution roadmap. Dated files under `plans/` define bounded work; older roadmaps remain historical context only.
 
@@ -12,8 +12,10 @@ This is the sole authoritative execution roadmap. Dated files under `plans/` def
 Consolidated [local automation contract](plans/2026-09-08-local-a1-automation.md)
 and [44-field mapping](docs/architecture/release-1a-field-mapping.md): one editable
 source tree; immutable release exports; explicit development/production data roots;
-reconciled inputs followed by fresh synthetic DB/seed/reproduction work, then
-J2/J4 and DB-MIG-1 through DB-MIG-7. Automatic processing will save proposals and
+reconciled inputs followed by fresh supervised-development DB, seed `--verify`
+and release reproduction work, then remaining J2/J4 automation and DB-MIG-1
+through DB-MIG-7. Existing shared intake and J4 artifact components have the
+committed synthetic evidence in the [delivery record](docs/operations/git-delivery.md). Automatic processing will save proposals and
 prepare eligible unverified drafts; BO records actor/time/revision confirmation.
 AGENTS.md now uses proportional checks and one delivery record. This is a
 documentation checkpoint, not implemented automation, database migration, deployment
@@ -70,16 +72,16 @@ partner operations, planning, attendance, A1, payroll, and operational finance.
 Deliver it incrementally: Jan's document → worker → assignment → A1 workflow is
 the first usable increment and must not wait for later module activation.
 
-## Now / Parallel / Gated
+## Now / Next / Parallel / Gated
 
 | Category | Work |
 |---|---|
-| **Now** | M2 review environment **implemented** (2026-09-02): synthetic DB under `runtime/portal/synthetic-review/`, real django-allauth TOTP (DEC-007), CSRF enforcement, `Kontrola Release 1A` four-section review surface at `/review/`, hash-bound build receipts, automated readiness script `scripts/verify_synthetic_review_readiness.sh`. Jan observes J1–J4 via `/review/`; approval records are immutable. |
-| **Next on Release 1A** | Complete runnable Czech-first J1–J4 screens; observe Jan/operator journeys; collect operational exceptions. |
+| **Now** | Mode-aware A1 readiness is implemented with `readiness --provisional` and the unchanged authoritative default. Engineering: reconcile source dependencies and explicit input ownership under the [local automation contract](plans/2026-09-08-local-a1-automation.md). Shared intake, runtime and J4 artifact components have committed synthetic evidence in the [delivery record](docs/operations/git-delivery.md); this does not establish a current runnable service or observed J1–J4 acceptance. |
+| **Next on Release 1A** | Prepare a fresh `runtime/portal/supervised-development/` database from the on-disk migration graph; extend the seed with read-only `--verify`; implement the planned immutable-commit release reproducer. Then complete remaining J2/J4 coordinator/draft and BO journeys and DB-MIG-1 through DB-MIG-7, with cutover acceptance dependencies preserved. |
 | **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-LEGAL (G/J) + PLAN-INVOICE (P) research; Plan AC integrity lane (PLAN-INVOICE): Integrity 1.3 repair + Pilot 1/2; PLAN-INVOICE (Plan AD) synthetic contract; PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). |
-| **Gated** | PLAN-WORKERS (N/O) production impl waits for M1A; **PLAN-A1 (Plan R) active/blocked** — provisional regeneration blocked (25/25 as of 2026-09-06 investigation: 0/25 AUTHORITATIVE source statuses; historical hash equality; current 26 provisional/25 final files need reconciliation; unverified institution evidence); preserve existing provisional package. PLAN-INVOICE (Plan AD) persistence/acceptance waits DEC-015; portal scaffolding proceeds in M2 (synthetic only); GitLab/CI (PLAN-INFRA, formerly Plan AE/DEC-016) requires explicit approval; real data, publication, history rewrite require separate gates. |
+| **Gated** | `ENG-001` and observed Release 1A acceptance remain prerequisites for accepted DB cutover; synthetic preparation may proceed. PLAN-A1 authoritative-input reconciliation and receipt-bound final promotion remain unresolved; current scoped evidence belongs in [PLAN-A1](plans/PLAN-A1.md) and the delivery record, without inferring authority from historical counts. PLAN-INVOICE persistence/acceptance waits DEC-015. Deployment, new real-data portal migration/activation, GitLab/CI changes and history rewrite retain their existing authorization requirements. Routine reviewed private-origin feature-branch publication follows AGENTS.md. |
 | **Cleanup (this cycle)** | Read-only source inventory and dependency analysis only. Unknown research/runtime artifacts require classification; no moves, deletions, backup cleanup or legacy-script execution in stabilization scope. |
-| **Immediate TODOs (R-01/R-02/R-03)** | ✅ **COMPLETED 2026-08-20**: R-01 (7 cols added), R-02 (2 people added), R-03 (doc_ids→/2026/). Canonical: 11 PDFs, 33 previews, QA passed. Visual review & backup cleanup pending. |
+| **Historical R-01/R-02/R-03 checkpoint** | Completed 2026-08-20. Its package counts and QA describe that dated run only; they do not define the current cohort or establish current artifact approval. |
 
 ## Delivery increments
 
@@ -173,29 +175,36 @@ failure/approval states.
 
 ## M4-A — Worker data unified in the database (DB migration)
 
-The CSV (`a1/review.csv`) + cohort JSON (`a1/cohort.json`) + employees-normalized
-JSON trio are file-based, gitignored, and mutated outside the dashboard. The
-dashboard already models `portal.Worker`, `portal.A1Case`, `portal.Assignment`,
-and `portal.Approval`. The DB migration sub-plan moves the authoritative data
-into those models so the dashboard "Generate A1" button is a single-step
-routine with full provenance.
+Before accepted cutover, the canonical CLI uses explicitly reconciled protected
+CSV/cohort/normalized-identity snapshots. The dashboard already reads scoped
+`Worker` and `Assignment` database rows through `portal.release1a.services` and
+stores `A1Case` snapshots; it does not read that legacy file trio. Existing
+`FieldProposal`, `FieldDecision` and `WorkerIdentityRevision` own proposal and
+identity-review evidence. There is no `Approval` model.
 
 - [Plan PLAN-WORKERS-MIGRATE-TO-DB](plans/PLAN-WORKERS-MIGRATE-TO-DB.md)
-  (planned) tracks DB-MIG-1 through DB-MIG-7. After DB-MIG-7, A1 generation
-  reads exclusively from `portal.release1a` models. The legacy
-  `a1/*.json` / `a1/*.csv` files are frozen under `a1/_archive/` and a CI
-  gate (`scripts/check_no_csv_reads.py`) blocks any tracked script from
-  re-introducing a CSV read.
-- The synthetic review environment (`runtime/portal/synthetic-review/`) and
-  the Release 1A migration history stay unchanged; this plan only adds a
-  one-time legacy-data migration command and the CI gate.
-- Until DB-MIG-7 lands, the dashboard continues to read from the file-based
-  trio via `portal.release1a.services` adapters. The CLI
-  (`scripts/generate_provisional_a1.py`) keeps working because its inputs
-  (`--review`, `--cohort`) still exist.
+  (planned) tracks DB-MIG-1 through DB-MIG-7 under the
+  [local automation contract](plans/2026-09-08-local-a1-automation.md) and
+  [44-field mapping](docs/architecture/release-1a-field-mapping.md).
+  Mapping/schema and shared export adapters remain implementation work; the
+  present dashboard snapshot is not yet the complete mapped A1 input contract.
+- Fresh synthetic development setup, seed reconciliation and release reproduction
+  proceed under existing authority. Preserve historical databases; rebuild the
+  fresh development database from the on-disk graph without fabricated history.
+  PostgreSQL supplies migration/concurrency acceptance; SQLite supports isolated tests.
+- Accept cutover after ENG-001 and observed Release 1A acceptance, mapped-input
+  reconciliation and DB-MIG evidence. Only then freeze legacy master editing.
+  Guard cutover production adapters against live legacy-master reads; historical
+  import and revision-bound CSV/JSON compatibility exports remain allowed through
+  the shared adapter. This is not a universal ban on CSV readers.
+- After cutover, dashboard and local coordinator use the same scoped services and
+  canonical core renderer. Preserve source/decision revisions and distinguish
+  pending drafts, human confirmation, artifact review and official issuance.
 
-**Exit:** synthetic round-trip via the dashboard produces bytes that match
-the legacy CSV-based generation byte-for-byte (sha256). CI gate green.
+**Exit:** DB-MIG-1 through DB-MIG-7 demonstrate mapped values/provenance and core
+input equivalence on one synthetic revision; PDF byte comparison pins template,
+renderer, dependencies and deterministic metadata. Cutover is accepted separately
+from real-data migration, deployment and activation.
 
 ## M5 — Controlled real-data pilot
 
@@ -219,18 +228,31 @@ the legacy CSV-based generation byte-for-byte (sha256). CI gate green.
 
 **Exit:** every increment has approved requirements, evidence, rollout, and rollback.
 
-## Immediate delivery priorities — 2026-09-07
+## Immediate delivery priorities — 2026-09-09
 
-Codex implemented canonical employee/casing/checkbox support, template repair,
-reviewed-input preservation, profile/CSV guards, snapshot/dependency hashes,
-readiness receipts and receipt-scope tests. Rendering cannot enter final destinations.
+Use the [delivery record](docs/operations/git-delivery.md) for committed-source
+acceptance scope. Shared intake, protected artifacts, all-page QA/previews and
+staleness are implemented components; remaining runtime and operator-journey
+acceptance must be demonstrated against the delivered inputs.
 
-1. Primary/operator: reconcile authoritative identity/employer/certificate evidence
-   and prior artifact status. Directory counts and prior agent claims are not approval.
-2. After stabilization acceptance, OpenCode: implement receipt-bound final promotion and remaining minimum J4 with
-   actual protected bytes, current all-page QA, immutable snapshots and stale states.
-3. OpenCode now: independent regression review, scoped repository organization analysis
-   and complete release inventory. Provider implementation remains deferred.
+1. Delivered repair: `readiness --provisional` shares the provisional required-field
+   contract, including blank self-employed Section 5.1; authoritative default,
+   human flags and final-promotion requirements remain intact. See the delivery
+   record for focused acceptance and Git publication.
+2. Engineering: inventory source dependencies and configuration ownership, then
+   create the fresh supervised-development database from the on-disk migrations.
+   Extend `scripts/seed_release1a_dev.py` for this explicit environment and planned
+   read-only `--verify`; preserve historical databases and enforce confinement.
+3. Engineering: implement the planned `scripts/release_reproducer.sh <sha>` with
+   immutable `runtime/s-<full-commit-sha>/` exports, isolated synthetic state and
+   protected receipts. The seed extension and reproducer remain planned commands.
+4. Continue the child contract's J2 coordinator, DB-MIG-1/2/5, J4 draft service,
+   BO confirmation and DB-MIG-3/4/6/7 evidence. Existing artifact components do not
+   implement unattended unverified drafts or establish observed J1–J4 acceptance.
+5. Primary/operator, in the separately authorized A1 lane: reconcile authoritative
+   facts and prior artifact status; Jan supplies missing business facts and exact
+   revision confirmation. Preserve working packages; counts and prior claims do
+   not establish cohort authority or final-promotion approval.
 
 ## Stabilization synthetic acceptance — 2026-09-07
 
@@ -329,7 +351,7 @@ infrastructure. Existing activation and real-data gates remain unchanged.
 - **Plan AF/AF2 tooling lane:** AF2 🟡 (separate lane from FREE-VISION-PROVIDER-SAFETY); AF2.1 🟡 evidence-integrity repair; AF2.2 🟡 Luna capsule isolation; no skill activation, protected data, LiteLLM, or publication authority.
 - **Plan FREE-VISION-PROVIDER-SAFETY (2026-09-06):** 🟡 planned — remove paid/full-scan paths, metadata-only discovery, synthetic capability tests, exact free-model eligibility, quota accounting, bounded fallback, sanitized audit.
 - **Plan OCR-SHARED-CORE-LOCAL (2026-09-06):** 🟡 active — bounded synthetic local/web intake implemented: document segmentation, Czech labelled OP/EHIC/passport field proposals, original/enhanced comparison, typed matching, protected OcrRun results, retries and explicit acceptance. Broader layout calibration, scanner/encryption/retention activation evidence and observed M3 acceptance remain pending; portraits and external providers are deferred. See [implementation and checks](docs/architecture/shared-document-intake.md).
-- **Separate A1 lane:** Plan R 🔴 blocked — 25/25 rows blocked (2026-09-06 investigation baseline); 0/25 rows with AUTHORITATIVE source status; historical hash equality is not approval evidence; current package has 26 provisional/25 final files and four ad-hoc employee PDFs; previously VERIFIED placeholder profiles are now NEEDS_VERIFICATION. Counts are observations, not a replacement cohort contract.
+- **Separate A1 lane (historical 2026-09-06 baseline):** Plan R 🔴 blocked — the investigation recorded 25/25 blocked rows, 0/25 AUTHORITATIVE source statuses, 26 provisional/25 final files and four ad-hoc employee PDFs. These dated observations do not define the current cohort or artifact status. Current scoped evidence belongs in PLAN-A1 and the delivery record; hash equality is not approval evidence.
 - **Plan A1-EVIDENCE-STATUS-REPAIR (2026-09-06):** 🟡 active — engineering guards and employee copies implemented; authoritative reconciliation and receipt-bound promotion remain pending; canonical employee support across mapping/layout/verification and package reconciliation; reject placeholder institution profiles, enforce provisional-generation restrictions, distinguish application readiness from certificate issuance, reconcile cohort/artifact provenance, repair snapshots and final-promotion evidence.
 - **Quarantined lane:** benchmark ranking, OCR proposal validator, ZIP, unreviewed operational artifacts; v12 research scripts need classification.
 - **Accepted checkpoint:** Q ✅ (sanitized checkpoint `c01aa2b` accepted). Retention, reflog expiry, GC, deletion, publication remain separate decisions.
@@ -338,6 +360,11 @@ infrastructure. Existing activation and real-data gates remain unchanged.
 Authoritative paths and statuses are maintained in [`plans/INDEX.md`](plans/INDEX.md).
 
 ## Session review corrections — 2026-09-07
+
+Historical review baseline: defects, working-tree counts, Plan Mode restrictions
+and recommended next work below describe that session only. Current source
+evidence and priorities above supersede resolved implementation claims; AGENTS.md
+governs present authorization. Existing approval states remain unchanged.
 
 OpenCode session produced bounded changes against `Priority 1` (confined
 supervised settings), `Priority 3` (bounded readiness preflight), `J4`
