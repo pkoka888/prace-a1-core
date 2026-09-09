@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | BO signed worker choices bind actor, organization, reviewed run set/evaluation, worker version and identity revision. POST validates under locks and calls canonical identity resolution; an override requires a reason. GET saves no evaluation or decision. The shared evaluator checks the derivative source hash. Failed/superseded batch members do not disable completed current document choices |
-| Validation | Focused PostgreSQL association/intake/identity integration in progress; final results and committed-source receipt will be recorded here. Planning checks pass 24/24. No schema or rendering change |
-| Publication | Local implementation pending scoped commit; inherited outgoing history still needs content/provenance review before private-origin publication |
+| Validation | All 47 PostgreSQL association/intake/identity tests passed, including independent-connection competing choices, stale worker/identity/source rejection, exact retries, actor/document scope, rollback, source hash mismatch and partial-batch recovery. Required hooks passed: 200 Django tests with 22 environment-specific skips, 46 runtime/artifact checks, 31 containment checks, 29 tooling checks and 24 planning checks. Committed-source `ee10116` acceptance passed 23 applicable planning checks, 98 tooling/A1 tests plus 18 subtests, and 84 workflow tests with four PostgreSQL-only skips (the new competing-choice test passed in the separate PostgreSQL run). Source integrity remained intact. No schema or rendering change |
+| Publication | Implementation committed locally as `ee10116`; this evidence-only checkpoint preserves its tested source blobs. Inherited outgoing history still needs content/provenance review before private-origin publication |
 | Deployment | None; disposable synthetic tests only; historical databases and working PDF packages preserved |
 | Activation | Unchanged. Association does not confirm individual fields, verify identity or imply A1 submission/issuance |
 | Limitations | Scope is initial region association and resolution of matching conflicts. Reassignment of an already-decided association is not introduced. Selected supervised release still requires migrations 0014–0018 before runtime use |
 | Next owner | Engineering: synthetic legacy-key reconciliation with explicit mappings/collision rejection, then complete revision-bound CSV/cohort/identity compatibility exports and round-trip evidence. Accepted cutover remains governed by existing DB-MIG dependencies |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/422635259cdb49538390859a5aa1bce9/receipt.json`.
 
 ### Revision-checked BO field review — 2026-09-09
 
