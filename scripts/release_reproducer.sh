@@ -78,13 +78,13 @@ RECEIPT_TMP="${RECEIPT}.tmp"
 : > "${RECEIPT_TMP}"
 
 CHECKS=(
-    "venv/bin/python scripts/validate_planning.py"
-    "venv/bin/python scripts/validate_change_packages.py --staged --run-checks"
-    "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
-    "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py -q"
+    "${PYTHON_BIN} scripts/validate_planning.py"
+    "${PYTHON_BIN} scripts/validate_change_packages.py --staged --run-checks"
+    "DJANGO_SETTINGS_MODULE=portal.settings_document_tests ${PYTHON_BIN} -m pytest tests/m2/test_synthetic_containment.py -q"
+    "DJANGO_SETTINGS_MODULE=portal.settings_document_tests ${PYTHON_BIN} -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py -q"
 )
 
-echo "Running ${#CHECKS[@]} acceptance checks against ${EXPORT_DIR}..."
+echo "Running ${#CHECKS[@]} acceptance checks against ${EXPORT_DIR} (using source venv ${PYTHON_BIN})..."
 PASS_COUNT=0
 FAIL_COUNT=0
 {
@@ -93,6 +93,7 @@ FAIL_COUNT=0
     echo "  \"commit_sha\": \"${SHA}\","
     echo "  \"export_dir\": \"runtime/s-${SHA}\","
     echo "  \"started_at\": \"${STARTED_AT}\","
+    echo "  \"python_bin\": \"${PYTHON_BIN}\","
     echo "  \"checks\": ["
     FIRST=1
     for cmd in "${CHECKS[@]}"; do
@@ -101,8 +102,12 @@ FAIL_COUNT=0
         stderr_path="${RECEIPT_DIR}/check-${FIRST}.stderr"
         : > "${stdout_path}"
         : > "${stderr_path}"
-        # shellcheck disable=SC2086
-        if (cd "${EXPORT_DIR}" && eval "${cmd}") >"${stdout_path}" 2>"${stderr_path}"; then
+        # Run with a clean environment to avoid leaking parent shell vars
+        # into the reproducer's stdout/stderr capture. PYTHONPATH is set so
+        # the venv interpreter can import scripts/.manage-less imports work
+        # because PYTHON_BIN itself carries the venv site-packages.
+        if env -i PATH="${PATH}" PYTHONPATH="${REPO_ROOT}" "${cmd}" \
+                >"${stdout_path}" 2>"${stderr_path}"; then
             status="PASS"
             PASS_COUNT=$((PASS_COUNT + 1))
         else
