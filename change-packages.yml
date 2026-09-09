@@ -72,8 +72,10 @@
         "tests/document_web/test_identity.py",
         "portal/release1a/a1_exports.py",
         "portal/release1a/a1_drafts.py",
+        "portal/release1a/a1_generation_access.py",
         "portal/release1a/management/commands/a1_prepare_draft.py",
         "tests/document_web/test_a1_drafts.py",
+        "tests/document_web/test_a1_generation_access.py",
         "tests/document_web/test_a1_drafts_postgres.py",
         "tests/document_web/test_a1_exports.py",
         "tests/document_web/test_a1_exports_postgres.py",
@@ -94,7 +96,7 @@
         "scripts/test_document_intake.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_inbox tests.document_web.test_identity tests.document_web.test_a1_exports tests.document_web.test_a1_drafts tests.document_web.test_a1_drafts_postgres tests.document_web.test_a1_exports_postgres tests.document_web.test_identity_postgres tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_inbox tests.document_web.test_identity tests.document_web.test_a1_exports tests.document_web.test_a1_drafts tests.document_web.test_a1_generation_access tests.document_web.test_a1_drafts_postgres tests.document_web.test_a1_exports_postgres tests.document_web.test_identity_postgres tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
         "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q",
         "venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
       ],

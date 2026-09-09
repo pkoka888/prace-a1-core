@@ -4,7 +4,7 @@ Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
 revision-bound inputs and synthetic unverified PDF draft generation are implemented;
-generation revisions are implemented; BO integration remains planned.
+generation revisions and BO draft access are implemented; BO confirmation remains planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -91,9 +91,14 @@ is not written into the certificate issue-date field. Retry reuses the number an
 package, including recovery after publication succeeded but DB attachment failed.
 
 Canonical PDF checks, Ghostscript, source hashes and preview integrity are required;
-visual and identity confirmation stay pending in the package. Current BO download/
-confirmation paths still use their earlier J4 snapshot contract. Use the local
-command/private paths for this bounded increment; no environment is activated.
+visual and identity confirmation stay pending in the package. BO draft detail and
+PDF/preview downloads now use `portal/release1a/a1_generation_access.py` to select
+the exact applicable generation from current input/dependency fingerprints. Links
+pin `?generation=<id>`; stale links fail instead of serving a replacement. GET does
+not reserve, render or confirm. Reads enforce tenant/capability checks, package
+integrity and no-store responses. Draft cases cannot use legacy approval,
+regeneration or visual-confirmation endpoints; expected-generation confirmation
+is the next bounded task. Older non-draft case workflows retain their existing path.
 
 Migration `0017_a1_draft_generation` separates stable numbering from render generations.
 Each distinct snapshot/dependency fingerprint reserves a unique generation and package;
@@ -106,7 +111,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-Next: BO artifact access and expected-generation confirmation. Apply
+BO access to applicable draft generations is implemented. Next: expected-generation confirmation. Apply
 0014–0017 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -165,7 +170,7 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: BO access to exact unverified generations and stale-confirmation rejection. Complete legacy reconciliation separately before cutover. In parallel, wire BO
+Next functional phase: expected-generation confirmation and stale-confirmation rejection. Complete legacy reconciliation separately before cutover. In parallel, wire BO
 association forms to revision-checked resolution and protect field confirmation
 with expected revisions. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0017 through the selected supervised development release workflow

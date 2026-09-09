@@ -650,6 +650,30 @@ def a1_case_detail(request, pk):
     """J4: A1 case detail — approval denial, manual external status distinction."""
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
 
+    is_application_draft = hasattr(case, "draft_reservation")
+    if is_application_draft:
+        if request.method == "POST":
+            return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
+        from django.core.exceptions import ObjectDoesNotExist
+        from .a1_generation_access import current_generation
+        from .services import Forbidden, StaleWrite
+        from .j4_artifacts import ArtifactError
+
+        generation = None
+        try:
+            generation = current_generation(request.user, request.organization, case.pk)
+        except Forbidden:
+            return HttpResponseForbidden("ACCESS_DENIED")
+        except (ObjectDoesNotExist, StaleWrite, ValueError, OSError, ArtifactError):
+            pass
+        response = render(request, "portal/a1_case_detail.html", {
+            "case": case, "worker": case.worker, "is_application_draft": True,
+            "generation": generation,
+        })
+        from django.utils.cache import add_never_cache_headers
+        add_never_cache_headers(response)
+        return response
+
     if request.method == "POST":
         form = A1ApprovalForm(request.POST)
         if form.is_valid():
@@ -702,6 +726,9 @@ def a1_regenerate(request, pk):
     from prototypes.architecture.adr001.proof_contract import stable_hash
 
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
+
+    if hasattr(case, "draft_reservation"):
+        return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
 
     if case.external_status in ("issued", "submitted"):
         return JsonResponse({"error": "Nelze regenerovat již vydané/předané A1."}, status=400)
@@ -1821,6 +1848,44 @@ def a1_artifact_download(request, pk, page=None):
         AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
                                   event_type='a1.artifact_read',object_ref=f'a1:{pk}',outcome='denied')
         raise Http404()
+    if page is not None and page not in (1, 2, 3):
+        raise Http404()
+    if hasattr(case, "draft_reservation"):
+        from django.core.exceptions import ObjectDoesNotExist
+        from .a1_generation_access import read_generation
+        from .services import StaleWrite
+
+        generation_id = None
+        if "generation" in request.GET:
+            raw = request.GET.getlist("generation")
+            if (len(raw) != 1 or not raw[0].isascii() or not raw[0].isdigit()
+                    or len(raw[0]) > 19 or int(raw[0]) < 1 or int(raw[0]) > 9223372036854775807):
+                return JsonResponse({"error": "INVALID_GENERATION"}, status=400)
+            generation_id = int(raw[0])
+        try:
+            generation, data = read_generation(
+                request.user, request.organization, case.pk,
+                generation_id=generation_id, page=page,
+            )
+        except (Forbidden, ObjectDoesNotExist, StaleWrite, ValueError, OSError, ArtifactError) as exc:
+            AuditEvent.objects.create(
+                organization=request.organization, actor_ref=f"user:{request.user.pk}",
+                event_type="a1.artifact_read", object_ref=f"a1:{case.pk}", outcome="denied",
+            )
+            if isinstance(exc, Forbidden):
+                return HttpResponseForbidden("ACCESS_DENIED")
+            if isinstance(exc, ObjectDoesNotExist):
+                raise Http404() from None
+            return JsonResponse({"error": "ARTIFACT_UNAVAILABLE_OR_STALE"}, status=409)
+        AuditEvent.objects.create(
+            organization=request.organization, actor_ref=f"user:{request.user.pk}",
+            event_type="a1.artifact_read", object_ref=f"a1:{case.pk}", outcome="success",
+        )
+        name = f"page-{page}.png" if page else "artifact.pdf"
+        response = HttpResponse(data, content_type="image/png" if page else "application/pdf")
+        response["Content-Disposition"] = f'{"inline" if page else "attachment"}; filename="review-{name}"'
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
     if not case.artifact_reference or (page is not None and page not in (1, 2, 3)):
         raise Http404()
     dependencies = current_artifact_dependencies(case)
@@ -1858,6 +1923,9 @@ def a1_artifact_confirm(request, pk):
     This creates an immutable confirmation receipt.
     """
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
+
+    if hasattr(case, "draft_reservation"):
+        return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
 
     if not case.artifact_reference:
         return JsonResponse({"error": "No artifact attached to this case"}, status=400)

@@ -8,13 +8,28 @@
     </div>
     <div class="space-x-2">
         <a href="{% url 'worker_detail' pk=worker.pk %}" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium">Zpět</a>
-        {% if case.external_status != 'issued' and case.external_status != 'submitted' %}
+        {% if not is_application_draft and case.external_status != 'issued' and case.external_status != 'submitted' %}
         <button hx-post="{% url 'a1_regenerate' pk=case.pk %}" hx-target="#a1-case-row-{{ case.pk }}" hx-swap="outerHTML" class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 text-sm font-medium">Regenerovat</button>
         {% endif %}
     </div>
 </div>
 
-{% if case.artifact_reference %}
+{% if is_application_draft %}
+<section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Neověřený návrh A1">
+    <h3 class="text-lg font-semibold mb-2">Neověřený návrh A1</h3>
+    {% if generation %}
+    <p class="text-sm text-gray-600 mb-3">Verze {{ generation.revision }}. Návrh není vydaným A1; údaje ani vzhled nejsou tímto zobrazením potvrzeny.</p>
+    <div class="flex flex-wrap gap-4">
+        <a href="{% url 'a1_artifact_download' pk=case.pk %}?generation={{ generation.pk }}">Stáhnout PDF</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=1 %}?generation={{ generation.pk }}">Náhled strany 1</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=2 %}?generation={{ generation.pk }}">Náhled strany 2</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=3 %}?generation={{ generation.pk }}">Náhled strany 3</a>
+    </div>
+    {% else %}
+    <p role="status" class="text-sm text-amber-800">Aktuální návrh není dostupný nebo se změnily podklady. Je nutná nová příprava návrhu.</p>
+    {% endif %}
+</section>
+{% elif case.artifact_reference %}
 <section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Dokument ke kontrole">
     <h3 class="text-lg font-semibold mb-2">Dokument ke kontrole</h3>
     <p class="text-sm text-gray-600 mb-3">Tato kopie není potvrzením o vydání A1. Změněné podklady vyžadují novou přípravu.</p>
@@ -31,6 +46,9 @@
     <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Rozhodnutí operátora</h3>
 
+        {% if is_application_draft %}
+        <p class="text-sm text-gray-600">Potvrzení konkrétní verze návrhu zatím není dostupné. Stažení ani náhled nemění ověření údajů nebo stav podání.</p>
+        {% else %}
         {% if case.readiness == 'blocked' %}
         <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
             <h4 class="font-medium text-red-800 mb-2">⚠ Tento A1 případ je zablokován</h4>
@@ -79,6 +97,7 @@
                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Uložit rozhodnutí</button>
             </div>
         </form>
+        {% endif %}
     </div>
 
     <div class="lg:col-span-1 space-y-4">

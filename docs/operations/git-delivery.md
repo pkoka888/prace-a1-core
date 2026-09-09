@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### BO access to applicable A1 generations — 2026-09-09
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | New read-only generation access service selects by current source/profile/dependency fingerprint. BO detail pins generation IDs in PDF/all-page preview links. Stale explicit links fail; unpinned access resolves the applicable generation, including dependency reversion. Returned bytes, PNG format/dimensions and receipt hashes are checked; responses are private/no-store and HTTP reads audited |
+| Validation | Seven focused synthetic access tests passed after correcting invalid-page handling and using the versioned assignment service in the source-change test. The existing 17-test J4 delivery workflow passed. Tests cover stale/reverted dependencies, tenant/role/activation denial, no GET generation, legacy action separation, tampered bytes and post-verification preview geometry changes. Planning has 24 passing checks. Required hooks and committed-source results follow. No renderer or generation-input contract changed |
+| Publication | Local scoped delivery; inherited outgoing history still needs content/provenance review before private-origin publication |
+| Deployment | None; selected supervised release and database unchanged |
+| Activation | Unchanged. No real-data activation, new generation on GET, human confirmation, submission or issuance |
+| Limitations | Existing non-draft case behavior is retained. Draft cases cannot enter legacy approval/regeneration/confirmation endpoints; generation-bound confirmation remains unimplemented. Historical stale packages are preserved but are not served as applicable review copies |
+| Next owner | Engineering: generation-bound visual confirmation with expected source/fingerprint/receipt, actor/time evidence and stale rejection; keep identity verification distinct. Follow with identity/field BO integration and reconciled cutover |
+
 ### A1 generation revisions — 2026-09-09
 
 | Field | Evidence / state |

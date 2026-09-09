@@ -137,10 +137,11 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
     ".agents/skills/a1-pdf-production/references/field-policy.md",
     ".opencode/skills/market-research-evidence/SKILL.md",
 })
-# Tracked source scripts. Filenames legitimately embed pipeline words
+# Tracked source scripts/templates. Filenames legitimately embed pipeline words
 # (ocr, evidence, scans, etc.). The token guard stays active for any non-listed
 # file under scripts/.
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
+    "portal/templates/portal/a1_case_detail.html",
     "scripts/a1_core.py",
     "scripts/finalize_a1.py",
     "scripts/generate_provisional_a1.py",
@@ -148,6 +149,7 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/release1a/identity.py",
     "portal/release1a/a1_exports.py",
     "portal/release1a/a1_drafts.py",
+    "portal/release1a/a1_generation_access.py",
     "portal/release1a/migrations/0016_a1_draft_reservation.py",
     "portal/release1a/migrations/0017_a1_draft_generation.py",
     "portal/release1a/management/commands/a1_prepare_draft.py",
@@ -173,6 +175,7 @@ APPROVED_STAGED_SETTINGS_PATHS = frozenset({
 APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/document_web/test_a1_exports.py",
     "tests/document_web/test_a1_drafts.py",
+    "tests/document_web/test_a1_generation_access.py",
     "tests/document_web/test_a1_drafts_postgres.py",
     "tests/test_a1_application_draft.py",
     "tests/document_web/test_a1_exports_postgres.py",

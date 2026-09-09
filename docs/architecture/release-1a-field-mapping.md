@@ -90,7 +90,8 @@ Migration 0016 and `portal/release1a/a1_drafts.py` now reserve a draft number an
 pin the profile/input/dependencies for the canonical unverified PDF publisher.
 Migration 0017 retains that stable number while binding each generation to its own
 profile/dependencies and immutable package; historical packages remain available.
-Legacy-key reconciliation, cohort export and BO generation access remain follow-up work.
+BO now reads the applicable generation through `portal/release1a/a1_generation_access.py`.
+Legacy-key reconciliation, cohort export and expected-generation confirmation remain follow-up work.
 
 ## Complete CSV mapping
 
