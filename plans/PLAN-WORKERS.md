@@ -13,8 +13,10 @@ estimate is not a schema specification. One command will prepare proposals and
 eligible unverified drafts without waiting for BO; human confirmation remains an
 actor/time/revision decision. Bounded synthetic J2 inbox intake is implemented:
 completed batches reuse the shared intake/OCR adapter, preserve proposals and
-resume failed runs. It leaves identities unassigned and creates no PDF. Next is
-identity/conflict handling and DB-MIG revision mapping, then J4 drafts and BO;
+resume failed runs. Source-bound receipts now include shared-core identity suggestions
+and conflicts, without human acceptance or PDF generation. Next is durable
+revision-checked identity resolution, safe draft-worker creation and DB-MIG mapping,
+then J4 drafts and BO;
 see the child contract and delivery record for the precise acceptance scope.
 
 ## Shared intake Git delivery — 2026-09-08

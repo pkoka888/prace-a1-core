@@ -2,7 +2,7 @@
 
 Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
-automatic identity matching, A1 drafts and BO completion remain planned.
+derived identity suggestions are implemented; worker creation, A1 drafts and BO completion remain planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -24,8 +24,16 @@ venv/bin/python manage.py a1_process_inbox
 ```
 
 The command calls the shared intake/OCR services and stores proposals and protected
-per-attempt receipts. It does not yet match/create workers or generate A1 drafts.
-Unassigned identities remain `requires_review`; existing confirmations are unchanged.
+per-attempt receipts. It now recomputes organization-scoped identity suggestions
+through the shared matcher using explicitly confirmed document identifiers. Receipts
+contain region/run/version references, OCR output hashes, a confirmed-worker snapshot
+hash and decision/revision references. Exact consistent matches are `proposed`;
+conflicts/multiple candidates remain unresolved. OCR field conflicts block suggestions.
+These are derived machine evaluations, not durable worker links or acceptance tokens;
+BO must revalidate current source and worker revisions before applying any decision.
+No worker creation or A1 generation is implemented. Batch identity state remains
+`requires_review`; existing confirmations are unchanged. Matching failures report a
+partial batch and can retry without repeating completed OCR.
 Engineering configures the inbox and an existing authorized active operator once.
 In supervised settings, set `PRACE_INBOX_ORGANIZATION_ID` and
 `PRACE_INBOX_ACTOR_ID`; the private root is
@@ -69,8 +77,10 @@ OCR jobs use the existing retry/lease rules. An organization-bound local file lo
 serializes inbox invocations. This is not a distributed scheduler or a replacement
 for shared intake, matching, storage or rendering services.
 
-Next phase: complete J2 identity/conflict resolution and DB-MIG-1/2/5 revision
-mapping through existing proposals/decisions, then J4 unverified drafts and BO
+Next phase: persist revision-checked J2 identity resolution and conflict review,
+including safe draft-worker creation and DB-MIG-1/2/5 mapping through existing
+proposals/decisions. Derived receipt suggestions are implemented; durable decisions
+and concurrency acceptance remain. Then implement J4 unverified drafts and BO
 confirmation. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.
@@ -81,7 +91,7 @@ One editable source tree stays at the repository root. Consolidate A1/OCR/BO fir
 inventory unrelated work in place. Do not copy the whole workspace into a second
 editable production tree. Source exports are immutable commit snapshots, not another
 source master. Database rebuilding, file relocation and coordinator implementation
-are follow-up work; this checkpoint changes documentation and instructions only.
+are follow-up work; the current checkpoint includes bounded synthetic intake and derived matching.
 
 Respect [ADR-001](../docs/decisions/ADR-001-jan-portal-architecture.md) and
 [ADR-002](../docs/decisions/ADR-002-release-1a-data-and-transactions.md).

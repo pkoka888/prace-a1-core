@@ -20,10 +20,11 @@ from django.core.management.base import CommandError
 from django.test import TransactionTestCase, override_settings
 from django.utils import timezone
 from portal.release1a.inbox import process_inbox
-from portal.release1a.document_intake import intake
+from portal.release1a.document_intake import (intake, read_result, associate_region,
+    evaluate_identity_proposals, supersede)
 from portal.release1a.models import (Organization, Membership, Document, OcrRun, Worker,
     FieldProposal, FieldDecision, WorkerIdentityRevision, AuditEvent)
-from portal.release1a.services import Forbidden
+from portal.release1a.services import Forbidden, confirm_field_proposal
 from src.document_core.pipeline import DocumentProcessor
 from tests.test_document_core.helpers import OP, card, png, ScriptedEngine
 
@@ -224,3 +225,84 @@ class InboxTests(TransactionTestCase):
         with override_settings(DOCUMENT_INBOX_ORGANIZATION_ID=self.org.pk, DOCUMENT_INBOX_ACTOR_ID=True):
             with self.assertRaisesRegex(CommandError, "DENIED_OR_UNAVAILABLE"):
                 call_command("a1_process_inbox", stdout=io.StringIO())
+
+
+    def confirmed_identifier(self):
+        worker = Worker.objects.create(organization=self.org, given_name="ALFA",
+            family_name="TESTOVA", birth_date="1990-03-15", activity_profile="employee")
+        _, _, _, run = intake(self.user, self.org, None, "synthetic.png", "image/png",
+            self.content, processor=processor())
+        region = read_result(self.user, self.org, run.pk)["result"]["documents"][0]
+        associate_region(self.user, self.org, run.pk, region["document_id"], worker)
+        confirm_field_proposal(self.user, self.org,
+            FieldProposal.objects.get(ocr_run=run, field_name="document_number"))
+        return worker, run
+
+    def test_receipt_recomputes_matching_after_confirmation_without_mutating_facts(self):
+        self.batch()
+        first = self.run_inbox()[0]["identity_evaluation"]
+        self.assertEqual(first["regions"][0]["status"], "unassigned")
+        worker, run = self.confirmed_identifier()
+        counts = (FieldDecision.objects.count(), WorkerIdentityRevision.objects.count())
+        second = self.run_inbox()[0]["identity_evaluation"]
+        self.assertEqual(second["regions"][0]["worker_id"], str(worker.pk))
+        self.assertEqual(second["regions"][0]["status"], "proposed")
+        self.assertNotEqual(first["evaluation_sha256"], second["evaluation_sha256"])
+        self.assertEqual(second, self.run_inbox()[0]["identity_evaluation"])
+        self.assertEqual(second["sources"][0]["output_sha256"], run.output_sha256)
+        self.assertFalse(second["accepted"])
+        self.assertEqual(counts, (FieldDecision.objects.count(), WorkerIdentityRevision.objects.count()))
+        self.assertIsNone(Document.objects.get().worker_id)
+        self.assertNotIn("TST000001", json.dumps(second))
+        self.assertNotIn("TESTOVA", json.dumps(second))
+
+    def test_revision_conflict_changes_evaluation_and_leaves_confirmed_value_intact(self):
+        worker, run = self.confirmed_identifier()
+        before = evaluate_identity_proposals(self.user, self.org, [run.pk])
+        proposal = FieldProposal.objects.get(ocr_run=run, field_name="birth_date")
+        confirm_field_proposal(self.user, self.org, proposal, corrected_value="1991-03-15")
+        after = evaluate_identity_proposals(self.user, self.org, [run.pk])
+        self.assertNotEqual(before["worker_snapshot_sha256"], after["worker_snapshot_sha256"])
+        self.assertEqual(after["regions"][0]["status"], "ambiguous")
+        self.assertIsNone(after["regions"][0]["worker_id"])
+        self.assertEqual(after["regions"][0]["findings"], ["worker_identity_conflict"])
+        self.assertEqual(WorkerIdentityRevision.objects.filter(worker=worker).latest("revision_number").confirmed_fields["birth_date"], "1991-03-15")
+
+    def test_evaluation_rejects_foreign_stale_and_tampered_sources(self):
+        _, run = self.confirmed_identifier()
+        with self.assertRaises(Forbidden):
+            evaluate_identity_proposals(self.user, self.other, [run.pk])
+        Membership.objects.create(user=self.user, organization=self.other, role="organization_admin")
+        with self.assertRaises(OcrRun.DoesNotExist):
+            evaluate_identity_proposals(self.user, self.other, [run.pk])
+        path = self.storage / run.output_key
+        content = path.read_bytes()
+        path.write_bytes(b"tampered")
+        with self.assertRaisesRegex(ValueError, "HASH_MISMATCH"):
+            evaluate_identity_proposals(self.user, self.org, [run.pk])
+        path.write_bytes(content)
+        supersede(self.user, self.org, run.document_id, "replacement.png", "image/png",
+            png(card(OP + ["SYNTHETIC REPLACEMENT"])), processor=processor())
+        with self.assertRaisesRegex(ValueError, "NOT_CURRENT"):
+            evaluate_identity_proposals(self.user, self.org, [run.pk])
+
+    def test_other_organization_confirmations_do_not_supply_candidates(self):
+        self.confirmed_identifier()
+        Membership.objects.create(user=self.user, organization=self.other, role="organization_admin")
+        _, _, _, run = intake(self.user, self.other, None, "synthetic.png", "image/png",
+            self.content, processor=processor())
+        evaluation = evaluate_identity_proposals(self.user, self.other, [run.pk])
+        self.assertEqual(evaluation["regions"][0]["candidates"], [])
+        self.assertEqual(evaluation["worker_evidence"], [])
+
+
+    def test_matching_failure_is_partial_and_retry_preserves_completed_ocr(self):
+        self.batch()
+        with patch("portal.release1a.inbox.evaluate_identity_proposals", side_effect=ValueError("SENSITIVE")):
+            result = self.run_inbox()[0]
+        self.assertEqual(result["status"], "partial")
+        self.assertEqual(result["items"][0]["status"], "completed")
+        self.assertEqual(result["identity_evaluation"]["status"], "unavailable")
+        self.assertNotIn("SENSITIVE", json.dumps(result))
+        self.assertEqual(self.run_inbox()[0]["status"], "completed")
+        self.assertEqual(OcrRun.objects.get().retry_count, 1)

@@ -201,3 +201,26 @@ def test_bilingual_labels_do_not_become_values():
     result=fake_result(["CESKA REPUBLIKA","OBCANSKY PRUKAZ","PRIJMENI / SURNAME","TESTOVA"])
     props,_=FieldInterpreter().interpret(result.regions,Classifier().classify(result.regions))
     assert [(f["field"],f["value"]) for f in props]==[("family_name","TESTOVA")]
+
+
+@pytest.mark.parametrize("field", ["given_name", "family_name", "birth_date", "document_number"])
+def test_conflicting_identity_field_never_proposes_exact_identifier(field):
+    doc = pipeline([OP, OP]).process(png(card(OP)))["documents"][0]
+    workers = [{"worker_id": "one", "identifiers": [
+        {"type": "op_document_number", "issuer": "cz", "value": "TST000001"}]}]
+    target = next(f for f in doc["fields"] if f["field"] == field)
+    target["findings"] = ["conflicting_values"]
+    DocumentProcessor().combine([doc], workers)
+    assert doc["association"]["worker_id"] is None
+    assert doc["association"]["accepted"] is False
+    assert doc["association"]["findings"] == ["identity_evidence_unresolved"]
+
+
+def test_two_clean_identity_values_cannot_hide_conflict():
+    doc = pipeline([OP, OP]).process(png(card(OP)))["documents"][0]
+    target = next(f for f in doc["fields"] if f["field"] == "given_name")
+    doc["fields"].append({**target, "value": "BETA"})
+    workers = [{"worker_id": "one", "identity_fields": {"given_name": "ALFA"}, "identifiers": [
+        {"type": "op_document_number", "issuer": "cz", "value": "TST000001"}]}]
+    DocumentProcessor().combine([doc], workers)
+    assert doc["association"]["worker_id"] is None

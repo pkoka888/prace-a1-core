@@ -25,7 +25,7 @@ from django.core.files.base import ContentFile
 from django.utils import timezone
 
 from src.document_core.images import MAX_BYTES
-from .document_intake import authorize, audit, intake, execute_run
+from .document_intake import authorize, audit, intake, execute_run, evaluate_identity_proposals
 from .document_storage import document_storage
 from .models import Document
 from .services import Forbidden
@@ -138,6 +138,8 @@ def _process_batches(root_fd, user, organization, processor):
                     document, version, _, run = intake(
                         user, organization, None, item["name"], TYPES[Path(item["name"]).suffix],
                         content, processor=processor)
+                    if version.sha256 != item["sha256"]:
+                        raise ValueError("INBOX_SOURCE_SUPERSEDED")
                     if existing:
                         run = execute_run(user, organization, run.pk, processor=processor)
                     outcome.update(status=run.state, source_sha256=version.sha256,
@@ -148,7 +150,15 @@ def _process_batches(root_fd, user, organization, processor):
                 audit(user, organization, "inbox.item_processed", f"batch:{batch}:item:{outcome['item_ref']}",
                       "success" if outcome["status"] == "completed" else "failed")
                 result["items"].append(outcome)
-            result["status"] = "completed" if all(i["status"] == "completed" for i in result["items"]) else "partial"
+            completed = [item["run_ref"] for item in result["items"] if item["status"] == "completed"]
+            if completed:
+                try:
+                    result["identity_evaluation"] = evaluate_identity_proposals(user, organization, completed)
+                except Exception:
+                    result["identity_evaluation"] = {"status": "unavailable", "accepted": False}
+            result["status"] = "completed" if (
+                all(i["status"] == "completed" for i in result["items"])
+                and result.get("identity_evaluation", {}).get("status") != "unavailable") else "partial"
         except Exception:
             result["status"] = "rejected"
             result["reason"] = "INBOX_BATCH_REJECTED"

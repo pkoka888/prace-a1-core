@@ -14,7 +14,7 @@ from django.db.models import Q, F
 from django.utils import timezone
 from src.document_core.images import decode_pages
 from src.document_core.pipeline import DocumentProcessor
-from src.document_core.serialization import canonical_json, content_hash
+from src.document_core.serialization import canonical_json, content_hash, result_hash
 from src.document_core.cli import error_tag
 from .document_storage import document_storage
 from .models import (Document, DocumentVersion, DocumentClassification, OcrRun,
@@ -308,7 +308,9 @@ def download_original(user, organization, document):
 def known_workers(organization):
     """Only identifiers with an explicit field decision AND region association."""
     workers = {}
-    associations = DocumentRegionAssociation.objects.filter(organization=organization, worker__organization=organization, ocr_run__organization=organization)
+    associations = DocumentRegionAssociation.objects.filter(organization=organization, worker__organization=organization, ocr_run__organization=organization,
+        ocr_run__document__organization=organization, ocr_run__version__organization=organization,
+        ocr_run__version__document_id=F("ocr_run__document_id")).order_by("pk")
     for association in associations:
         field = "card_number" if association.document_type == "zp" else "document_number"
         kind = "ehic_card_number" if association.document_type == "zp" else f"{association.document_type}_document_number"
@@ -316,13 +318,17 @@ def known_workers(organization):
             continue
         decisions = FieldDecision.objects.filter(organization=organization, decision="confirmed", field_proposal__organization=organization,
             field_proposal__ocr_run=association.ocr_run, field_proposal__document_region_id=association.region_id,
-            field_proposal__field_name=field)
+            field_proposal__field_name=field,
+            field_proposal__document_id=association.ocr_run.document_id,
+            field_proposal__version_id=association.ocr_run.version_id).order_by("pk")
         for decision in decisions:
             workers.setdefault(association.worker_id, {"worker_id": str(association.worker_id), "identifiers": []})["identifiers"].append(
-                {"type": kind, "issuer": association.issuer, "value": decision.corrected_value})
+                {"type": kind, "issuer": association.issuer, "value": decision.corrected_value,
+                 "decision_ref": decision.pk, "association_ref": association.pk})
     for worker_id, worker in workers.items():
         revision = WorkerIdentityRevision.objects.filter(organization=organization, worker_id=worker_id).order_by("-revision_number").first()
         worker["identity_fields"] = revision.confirmed_fields if revision else {}
+        worker["revision_ref"] = revision.pk if revision else None
     return list(workers.values())
 
 
@@ -343,3 +349,43 @@ def read_session(user, organization, session):
                 doc["source_document_pk"] = run.document_id
                 documents.append(doc)
     return DocumentProcessor().combine(documents, known_workers(organization))
+
+
+def evaluate_identity_proposals(user, organization, run_ids):
+    """Derived machine suggestions, never a human association or acceptance token.
+
+    Recompute on every inbox attempt. The protected receipt binds the exact OCR
+    outputs and confirmed-worker input snapshot; later BO writes must independently
+    revalidate their source/revision. No raw identity values leave this adapter.
+    """
+    authorize(user, organization, "document:read")
+    documents, sources = [], []
+    workers = known_workers(organization)
+    for run_id in sorted(set(run_ids)):
+        run = OcrRun.objects.get(pk=run_id, organization=organization)
+        latest = run.document.documentversion_set.order_by("-version_number").first()
+        if run.state != OcrRun.State.COMPLETED or latest.pk != run.version_id:
+            raise ValueError("IDENTITY_SOURCE_NOT_CURRENT")
+        payload = read_result(user, organization, run.pk)
+        if not payload or payload.get("status") != "completed":
+            raise ValueError("IDENTITY_RESULT_UNAVAILABLE")
+        sources.append({"run_ref": run.pk, "version_ref": run.version_id,
+                        "source_sha256": run.version.sha256, "output_sha256": run.output_sha256})
+        for document in payload["result"]["documents"]:
+            document["ocr_run_id"] = run.pk
+            documents.append(document)
+    combined = DocumentProcessor().combine(documents, workers)
+    # Deterministic input hash changes when identifiers, decisions or revisions change.
+    worker_snapshot_hash = result_hash(sorted(workers, key=lambda worker: worker["worker_id"]))
+    regions = [{"run_ref": doc["ocr_run_id"], "region_ref": doc["document_id"],
+                **doc["association"]} for doc in combined["documents"]]
+    evidence = {"schema_version": 1, "matcher_version": "shared-core-identity-2",
+                "organization_id": organization.pk, "sources": sources,
+                "worker_snapshot_sha256": worker_snapshot_hash,
+                "worker_evidence": [{"worker_ref": worker["worker_id"], "revision_ref": worker["revision_ref"],
+                                     "decision_refs": sorted({i["decision_ref"] for i in worker["identifiers"]}),
+                                     "association_refs": sorted({i["association_ref"] for i in worker["identifiers"]})}
+                                    for worker in sorted(workers, key=lambda worker: worker["worker_id"])],
+                "regions": regions,
+                "accepted": False}
+    return {**evidence, "evaluation_sha256": result_hash(evidence)}

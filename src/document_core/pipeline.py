@@ -96,8 +96,13 @@ def associate(doc, workers):
     fields = values(doc["fields"])
     identity_field = "card_number" if c["type"] == "zp" else "document_number"
     identifier_type = "ehic_card_number" if c["type"] == "zp" else f"{c['type']}_document_number"
-    if len(fields.get(identity_field, ())) != 1 or doc["findings"] or doc["matching_findings"]:
-        return {"status": "unassigned", "worker_id": None, "candidates": []}
+    identity_keys = {identity_field, "family_name", "given_name", "birth_date"}
+    field_conflict = any(f["findings"] for f in doc["fields"] if f["field"] in identity_keys)
+    field_conflict = field_conflict or any(len(fields.get(key, ())) > 1 for key in identity_keys)
+    if (len(fields.get(identity_field, ())) != 1 or doc["findings"]
+            or doc["matching_findings"] or field_conflict or doc.get("duplicate_of")):
+        return {"status": "unassigned", "worker_id": None, "candidates": [],
+                "findings": ["identity_evidence_unresolved"], "accepted": False}
     candidates = []
     conflicts = False
     for worker in workers:
