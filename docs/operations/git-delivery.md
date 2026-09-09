@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | BO sends tokens bound to exact proposal/source/OCR result, worker association and current identity revision. A locked batch validates all selections before existing canonical field confirmations, preserving atomicity. Confirmed values are shown separately from OCR and are the initial edit value; replacing one requires a reason. Stale forms return 409 with no partial decisions. Missing/non-reviewable proposals do not disable other reviewable fields |
-| Validation | All 32 PostgreSQL field-review/intake tests passed, including independent-connection stale-form rejection, batch rollback, deleted selections, omitted values, derivative/source mismatch and confirmed-value replacement reasons. Planning checks pass 24/24. Required hooks and committed-source acceptance follow. No model/schema or renderer changes |
-| Publication | Local scoped delivery; inherited outgoing history still needs content/provenance review before private-origin publication |
+| Validation | All 32 PostgreSQL field-review/intake tests passed, including independent-connection stale-form rejection, batch rollback, deleted selections, omitted values, derivative/source mismatch and confirmed-value replacement reasons. Planning checks pass 24/24. Required hooks passed, including 189 Django tests with 21 environment-specific skips. Committed-source `811c1d1` acceptance passed 23 applicable planning checks, 98 tooling/A1 tests plus 18 subtests, and 73 workflow tests with three PostgreSQL-only skips covered separately; source integrity remained intact. No model/schema or renderer changes |
+| Publication | Implementation committed locally as `811c1d1`; this evidence-only checkpoint preserves its tested source blobs. Inherited outgoing history still needs content/provenance review before private-origin publication |
 | Deployment | None; disposable synthetic tests only; existing environments unchanged |
 | Activation | Unchanged. No automatic confirmation, worker projection overwrite, A1 issuance or real-data activation |
 | Limitations | Canonical non-BO programmatic confirmations retain their existing explicit API. BO association/conflict resolution still needs integration with the existing expected-worker/revision identity service. Field confirmation is distinct from whole-person verification and A1 visual review |
 | Next owner | Engineering: identity association/conflict resolution in BO with expected worker and identity revisions; then reconciled legacy cutover |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/b9ebbf5d137347ba97632ea1df69036d/receipt.json`.
 
 ### Generation-bound visual confirmation — 2026-09-09
 
