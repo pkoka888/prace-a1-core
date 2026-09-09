@@ -75,6 +75,33 @@ Do not create another editable source tree or archive unknown files to obtain a
 clean status. New deliveries continue updating this record; detailed inventories
 and hash-bound receipts remain runtime artifacts.
 
+### Seed --verify and release_reproducer implementation — 2026-09-09
+
+OpenCode reviewed the 2026-09-08 plan recommendations and implemented the
+two high-impact engineering items: read-only seed verification and an
+immutable release reproducer.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | `scripts/seed_release1a_dev.py --verify`: read-only comparison of approved fixtures against the seeded DB; exits non-zero on any discrepancy. Legacy `OSVČ`/`zaměstnanec` fixture vocabulary is normalized to the model's `self_employed`/`employee` enum. `scripts/release_reproducer.sh <sha>`: exports tracked source via `git archive` to `runtime/s-<sha>/`, runs four focused checks (planning validator, change-packages validator, synthetic-containment pytest, finalize_a1 + a1_stabilization pytest), writes a protected hash-bound receipt with `command_sha256`, `exit_code`, `duration_ms`, and per-check stdout/stderr logs. Refuses to run on dirty trees, refuses to overwrite differing exports. |
+| Validation | `tests/m2/test_synthetic_containment.py` (+2 tests) confirms the `--verify` flag is wired and the vocabulary normalization is documented. `tests/test_release_reproducer.py` (4 tests) confirms arg/SHA validation, dirty-tree refusal, and script structure. End-to-end: reproducer exported b1216ca to a clean worktree; 3/4 checks passed (planning 22/24, change-packages, synthetic_containment, finalize_a1); the 24th planning check correctly surfaced pre-existing broken-link references in PLAN-A1.md / PLAN-INFRA.md (file-existence vs untracked research files — see Limitations). 82 synthetic_containment + 45 manage.py + 9 pytest + 16 j4/runtime tests pass overall. |
+| Publication | Commits `fdb04f3` (seed --verify), `aeda039` (release reproducer), `b1216ca` (PYTHON_BIN absolute), `5cb2772` (bash -c invocation fix). Exact local SHAs in `git log`; remote publication follows AGENTS.md "routine scoped commits and pushes" standing authorization. |
+| Deployment | Not performed; no settings, database, service or file relocation changes. The reproducer creates only `runtime/s-<sha>/_receipt/` artifacts under mode 0700/0600. |
+| Activation | Unchanged; real-data-rules §14 and existing registered approvals remain authoritative. The reproducer is a tooling improvement; it does not declare any release as accepted. |
+| Limitations | The seed --verify path documents but does not fix the legacy `activity_profile` mapping bug (always stores `employee`); fixing the apply path would alter runtime behaviour and is out of scope for this delivery. The reproducer's 24-check planning validator currently reports 2 pre-existing failures (PLAN-INFRA references untracked docs/research/2026-09-06-a1-session-architect-review.md; PLAN-A1.md has broken links to untracked research files). The reproducer correctly surfaces these as release state; resolution requires tracking the referenced files or removing the broken links — both follow-ups tracked in the inherited-inventory. |
+| Next owner | Engineering: (a) fix the seed `--apply` `activity_profile` mapping bug separately, (b) track or prune the research/ops files that broke the validator's link checks, (c) extend the reproducer with the seed `--verify` check once the seed/synthetic review DB transition is complete, (d) implement the J2 coordinator and J4 draft service under existing J2/J4/DB-MIG tasks. |
+
+The next concrete deliverable is `release_reproducer.sh` use: a developer
+can re-run
+
+```bash
+bash scripts/release_reproducer.sh HEAD
+```
+
+from a clean checkout to obtain a fresh `runtime/s-<sha>/` export with
+a hash-bound receipt. Per AGENTS.md, this remains a tooling aid — the
+canonical release acceptance stays with REV-002/REV-003.
+
 ### Consolidation documentation delivery — 2026-09-08
 
 Historical delivery state at `cba3e50`; the 2026-09-09 repair above supersedes its
