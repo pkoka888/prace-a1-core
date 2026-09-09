@@ -30,8 +30,13 @@
 {% if region.association_record and region.proposals %}
 <form method="post">{% csrf_token %}
 {% for proposal in region.proposals %}
-<div><label><input type="checkbox" name="confirm_{{ proposal.pk }}"> {{ proposal.display_label }}
-<input name="value_{{ proposal.field_name }}_{{ proposal.pk }}" value="{{ proposal.proposed_value }}"></label>
+<div>
+{% if proposal.review_token %}
+<input type="hidden" name="expected_{{ proposal.pk }}" value="{{ proposal.review_token }}">
+<label><input type="checkbox" name="confirm_{{ proposal.pk }}"> {{ proposal.display_label }}
+<input name="value_{{ proposal.field_name }}_{{ proposal.pk }}" value="{{ proposal.review_value }}"></label>
+{% if proposal.confirmed_value != None %}<p>Již potvrzeno: {{ proposal.confirmed_value }}. Návrh OCR: {{ proposal.proposed_value }}. Změna potvrzené hodnoty vyžaduje zdůvodnění.</p>{% endif %}
+{% else %}<p>{{ proposal.display_label }}: podklady nejsou dostupné pro potvrzení. Obnovte kontrolu dokumentu.</p>{% endif %}
 {% if proposal.validation_findings %}<span>Vyžaduje kontrolu a zdůvodnění.</span>{% endif %}</div>
 {% endfor %}
 <label>Důvod opravy nebo vyřešení rozporu <input name="reason"></label>

@@ -4,7 +4,7 @@ Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
 revision-bound inputs and synthetic unverified PDF draft generation are implemented;
-generation revisions, BO draft access and visual confirmation are implemented; identity/field BO integration remains planned.
+generation revisions, BO draft access and visual confirmation are implemented; field review is revision-checked; identity association/conflict BO integration remains planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -97,7 +97,7 @@ the exact applicable generation from current input/dependency fingerprints. Link
 pin `?generation=<id>`; stale links fail instead of serving a replacement. GET does
 not reserve, render or confirm. Reads enforce tenant/capability checks, package
 integrity and no-store responses. Draft cases use generation-bound visual confirmation and cannot use legacy approval
-or regeneration endpoints; identity/field BO integration is the next bounded task. Older non-draft case workflows retain their existing path.
+or regeneration endpoints; identity association/conflict BO integration is the next bounded task. Older non-draft case workflows retain their existing path.
 
 Migration `0017_a1_draft_generation` separates stable numbering from render generations.
 Each distinct snapshot/dependency fingerprint reserves a unique generation and package;
@@ -110,7 +110,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. Next: expected-revision identity/field confirmation in BO. Apply
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. Next: expected-revision identity association/conflict resolution in BO. Apply
 0014–0018 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -127,8 +127,17 @@ without confirmation; dependency reversion may reuse the original exact generati
 and its evidence. Visual confirmation does not verify identity, approve source
 facts, alter readiness or mark submission/issuance. The package bytes stay immutable.
 
-Next: wire expected-revision identity and field confirmation into BO, preserving
-confirmed facts against OCR overwrite and unresolved conflict handling.
+BO field review now uses `portal/release1a/field_review.py`. The displayed token binds
+proposal, document/version/OCR result, worker association and confirmed revision.
+An atomic batch validates all selected tokens before invoking the existing
+`confirm_field_proposal` service; stale forms cannot partially update facts. BO
+shows existing confirmed values separately from OCR and requires a reason to
+replace them. Viewing does not confirm. No new database schema or alternate
+identity store is introduced. Existing programmatic confirmation callers retain
+their explicit canonical service path; the revision token is mandatory for BO batches.
+
+Next: wire identity association/conflict resolution to the existing expected-worker
+version and expected-identity-revision service. Full cutover remains separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
 
@@ -185,7 +194,7 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: expected-revision identity/field confirmation in BO. Complete legacy reconciliation separately before cutover. In parallel, wire BO
+Next functional phase: expected-revision identity association/conflict resolution in BO. Complete legacy reconciliation separately before cutover. In parallel, wire BO
 association forms to revision-checked resolution and protect field confirmation
 with expected revisions. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0018 through the selected supervised development release workflow

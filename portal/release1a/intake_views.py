@@ -1,14 +1,16 @@
 """Document intake presentation; all content access delegates to scoped services."""
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse
-from django.db import transaction
 from .models import Document, OcrRun, Worker, FieldProposal, DocumentRegionAssociation, IntakeSession
 from .document_intake import (authorize, intake, read_result, execute_run, associate_region,
                               download_original, audit, read_session)
-from .services import Forbidden, confirm_field_proposal
+from .services import Forbidden, StaleWrite
+from .field_review import review_context, confirm_review_batch
+from django.views.decorators.cache import never_cache
 from .document_labels import FIELD_LABELS
 
 
+@never_cache
 def detail(request, pk):
     try:
         authorize(request.user, request.organization, "document:read")
@@ -18,6 +20,7 @@ def detail(request, pk):
     run = OcrRun.objects.filter(organization=request.organization, document=document).order_by("-pk").first()
     session = run.intake_sessions.filter(organization=request.organization).order_by("-pk").first() if run else None
     error = None
+    response_status = 200
     if request.method == "POST":
         try:
             if request.POST.get("action") == "retry" and run:
@@ -28,23 +31,45 @@ def detail(request, pk):
                 target_run = get_object_or_404(allowed_runs, pk=request.POST.get("run_id", run.pk))
                 associate_region(request.user, request.organization, target_run.pk, request.POST.get("region_id"), worker)
             else:
-                selected = []
                 proposals = FieldProposal.objects.filter(organization=request.organization)
                 proposals = proposals.filter(ocr_run__in=session.ocr_runs.all()) if session else proposals.filter(ocr_run=run)
-                for proposal in proposals:
-                    if request.POST.get(f"confirm_{proposal.pk}") or request.POST.get(f"confirm_{proposal.field_name}_{proposal.pk}"):
-                        selected.append(proposal)
+                allowed = {proposal.pk: proposal for proposal in proposals}
+                selected, seen = [], set()
+                for key in request.POST:
+                    if not key.startswith("confirm_") or not request.POST.get(key):
+                        continue
+                    raw_id = key.rsplit("_", 1)[-1]
+                    if not raw_id.isascii() or not raw_id.isdigit() or len(raw_id) > 19:
+                        raise StaleWrite("FIELD_SELECTION_STALE")
+                    proposal = allowed.get(int(raw_id))
+                    if (proposal is None or proposal.pk in seen or key not in
+                            (f"confirm_{proposal.pk}", f"confirm_{proposal.field_name}_{proposal.pk}")):
+                        raise StaleWrite("FIELD_SELECTION_STALE")
+                    if request.POST.getlist(key) != ["on"]:
+                        raise ValueError("INVALID_FIELD_SELECTION")
+                    seen.add(proposal.pk)
+                    selected.append(proposal)
                 if not selected:
                     raise ValueError("NO_FIELDS_SELECTED")
-                with transaction.atomic():
-                    for proposal in selected:
-                        confirm_field_proposal(request.user, request.organization, proposal,
-                            corrected_value=request.POST.get(f"value_{proposal.field_name}_{proposal.pk}", proposal.proposed_value),
-                            reason=request.POST.get("reason", ""))
+                selections = []
+                for proposal in selected:
+                    tokens = request.POST.getlist(f"expected_{proposal.pk}")
+                    if len(tokens) != 1:
+                        raise StaleWrite("FIELD_REVIEW_TOKEN_REQUIRED")
+                    values = request.POST.getlist(f"value_{proposal.field_name}_{proposal.pk}")
+                    if len(values) != 1:
+                        raise StaleWrite("FIELD_VALUE_REQUIRED")
+                    selections.append({"proposal_id": proposal.pk, "expected_token": tokens[0],
+                        "value": values[0]})
+                confirm_review_batch(request.user, request.organization, selections,
+                                     reason=request.POST.get("reason", ""))
             return redirect("document_detail", pk=document.pk)
         except Forbidden:
             return HttpResponse(status=403)
-        except (ValueError, OcrRun.DoesNotExist):
+        except StaleWrite:
+            response_status = 409
+            error = "Podklady nebo potvrzené údaje se změnily. Zkontrolujte aktuální hodnoty a potvrďte je znovu."
+        except (ValueError, OSError, OcrRun.DoesNotExist):
             error = "Změnu nelze uložit. Zkontrolujte přiřazení pracovníka, vybraná pole a důvod opravy."
     payload = None
     if run and run.output_key:
@@ -59,7 +84,9 @@ def detail(request, pk):
             region_run = region.get("ocr_run_id", run.pk)
             region["ocr_run_id"] = region_run
             region["proposals"] = FieldProposal.objects.filter(organization=request.organization, ocr_run_id=region_run,
-                                                               document_region_id=region["document_id"]).exclude(fielddecision__decision="confirmed")
+                                                               document_region_id=region["document_id"],
+                                                               state__in=[FieldProposal.State.PROPOSED, FieldProposal.State.CONFLICT],
+                                                               fielddecision__isnull=True)
             for proposal in region["proposals"]:
                 proposal.display_label = FIELD_LABELS.get(proposal.field_name, proposal.field_name)
             region["missing_labels"] = [FIELD_LABELS.get(f, f) for f in region["completeness"]["field_sufficiency"]["missing"]]
@@ -67,11 +94,21 @@ def detail(request, pk):
             region["suggested_worker"] = Worker.objects.filter(organization=request.organization, pk=candidate).first() if candidate else None
             region["association_record"] = DocumentRegionAssociation.objects.filter(organization=request.organization,
                 ocr_run_id=region_run, region_id=region["document_id"]).select_related("worker").first()
+            if region["association_record"]:
+                for proposal in region["proposals"]:
+                    try:
+                        context = review_context(request.user, request.organization, [proposal.pk])[proposal.pk]
+                    except (Forbidden, StaleWrite, ValueError, OSError):
+                        context = {}
+                    proposal.review_token = context.get("token", "")
+                    proposal.confirmed_value = context.get("confirmed_value")
+                    proposal.review_value = (proposal.confirmed_value if proposal.confirmed_value is not None
+                                             else proposal.proposed_value)
             region["type_label"] = {"op": "Občanský průkaz", "zp": "Průkaz pojištěnce", "passport": "Cestovní pas"}.get(region["classification"]["type"], "Neurčený dokument")
             region["side_label"] = {"front": "přední strana", "back": "zadní strana"}.get(region["classification"]["side"], "")
             regions.append(region)
     return render(request, "portal/document_intake_detail.html", {"document": document, "ocr_run": run,
-        "regions": regions, "error": error, "workers": Worker.objects.filter(organization=request.organization)})
+        "regions": regions, "error": error, "workers": Worker.objects.filter(organization=request.organization)}, status=response_status)
 
 
 def upload_unassigned(request, worker=None):

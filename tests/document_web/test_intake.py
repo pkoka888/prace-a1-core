@@ -229,7 +229,9 @@ class IntakeTests(TransactionTestCase):
         self.assertEqual(self.client.post(f"/documents/{document.pk}/",{"action":"confirm"}).status_code,200)
         self.assertEqual(FieldDecision.objects.count(),0)
         proposal=FieldProposal.objects.get(ocr_run=run,field_name="birth_date")
-        response=self.client.post(f"/documents/{document.pk}/",{"action":"confirm",f"confirm_{proposal.pk}":"on"})
+        from portal.release1a.field_review import review_context
+        token = review_context(self.user, self.org, [proposal.pk])[proposal.pk]["token"]
+        response=self.client.post(f"/documents/{document.pk}/",{"action":"confirm",f"confirm_{proposal.pk}":"on", f"expected_{proposal.pk}":token, f"value_{proposal.field_name}_{proposal.pk}":proposal.proposed_value})
         self.assertEqual(response.status_code,302)
         self.assertEqual(FieldDecision.objects.count(),1)
         self.assertContains(self.client.get(f"/workers/{self.worker.pk}/"),"Potvrzené údaje z dokladů")

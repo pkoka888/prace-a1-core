@@ -10,7 +10,7 @@ source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
 Human/visual confirmation and official issuance remain separate. Migration 0017 adds
 immutable generations for changed dependencies, preserving the number and prior packages.
-BO generation access and generation-bound visual confirmation are implemented. Next: expected-revision identity/field confirmation in BO. See the
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. Next: expected-revision identity association/conflict resolution in BO. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
 Existing environments remain unchanged; selected supervised release needs 0014–0018.
 
@@ -27,7 +27,7 @@ completed batches reuse the shared intake/OCR adapter, preserve proposals and
 resume failed runs. Durable evaluations and typed-identifier claims now support
 conditional unconfirmed drafts; explicit resolution has source/revision checks.
 Revision-bound canonical input snapshots/exports and assignment facts (0015) are implemented.
-Generation-bound visual confirmation is implemented. Next is expected-revision identity/field confirmation in BO, with identity revision
+Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. Next is identity association/conflict resolution in BO, with identity revision
 integration in parallel. The selected supervised environment needs migrations 0014–0018;
 see the child contract and delivery record for the precise acceptance scope.
 

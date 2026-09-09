@@ -10,7 +10,7 @@ source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
 Human/visual confirmation and official issuance remain separate. Migration 0017 adds
 immutable generations for changed dependencies, preserving the number and prior packages.
-BO generation access and generation-bound visual confirmation are implemented. Next: expected-revision identity/field confirmation in BO. See the
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. Next: expected-revision identity association/conflict resolution in BO. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
 Existing environments remain unchanged; selected supervised release needs 0014–0018.
 
@@ -159,7 +159,7 @@ The inbox now prepares revision-bound A1 input cases using
 provenance and explicit missing-fact blockers. Migration 0015 stores versioned
 assignment facts. The input service itself creates no PDF or human approval. The subsequent
 draft checkpoint above implements the shared publisher and stable reservations;
-replacement generation revisions are implemented; BO generation access and visual confirmation are implemented; identity/field BO integration remains next.
+replacement generation revisions are implemented; BO generation access and visual confirmation are implemented; field confirmation is revision-checked; identity association/conflict BO integration remains next.
 Existing environments remain unchanged; see the delivery record for test evidence.
 
 ## Current session review and next implementation

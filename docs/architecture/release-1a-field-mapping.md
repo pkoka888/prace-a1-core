@@ -93,7 +93,10 @@ profile/dependencies and immutable package; historical packages remain available
 BO now reads the applicable generation through `portal/release1a/a1_generation_access.py`.
 Migration 0018 stores the operator/time and exact source/fingerprint/PDF/receipt
 for each visual confirmation. Identity facts and case issuance state remain separate.
-Legacy-key reconciliation, cohort export and identity/field BO integration remain follow-up work.
+BO field confirmation now uses `portal/release1a/field_review.py` and existing
+FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
+and the current confirmed revision; replacement of a confirmed value requires reason.
+Legacy-key reconciliation, cohort export and identity association/conflict BO integration remain follow-up work.
 
 ## Complete CSV mapping
 
