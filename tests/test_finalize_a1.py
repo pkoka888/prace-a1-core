@@ -1,15 +1,18 @@
 import csv
 import hashlib
+import io
 import json
 import tempfile
 import unittest
 from unittest.mock import patch
 from pathlib import Path
+from contextlib import redirect_stdout
 
 from scripts.finalize_a1 import (
     CSV_FIELDS,
     FinalizationError,
     generate_final_set,
+    main,
     read_review,
     readiness_report,
     validate_review,
@@ -196,6 +199,101 @@ class FinalizationTests(unittest.TestCase):
         self.assertIn("missing activity_source", report["employees"][0]["blockers"])
         self.assertIn("activity_source_status is not AUTHORITATIVE", report["employees"][0]["blockers"])
         self.assertIn("validated_by_user must be 1", report["employees"][1]["blockers"])
+
+    def test_provisional_readiness_matches_blank_51_validation_by_profile(self):
+        for status in ("self_employed_multi_state", "employee_multi_state", "posted_employee"):
+            with self.subTest(status=status):
+                rows = [review_row(source, f"DOC-{index}") for index, source in enumerate(self.employees)]
+                for row in rows:
+                    row.update(status_profile=status, activity_name="", activity_address="DE, CZ")
+                before = json.dumps(rows, sort_keys=True)
+                report = readiness_report(rows, self.profile_dir, provisional=True)
+                self.assertEqual(report["mode"], "provisional")
+                self.assertEqual(report["scope"], "review_preflight")
+                if status == "self_employed_multi_state":
+                    self.assertTrue(report["ready"], report)
+                    self.assertEqual(len(validate_review(rows, self.employees_path, self.profile_dir,
+                                                         provisional=True)), 2)
+                else:
+                    self.assertFalse(report["ready"])
+                    self.assertIn("missing activity_name", report["employees"][0]["blockers"])
+                    with self.assertRaisesRegex(FinalizationError, "activity_name"):
+                        validate_review(rows, self.employees_path, self.profile_dir, provisional=True)
+                authoritative = readiness_report(rows, self.profile_dir)
+                self.assertEqual(authoritative["mode"], "authoritative")
+                self.assertFalse(authoritative["ready"])
+                self.assertEqual(json.dumps(rows, sort_keys=True), before)
+
+    def test_provisional_readiness_does_not_require_issued_certificate_evidence(self):
+        rows = [review_row(source, f"DOC-{index}") for index, source in enumerate(self.employees)]
+        for row in rows:
+            row.update(activity_name="", start_date="", end_date="", signed_by="")
+            for subject in ("activity", "certificate", "signatory"):
+                row[f"{subject}_source"] = ""
+                row[f"{subject}_source_status"] = "UNVERIFIED"
+        self.assertTrue(readiness_report(rows, self.profile_dir, provisional=True)["ready"])
+        self.assertEqual(len(validate_review(rows, self.employees_path, self.profile_dir,
+                                             provisional=True)), 2)
+        report = readiness_report(rows, self.profile_dir)
+        self.assertFalse(report["ready"])
+        blockers = report["employees"][0]["blockers"]
+        self.assertIn("missing signed_by", blockers)
+        self.assertIn("certificate_source_status is not AUTHORITATIVE", blockers)
+
+    def test_provisional_readiness_still_requires_all_human_input_flags(self):
+        for field, value in (("identity_reviewed", "NO"), ("certificate_reviewed", "NO"),
+                             ("approved_for_pdf", "NO"), ("validated_by_user", "0")):
+            with self.subTest(field=field):
+                rows = [review_row(source, f"DOC-{index}") for index, source in enumerate(self.employees)]
+                rows[0].update(activity_name="", **{field: value})
+                report = readiness_report(rows, self.profile_dir, provisional=True)
+                self.assertFalse(report["ready"])
+                self.assertTrue(any(field in reason for reason in report["employees"][0]["blockers"]))
+                self.assertEqual(rows[0][field], value)
+                with self.assertRaisesRegex(FinalizationError, field):
+                    validate_review(rows, self.employees_path, self.profile_dir, provisional=True)
+
+    def test_provisional_readiness_keeps_territory_and_duplicate_id_checks(self):
+        rows = [review_row(source, "SAME-ID") for source in self.employees]
+        rows[0].update(activity_name="", activity_address="")
+        report = readiness_report(rows, self.profile_dir, provisional=True)
+        self.assertFalse(report["ready"])
+        self.assertIn("missing activity_address", report["employees"][0]["blockers"])
+        self.assertIn("duplicate document_id", report["employees"][0]["blockers"])
+
+    def test_provisional_readiness_rejects_unverified_profile(self):
+        path = self.profile_dir / "teplice-test.json"
+        profile = json.loads(path.read_text())
+        profile["review_status"] = "PROVISIONAL"
+        path.write_text(json.dumps(profile))
+        rows = [review_row(source, f"DOC-{index}") for index, source in enumerate(self.employees)]
+        self.assertFalse(readiness_report(rows, self.profile_dir, provisional=True)["ready"])
+        with self.assertRaisesRegex(FinalizationError, "not VERIFIED"):
+            validate_review(rows, self.employees_path, self.profile_dir, provisional=True)
+
+    def test_readiness_cli_records_selected_mode_without_generating_or_confirming(self):
+        rows = [review_row(source, f"DOC-{index}") for index, source in enumerate(self.employees)]
+        for row in rows:
+            row.update(activity_name="", activity_address="DE, CZ")
+        self.write_rows(rows)
+        original = self.review_path.read_bytes()
+        report_path = self.base / "a1/readiness.json"
+        args = ["--employees", str(self.employees_path), "--profiles", str(self.profile_dir),
+                "readiness", "--review", str(self.review_path), "--report", str(report_path)]
+        for extra, mode, expected_status in (([], "authoritative", 1),
+                                             (["--provisional"], "provisional", 0)):
+            with self.subTest(mode=mode), redirect_stdout(io.StringIO()) as output:
+                self.assertEqual(main([*args, *extra]), expected_status)
+            summary = json.loads(output.getvalue())
+            receipt = json.loads(report_path.read_text())
+            self.assertEqual(summary["mode"], mode)
+            self.assertEqual(receipt["mode"], mode)
+            self.assertEqual(receipt["scope"], "review_preflight")
+            self.assertEqual(receipt["ready"], expected_status == 0)
+            self.assertEqual(report_path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn(rows[0]["surname"], output.getvalue())
+        self.assertEqual(self.review_path.read_bytes(), original)
+        self.assertFalse(list(self.base.rglob("*.pdf")))
 
     def test_assumed_certificate_source_is_rejected(self):
         rows = [review_row(self.employees[0], "DOC-A"), review_row(self.employees[1], "DOC-B")]

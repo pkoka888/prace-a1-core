@@ -180,20 +180,33 @@ def read_review(path: Path) -> list[dict[str, str]]:
         return rows
 
 
-def readiness_report(rows: list[dict[str, str]], profile_dir: Path | None = None) -> dict[str, Any]:
-    """Sanitized missing-evidence routing; row indices never identify a person in logs."""
-    required_values = (
+def _required_review_fields(status: str, *, provisional: bool) -> tuple[str, ...]:
+    """One CSV presence contract for validation and its readiness preflight."""
+    common = (
         "surname", "given_name", "dob", "birth_place", "nationality", "sex",
         "insurance_number", "street", "house_number", "city", "postal_code", "country_code",
-        "status_profile", "activity_name", "activity_address", "employment_id", "employment_name",
+        "status_profile", "employment_id", "employment_name",
         "employment_street", "employment_house_number", "employment_city", "employment_postal_code",
         "employment_country_code", "resolved_ossz", "institution_profile", "document_id",
-        "start_date", "end_date", "issue_date", "signed_by",
+        "issue_date",
     )
+    # Section 5.1 is intentionally blank on provisional self-employed copies.
+    activity = (("activity_address",) if provisional and status == "self_employed_multi_state"
+                else ("activity_name", "activity_address"))
+    certificate = () if provisional else ("start_date", "end_date", "signed_by")
+    return (*common, *activity, *certificate)
+
+
+def readiness_report(
+    rows: list[dict[str, str]], profile_dir: Path | None = None, *, provisional: bool = False,
+) -> dict[str, Any]:
+    """Sanitized, mode-aware review preflight; not generation or artifact approval."""
     report_rows = []
     for index, row in enumerate(rows, 1):
+        status = row.get("status_profile", "")
+        required_values = _required_review_fields(status, provisional=provisional)
         blockers = [f"missing {field}" for field in required_values if not row.get(field)]
-        for subject in ("activity", "certificate", "signatory"):
+        for subject in (() if provisional else ("activity", "certificate", "signatory")):
             source = row.get(f"{subject}_source", "")
             if not source:
                 blockers.append(f"missing {subject}_source")
@@ -205,7 +218,6 @@ def readiness_report(rows: list[dict[str, str]], profile_dir: Path | None = None
                                ("approved_for_pdf", YES), ("validated_by_user", "1")):
             if row.get(flag) != expected:
                 blockers.append(f"{flag} must be {expected}")
-        status = row.get("status_profile")
         if status not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
             blockers.append("unsupported status_profile")
         if status in {"employee_multi_state", "posted_employee"} and "osvč" in row.get("employment_name", "").casefold():
@@ -224,13 +236,15 @@ def readiness_report(rows: list[dict[str, str]], profile_dir: Path | None = None
                 blockers.append(f"duplicate {field}")
         if profile_dir is not None and row.get("institution_profile"):
             try:
-                profile = load_profile(profile_dir, row["institution_profile"])
-                if profile.get("expected_ossz", "").casefold() != row.get("resolved_ossz", "").casefold():
+                profile = load_profile(profile_dir, row["institution_profile"], provisional=provisional)
+                if not provisional and profile.get("expected_ossz", "").casefold() != row.get("resolved_ossz", "").casefold():
                     blockers.append("institution_profile does not match resolved_ossz")
             except (FinalizationError, OSError, ValueError):
                 blockers.append("institution_profile is missing, unverified or contains placeholder fields")
         report_rows.append({"row_index": index, "blockers": blockers})
-    return {"ready": bool(rows) and all(not r["blockers"] for r in report_rows),
+    return {"mode": "provisional" if provisional else "authoritative",
+            "scope": "review_preflight",
+            "ready": bool(rows) and all(not r["blockers"] for r in report_rows),
             "employee_count": len(rows), "blocked_employee_count": sum(bool(r["blockers"]) for r in report_rows),
             "employees": report_rows}
 
@@ -325,34 +339,10 @@ def validate_review(
         raise FinalizationError("every employee needs a non-empty, unique document_id")
 
     validated: list[tuple[dict[str, str], dict[str, Any]]] = []
-    if provisional:
-        base_required = (
-            "surname", "given_name", "dob", "birth_place", "nationality", "sex",
-            "insurance_number", "street", "house_number", "city", "postal_code",
-            "country_code", "status_profile",
-            "resolved_ossz", "institution_profile", "issue_date",
-        )
-    else:
-        base_required = (
-            "surname", "given_name", "dob", "birth_place", "nationality", "sex",
-            "insurance_number", "street", "house_number", "city", "postal_code",
-            "country_code", "status_profile",
-            "resolved_ossz", "institution_profile", "start_date", "end_date", "issue_date",
-            "signed_by",
-        )
-    employment_required = (
-        "employment_id", "employment_name", "employment_street",
-        "employment_house_number", "employment_city", "employment_postal_code",
-        "employment_country_code",
-    )
     for row in rows:
         employee_id = _slug(row["employee_id"])
         status = row.get("status_profile", "")
-        # Section 5.1 is intentionally blank in the provisional self-employed
-        # presentation; section 5.2 still requires the reviewed territory.
-        activity_required = (("activity_address",) if provisional and status == "self_employed_multi_state"
-                             else ("activity_name", "activity_address"))
-        required = (*base_required, *activity_required, *employment_required)
+        required = _required_review_fields(status, provisional=provisional)
         missing = [field for field in required if not row.get(field)]
         if missing:
             raise FinalizationError(f"{employee_id}: missing required values: {', '.join(missing)}")
@@ -612,6 +602,8 @@ def build_parser() -> argparse.ArgumentParser:
     readiness = sub.add_parser("readiness", help="list all operator-actionable review blockers")
     readiness.add_argument("--review", type=Path)
     readiness.add_argument("--report", type=Path, help="protected JSON receipt; defaults under a1/")
+    readiness.add_argument("--provisional", action="store_true",
+                           help="check provisional review inputs; default checks authoritative evidence")
     generate = sub.add_parser("generate", help="generate and atomically publish the complete reviewed set")
     generate.add_argument("--review", type=Path)
     generate.add_argument("--background", type=Path, default=ROOT / "templates/a1_background.pdf")
@@ -652,10 +644,11 @@ def main(argv: list[str] | None = None) -> int:
                 if (destination in {args.review.resolve(), args.employees.resolve()}
                         or destination.is_relative_to(args.profiles.resolve())):
                     raise FinalizationError("RECEIPT_INPUT_OVERLAP")
-                report = readiness_report(read_review(args.review), args.profiles)
+                report = readiness_report(read_review(args.review), args.profiles,
+                                          provisional=args.provisional)
                 report['run_id'] = run_id
                 write_private_json(destination, report)
-                summary = json.dumps({key: report[key] for key in ("ready", "employee_count", "blocked_employee_count")})
+                summary = json.dumps({key: report[key] for key in ("mode", "scope", "ready", "employee_count", "blocked_employee_count")})
         print(summary)
         return (0 if report["ready"] else 1) if args.command == "readiness" else 0
     except (Exception, KeyboardInterrupt):  # Sanitize unexpected malformed-input errors at the CLI boundary.
