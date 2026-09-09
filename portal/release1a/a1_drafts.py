@@ -1,4 +1,5 @@
 """Synthetic unverified application drafts through the canonical A1 publisher."""
+import copy
 import hashlib
 import importlib.metadata
 import json
@@ -19,7 +20,7 @@ from .a1_exports import export_input_case
 from .document_intake import audit
 from .identity import _authorize, _lock_organization
 from .j4_artifacts import _root, publish_artifact, verify_artifact
-from .models import A1Case, A1DraftReservation
+from .models import A1Case, A1DraftReservation, A1DraftGeneration
 from .services import StaleWrite
 
 
@@ -102,8 +103,8 @@ def reserve_application_draft(user, organization, case_id):
     previous = A1DraftReservation.objects.filter(case=case, organization=organization).first()
     if previous:
         _verify_reservation(previous)
-        if previous.dependencies != dependencies or previous.snapshot.get("input") != source:
-            raise StaleWrite("A1_DRAFT_DEPENDENCIES_CHANGED")
+        if previous.snapshot.get("input") != source:
+            raise StaleWrite("A1_DRAFT_SOURCE_CHANGED")
         return previous
     reference_date = timezone.localdate()
     number_date = row["issue_date"] or reference_date.strftime("%d.%m.%Y")
@@ -128,46 +129,91 @@ def reserve_application_draft(user, organization, case_id):
     raise DraftInputBlocked("A1_DRAFT_NUMBER_CAPACITY")
 
 
+def _verify_generation(generation):
+    reservation = generation.reservation
+    _verify_reservation(reservation)
+    if (generation.organization_id != reservation.organization_id or
+            result_hash(generation.snapshot) != generation.snapshot_sha256 or
+            result_hash({"snapshot": generation.snapshot, "dependencies": generation.dependencies}) != generation.fingerprint or
+            generation.snapshot.get("row", {}).get("document_id") != reservation.document_id or
+            generation.snapshot.get("input") != reservation.snapshot.get("input")):
+        raise StaleWrite("A1_DRAFT_GENERATION_CORRUPT")
+
+
 @transaction.atomic
-def _publish_reserved(user, organization, reservation_id):
+def reserve_application_generation(user, organization, case_id):
+    """Deduplicate exact rendering inputs while retaining the case's original number."""
+    reservation = reserve_application_draft(user, organization, case_id)
+    profile, path, profile_hash = _profile(reservation.snapshot["input"]["row"])
+    dependencies = _dependencies(reservation.case, path)
+    if dependencies["files"]["institution_profile"] != profile_hash:
+        raise StaleWrite("A1_DRAFT_PROFILE_CHANGED")
+    snapshot = copy.deepcopy(reservation.snapshot)
+    snapshot["profile"] = profile
+    fingerprint = result_hash({"snapshot": snapshot, "dependencies": dependencies})
+    previous = A1DraftGeneration.objects.filter(reservation=reservation, fingerprint=fingerprint).first()
+    if previous:
+        _verify_generation(previous)
+        return previous
+    latest = A1DraftGeneration.objects.filter(reservation=reservation).order_by("-revision").first()
+    values = {}
+    if latest is None:
+        # Also recover a reserved-but-unpublished first generation without changing its key.
+        values["package_key"] = reservation.package_key
+    generation = A1DraftGeneration.objects.create(organization=organization, reservation=reservation,
+        revision=latest.revision + 1 if latest else 1, fingerprint=fingerprint,
+        snapshot=snapshot, snapshot_sha256=result_hash(snapshot), dependencies=dependencies, **values)
+    audit(user, organization, "a1.draft_generation_reserved", f"generation:{generation.pk}")
+    return generation
+
+
+@transaction.atomic
+def _publish_reserved(user, organization, generation_id):
     _authorize(user, organization, "a1:prepare")
     _lock_organization(organization)
-    reservation = A1DraftReservation.objects.select_for_update().get(pk=reservation_id,
-        organization=organization, case__organization=organization, case__worker__organization=organization)
-    _verify_reservation(reservation)
-    case = A1Case.objects.select_for_update().get(pk=reservation.case_id)
+    generation = A1DraftGeneration.objects.select_for_update().get(pk=generation_id,
+        organization=organization, reservation__organization=organization,
+        reservation__case__organization=organization, reservation__case__worker__organization=organization)
+    _verify_generation(generation)
+    case = A1Case.objects.select_for_update().get(pk=generation.reservation.case_id)
     source = _current(user, organization, case)
     profile, profile_path, profile_hash = _profile(source["row"])
     dependencies = _dependencies(case, profile_path)
-    if (reservation.snapshot.get("input") != source or reservation.dependencies != dependencies or
-            reservation.snapshot["profile"] != profile or dependencies["files"]["institution_profile"] != profile_hash):
+    if (generation.snapshot.get("input") != source or generation.dependencies != dependencies or
+            generation.snapshot["profile"] != profile or dependencies["files"]["institution_profile"] != profile_hash):
         raise StaleWrite("A1_DRAFT_DEPENDENCIES_CHANGED")
     root = _root(Path(settings.DOCUMENT_STORAGE_ROOT) / "j4")
-    if case.artifact_reference:
-        if case.artifact_reference.get("key") != reservation.package_key.hex:
+    artifact_dependencies = dict(dependencies, reservation_sha256=generation.snapshot_sha256)
+    if generation.artifact_reference:
+        if (generation.artifact_reference.get("key") != generation.package_key.hex or
+                generation.artifact_dependencies != artifact_dependencies or
+                generation.prepared_artifact_hash != generation.artifact_reference.get("pdf_sha256")):
             raise StaleWrite("A1_DRAFT_ARTIFACT_MISMATCH")
-        current = dict(dependencies, reservation_sha256=result_hash(reservation.snapshot))
-        if verify_artifact(root, case.artifact_reference, current)["stale"]:
+        if verify_artifact(root, generation.artifact_reference, artifact_dependencies)["stale"]:
             raise StaleWrite("A1_DRAFT_ARTIFACT_STALE")
-        audit(user, organization, "a1.draft_reused", f"a1:{case.pk}")
-        return case
+        audit(user, organization, "a1.draft_reused", f"generation:{generation.pk}")
+        return generation
     with tempfile.TemporaryDirectory(prefix=".draft-render-", dir=root) as temporary:
-        pdf, checks = render_application_draft(reservation.snapshot["row"], reservation.snapshot["profile"], Path(temporary))
-        # Recheck files after rendering; source rows remain locked throughout this transaction.
+        pdf, checks = render_application_draft(generation.snapshot["row"], generation.snapshot["profile"], Path(temporary))
         if _dependencies(case, profile_path) != dependencies:
             raise StaleWrite("A1_DRAFT_DEPENDENCIES_CHANGED")
-        artifact_dependencies = dict(dependencies, reservation_sha256=result_hash(reservation.snapshot))
-        reference = publish_artifact(root, pdf, {"reservation": reservation.snapshot, "checks": checks},
-            artifact_dependencies, operation_key=reservation.package_key.hex)
-    case.artifact_reference = reference
-    case.artifact_dependencies = artifact_dependencies
-    case.prepared_artifact_hash = reference["pdf_sha256"]
-    # Readiness/issuance/human confirmation are deliberately untouched.
-    case.save(update_fields=["artifact_reference", "artifact_dependencies", "prepared_artifact_hash"])
+        reference = publish_artifact(root, pdf, {"reservation": generation.snapshot, "checks": checks},
+            artifact_dependencies, operation_key=generation.package_key.hex)
+    generation.artifact_reference = reference
+    generation.artifact_dependencies = artifact_dependencies
+    generation.prepared_artifact_hash = reference["pdf_sha256"]
+    generation.save(update_fields=["artifact_reference", "artifact_dependencies", "prepared_artifact_hash"])
+    # Preserve the immutable first-package projection for legacy consumers.
+    if not case.artifact_reference:
+        case.artifact_reference = reference
+        case.artifact_dependencies = artifact_dependencies
+        case.prepared_artifact_hash = reference["pdf_sha256"]
+        case.save(update_fields=["artifact_reference", "artifact_dependencies", "prepared_artifact_hash"])
     audit(user, organization, "a1.draft_published", f"a1:{case.pk}")
-    return case
+    return generation
 
 
 def prepare_application_draft(user, organization, case_id):
-    reservation = reserve_application_draft(user, organization, case_id)
-    return _publish_reserved(user, organization, reservation.pk)
+    """Return the exact generation matching current dependencies, never a legacy case projection."""
+    generation = reserve_application_generation(user, organization, case_id)
+    return _publish_reserved(user, organization, generation.pk)

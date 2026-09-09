@@ -8,11 +8,11 @@
 canonical unverified-draft publisher. Migration 0016 reserves an immutable number,
 source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
-Human/visual confirmation and official issuance remain separate. Next: generation
-revisions after dependency changes, then BO artifact access/confirmation. Current
-reservations reject changed dependencies without replacing them. See the
+Human/visual confirmation and official issuance remain separate. Migration 0017 adds
+immutable generations for changed dependencies, preserving the number and prior packages.
+Next: BO artifact access and expected-generation confirmation. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
-Existing environments remain unchanged; selected supervised release needs 0014–0016.
+Existing environments remain unchanged; selected supervised release needs 0014–0017.
 
 ## Local automation and data ownership — 2026-09-08
 
@@ -27,8 +27,8 @@ completed batches reuse the shared intake/OCR adapter, preserve proposals and
 resume failed runs. Durable evaluations and typed-identifier claims now support
 conditional unconfirmed drafts; explicit resolution has source/revision checks.
 Revision-bound canonical input snapshots/exports and assignment facts (0015) are implemented.
-Next is generation revisions and BO artifact access, with BO revision
-integration in parallel. The selected supervised environment needs migrations 0014–0016;
+Next is BO artifact access and expected-generation confirmation, with identity revision
+integration in parallel. The selected supervised environment needs migrations 0014–0017;
 see the child contract and delivery record for the precise acceptance scope.
 
 ## Shared intake Git delivery — 2026-09-08

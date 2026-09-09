@@ -192,6 +192,7 @@ def _process_batches(root_fd, user, organization, processor):
                                 try:
                                     rendered = prepare_application_draft(user, organization, case.pk)
                                     draft["a1_draft"] = {"status": "unverified_draft", "case_ref": case.pk,
+                                        "generation_ref": rendered.pk, "generation_revision": rendered.revision,
                                         "package_key": rendered.artifact_reference["key"],
                                         "pdf_sha256": rendered.prepared_artifact_hash, "visual_review": "pending"}
                                 except DraftInputBlocked as error:

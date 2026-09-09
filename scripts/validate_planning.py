@@ -149,6 +149,7 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/release1a/a1_exports.py",
     "portal/release1a/a1_drafts.py",
     "portal/release1a/migrations/0016_a1_draft_reservation.py",
+    "portal/release1a/migrations/0017_a1_draft_generation.py",
     "portal/release1a/management/commands/a1_prepare_draft.py",
     "portal/release1a/migrations/0015_assignment_a1_facts.py",
     "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",

@@ -11,8 +11,8 @@ from tests.test_a1_application_draft import pending_row, synthetic_profile
 from . import test_a1_exports as a1_export_tests
 from . import test_inbox as inbox_tests
 from portal.release1a.a1_exports import IDENTITY, GROUPS, prepare_input_case, update_assignment_facts
-from portal.release1a.a1_drafts import prepare_application_draft, reserve_application_draft, DraftInputBlocked
-from portal.release1a.models import A1Case, A1DraftReservation, FieldProposal, WorkerIdentityRevision
+from portal.release1a.a1_drafts import prepare_application_draft, reserve_application_draft, DraftInputBlocked, reserve_application_generation, _publish_reserved
+from portal.release1a.models import A1Case, A1DraftReservation, A1DraftGeneration, FieldProposal, WorkerIdentityRevision
 from portal.release1a.services import Forbidden, StaleWrite
 
 
@@ -48,8 +48,10 @@ class A1DraftTests(TransactionTestCase):
     run_inbox = inbox_tests.InboxTests.run_inbox
 
     def test_three_pages_retry_and_pending_status(self):
-        case = prepare_application_draft(self.user, self.org, self.case.pk)
-        first = dict(case.artifact_reference)
+        generation = prepare_application_draft(self.user, self.org, self.case.pk)
+        self.case.refresh_from_db()
+        case = self.case
+        first = dict(generation.artifact_reference)
         again = prepare_application_draft(self.user, self.org, case.pk)
         self.assertEqual(first, again.artifact_reference)
         reservation = A1DraftReservation.objects.get(case=case)
@@ -84,16 +86,8 @@ class A1DraftTests(TransactionTestCase):
         self.assertEqual(A1DraftReservation.objects.count(), 1)
         self.assertEqual(len([p for p in (self.storage / "j4").iterdir() if p.is_dir()]), 1)
 
-    def test_missing_facts_stale_source_and_changed_profile_block(self):
+    def test_missing_facts_and_stale_source_block(self):
         reservation = reserve_application_draft(self.user, self.org, self.case.pk)
-        path = self.profiles / "synthetic.json"
-        profile = synthetic_profile()
-        profile["institution"]["house_number"] = "3"
-        path.write_text(json.dumps(profile))
-        with self.assertRaises(StaleWrite):
-            prepare_application_draft(self.user, self.org, self.case.pk)
-        self.assertFalse((self.storage / "j4").exists())
-        path.write_text(json.dumps(synthetic_profile()))
         update_assignment_facts(self.user, self.org, self.assignment.pk, {}, expected_version=2)
         with self.assertRaises(StaleWrite):
             prepare_application_draft(self.user, self.org, self.case.pk)
@@ -130,3 +124,60 @@ class A1DraftTests(TransactionTestCase):
         self.assertEqual(Path(report["pdf"]).parent.name, draft["package_key"])
         self.assertTrue(Path(report["pdf"]).is_file())
         self.assertEqual(A1DraftReservation.objects.count(), 1)
+
+    def test_changed_profile_creates_revision_preserving_number_and_old_package(self):
+        first = prepare_application_draft(self.user, self.org, self.case.pk)
+        old_pdf = (self.storage / "j4" / first.package_key.hex / "artifact.pdf").read_bytes()
+        path = self.profiles / "synthetic.json"
+        profile = synthetic_profile()
+        profile["institution"]["house_number"] = "3"
+        path.write_text(json.dumps(profile))
+        second = prepare_application_draft(self.user, self.org, self.case.pk)
+        self.assertEqual((first.revision, second.revision), (1, 2))
+        self.assertEqual(first.reservation_id, second.reservation_id)
+        self.assertEqual(first.snapshot["row"], second.snapshot["row"])
+        self.assertNotEqual(first.package_key, second.package_key)
+        self.assertNotEqual(first.prepared_artifact_hash, second.prepared_artifact_hash)
+        self.assertEqual(old_pdf, (self.storage / "j4" / first.package_key.hex / "artifact.pdf").read_bytes())
+        self.case.refresh_from_db()
+        self.assertEqual(self.case.artifact_reference, first.artifact_reference)
+        self.assertFalse(self.case.visual_confirmed)
+        self.assertEqual(second.snapshot["visual_review"], "pending")
+        self.assertEqual(second.snapshot["identity_verification"], "pending")
+        self.assertEqual(prepare_application_draft(self.user, self.org, self.case.pk).pk, second.pk)
+        path.write_text(json.dumps(synthetic_profile()))
+        self.assertEqual(prepare_application_draft(self.user, self.org, self.case.pk).pk, first.pk)
+        self.assertEqual(A1DraftGeneration.objects.count(), 2)
+
+    def test_dependency_change_before_publish_rejects_old_generation_and_retry_recovers_new(self):
+        first = reserve_application_generation(self.user, self.org, self.case.pk)
+        from portal.release1a.a1_drafts import _dependencies, audit as real_audit
+        def changed(*args):
+            return dict(_dependencies(*args), build={"app_build_id": "synthetic-new-build"})
+        def fail_publication(user, org, event, ref):
+            if event == "a1.draft_published":
+                raise RuntimeError("Synthetic audit failure")
+            return real_audit(user, org, event, ref)
+        with patch("portal.release1a.a1_drafts._dependencies", side_effect=changed):
+            with self.assertRaisesRegex(StaleWrite, "DEPENDENCIES_CHANGED"):
+                _publish_reserved(self.user, self.org, first.pk)
+            with patch("portal.release1a.a1_drafts.audit", side_effect=fail_publication):
+                with self.assertRaises(RuntimeError):
+                    prepare_application_draft(self.user, self.org, self.case.pk)
+            second = A1DraftGeneration.objects.get(revision=2)
+            self.assertFalse(second.artifact_reference)
+            result = prepare_application_draft(self.user, self.org, self.case.pk)
+            self.assertEqual(result.pk, second.pk)
+            self.assertEqual(result.package_key, second.package_key)
+        self.assertEqual(A1DraftReservation.objects.count(), 1)
+        self.assertEqual(A1DraftGeneration.objects.count(), 2)
+        self.assertEqual(len([p for p in (self.storage / "j4").iterdir() if p.is_dir()]), 1)
+
+    def test_generation_tampering_and_mutation_are_rejected(self):
+        generation = reserve_application_generation(self.user, self.org, self.case.pk)
+        generation.revision = 99
+        with self.assertRaises(ValueError):
+            generation.save()
+        A1DraftGeneration.objects.filter(pk=generation.pk).update(snapshot_sha256="0" * 64)
+        with self.assertRaisesRegex(StaleWrite, "GENERATION_CORRUPT"):
+            prepare_application_draft(self.user, self.org, self.case.pk)

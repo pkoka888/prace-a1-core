@@ -8,11 +8,11 @@
 canonical unverified-draft publisher. Migration 0016 reserves an immutable number,
 source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
-Human/visual confirmation and official issuance remain separate. Next: generation
-revisions after dependency changes, then BO artifact access/confirmation. Current
-reservations reject changed dependencies without replacing them. See the
+Human/visual confirmation and official issuance remain separate. Migration 0017 adds
+immutable generations for changed dependencies, preserving the number and prior packages.
+Next: BO artifact access and expected-generation confirmation. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
-Existing environments remain unchanged; selected supervised release needs 0014–0016.
+Existing environments remain unchanged; selected supervised release needs 0014–0017.
 
 ## Local A1 consolidation — 2026-09-08
 
@@ -159,7 +159,7 @@ The inbox now prepares revision-bound A1 input cases using
 provenance and explicit missing-fact blockers. Migration 0015 stores versioned
 assignment facts. The input service itself creates no PDF or human approval. The subsequent
 draft checkpoint above implements the shared publisher and stable reservations;
-replacement generation revisions remain next; BO revision checks proceed in parallel.
+replacement generation revisions are implemented; BO artifact access and revision checks remain next.
 Existing environments remain unchanged; see the delivery record for test evidence.
 
 ## Current session review and next implementation

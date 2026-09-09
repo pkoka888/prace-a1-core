@@ -224,6 +224,41 @@ class A1DraftReservation(TenantModel):
         return super().save(*args, **kwargs)
 
 
+class A1DraftGeneration(TenantModel):
+    """Immutable render inputs and write-once package for a stable draft identity."""
+    reservation = models.ForeignKey(A1DraftReservation, on_delete=models.PROTECT, related_name="generations")
+    revision = models.PositiveIntegerField()
+    fingerprint = models.CharField(max_length=64)
+    package_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    snapshot = models.JSONField()
+    snapshot_sha256 = models.CharField(max_length=64)
+    dependencies = models.JSONField()
+    artifact_reference = models.JSONField(default=dict, blank=True)
+    artifact_dependencies = models.JSONField(default=dict, blank=True)
+    prepared_artifact_hash = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["reservation", "revision"], name="unique_a1_draft_revision"),
+            models.UniqueConstraint(fields=["reservation", "fingerprint"], name="unique_a1_draft_fingerprint"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.organization_id != self.reservation.organization_id:
+            raise ValueError("A1_DRAFT_GENERATION_ORGANIZATION_MISMATCH")
+        immutable = ("organization_id", "reservation_id", "revision", "fingerprint", "package_key",
+                     "snapshot", "snapshot_sha256", "dependencies")
+        artifacts = ("artifact_reference", "artifact_dependencies", "prepared_artifact_hash")
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).values(*immutable, *artifacts).first()
+            if previous:
+                if any(previous[field] != getattr(self, field) for field in immutable):
+                    raise ValueError("A1_DRAFT_GENERATION_IMMUTABLE")
+                if previous["artifact_reference"] and any(previous[field] != getattr(self, field) for field in artifacts):
+                    raise ValueError("A1_DRAFT_GENERATION_ARTIFACT_IMMUTABLE")
+        return super().save(*args, **kwargs)
+
+
 class AuditEvent(TenantModel):
     actor_ref = models.CharField(max_length=80)
     event_type = models.CharField(max_length=80)

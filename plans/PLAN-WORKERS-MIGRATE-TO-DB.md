@@ -8,11 +8,11 @@
 canonical unverified-draft publisher. Migration 0016 reserves an immutable number,
 source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
-Human/visual confirmation and official issuance remain separate. Next: generation
-revisions after dependency changes, then BO artifact access/confirmation. Current
-reservations reject changed dependencies without replacing them. See the
+Human/visual confirmation and official issuance remain separate. Migration 0017 adds
+immutable generations for changed dependencies, preserving the number and prior packages.
+Next: BO artifact access and expected-generation confirmation. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
-Existing environments remain unchanged; selected supervised release needs 0014–0016.
+Existing environments remain unchanged; selected supervised release needs 0014–0017.
 
 ## Consolidated contract — 2026-09-08
 
@@ -35,7 +35,7 @@ claims, creates eligible drafts and exposes revision-checked explicit resolution
 Migrations 0014/0015 are tested on disposable databases; existing environments are preserved.
 Synthetic input snapshots and all 44 canonical CSV columns are exported by
 `portal/release1a/a1_exports.py`, with versioned assignment facts and provenance.
-No DB-MIG cutover is accepted. Next: generation revisions and BO artifact access, with BO revision integration in parallel and selected supervised
+No DB-MIG cutover is accepted. Next: BO artifact access and expected-generation confirmation, with identity revision integration in parallel and selected supervised
 migration before runtime use. Existing cutover dependencies remain unchanged.
 
 ## Purpose and current ownership

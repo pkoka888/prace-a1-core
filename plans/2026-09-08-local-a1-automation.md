@@ -4,7 +4,7 @@ Status: planned. Consolidated implementation contract, reviewed 2026-09-09;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
 revision-bound inputs and synthetic unverified PDF draft generation are implemented;
-BO integration and generation revisions remain planned.
+generation revisions are implemented; BO integration remains planned.
 Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-WORKERS-MIGRATE-TO-DB](PLAN-WORKERS-MIGRATE-TO-DB.md),
 [PLAN-A1](PLAN-A1.md), [PLAN-INFRA](PLAN-INFRA.md) and
@@ -95,11 +95,19 @@ visual and identity confirmation stay pending in the package. Current BO downloa
 confirmation paths still use their earlier J4 snapshot contract. Use the local
 command/private paths for this bounded increment; no environment is activated.
 
-Next: generation revisions for changed template/profile/code dependencies. Current
-reservations reject such changes; there is no replacement revision for unchanged
-input cases yet. Preserve earlier packages and numbers when implementing this.
-Then integrate BO artifact access and expected-revision confirmation. Apply
-0014–0016 through the selected supervised release before runtime use; the existing
+Migration `0017_a1_draft_generation` separates stable numbering from render generations.
+Each distinct snapshot/dependency fingerprint reserves a unique generation and package;
+exact retries (including returning to an earlier dependency set) reuse that generation.
+Profile/template/build changes retain the original number and previous packages.
+Code changes require process restart before generation. Every generation remains
+unverified. Changed source facts still require a new input case; stale sources fail closed.
+Migration backfills generation 1 from existing reservations and their matching packages;
+rollback refuses loss of replacement generations. `A1Case.artifact_reference` remains
+the immutable first-package projection for legacy consumers; the command and inbox
+return the matching generation reference/revision and its private package instead.
+
+Next: BO artifact access and expected-generation confirmation. Apply
+0014–0017 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
 ## A1 input preparation checkpoint — 2026-09-09
@@ -119,9 +127,9 @@ snapshots are preserved. `source_scans` uses opaque document/version references;
 a DB-native publisher adapter still needs to resolve those references and pin
 institution profiles. Canonical readiness reports existing gate blockers honestly.
 The subsequent draft checkpoint above implements the unverified publisher mode,
-stable DB-bound numbering and artifact QA. Generation revisions remain next. BO UI
+stable DB-bound numbering, generation revisions and artifact QA. BO UI
 revision checks proceed in parallel; BO completion is not a future draft gate.
-Migrations 0014–0016 require application in the selected supervised release before
+Migrations 0014–0017 require application in the selected supervised release before
 runtime use; the existing development database remains at its recorded 0013 state.
 Validation, publication and deployment evidence are in the delivery record.
 
@@ -157,11 +165,10 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: add generation revisions for changed dependencies and BO
-access to unverified packages. Complete legacy reconciliation separately before cutover. In parallel, wire BO
+Next functional phase: BO access to exact unverified generations and stale-confirmation rejection. Complete legacy reconciliation separately before cutover. In parallel, wire BO
 association forms to revision-checked resolution and protect field confirmation
 with expected revisions. BO UI completion is not a gate for eligible unverified
-A1 drafts. Apply 0014–0016 through the selected supervised development release workflow
+A1 drafts. Apply 0014–0017 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.

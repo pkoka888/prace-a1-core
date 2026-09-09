@@ -31,6 +31,22 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### A1 generation revisions — 2026-09-09
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Migration 0017 adds immutable render generations under each stable number reservation. Exact snapshot/dependency fingerprints deduplicate retries; changed profiles/templates/builds receive their own package. Earlier packages and the original case projection are preserved. Inbox and command return the matching generation reference/revision. Migration copies existing reservations/packages and prevents rollback that would lose generation-only evidence |
+| Validation | Eight focused draft tests passed. Model/migration parity and 24 planning checks passed. Two synthetic generations/six pages were inspected locally; number, boxes, blank dates and Section 5 remain correct, and only the intended institution address changes. PostgreSQL integration and committed-source acceptance are recorded below when complete |
+| Publication | Local delivery only; inherited outgoing history still requires content/provenance review before private-origin publication |
+| Deployment | None. Migration 0017 runs only in disposable synthetic tests. Selected supervised release needs 0014–0017; its existing database remains at recorded 0013 |
+| Activation | Unchanged; all generations remain unverified. No human confirmation, submission, issuance or real-data portal activation |
+| Limitations | BO still reads the older case artifact projection. Dependency reversion reuses the matching prior generation; numeric revision order alone does not establish current applicability. Changed source facts require a new immutable input case. Running processes must restart after code changes |
+| Next owner | Engineering: organization-scoped BO access to the exact applicable generation, followed by expected-generation and expected-source confirmation with stale rejection; keep visual review separate from identity confirmation. Legacy reconciliation/cutover remains separate |
+
+Protected synthetic visual manifest:
+`runtime/portal/temporary/a1-generation-visual-dfe8o90t/manifest.json`.
+Local engineering review does not set human confirmation or promote an artifact.
+
 ### Unverified application-draft publication — 2026-09-09
 
 | Field | Evidence / state |

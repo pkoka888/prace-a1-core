@@ -117,6 +117,7 @@
         "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
         "portal/release1a/migrations/0015_assignment_a1_facts.py",
         "portal/release1a/migrations/0016_a1_draft_reservation.py",
+        "portal/release1a/migrations/0017_a1_draft_generation.py",
         "tests/test_release1a_migration_chain.py"
       ],
       "checks": [

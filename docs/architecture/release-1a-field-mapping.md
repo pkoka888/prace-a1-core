@@ -88,8 +88,9 @@ identity fields override OCR without setting whole-form approval flags. Assignme
 inputs are unconfirmed, absent facts remain blank, and source references are opaque.
 Migration 0016 and `portal/release1a/a1_drafts.py` now reserve a draft number and
 pin the profile/input/dependencies for the canonical unverified PDF publisher.
-Legacy-key reconciliation, cohort export and replacement generation revisions
-after dependency changes remain follow-up work.
+Migration 0017 retains that stable number while binding each generation to its own
+profile/dependencies and immutable package; historical packages remain available.
+Legacy-key reconciliation, cohort export and BO generation access remain follow-up work.
 
 ## Complete CSV mapping
 
