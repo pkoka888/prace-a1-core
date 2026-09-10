@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Repository review and four-delivery sequence — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Repository review identified obsolete release-verifier blocked-gate assertions, stale J2/J4 NOT_RUN claims (those components have tests), three failing A1 employee-delivery tests with mismatched assertions, and 52 unpublished commits. AGENTS.md now declares the **usable application increment** as the default delivery unit (allow incomplete optional fields, manual fallbacks, additive migrations, demonstration + limitations at release checkpoints). Roadmap and the active plan now organize work around four Jan-facing outcomes: integrated testing site → usable v1 workflow → restricted production pilot → later releases. M3 expansion deferred to Release 1B; deferred research lanes noted in roadmap |
+| Validation | `release_verifier.governance/gate-dependencies` now asserts declared dependency structure only (REV-002 depends on ENG-001; REV-003 depends on OPS/LEG/INF + REV-002 approved) without forcing gates to remain `blocked`. `release_verifier.eng001/J2/J4` checks now wired to real test files (`tests/a1/test_a1_snapshots.py`, `tests/test_j4_artifacts.py`, `tests/test_j4_minimum.py`, `tests/document_web/test_*`), reporting `BLOCKED_ENV` for missing files and PASS/FAIL on actual test runs. `tests/test_a1_employee_delivery.py` now 34/34 passing: `UNVERIFIED` source-status removed from the "blocks render" parametrize (it is the valid default); `test_canonical_background_has_no_baked_selections_and_matches_repair_receipt` updated to inspect empty-quadrant pixels (the 924c215 checkbox outlines now cross the old sample coordinates; receipt `output_sha256` regenerated to current template SHA with audit note). Focused suites (112 passed, 3 PostgreSQL-only skips) confirm no regression. `validate_planning.py` runs in ~0.28 s and remains green |
+| Publication | Local commits on `feat/prace-readiness-plan-2026-08-13`, 52 ahead of upstream. The 52-commit coherent release candidate is reviewed by category: no protected paths (`a1/`, `data/`, `evidence/`, `scans/`, `ocr/`, `employees/scans/`, `output/`, `runtime/portal/`, `secrets/`, `.env`); no destructive changes; per-commit messages match the latest accepted-increment table. Routine private-origin publication follows AGENTS.md; no history rewrite, force-push, public release or remote change authorized |
+| Deployment | None; isolated synthetic DBs only. Existing services, historical databases and working PDF packages remain untouched |
+| Activation | Unchanged; release-verifier no longer asserts gates must remain blocked. Decision to open ENG-001 / approve REV-002 / REV-003 remains a separate Jan + operator + legal + sysadmin authorization per existing gates |
+| Limitations | Out-of-scope for this review cycle: production settings module, WSGI entrypoint, configured queue dispatch, comprehensive M3 queues/exceptions/retention. These are explicitly deferred to the production pilot (Delivery 3) and Release 1B. `plans/alternatives/` directory was created earlier but not materialised during the review; the four-delivery sequence above replaces those alternatives |
+| Next owner | Jan, operator and project architect: review the four-delivery sequence and the upstream-publication scope. Engineering packages deployment and synthetic recovery rehearsals alongside workflow completion |
+
 ### Missing identity facts in BO — 2026-09-10
 
 | Field | Evidence / state |

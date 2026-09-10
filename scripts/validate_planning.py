@@ -99,6 +99,7 @@ APPROVED_STAGED_PATH_PREFIXES = ("plans/", "readme-")
 # Do not exempt the whole directory: nearby private files still fail below.
 APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
     "config/a1_checkbox_fix_receipt.json",
+    "config/a1_template_repair_2026-09-06.json",
     "docs/architecture/A1_FRAMEWORKS.md",
     "docs/architecture/readme-a1-forms.md",
     "docs/architecture/release-1a-field-mapping.md",

@@ -72,16 +72,52 @@ partner operations, planning, attendance, A1, payroll, and operational finance.
 Deliver it incrementally: Jan's document → worker → assignment → A1 workflow is
 the first usable increment and must not wait for later module activation.
 
+## Release 1A delivery sequence (2026-09-10 update)
+
+The previous Now/Next/Parallel/Gated structure organized work around gates
+and test counts. It is replaced by a four-delivery outcome sequence: what
+Jan can do, when, and what unblocks the next stage. Each delivery is a
+usable application increment per [AGENTS.md](AGENTS.md), not a planning
+milestone. Detail in
+[plans/2026-09-08-local-a1-automation.md](plans/2026-09-08-local-a1-automation.md)
+and the [delivery record](docs/operations/git-delivery.md).
+
+| Delivery | What Jan receives | Completion evidence |
+|---|---|---|
+| **1. Integrated testing site** | A stable private URL, individual login, persistent PostgreSQL database, existing frontend/backend, local OCR and A1 scripts connected through shared services | Browser journey: upload a synthetic document → correct facts → create assignment → generate, preview and download a draft; records survive restart |
+| **2. Usable v1 workflow** | Clear missing-data messages, retry controls, correction/regeneration, working downloads, concise Czech instructions and a known-limitations list | Jan completes the agreed workflow; one bad or incomplete record does not block other records |
+| **3. Restricted production pilot** | The same application configured for Jan's approved organization and real records | Production configuration, protected access/storage, applicable intake controls, minimum retention/deletion handling, backup/restore and activation evidence |
+| **4. Later releases** | Additional fields, richer queues, reporting, partner access and other modules | Driven by observed use and Jan's priorities |
+
+Start deployment packaging and synthetic recovery rehearsals alongside
+workflow completion. There is no practical benefit in postponing their
+engineering until Jan finishes formal acceptance.
+
 ## Now / Next / Parallel / Gated
 
 | Category | Work |
 |---|---|
-| **Now** | Seed/reproducer repairs and bounded synthetic J2 intake are implemented under the [local automation contract](plans/2026-09-08-local-a1-automation.md). The command reuses shared intake/OCR, retains proposals and opaque receipts, resumes failed runs and preserves unconfirmed identity status. Exact tests, committed-source acceptance and fresh supervised bootstrap are distinguished in the [delivery record](docs/operations/git-delivery.md). |
-| **Next on Release 1A** | J2 now persists identity evaluations, deduplicates conditional unconfirmed drafts, and provides a revision-checked resolution service. DB-MIG now has a synthetic revision-bound 44-field input export and versioned assignment facts (0015). Synthetic unverified J4 generation now reserves stable numbers and recovers protected PDF/preview packages on retry through the shared publisher. Generation revisions preserve the original number and earlier packages across changed dependencies. BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Complete-input synthetic operator-workflow checks pass; source-linked structured address entry in BO is implemented. BO assignment/institution fact entry is implemented. Cold-start readiness checks now cover both BO entry paths and blocked retry without duplicates. Source-bound BO completion of missing identity facts is implemented. Next: validate the sparse-input journey through canonical draft generation and artifact review. BO review remains separate from eligible unverified draft generation. Apply 0014–0019 in the selected supervised release before using durable intake there; DB-MIG-6/7 cutover follows its existing acceptance dependencies. No scheduler, worker auto-merge, automatic human confirmation or real-data activation follows from intake success. |
-| **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-LEGAL (G/J) + PLAN-INVOICE (P) research; Plan AC integrity lane (PLAN-INVOICE): Integrity 1.3 repair + Pilot 1/2; PLAN-INVOICE (Plan AD) synthetic contract; PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). |
+| **Now** | Delivery 1 in progress: integrated testing site. Local automation contract implemented (seed/reproducer, intake, BO entry, generation access, visual confirmation, drafts); next is wiring the existing pieces into a persistent private URL with individual login. See [delivery record](docs/operations/git-delivery.md) for current accepted increments. |
+| **Next on Release 1A** | Delivery 2 (usable v1) and Deployment prep (packaging, recovery rehearsal) proceed in parallel with the same code. Both unblock Delivery 3 (restricted production pilot). BO review remains separate from eligible unverified draft generation. Apply 0014–0019 in the selected supervised release before using durable intake there; DB-MIG-6/7 cutover follows its existing acceptance dependencies. No scheduler, worker auto-merge, automatic human confirmation or real-data activation follows from intake success. |
+| **Deferred to Release 1B** | M3 expansion (operator queues, exceptions, retention handling, reporting). Plan AC integrity pilots and broader PLAN-LEGAL/PLAN-INVOICE research are deferred until after Jan's testing site is delivered. |
+| **Parallel** | PLAN-INFRA infrastructure (capacity, backup/restore evidence); PLAN-FREE-MODEL bounded free-model eval (AF2.1/2.2 repair). Other parallel lanes paused until 1A closeout. |
 | **Gated** | `ENG-001` and observed Release 1A acceptance remain prerequisites for accepted DB cutover; synthetic preparation may proceed. PLAN-A1 authoritative-input reconciliation and receipt-bound final promotion remain unresolved; current scoped evidence belongs in [PLAN-A1](plans/PLAN-A1.md) and the delivery record, without inferring authority from historical counts. PLAN-INVOICE persistence/acceptance waits DEC-015. Deployment, new real-data portal migration/activation, GitLab/CI changes and history rewrite retain their existing authorization requirements. Routine reviewed private-origin feature-branch publication follows AGENTS.md. |
 | **Cleanup (this cycle)** | Read-only source inventory and dependency analysis only. Unknown research/runtime artifacts require classification; no moves, deletions, backup cleanup or legacy-script execution in stabilization scope. |
 | **Historical R-01/R-02/R-03 checkpoint** | Completed 2026-08-20. Its package counts and QA describe that dated run only; they do not define the current cohort or establish current artifact approval. |
+
+## Validation cadence change
+
+Per the repository review on 2026-09-10: planning-validator runs in under
+one second; per-commit test-count growth and broad reruns do not improve
+release confidence. The cadence changes to:
+
+- One reproducible committed-source acceptance run per release candidate.
+- Targeted regressions via `change-packages.yml` for small changes.
+- One receipt per release; per-commit evidence omitted.
+- 24 planning checks retained as cheap orphan-link prevention.
+- Test-count growth is not a delivery target.
+
+Detail in [AGENTS.md](AGENTS.md) "Validation proportional to the change" §.
 
 ## Delivery increments
 

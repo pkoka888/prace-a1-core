@@ -11,6 +11,26 @@ Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-REAL-DATA](PLAN-REAL-DATA.md). Extends existing DB-MIG-1 through DB-MIG-7 and J2/J4;
 no new top-level catalog entries or changes to registered approval states.
 
+## Delivery alignment (2026-09-10 update)
+
+Per [AGENTS.md](../AGENTS.md) "Default delivery unit" and the 2026-09-10
+repository review, this plan now organizes work around four application
+deliverables instead of micro-gates. Implemented components feed one or
+more of the four outcomes below; the gap identification in §"Status by
+delivery" shows what each piece currently satisfies.
+
+| Delivery | What Jan receives | This plan contributes |
+|---|---|---|
+| **1. Integrated testing site** | Stable private URL, individual login, persistent PostgreSQL database, existing frontend/backend wired together | Implemented: J2 intake, BO entry, drafts, generation access, visual confirmation. Wiring (WSGI entrypoint, persistent DB, login, URL hosting) is the active next step. |
+| **2. Usable v1 workflow** | Clear missing-data messages, retry controls, working downloads, concise Czech instructions and a known-limitations list | In scope: missing-data messages, retry, correction, regeneration, downloads. Existing BO confirmation + retry + draft-recovery covers most of this; UI strings and known-limitations note are the active gap. |
+| **3. Restricted production pilot** | Same app configured for Jan's approved organization and real records | Deferred to Delivery 3 by design; this plan's components are reusable. Production settings module and queue dispatch are the implementation gap, not strategy. |
+| **4. Later releases (1B+)** | Additional fields, richer queues, reporting, partner access | Out of scope for this plan; tracked elsewhere. |
+
+Incomplete optional fields are allowed: missing facts block their
+specific A1 operation with an actionable explanation; they do not block
+saving the worker or releasing the rest of the application. Documented
+manual fallbacks are acceptable when automation is not yet available.
+
 ## Operator outcome
 
 Upload a completed batch of scans and run one local Python command. The system

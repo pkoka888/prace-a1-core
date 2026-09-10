@@ -3,6 +3,30 @@
 Private Czech/German A1 and recruitment-portal repository handling real PII.
 Use existing Python core/services and keep routine engineering moving.
 
+## Default delivery unit
+
+A **usable application increment** is the default delivery unit: code, tests
+and documentation that together let Jan exercise one agreed workflow end to
+end. Each increment must include a working demonstration path (synthetic
+where real data is not yet authorized) and a known-limitations note. The
+goal is to put working software in Jan's hands, not to satisfy internal
+checklists.
+
+- Incomplete optional fields are allowed. Make them nullable; add them
+  through later migrations. A missing fact needed for one A1 operation
+  blocks that operation with an actionable explanation; it never blocks
+  saving the worker or releasing the rest of the application.
+- Documented manual fallbacks are allowed. When automation is not yet
+  available, write down the manual procedure alongside the code and mark
+  the manual path as a transition item with an owner.
+- Incremental schema evolution is allowed. New fields arrive as additive
+  migrations; existing rows keep their original shape until a separate
+  migration backfills or normalizes them.
+- Release checkpoints require (a) a working demonstration Jan can run,
+  (b) a short known-limitations note attached to the increment, and
+  (c) clear separation between synthetic-accepted and release-accepted
+  states.
+
 ## Authority and task start
 
 `AGENTS.md` → [real-data rules](docs/security/real-data-rules.md) →
@@ -31,6 +55,9 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
   public release or new-remote publication without separate exact authorization.
 - Preserve inherited edits and staging. Never reset or stash another task's work.
   Use isolated checkouts where needed. Keep real-data operations out of source commits.
+- Unknown values stay unknown. Do not invent them. Do not coerce missing
+  facts into placeholder values to satisfy a check; the placeholder must
+  be visibly distinguishable from a real reviewed value at every layer.
 
 ## PII, secrets and workspace
 
@@ -90,6 +117,11 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
 - Existing mandatory hooks remain effective until deliberately updated. Never bypass
   them. Keep check failures and structural acceptance distinct from runtime acceptance.
 - Avoid tests that merely mirror trivial edits. Record genuine limitations explicitly.
+- Prefer `change-packages.yml`-driven targeted regressions over broad reruns.
+  Rerun an unchanged suite only when a hook explicitly requires it; document
+  this once per release candidate, not per commit. Test-count growth is not
+  a delivery target. Evidence-only commits must not become a substitute for
+  a working demonstration.
 
 ## Git delivery and planning checkpoint
 

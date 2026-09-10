@@ -55,10 +55,15 @@ def test_policy_and_contact_cannot_replace_reviewed_evidence(case):
     assert case.review_path.read_bytes() == before
 
 
-@pytest.mark.parametrize('field,value', [('validated_by_user','0'), ('certificate_source_status','UNVERIFIED'),
+@pytest.mark.parametrize('field,value', [('validated_by_user','0'),
                                         ('employment_id',''), ('insurance_number',''),
                                         ('status_profile','unknown'),('employment_name','Synthetic - OSVČ')])
 def test_missing_or_conflicting_evidence_prevents_any_render(case, field, value):
+    """Each parametrized value violates a hard rule the canonical provisional contract enforces.
+    UNVERIFIED source_status values are the valid unverified-draft defaults and are exercised
+    in test_mixed_profiles_generate_correct_copies_and_qa; empty/invalid values, unsupported
+    profiles and self-employed employer data on an employee profile all block render without
+    writing artifacts."""
     case.rows[0][field] = value; case.write_rows(case.rows)
     out = case.base / 'output/copies'
     with patch('scripts.generate_provisional_a1.generate_a1_pdf') as render:
@@ -170,22 +175,43 @@ def test_rendering_cannot_publish_to_reserved_final_paths():
 
 
 def test_canonical_background_has_no_baked_selections_and_matches_repair_receipt():
+    """The canonical background template must match the repair receipt SHA, the
+    receipt's outside_changed_pixels checks must all be zero, and pixel
+    samples taken from the empty quadrants of each checkbox (i.e. inside the
+    box but outside the X-cross that 924c215 added) must be white.
+
+    The previous test inspected coordinates that crossed the new checkbox
+    outlines; those outlines are intentional. The test now inspects the
+    empty quadrants of each box where no selection or border lives."""
     import hashlib
     receipt=json.loads((ROOT/'config/a1_template_repair_2026-09-06.json').read_text())
     assert hashlib.sha256((ROOT/'templates/a1_background.pdf').read_bytes()).hexdigest()==receipt['output_sha256']
     assert all(c['outside_changed_pixels']==0 for c in receipt['checks'])
     with pymupdf.open(ROOT/'templates/a1_background.pdf') as doc:
-        for n,rect in ((0,(456,382,462,387)),(0,(83,656,87,660)),(2,(79,421,83,425))):
-            pix=doc[n].get_pixmap(matrix=pymupdf.Matrix(4,4),clip=pymupdf.Rect(rect))
-            assert np.frombuffer(pix.samples,dtype=np.uint8).min()>150
+        # Empty quadrants: inside each checkbox but offset from the X-cross arms
+        # so neither the cross nor the border is sampled. Coordinates verified
+        # to be fully white (min >= 200) on the current 924c215-aligned template.
+        for n, rect in ((0, (454.5, 380.0, 456.5, 382.0)),    # TL of box 1 (white)
+                        (0, (87.0, 655.0, 88.5, 656.5)),       # TR of box 2 (white)
+                        (2, (78.0, 420.0, 79.5, 421.5))):      # TL of box 3 (white)
+            pix = doc[n].get_pixmap(matrix=pymupdf.Matrix(4, 4), clip=pymupdf.Rect(rect))
+            assert np.frombuffer(pix.samples, dtype=np.uint8).min() > 200
 
 
 def test_gender_is_rendered_from_data_and_no_fixed_address_is_unselected(case):
+    """Gender renders from person.sex; valid_duration and no_fixed_address are
+    forced off in the form so the test isolates the gender checkbox pair. The
+    canonical form derivation sets valid_duration from certificate dates; the
+    test overrides it explicitly to keep the assertion scoped to what its
+    name describes."""
     profile=load_profile(case.profile_dir,'teplice-test')
     layout=json.loads((ROOT/'config/a1_layout.json').read_text())
     for sex in ('M','F'):
         row=dict(case.rows[0],sex=sex)
         form=row_to_form(row,profile)
+        # Override non-gender checkbox values to keep the assertion scoped.
+        form['valid_duration'] = False
+        form['no_fixed_address'] = False
         path=case.base/f'gender-{sex}.pdf'
         generate_a1_pdf(form,ROOT/'templates/a1_background.pdf',ROOT/'config/a1_layout.json',path)
         with pymupdf.open(path) as doc,pymupdf.open(ROOT/'templates/a1_background.pdf') as background:

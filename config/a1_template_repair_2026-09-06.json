@@ -1,6 +1,6 @@
 {
   "source_sha256": "84a6526b9bb12af6a900a5e6b92d4e07cd053664413836d23731a00a55370f3c",
-  "output_sha256": "0f7d602ecb0f77002feebbb72fb9f716c2f568b72d12587021eb3b5d5fed130a",
+  "output_sha256": "c816d97525cd9070d00c1984c486e73fbf1fa08b8a507df32459dbaf9c23d27a",
   "repairs": [
     {
       "page": 1,
@@ -34,17 +34,20 @@
     {
       "page": 1,
       "dpi": 144,
-      "outside_changed_pixels": 0
+      "outside_changed_pixels": 0,
+      "white_ratio": 0.8957475994513031
     },
     {
       "page": 2,
       "dpi": 144,
-      "outside_changed_pixels": 0
+      "outside_changed_pixels": 0,
+      "white_ratio": 1.0
     },
     {
       "page": 3,
       "dpi": 144,
-      "outside_changed_pixels": 0
+      "outside_changed_pixels": 0,
+      "white_ratio": 0.89
     },
     {
       "page": 1,
@@ -61,5 +64,10 @@
       "dpi": 300,
       "outside_changed_pixels": 0
     }
-  ]
+  ],
+  "updated": {
+    "reason": "template updated by 924c215 to align checkbox outlines",
+    "previous_output_sha256": "0f7d602ecb0f77002feebbb72fb9f716c2f568b72d12587021eb3b5d5fed130a",
+    "updated_at": "2026-09-10"
+  }
 }
