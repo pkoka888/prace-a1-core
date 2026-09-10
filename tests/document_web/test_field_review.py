@@ -225,6 +225,42 @@ class FieldReviewTests(TransactionTestCase):
         self.assertFalse(WorkerIdentityRevision.objects.exists())
 
 
+
+    def test_missing_identity_bo_entry_is_explicit_source_bound_and_stale(self):
+        from portal.release1a.field_review import missing_identity_context
+        context = missing_identity_context(self.user,self.org,self.name.pk)
+        self.assertIn('sex',context['fields'])
+        self.assertContains(self.client.get(self.url),'identity_sex')
+        post = {'action':'confirm_missing_identity','identity_source':self.name.pk,
+            'identity_token':context['token'],'identity_sex':'M', 'identity_birth_place':'Synthetic town'}
+        self.assertEqual(self.client.post(self.url,post).status_code,302)
+        entered = FieldProposal.objects.get(ocr_engine='operator',field_name='sex')
+        self.assertEqual(entered.version_id,self.name.version_id)
+        self.assertEqual(entered.document_region_id,self.name.document_region_id)
+        latest = WorkerIdentityRevision.objects.order_by('-revision_number').first()
+        self.assertEqual(latest.confirmed_fields['sex'],'M')
+        self.assertEqual(self.client.post(self.url,post).status_code,409)
+        self.assertEqual(FieldDecision.objects.count(),2)
+        current = missing_identity_context(self.user,self.org,self.name.pk)
+        self.assertNotIn('sex',current['fields'])
+        self.assertIn('insurance_number',current['fields'])
+
+    def test_missing_identity_rejects_invalid_batch_and_existing_proposals(self):
+        from portal.release1a.field_review import missing_identity_context, confirm_missing_identity
+        context = missing_identity_context(self.user,self.org,self.name.pk)
+        with self.assertRaises(ValueError):
+            confirm_missing_identity(self.user,self.org,self.name.pk,context['token'],
+                {'birth_place':'Synthetic town','sex':'invalid'})
+        self.assertFalse(FieldProposal.objects.filter(ocr_engine='operator').exists())
+        with self.assertRaises(ValueError):
+            confirm_missing_identity(self.user,self.org,self.name.pk,context['token'],{'given_name':'OTHER'})
+        with patch('portal.release1a.field_review.confirm_field_proposal',side_effect=RuntimeError('synthetic')):
+            with self.assertRaises(RuntimeError):
+                confirm_missing_identity(self.user,self.org,self.name.pk,context['token'],{'sex':'M'})
+        self.assertFalse(FieldProposal.objects.filter(ocr_engine='operator').exists())
+        with self.assertRaises(Forbidden):
+            confirm_missing_identity(self.user,self.other,self.name.pk,context['token'],{'sex':'M'})
+
 @skipUnless(connection.vendor=='postgresql','Disposable PostgreSQL required')
 class FieldReviewPostgresTests(TransactionTestCase):
     setUp=FieldReviewTests.setUp
@@ -293,3 +329,34 @@ class FieldReviewPostgresTests(TransactionTestCase):
             self.assertCountEqual([f.result(timeout=30) for f in futures],['confirmed','stale'])
         self.assertEqual(FieldDecision.objects.count(),5)
         self.assertEqual(WorkerIdentityRevision.objects.count(),5)
+
+    def test_concurrent_missing_identity_entry_has_one_winner(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from django.contrib.auth import get_user_model
+        from django.db import close_old_connections
+        from portal.release1a.models import Organization
+        from portal.release1a.field_review import missing_identity_context, confirm_missing_identity
+        token = missing_identity_context(self.user,self.org,self.name.pk)['token']
+        barrier = Barrier(2,timeout=10)
+        def confirm(value):
+            close_old_connections()
+            try:
+                user = get_user_model().objects.get(pk=self.user.pk)
+                org = Organization.objects.get(pk=self.org.pk)
+                with connection.cursor() as cursor:
+                    cursor.execute("SET statement_timeout = '15s'")
+                    cursor.execute("SET lock_timeout = '10s'")
+                barrier.wait()
+                try:
+                    confirm_missing_identity(user,org,self.name.pk,token,{'sex':value})
+                    return 'confirmed'
+                except StaleWrite:
+                    return 'stale'
+            finally:
+                connection.close()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(confirm,value) for value in ('M','F')]
+            self.assertCountEqual([f.result(timeout=30) for f in futures],['confirmed','stale'])
+        self.assertEqual(FieldDecision.objects.count(),1)
+        self.assertEqual(FieldProposal.objects.filter(ocr_engine='operator').count(),1)

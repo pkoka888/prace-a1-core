@@ -215,3 +215,71 @@ def confirm_address_review(user, organization, proposal_id, expected_token, valu
         source_snapshot_json__schema_version='a1-input-1').update(is_stale=True)
     audit(user, organization, 'identity.address_confirmed', f'field_proposal:{proposal.pk}')
     return decisions
+
+
+MISSING_IDENTITY_FIELDS = {
+    'birth_place': 'Místo narození', 'nationality': 'Státní občanství',
+    'sex': 'Pohlaví (M/F)', 'insurance_number': 'Číslo pojištěnce',
+}
+
+
+def _missing_context(user, organization, proposal_id, *, lock=False):
+    proposal, worker, context = _context(user, organization, proposal_id,
+                                        lock=lock, allow_decided=True)
+    if worker.state == Worker.State.ARCHIVED or proposal.ocr_run_id is None:
+        raise ValueError('IDENTITY_SOURCE_REQUIRED')
+    revision = WorkerIdentityRevision.objects.filter(organization=organization,
+        worker=worker).order_by('-revision_number', '-pk').first()
+    confirmed = revision.confirmed_fields if revision else {}
+    present = set(FieldProposal.objects.filter(organization=organization,
+        ocr_run=proposal.ocr_run, document_region_id=proposal.document_region_id
+        ).values_list('field_name', flat=True))
+    fields = {f: label for f, label in MISSING_IDENTITY_FIELDS.items()
+              if not confirmed.get(f) and f not in present}
+    return proposal, worker, {'token': result_hash({'source':context['token'],
+        'fields':sorted(fields)}), 'fields':fields}
+
+
+@transaction.atomic
+def missing_identity_context(user, organization, proposal_id):
+    from .identity import _authorize, _lock_organization
+    _authorize(user, organization, 'document:confirm')
+    _lock_organization(organization)
+    return _missing_context(user, organization, proposal_id)[2]
+
+
+@transaction.atomic
+def confirm_missing_identity(user, organization, proposal_id, expected_token, values):
+    """Explicitly confirm absent facts against a selected, associated source region."""
+    from .identity import _authorize, _lock_organization
+    from .document_intake import audit
+    from .models import A1Case
+    import unicodedata
+    _authorize(user, organization, 'document:confirm')
+    _lock_organization(organization)
+    proposal, worker, context = _missing_context(user, organization, proposal_id, lock=True)
+    if (not isinstance(expected_token, str) or not expected_token.isascii()
+            or not compare_digest(expected_token, context['token'])):
+        raise StaleWrite('IDENTITY_ENTRY_STALE')
+    if not isinstance(values, dict) or not values or set(values) - set(context['fields']):
+        raise ValueError('IDENTITY_ENTRY_FIELDS_INVALID')
+    normalized = {}
+    for field, value in values.items():
+        if (not isinstance(value, str) or not value.strip() or len(value) > 240
+                or any(unicodedata.category(c).startswith('C') for c in value)):
+            raise ValueError('IDENTITY_ENTRY_VALUE_INVALID')
+        value, findings = valid_value(field, value)
+        if findings or (field == 'sex' and value not in ('M', 'F')):
+            raise ValueError('IDENTITY_ENTRY_VALUE_INVALID')
+        normalized[field] = value
+    decisions = []
+    for field, value in normalized.items():
+        entered = FieldProposal.objects.create(organization=organization,
+            document=proposal.document, version=proposal.version, ocr_run=proposal.ocr_run,
+            document_region_id=proposal.document_region_id, field_name=field,
+            proposed_value=value, ocr_engine='operator')
+        decisions.append(confirm_field_proposal(user, organization, entered, corrected_value=value))
+    A1Case.objects.filter(organization=organization, worker=worker,
+        source_snapshot_json__schema_version='a1-input-1').update(is_stale=True)
+    audit(user, organization, 'identity.missing_fields_confirmed', f'field_proposal:{proposal.pk}')
+    return decisions

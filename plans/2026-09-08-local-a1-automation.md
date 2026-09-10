@@ -110,7 +110,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Complete-input synthetic operator-workflow checks pass; source-linked structured address entry in BO is implemented. BO assignment/institution fact entry is implemented. Next: cold-start operator readiness checks using both entry paths. Apply
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Complete-input synthetic operator-workflow checks pass; source-linked structured address entry in BO is implemented. BO assignment/institution fact entry is implemented. Cold-start readiness checks now cover both BO entry paths and blocked retry without duplicates. Source-bound BO completion of missing identity facts is implemented. Next: validate the sparse-input journey through canonical draft generation and artifact review. Apply
 0014–0019 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -181,7 +181,7 @@ Responses are private/no-store; ZIP members retain 0600 modes. Download reads us
 anchored no-follow descriptors and verify the exact bytes returned. Selected-cohort BO publication now uses the same exporter at `/a1/inputs/`.
 The page lists up to 50 current cases per page, posts only explicit case/hash pairs,
 and rejects malformed, duplicate or stale selections atomically. Navigation does not
-carry unchecked or previous-page selections. Complete-input synthetic operator-workflow checks pass; source-linked structured address entry in BO is implemented. BO assignment/institution fact entry is implemented. Next: cold-start operator readiness checks using both entry paths.
+carry unchecked or previous-page selections. Complete-input synthetic operator-workflow checks pass; source-linked structured address entry in BO is implemented. BO assignment/institution fact entry is implemented. Cold-start readiness checks now cover both BO entry paths and blocked retry without duplicates. Source-bound BO completion of missing identity facts is implemented. Next: validate the sparse-input journey through canonical draft generation and artifact review.
 Real-data reconciliation and accepted cutover remain separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
@@ -263,8 +263,17 @@ so canonical Section 5 defaults still apply. Verified institution profiles are s
 an unavailable stored profile can be preserved while unrelated facts are edited.
 The ordinary assignment editor shares the organization lock, requires a version and
 rolls back on audit failure, preventing an older instance overwriting new A1 facts.
-Next functional phase: cold-start operator readiness checks using address and assignment
-entry, identifying remaining required-field gaps. Other missing facts still block only
+Cold-start readiness now covers address confirmation, assignment creation and institution
+entry through BO, with blocked retry preserving record counts. The sparse synthetic OP
+fixture still lacks birth_place, nationality, sex and insurance_number according to
+validate_application_draft_row. This is a fixture-specific gap, not a claim that the
+extractor never recognizes those fields. No certificate number or review flag is invented.
+Source-bound BO completion now supports missing birth_place, nationality, sex and
+insurance_number through field_review.py and the document intake form. Partial entry
+is allowed; existing proposals and confirmed facts use their existing review paths.
+Operator proposals and decisions retain the selected source region and exact revision.
+The sparse-input test now reaches canonical draft-input validation after explicit entry.
+Next functional phase: carry that journey through canonical draft generation and artifact review. Other missing facts still block only
 affected drafts; these entry paths alone do not establish full cold-start acceptance. BO association and field confirmation now check the revisions
 displayed to the operator. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0019 through the selected supervised development release workflow
@@ -542,7 +551,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, checking cold-start readiness with both BO entry paths and
-recording remaining required-field gaps before complete-input automation or accepted DB-MIG cutover. Jan supplies
+Next owner: engineering, validating the sparse-input journey through draft generation
+and artifact review before complete-input automation or accepted DB-MIG cutover. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.

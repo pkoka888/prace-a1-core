@@ -346,3 +346,57 @@ class InboxTests(TransactionTestCase):
         for field,value in values.items(): self.assertEqual(fresh.source_snapshot_json['row'][field],value)
         case.refresh_from_db(); self.assertTrue(case.is_stale)
         self.assertFalse(A1DraftGeneration.objects.exists())
+
+        # Continue through the actual BO forms, without seeding missing identity facts.
+        from portal.release1a.models import Assignment
+        from portal.release1a.assignment_facts import FIELDS
+        from scripts.finalize_a1 import validate_application_draft_row, FinalizationError
+        from tests.test_a1_application_draft import synthetic_profile
+        self.assertEqual(self.client.post(f'/workers/{case.worker_id}/assignments/new/', {
+            'workplace_label':'Synthetic workplace', 'activity_label':'Synthetic role',
+            'start':'2026-09-01', 'end':'2026-12-31', 'state':'planned',
+        }).status_code, 302)
+        assignment = Assignment.objects.get(worker_id=case.worker_id)
+        profile_root = self.storage/'profiles'; profile_root.mkdir(mode=0o700)
+        self.write(profile_root/'synthetic.json', json.dumps(synthetic_profile()).encode())
+        facts = {'version':assignment.version, 'status_profile':'self_employed_multi_state',
+                 **{f'{group}__{field}':'' for group,fields in FIELDS.items() for field in fields}}
+        facts.update({'employment__employer_id':'SYNTHETIC-123',
+            'employment__employer_name':'Synthetic activity', 'employment__street':'Testovaci',
+            'employment__house_number':'12', 'employment__city':'Testov',
+            'employment__postal_code':'12345', 'employment__country_code':'CZ',
+            'institution__resolved_ossz':'OSSZ Testov', 'institution__profile_key':'synthetic'})
+        with override_settings(A1_DRAFT_PROFILE_ROOT=profile_root):
+            self.assertEqual(self.client.post(
+                f'/workers/{case.worker_id}/assignments/{assignment.pk}/a1-inputs/', facts).status_code,302)
+        current = prepare_input_case(self.user,self.org,case.worker_id)
+        row = current.source_snapshot_json['row']
+        self.assertNotIn('assignment_missing',current.source_snapshot_json['blockers'])
+        self.assertEqual((row['activity_name'],row['activity_address']),('','DE, CZ'))
+        # This temporary candidate mirrors the canonical pre-allocation validation only.
+        # No number, certificate evidence or PDF is persisted by this readiness check.
+        with self.assertRaises(FinalizationError) as blocked:
+            validate_application_draft_row(dict(row,document_id='N00000S001/2000/DE'),synthetic_profile())
+        self.assertEqual(str(blocked.exception),
+            'APPLICATION_DRAFT_MISSING: birth_place, nationality, sex, insurance_number')
+        self.assertEqual(row['document_id'],'')
+        self.assertEqual(row['identity_reviewed'],'NO')
+        self.assertEqual(row['validated_by_user'],'0')
+        self.assertFalse(A1DraftGeneration.objects.exists())
+        counts = (Worker.objects.count(), OcrRun.objects.count(), FieldDecision.objects.count())
+        again = self.run_inbox(DocumentProcessor(lambda: ScriptedEngine([])))[0]
+        self.assertEqual(again['drafts'][0]['a1_draft']['status'],'blocked')
+        self.assertEqual(counts,(Worker.objects.count(), OcrRun.objects.count(), FieldDecision.objects.count()))
+        from portal.release1a.field_review import missing_identity_context
+        context = missing_identity_context(self.user,self.org,proposal.pk)
+        self.assertEqual(self.client.post(url,{
+            'action':'confirm_missing_identity','identity_source':proposal.pk,
+            'identity_token':context['token'],'identity_birth_place':'Synthetic town',
+            'identity_nationality':'CZE','identity_sex':'F','identity_insurance_number':'INS000001',
+        }).status_code,302)
+        ready = prepare_input_case(self.user,self.org,case.worker_id)
+        validate_application_draft_row(dict(ready.source_snapshot_json['row'],
+            document_id='N00000S001/2000/DE'),synthetic_profile())
+        self.assertEqual(ready.source_snapshot_json['row']['validated_by_user'],'0')
+        self.assertEqual(ready.source_snapshot_json['row']['identity_reviewed'],'NO')
+        self.assertFalse(A1DraftGeneration.objects.exists())

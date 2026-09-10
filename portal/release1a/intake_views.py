@@ -6,7 +6,8 @@ from .document_intake import (authorize, intake, read_result, execute_run,
                               download_original, audit, read_session)
 from .services import Forbidden, StaleWrite
 from .field_review import (review_context, confirm_review_batch, address_review_context,
-                           confirm_address_review, ADDRESS_FIELDS)
+                           confirm_address_review, ADDRESS_FIELDS, missing_identity_context,
+                           confirm_missing_identity, MISSING_IDENTITY_FIELDS)
 from .identity_review import association_review_context, confirm_association
 from django.views.decorators.cache import never_cache
 from .document_labels import FIELD_LABELS
@@ -43,6 +44,24 @@ def detail(request, pk):
                 confirm_association(request.user, request.organization, token=tokens[0],
                     reason=request.POST.get("reason", ""),
                     allowed_run_ids=_association_run_ids(request.organization, run, session))
+            elif request.POST.get("action") == "confirm_missing_identity":
+                ids = request.POST.getlist("identity_source")
+                tokens = request.POST.getlist("identity_token")
+                if (len(ids) != 1 or not ids[0].isascii() or not ids[0].isdigit()
+                        or len(ids[0]) > 18 or len(tokens) != 1):
+                    raise StaleWrite("IDENTITY_SOURCE_REQUIRED")
+                source = FieldProposal.objects.filter(pk=int(ids[0]), organization=request.organization,
+                    ocr_run_id__in=_association_run_ids(request.organization, run, session)).first() if run else None
+                if source is None:
+                    raise StaleWrite("IDENTITY_SOURCE_REQUIRED")
+                values = {}
+                for field in MISSING_IDENTITY_FIELDS:
+                    raw = request.POST.getlist("identity_" + field)
+                    if len(raw) > 1:
+                        raise ValueError("IDENTITY_ENTRY_VALUE_INVALID")
+                    if raw and raw[0].strip():
+                        values[field] = raw[0]
+                confirm_missing_identity(request.user, request.organization, source.pk, tokens[0], values)
             elif request.POST.get("action") == "confirm_address":
                 ids = request.POST.getlist("address_source")
                 tokens = request.POST.getlist("address_token")
@@ -133,6 +152,14 @@ def detail(request, pk):
             region["association_record"] = DocumentRegionAssociation.objects.filter(organization=request.organization,
                 ocr_run_id=region_run, region_id=region["document_id"]).select_related("worker").first()
             if region["association_record"]:
+                identity_source = FieldProposal.objects.filter(organization=request.organization,
+                    ocr_run_id=region_run, document_region_id=region["document_id"]).order_by("pk").first()
+                if identity_source:
+                    try:
+                        region["identity_entry"] = missing_identity_context(request.user, request.organization, identity_source.pk)
+                        region["identity_source"] = identity_source
+                    except (Forbidden, StaleWrite, ValueError, OSError):
+                        pass
                 for proposal in region["proposals"]:
                     try:
                         context = review_context(request.user, request.organization, [proposal.pk])[proposal.pk]

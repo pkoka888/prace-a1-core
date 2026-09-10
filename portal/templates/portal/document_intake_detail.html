@@ -46,6 +46,18 @@
 <label>Důvod opravy nebo vyřešení rozporu <input name="reason"></label>
 <button name="action" value="confirm">Potvrdit vybrané údaje</button></form>
 {% elif not region.association_record %}<p>Před potvrzením údajů přiřaďte dokument pracovníkovi.</p>{% endif %}
+{% if region.identity_entry.fields %}
+<form method="post" class="my-4">{% csrf_token %}
+<h3>Doplnit chybějící údaje pro A1</h3>
+<p>Vyplňte pouze údaje, které jste ověřili v tomto dokumentu. Neznámé nechte prázdné. Uložením potvrdíte vyplněné údaje.</p>
+<input type="hidden" name="identity_source" value="{{ region.identity_source.pk }}">
+<input type="hidden" name="identity_token" value="{{ region.identity_entry.token }}">
+{% for field,label in region.identity_entry.fields.items %}
+<label>{{ label }} <input name="identity_{{ field }}" maxlength="240"></label>
+{% endfor %}
+<button name="action" value="confirm_missing_identity">Potvrdit doplněné údaje</button>
+</form>
+{% endif %}
 {% if region.address_source %}
 <form method="post" class="my-4">{% csrf_token %}
 <h3>Potvrdit adresu pro A1</h3>
