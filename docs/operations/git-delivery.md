@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Migration 0019 adds nullable tenant-unique legacy keys and structured source/actor/mapping provenance. The canonical reconciliation service validates a complete explicit worker/version/key batch, rejects collisions/reserved fallback keys/replacement, preserves exact retry evidence, increments changed worker revisions and stales prior cases. New canonical CSV/JSON snapshots freeze the selected key. Historical workers are not auto-mapped; reverse migration refuses mapped-key loss |
-| Validation | Focused PostgreSQL service/export/historical migration/concurrency checks in progress; final evidence recorded below |
-| Publication | Local scoped implementation pending commit; inherited outgoing history requires review before private-origin publication |
+| Validation | All 23 PostgreSQL reconciliation/export/generation-confirmation tests passed, including competing key claims, batch rollback, source-bound retries, historical migration preservation and rollback protection. Required hooks passed: 206 Django tests with 24 environment-specific skips, 46 runtime/artifact checks, 31 containment checks, migration-chain/model parity, 29 tooling checks, 24 planning checks and the 17-test J4 workflow. Committed-source `b8097e5` acceptance passed 23 applicable planning checks, 98 tooling/A1 tests plus 18 subtests and 90 workflow tests with six PostgreSQL-only skips; the new migration/concurrency tests passed in the separate PostgreSQL run. Source integrity remained intact |
+| Publication | Implementation committed locally as `b8097e5`; this evidence-only checkpoint preserves tested source blobs. Inherited outgoing history requires review before private-origin publication |
 | Deployment | None. Migrations run only on disposable synthetic databases; selected supervised release requires 0014–0019 |
 | Activation | Unchanged. Source hashes identify explicitly selected reconciliation inputs; the service does not claim external file verification, real-data reconciliation or identity confirmation |
 | Limitations | This is the key-mapping foundation and single-case CSV/JSON integration. Complete selected-cohort/identity compatibility export and real-data reconciliation remain separate |
 | Next owner | Engineering: complete cohort/identity compatibility exports through the shared export service, reject duplicate selected workers/keys and prove revision-bound round trips before DB-MIG cutover |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/4201f1a067774ed0830d57cd0adbc77e/receipt.json`.
 
 ### Revision-checked BO identity association — 2026-09-10
 
