@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | BO document review accepts five explicit address parts using a token bound to source/version/region/association/worker revision. Existing field confirmation services record operator-origin source-linked proposals, decisions and identity revisions atomically. Replacements require a reason; stale forms, source changes and archived workers are rejected. Raw OCR address confirmation remains separate. Changed address facts mark existing input cases stale |
-| Validation | Focused service/BO and cold-start export checks passed. All 15 PostgreSQL integration tests passed, including concurrent address submissions with one winner and one stale rejection. Required hooks and committed-source acceptance pending |
-| Publication | Scoped local implementation pending commit; inherited outgoing-history review remains separate |
+| Validation | Focused service/BO and cold-start export checks passed. All 15 PostgreSQL integration tests passed, including concurrent address submissions with one winner and one stale rejection. Required hooks passed: 230 Django tests (25 environment-specific skips), 80 runtime/artifact checks, 31 containment checks, 24 planning checks and 29 tooling checks. Scoped committed-source address/cold-start/A1-export integration passed; source integrity remained intact. This is scoped integration evidence, not a new full release-candidate acceptance |
+| Publication | Implementation committed locally as `d99bb15`; this evidence-only checkpoint preserves tested source. Inherited outgoing-history review remains separate |
 | Deployment | None; no schema migration, durable database or service changes |
 | Activation | Unchanged. Explicit address confirmation does not establish whole-identity verification, PDF visual approval or issuance |
 | Limitations | Source must have a residence_address proposal and worker association. No automatic address splitting, country default or external address verification. Other missing identity/business facts remain draft-local blockers |
 | Next owner | Engineering: BO assignment/institution fact entry using a1_exports.update_assignment_facts and its existing version/readiness contracts |
+
+Protected scoped committed-source receipt:
+`runtime/portal/temporary/release-reproducer/eb5a4958e2ef48a98d471b416141f7b3/receipt.json`.
 
 ### Integrated synthetic operator workflow — 2026-09-10
 
