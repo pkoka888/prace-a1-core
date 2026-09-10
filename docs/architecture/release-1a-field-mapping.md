@@ -101,7 +101,7 @@ for each visual confirmation. Identity facts and case issuance state remain sepa
 BO field confirmation now uses `portal/release1a/field_review.py` and existing
 FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
 and the current confirmed revision; replacement of a confirmed value requires reason.
-BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; profile-bound publication and the synthetic CLI are implemented; BO bundle access remains follow-up work.
+BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; profile-bound publication and the synthetic CLI are implemented; case-level BO bundle access is implemented; selected-cohort BO publication remains follow-up work.
 
 ## Complete CSV mapping
 
@@ -254,7 +254,8 @@ regexes and the J4 PDF layout remain separate. Exact retries verify all bytes an
 modes; changed profile content creates another immutable bundle. A late audit
 failure leaves a recoverable protected bundle rather than a partial publication.
 The thin `a1_export_inputs` command takes explicit case/source-hash selections.
-Missing profiles block publication only. BO bundle access remains next.
+Missing profiles block publication only. Case-level BO bundle access is implemented in `portal/release1a/input_bundle_access.py`
+and `portal/release1a/input_bundle_views.py`; selected-cohort BO publication remains next.
 
 The following richer interface remains **not implemented**:
 

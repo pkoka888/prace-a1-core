@@ -224,12 +224,8 @@ def prepare_input_case(user, organization, worker_id, *, assignment_id=None, cla
     return case
 
 
-@transaction.atomic
-def export_input_case(user, organization, case_id):
-    """Return revision-bound JSON and exactly 44 CSV fields; no publication side effect."""
-    _authorize(user, organization, "a1:prepare")
-    _lock_organization(organization)
-    case = A1Case.objects.get(pk=case_id, organization=organization, worker__organization=organization)
+def _current_input_snapshot(user, organization, case):
+    """Validate a locked caller's snapshot without recording an export."""
     snapshot = case.source_snapshot_json
     if snapshot.get("schema_version") != "a1-input-1" or result_hash(snapshot) != case.source_hash:
         raise ValueError("A1_SNAPSHOT_UNSUPPORTED_OR_CORRUPT")
@@ -238,6 +234,16 @@ def export_input_case(user, organization, case_id):
         deps.get("assignment", {}).get("ref"), deps.get("claim", {}).get("claim_ref"))
     if case.is_stale or result_hash(current) != case.source_hash:
         raise StaleWrite("A1_INPUT_STALE")
+    return snapshot
+
+
+@transaction.atomic
+def export_input_case(user, organization, case_id):
+    """Return revision-bound JSON and exactly 44 CSV fields; no publication side effect."""
+    _authorize(user, organization, "a1:prepare")
+    _lock_organization(organization)
+    case = A1Case.objects.get(pk=case_id, organization=organization, worker__organization=organization)
+    snapshot = _current_input_snapshot(user, organization, case)
     output = io.StringIO(newline="")
     writer = csv.DictWriter(output, fieldnames=CSV_FIELDS, lineterminator="\n")
     writer.writeheader()

@@ -53,7 +53,11 @@ from .views import (
     planned_page,
 )
 
+from .input_bundle_views import input_bundle_publish, input_bundle_download
+
 urlpatterns = [
+    path("a1/<int:pk>/inputs/", input_bundle_publish, name="input_bundle_publish"),
+    path("a1/<int:pk>/inputs/<str:manifest_hash>/download/", input_bundle_download, name="input_bundle_download"),
     path("health/", health, name="health"),
     path("readiness/", readiness, name="readiness"),
     path("synthetic/", synthetic_contract, name="synthetic_contract"),

@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Case-level BO input bundles — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Case-level BO page publishes through the existing cohort service on explicit CSRF-protected POST with the displayed source hash. Manifest-pinned ZIP download requires active synthetic `a1:prepare`, organization-scoped publication evidence, current source/profile checks and exact protected file verification. Anchored no-follow reads return only verified bytes; GET never creates packages. Existing CSV rendering uses the extracted shared current-snapshot check |
+| Validation | Focused BO/export/publication integration: 19 tests passed; final five BO tests also cover a stale secondary cohort member and unrelated case scope. Filesystem read/write coverage: 34 tests passed. Required hooks and committed-source integration acceptance pending for this checkpoint |
+| Publication | Local implementation pending commit; inherited outgoing history remains subject to review before origin publication |
+| Deployment | None; no durable database, PDF package or service changes |
+| Activation | Unchanged; compatibility input download does not verify identity, confirm PDF appearance or issue A1 |
+| Limitations | Initial BO publication selects one case; the existing CLI/service handles explicit cohorts. Stale bundles are retained but rejected for download. Orphaned post-write packages require publisher retry before BO access |
+| Next owner | Engineering: selected-cohort BO selection and publication through the existing exporter, preserving per-case source pins and atomic failure behavior |
+
 ### Profile-bound input publication — 2026-09-10
 
 | Field | Evidence / state |

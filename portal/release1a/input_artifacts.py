@@ -119,3 +119,81 @@ def publish_input_artifact(root, payloads):
         if stage is not None and stage.exists():
             shutil.rmtree(stage)
         os.close(lock)
+
+
+def _descriptor_mode(descriptor, expected):
+    mode = os.fstat(descriptor).st_mode
+    kind = stat.S_ISDIR if expected == 0o700 else stat.S_ISREG
+    if not kind(mode) or stat.S_IMODE(mode) != expected:
+        raise ArtifactError('INPUT_PERMISSIONS_OR_TYPE_INVALID')
+
+
+def _open_existing_root(root):
+    """Walk every root component without following ancestor symlinks or creating paths."""
+    root = Path(root)
+    if not root.is_absolute() or '..' in root.parts:
+        raise ArtifactError('INPUT_ROOT_INVALID')
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    descriptor = os.open('/', flags)
+    try:
+        for component in root.parts[1:]:
+            child = os.open(component, flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        _descriptor_mode(descriptor, 0o700)
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def read_input_artifact(root, manifest_sha256):
+    """Read an existing private bundle through pinned directory descriptors only.
+
+    Returned bytes are the same byte objects whose manifest and hashes were checked.
+    No directories, locks, audit records or other files are created here.
+    """
+    if not isinstance(manifest_sha256, str) or not re.fullmatch('[0-9a-f]{64}', manifest_sha256):
+        raise ArtifactError('INPUT_MANIFEST_KEY_INVALID')
+    descriptors = []
+    try:
+        directory = _open_existing_root(root)
+        descriptors.append(directory)
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        for component in ('a1-input', manifest_sha256):
+            directory = os.open(component, flags, dir_fd=directory)
+            descriptors.append(directory)
+            _descriptor_mode(directory, 0o700)
+        payloads = {}
+        def read_file(parent, name, relative):
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+            with os.fdopen(fd, 'rb') as stream:
+                _descriptor_mode(stream.fileno(), 0o600)
+                payloads[relative] = stream.read()
+        for name in os.listdir(directory):
+            if name in _REQUIRED:
+                read_file(directory, name, name)
+            elif name == 'profiles':
+                profiles = os.open(name, flags, dir_fd=directory)
+                try:
+                    _descriptor_mode(profiles, 0o700)
+                    names = os.listdir(profiles)
+                    if not names:
+                        raise ArtifactError('INPUT_ARTIFACT_FILE_SET_INVALID')
+                    for profile in names:
+                        relative = f'profiles/{profile}'
+                        if not _PROFILE.fullmatch(relative):
+                            raise ArtifactError('INPUT_PAYLOAD_INVALID')
+                        read_file(profiles, profile, relative)
+                finally:
+                    os.close(profiles)
+            else:
+                raise ArtifactError('INPUT_ARTIFACT_FILE_SET_INVALID')
+        if _validate(payloads) != manifest_sha256:
+            raise ArtifactError('INPUT_MANIFEST_HASH_MISMATCH')
+        return payloads
+    except OSError:
+        raise ArtifactError('INPUT_ARTIFACT_UNAVAILABLE') from None
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)

@@ -14,6 +14,10 @@
     </div>
 </div>
 
+{% if case.source_snapshot_json.schema_version == "a1-input-1" %}
+<p class="mb-4"><a href="{% url 'input_bundle_publish' pk=case.pk %}">Podklady A1 ke stažení</a></p>
+{% endif %}
+
 {% if is_application_draft %}
 <section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Neověřený návrh A1">
     <h3 class="text-lg font-semibold mb-2">Neověřený návrh A1</h3>

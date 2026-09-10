@@ -123,3 +123,74 @@ def test_validation_binds_snapshot_before_caller_mutation(tmp_path):
     with patch.object(input_artifacts, '_validate', side_effect=mutate):
         reference = publish_input_artifact(tmp_path, data)
     assert (tmp_path / reference['relative_path'] / 'review.csv').read_bytes() == expected['review.csv']
+
+
+def test_read_returns_verified_bytes_without_writes(tmp_path):
+    from portal.release1a.input_artifacts import read_input_artifact
+    data = payloads()
+    ref = publish_input_artifact(tmp_path, data)
+    before = {p.relative_to(tmp_path): p.stat().st_mtime_ns for p in tmp_path.rglob('*')}
+    assert read_input_artifact(tmp_path, ref['manifest_sha256']) == data
+    assert {p.relative_to(tmp_path): p.stat().st_mtime_ns for p in tmp_path.rglob('*')} == before
+
+
+@pytest.mark.parametrize('digest', ['', '../escape', 'A'*64, '0'*63, None])
+def test_read_invalid_key_does_not_create_root(tmp_path, digest):
+    from portal.release1a.input_artifacts import read_input_artifact
+    root = tmp_path / 'absent'
+    with pytest.raises(ArtifactError): read_input_artifact(root, digest)
+    assert not root.exists()
+
+
+@pytest.mark.parametrize('change', ['payload', 'manifest', 'extra', 'missing', 'mode', 'symlink', 'fifo', 'directory', 'profile-mode'])
+def test_read_rejects_corrupt_or_unsafe_bundle(tmp_path, change):
+    import os
+    from portal.release1a.input_artifacts import read_input_artifact
+    ref = publish_input_artifact(tmp_path, payloads())
+    bundle = tmp_path / ref['relative_path']
+    selected = bundle / 'review.csv'
+    if change == 'payload': selected.write_bytes(b'corrupt')
+    elif change == 'manifest': (bundle / 'manifest.json').write_bytes(b'{}')
+    elif change == 'extra': (bundle / 'extra').write_bytes(b'')
+    elif change == 'missing': selected.unlink()
+    elif change == 'mode': selected.chmod(0o640)
+    elif change == 'profile-mode': (bundle / 'profiles').chmod(0o750)
+    else:
+        selected.unlink()
+        if change == 'symlink': selected.symlink_to(bundle / 'cohort.json')
+        elif change == 'fifo': os.mkfifo(selected, mode=0o600)
+        else: selected.mkdir(mode=0o700)
+    with pytest.raises(ArtifactError): read_input_artifact(tmp_path, ref['manifest_sha256'])
+
+
+def test_read_rejects_ancestor_symlink_and_missing_root(tmp_path):
+    from portal.release1a.input_artifacts import read_input_artifact
+    root = tmp_path / 'root'
+    ref = publish_input_artifact(root, payloads())
+    alias = tmp_path / 'alias'
+    alias.symlink_to(root, target_is_directory=True)
+    with pytest.raises(ArtifactError): read_input_artifact(alias, ref['manifest_sha256'])
+    missing = tmp_path / 'missing'
+    with pytest.raises(ArtifactError): read_input_artifact(missing, ref['manifest_sha256'])
+    assert not missing.exists()
+
+
+def test_read_remains_anchored_when_profile_directory_is_replaced(tmp_path):
+    import os
+    from portal.release1a import input_artifacts
+    data = payloads()
+    ref = publish_input_artifact(tmp_path, data)
+    profiles = tmp_path / ref['relative_path'] / 'profiles'
+    original_open = os.open
+    swapped = False
+    def swap_after_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        fd = original_open(path, flags, *args, **kwargs)
+        if path == 'profiles' and not swapped:
+            swapped = True
+            profiles.rename(profiles.with_name('retained'))
+            profiles.symlink_to(tmp_path, target_is_directory=True)
+        return fd
+    with patch.object(input_artifacts.os, 'open', side_effect=swap_after_open):
+        assert input_artifacts.read_input_artifact(tmp_path, ref['manifest_sha256']) == data
+    assert swapped
