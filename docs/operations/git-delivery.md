@@ -36,8 +36,8 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | A1 list links to `/a1/inputs/`. Operators explicitly select up to 50 current cases per page; POST sends each displayed case/source hash to the existing atomic publisher. The returned ZIP link pins the manifest hash and uses existing tenant/current-source download checks. Reversed selections reuse the same bundle |
-| Validation | Seven focused BO integration tests passed, including multi-case retry, stale-member rollback, foreign-case rejection, malformed/duplicate/oversized selections, CSRF and capability checks. Required commit hooks pending |
-| Publication | Local implementation pending commit; inherited outgoing history review remains required before origin publication |
+| Validation | Seven focused BO integration tests passed, including multi-case retry, stale-member rollback, foreign-case rejection, malformed/duplicate/oversized selections, CSRF and capability checks. Both new cohort scenarios also passed on disposable PostgreSQL. The initial staged-path check required classification of the existing `a1_list.html` template; its exact path is now registered in the package catalog and source allowlist. Required hooks then passed: 223 Django tests (24 environment-specific skips), 80 runtime/artifact checks, 31 containment checks, 24 planning checks, 95 validator regressions and 29 tooling checks. This UI increment uses focused/integration evidence and mandatory hooks; no new release-candidate acceptance claim |
+| Publication | Implementation committed locally as `1c8380e`; this evidence-only checkpoint preserves tested source. Inherited outgoing history review remains required before origin publication |
 | Deployment | None; no durable database, artifact or service changes |
 | Activation | Unchanged; selected compatibility inputs do not imply human confirmation or issuance |
 | Limitations | Selection is limited to the current page; cross-page selection persistence is not implemented. Existing CLI supports explicit larger cohorts |
