@@ -36,8 +36,8 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Added a complete-input journey through BO association, one revision-bound field confirmation, rejection of a stale review, inbox draft preparation, PDF/all-three-preview HTTP access, cohort bundle download and exact retry. Added a separate cold-start address boundary test. Production behavior unchanged |
-| Validation | Both focused integration scenarios pass. Complete-input retry preserves worker/run/decision/generation counts and package identity; Section 5 remains blank / DE, CZ and human/issuance flags remain pending. Required hooks pending |
-| Publication | Local test/documentation delivery pending commit; inherited outgoing-history review remains separate |
+| Validation | Both focused integration scenarios pass. Complete-input retry preserves worker/run/decision/generation counts and package identity; Section 5 remains blank / DE, CZ and human/issuance flags remain pending. Both scenarios also passed on disposable PostgreSQL. Required hooks passed: 225 Django tests (24 environment-specific skips), 80 runtime/artifact checks, 31 containment checks, 24 planning checks and 29 tooling checks. Evidence is integration-test acceptance for these bounded scenarios, not a new release-candidate or cold-start automation acceptance |
+| Publication | Test/documentation delivery committed locally as `e9032ed`; this evidence-only update preserves tested bytes. Inherited outgoing-history review remains separate |
 | Deployment | None; disposable synthetic database/storage only |
 | Activation | Unchanged; automated tests simulate operator actions and do not constitute real human or all-page visual approval |
 | Limitations | Complete-input fixture seeds canonical proposals and business facts and uses a scripted OCR engine. Cold-start OCR extracts free-form residence_address, but its structured A1 address fields have no completion path in this journey. A blocked PDF with preserved proposals is correct, not full automation acceptance |
