@@ -306,3 +306,22 @@ class InboxTests(TransactionTestCase):
         self.assertNotIn("SENSITIVE", json.dumps(result))
         self.assertEqual(self.run_inbox()[0]["status"], "completed")
         self.assertEqual(OcrRun.objects.get().retry_count, 1)
+
+    def test_cold_start_address_stays_pending_without_structured_review(self):
+        """Recognizing a free-form address is not structured A1 address acceptance."""
+        from portal.release1a.models import A1Case, A1DraftGeneration
+        lines = OP + ['TRVALY POBYT: Testovaci 12, 12345 Testov']
+        self.content = png(card(lines))
+        path, items = self.batch()
+        items[0]['activity_profile'] = 'self_employed'
+        self.write(path/'ready.json', json.dumps({'organization_id':self.org.pk, 'files':items}).encode())
+        result = self.run_inbox(DocumentProcessor(lambda: ScriptedEngine([lines, lines])))[0]
+        self.assertEqual(result['status'], 'completed')
+        self.assertTrue(FieldProposal.objects.filter(field_name='residence_address').exists())
+        case = A1Case.objects.get(pk=result['drafts'][0]['a1_input']['case_ref'])
+        for field in ('street', 'house_number', 'city', 'postal_code', 'country_code'):
+            self.assertEqual(case.source_snapshot_json['row'][field], '')
+        self.assertEqual(result['drafts'][0]['a1_draft']['status'], 'blocked')
+        self.assertFalse(A1DraftGeneration.objects.exists())
+        self.assertFalse(FieldDecision.objects.exists())
+        self.assertFalse(WorkerIdentityRevision.objects.exists())

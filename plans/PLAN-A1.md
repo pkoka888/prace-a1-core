@@ -10,7 +10,7 @@ source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
 Human/visual confirmation and official issuance remain separate. Migration 0017 adds
 immutable generations for changed dependencies, preserving the number and prior packages.
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Next: integrated synthetic operator-workflow acceptance. See the
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Complete-input synthetic operator-workflow checks pass; cold-start structured address entry in BO is next. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
 Existing environments remain unchanged; selected supervised release needs 0014–0019.
 
@@ -159,7 +159,7 @@ The inbox now prepares revision-bound A1 input cases using
 provenance and explicit missing-fact blockers. Migration 0015 stores versioned
 assignment facts. The input service itself creates no PDF or human approval. The subsequent
 draft checkpoint above implements the shared publisher and stable reservations;
-replacement generation revisions are implemented; BO generation access and visual confirmation are implemented; field confirmation is revision-checked; identity association/conflict BO integration is implemented; synthetic legacy-key reconciliation is implemented; cohort/identity input bundles are implemented; profile-bound publication/CLI is implemented; case-level BO bundle access is implemented; selected-cohort BO publication is implemented; integrated synthetic operator-workflow acceptance is next.
+replacement generation revisions are implemented; BO generation access and visual confirmation are implemented; field confirmation is revision-checked; identity association/conflict BO integration is implemented; synthetic legacy-key reconciliation is implemented; cohort/identity input bundles are implemented; profile-bound publication/CLI is implemented; case-level BO bundle access is implemented; selected-cohort BO publication is implemented; complete-input workflow checks pass; source-linked structured address entry in BO is next.
 Existing environments remain unchanged; see the delivery record for test evidence.
 
 ## Current session review and next implementation

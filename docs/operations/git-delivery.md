@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Integrated synthetic operator workflow — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Added a complete-input journey through BO association, one revision-bound field confirmation, rejection of a stale review, inbox draft preparation, PDF/all-three-preview HTTP access, cohort bundle download and exact retry. Added a separate cold-start address boundary test. Production behavior unchanged |
+| Validation | Both focused integration scenarios pass. Complete-input retry preserves worker/run/decision/generation counts and package identity; Section 5 remains blank / DE, CZ and human/issuance flags remain pending. Required hooks pending |
+| Publication | Local test/documentation delivery pending commit; inherited outgoing-history review remains separate |
+| Deployment | None; disposable synthetic database/storage only |
+| Activation | Unchanged; automated tests simulate operator actions and do not constitute real human or all-page visual approval |
+| Limitations | Complete-input fixture seeds canonical proposals and business facts and uses a scripted OCR engine. Cold-start OCR extracts free-form residence_address, but its structured A1 address fields have no completion path in this journey. A blocked PDF with preserved proposals is correct, not full automation acceptance |
+| Next owner | Engineering: source-linked structured address entry in BO with current document/version tokens and existing decision/revision provenance; never silently parse an uncertain address into confirmed facts. Other missing business facts continue to block only affected drafts |
+
 ### Selected-cohort BO publication — 2026-09-10
 
 | Field | Evidence / state |

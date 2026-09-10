@@ -10,7 +10,7 @@ source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
 Human/visual confirmation and official issuance remain separate. Migration 0017 adds
 immutable generations for changed dependencies, preserving the number and prior packages.
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Next: integrated synthetic operator-workflow acceptance. See the
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Complete-input synthetic operator-workflow checks pass; cold-start structured address entry in BO is next. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
 Existing environments remain unchanged; selected supervised release needs 0014–0019.
 
@@ -27,7 +27,7 @@ completed batches reuse the shared intake/OCR adapter, preserve proposals and
 resume failed runs. Durable evaluations and typed-identifier claims now support
 conditional unconfirmed drafts; explicit resolution has source/revision checks.
 Revision-bound canonical input snapshots/exports and assignment facts (0015) are implemented.
-Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution is revision-checked. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort input bundles are implemented. Profile-bound publication and the synthetic CLI are implemented. Case-level BO publication/download is implemented. Selected-cohort BO publication is implemented. Next is integrated synthetic operator-workflow acceptance. The selected supervised environment needs migrations 0014–0019;
+Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution is revision-checked. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort input bundles are implemented. Profile-bound publication and the synthetic CLI are implemented. Case-level BO publication/download is implemented. Selected-cohort BO publication is implemented. Complete-input workflow checks pass. Next is source-linked structured address entry in BO. The selected supervised environment needs migrations 0014–0019;
 see the child contract and delivery record for the precise acceptance scope.
 
 ## Shared intake Git delivery — 2026-09-08

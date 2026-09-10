@@ -110,7 +110,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Next: integrated synthetic operator-workflow acceptance. Apply
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Complete-input synthetic operator-workflow checks pass; cold-start structured address entry in BO is next. Apply
 0014–0019 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -181,7 +181,7 @@ Responses are private/no-store; ZIP members retain 0600 modes. Download reads us
 anchored no-follow descriptors and verify the exact bytes returned. Selected-cohort BO publication now uses the same exporter at `/a1/inputs/`.
 The page lists up to 50 current cases per page, posts only explicit case/hash pairs,
 and rejects malformed, duplicate or stale selections atomically. Navigation does not
-carry unchecked or previous-page selections. Next: integrated synthetic operator-workflow acceptance.
+carry unchecked or previous-page selections. Complete-input synthetic operator-workflow checks pass; cold-start structured address entry in BO is next.
 Real-data reconciliation and accepted cutover remain separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
@@ -239,8 +239,14 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: integrated synthetic operator-workflow acceptance covering
-intake, revision-checked BO review, eligible drafts and selected-cohort downloads. BO association and field confirmation now check the revisions
+Complete-input synthetic journey checks now cover BO association and field review,
+inbox draft preparation, PDF/all-page preview access, bundle download and exact retry.
+These tests seed complete synthetic A1 proposals and business facts; they do not
+prove cold-start extraction completeness or constitute human visual acceptance.
+A separate cold-start test confirms free-form `residence_address` is extracted while
+structured A1 address fields stay blank and generation remains blocked.
+Next functional phase: source-linked structured address entry in BO, using existing
+FieldDecision/WorkerIdentityRevision provenance and stale-source protection. BO association and field confirmation now check the revisions
 displayed to the operator. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0019 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
@@ -517,7 +523,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, exercising the integrated synthetic operator workflow and
-recording any remaining gaps before accepted DB-MIG cutover. Jan supplies
+Next owner: engineering, implementing source-linked structured address entry in BO
+for cold-start intake before claiming complete-input automation or accepted DB-MIG cutover. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.

@@ -181,3 +181,58 @@ class A1DraftTests(TransactionTestCase):
         A1DraftGeneration.objects.filter(pk=generation.pk).update(snapshot_sha256="0" * 64)
         with self.assertRaisesRegex(StaleWrite, "GENERATION_CORRUPT"):
             prepare_application_draft(self.user, self.org, self.case.pk)
+
+    def test_complete_input_operator_journey_preserves_review_and_retry(self):
+        """Complete synthetic fixture is a precondition, not proof of cold-start mapping."""
+        from tests.test_j4_minimum import _mfa_login
+        from portal.release1a.identity_review import association_review_context
+        from portal.release1a.field_review import review_context
+        from portal.release1a.models import Worker, OcrRun, FieldDecision, AuditEvent
+        from zipfile import ZipFile
+        self.user.set_password('test-m2'); self.user.save()
+        _mfa_login(self.client, self.user)
+        url = f'/documents/{self.run.document_id}/'
+        options = association_review_context(self.user, self.org, [self.run.pk])[
+            (self.run.pk, self.region)]['worker_options']
+        token = next(o['token'] for o in options if o['worker'].pk == self.worker_id)
+        self.assertEqual(self.client.post(url, {'action':'associate', 'worker_choice':token,
+            'reason':'Synthetic source reviewed'}).status_code, 302)
+        proposal = FieldProposal.objects.get(ocr_run=self.run, field_name='sex')
+        token = review_context(self.user, self.org, [proposal.pk])[proposal.pk]['token']
+        review = {'action':'confirm', f'confirm_{proposal.pk}':'on',
+                  f'value_sex_{proposal.pk}':proposal.proposed_value, f'expected_{proposal.pk}':token}
+        self.assertEqual(self.client.post(url, review).status_code, 302)
+        self.assertEqual(self.client.post(url, review).status_code, 409)
+        path, items = self.batch()
+        items[0]['activity_profile'] = 'self_employed'
+        self.write(path/'ready.json', json.dumps({'organization_id':self.org.pk, 'files':items}).encode())
+        first = self.run_inbox()[0]
+        draft = first['drafts'][0]['a1_draft']
+        self.assertEqual(draft['status'], 'unverified_draft')
+        case = A1Case.objects.get(pk=draft['case_ref'])
+        generation = A1DraftGeneration.objects.get(reservation__case=case)
+        base = f'/a1/{case.pk}/'
+        self.assertEqual(self.client.get(base+f'artifact/?generation={generation.pk}').status_code, 200)
+        for page in (1,2,3):
+            self.assertEqual(self.client.get(base+f'preview/{page}/?generation={generation.pk}').status_code, 200)
+        response = self.client.post('/a1/inputs/', {'selection':[f'{case.pk}:{case.source_hash}']})
+        self.assertEqual(response.status_code, 200)
+        digest = AuditEvent.objects.filter(event_type='a1.input_bundle_published').latest('pk').object_ref.split(':')[1]
+        download = self.client.get(base+f'inputs/{digest}/download/')
+        self.assertEqual(download.status_code, 200)
+        with ZipFile(io.BytesIO(download.content)) as archive:
+            snapshots = json.loads(archive.read('input_snapshots.json'))['snapshots']
+            self.assertEqual(snapshots[0], case.source_snapshot_json)
+            row = snapshots[0]['row']
+            self.assertEqual((row['activity_name'], row['activity_address']), ('', 'DE, CZ'))
+            self.assertEqual(row['validated_by_user'], '0')
+            self.assertEqual(row['identity_reviewed'], 'NO')
+        counts = (Worker.objects.count(), OcrRun.objects.count(), FieldDecision.objects.count(),
+                  A1DraftGeneration.objects.count())
+        again = self.run_inbox()[0]
+        self.assertEqual(again['drafts'][0]['a1_draft']['package_key'], draft['package_key'])
+        self.assertEqual(counts, (Worker.objects.count(), OcrRun.objects.count(),
+            FieldDecision.objects.count(), A1DraftGeneration.objects.count()))
+        self.assertEqual(WorkerIdentityRevision.objects.latest('pk').confirmed_fields['sex'], 'M')
+        self.assertFalse(case.visual_confirmed)
+        self.assertEqual(case.external_status, 'not_submitted')
