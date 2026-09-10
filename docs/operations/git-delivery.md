@@ -43,6 +43,18 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Limitations | Out-of-scope for this review cycle: production settings module, WSGI entrypoint, configured queue dispatch, comprehensive M3 queues/exceptions/retention. These are explicitly deferred to the production pilot (Delivery 3) and Release 1B. `plans/alternatives/` directory was created earlier but not materialised during the review; the four-delivery sequence above replaces those alternatives |
 | Next owner | Delivery 1 work continues: WSGI entrypoint, persistent PostgreSQL DB, individual login, URL hosting for the testing site. Engineering packages deployment and synthetic recovery rehearsals alongside workflow completion. The 53-commit push above contains every prior accepted increment in the local feature branch; the private `origin` is now in sync with local HEAD |
 
+### WSGI/ASGI entrypoints for Delivery 1 — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | New `portal/wsgi.py` exposes the Django WSGI handler as the gunicorn/uwsgi import target; default `DJANGO_SETTINGS_MODULE` is `portal.settings`. New `portal/asgi.py` exposes the Django ASGI handler as the uvicorn/daphne import target. Both entrypoints switch to `portal.settings_supervised_synthetic` when the deployment environment sets `DJANGO_SETTINGS_MODULE` accordingly. The supervised-synthetic settings module is already comprehensive (DEBUG=False, restrictive ALLOWED_HOSTS, mandatory PRACE_SECRET_KEY, confined runtime root, optional PostgreSQL with `verify-full`); a second "production" settings module is intentionally not added to avoid duplicating the supervised-synthetic contract |
+| Validation | New `tests/test_wsgi_asgi.py`: 5/5 passing (default-import contract, ASGI import, default settings module is `portal.settings`, basic routing via Django test client — `/login/` → 302 `/accounts/login/`, `/health/` → 200, `/review/` → 302 to login, `settings.M2_SYNTHETIC_ONLY` is True so the existing intake guard is preserved). No regression in the prior 167-test corpus |
+| Publication | Local working tree; pre-push planning validator passes 24/24; change-package classification: 3 files eligible (portal/wsgi.py, portal/asgi.py, tests/test_wsgi_asgi.py) plus the docs recipe. Routine private-origin feature-branch publication follows AGENTS.md |
+| Deployment | None; no service mutation, no real-data activation, no durable environment change. The recipe in `docs/operations/wsgi-deployment-recipe.md` documents how an operator wires gunicorn to `portal.wsgi:application` with the supervised-synthetic settings; running that recipe is a separate authorization |
+| Activation | Unchanged; the WSGI/ASGI module does not enable real-data activation. `settings.M2_SYNTHETIC_ONLY` remains True; intake refuses non-synthetic configuration. Real-data activation requires REV-003 per existing gates |
+| Limitations | No automated test exercises a real gunicorn/uwsgi process against this WSGI entrypoint — the contract test uses Django's test client. Production infrastructure (systemd unit, nginx, TLS, secret delivery, backup) remains infrastructure-owned. Queue dispatch via `django-q2` is intentionally not configured; background jobs continue inline. M3 queues/exceptions/retention remain Release-1B scope |
+| Next owner | Operator: review `docs/operations/wsgi-deployment-recipe.md` and decide the deployment shape (gunicorn vs uvicorn, PostgreSQL vs confined SQLite, allowed hosts). Engineering: continue Delivery 1 — wire the existing frontend/backend into the persistent URL, then Delivery 2 (usable v1 workflow) and Deployment 3 (restricted production pilot) |
+
 ### Missing identity facts in BO — 2026-09-10
 
 | Field | Evidence / state |

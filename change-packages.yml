@@ -29,6 +29,8 @@
         "portal/settings_supervised_synthetic.py",
         "portal/settings_browser_tests.py",
         "portal/settings_verification.py",
+        "portal/wsgi.py",
+        "portal/asgi.py",
         "scripts/seed_release1a_dev.py",
         "tests/fixtures/release_1a/workers_orgonik_zivot.json",
         "tests/fixtures/release_1a/assignments_orgonik_zivot.json",
@@ -36,10 +38,11 @@
         "tests/fixtures/release_1a/review_orgonik_zivot.csv",
         "tests/test_readiness_checks.py",
         "tests/test_runtime_hardening.py",
-        "tests/test_settings_supervised_synthetic.py"
+        "tests/test_settings_supervised_synthetic.py",
+        "tests/test_wsgi_asgi.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py -q"
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py tests/test_wsgi_asgi.py -q"
       ],
       "dependencies": [
         "Existing synthetic portal models; no host service or database writes"
@@ -200,7 +203,7 @@
     },
     "repository_documentation": {
       "purpose": "Actual research-stage repository and protected-data boundaries.",
-      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md"],
+      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md", "docs/operations/wsgi-deployment-recipe.md"],
       "checks": ["git diff --check"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert documentation without changing runtime or private data."

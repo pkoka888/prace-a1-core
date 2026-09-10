@@ -113,6 +113,7 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
     "docs/operations/infra-review-20260907T0230Z/SECRETS-DATABASE.md",
     "docs/operations/infra-review-20260907T0230Z/SHA256SUMS",
     "docs/operations/infra-review-20260907T0230Z/VALIDATION.json",
+    "docs/operations/wsgi-deployment-recipe.md",
     "docs/operations/opencode-work-orders/README.md",
     "docs/operations/opencode-work-orders/artifact-and-j4.md",
     "docs/operations/opencode-work-orders/organization-audit.md",
