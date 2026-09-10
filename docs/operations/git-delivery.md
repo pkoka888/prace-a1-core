@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Shared publisher binds exact canonically validated institution-profile bytes and checks for changes around a protected atomic write. `input_artifacts.py` owns `<DOCUMENT_STORAGE_ROOT>/a1-input/<manifest-sha256>/`, separate from source-document/J4 layouts. Private staged files, fsync and locked rename publish the complete package; exact retries validate bytes, modes and file set. Thin `a1_export_inputs` CLI accepts explicit case/source-hash selections |
-| Validation | Focused storage/service/CLI tests in progress; final evidence recorded here |
-| Publication | Local scoped implementation pending commit; inherited outgoing history requires review before private-origin publication |
+| Validation | All 17 filesystem tests and 10 final service/cohort/CLI integration tests passed. The initial unsafe-permissions fixture was corrected to set its mode explicitly under restrictive umasks. Required hooks then passed: 216 Django tests with 24 environment-specific skips, 63 runtime/artifact checks, 31 containment checks, 95 planning regressions, 29 tooling checks and 24 planning checks. Committed-source `69dfc4d` acceptance passed 23 applicable planning checks, 115 tooling/artifact tests plus 18 subtests and 100 workflow tests with six PostgreSQL-only skips. Source integrity remained intact |
+| Publication | Implementation committed locally as `69dfc4d`; this evidence-only checkpoint preserves tested source blobs. Inherited outgoing history requires review before private-origin publication |
 | Deployment | None; disposable synthetic storage only. No database migration, production package or PDF layout change |
 | Activation | Unchanged. Package contains pending compatibility inputs, not issued certificates or human confirmations |
 | Limitations | Missing/invalid profiles block publication but not unbound exports. Changed profiles create new bundles. A post-write validation/audit failure can leave a protected recoverable bundle; obsolete-bundle classification remains separate. BO access is not yet implemented |
 | Next owner | Engineering: BO publication and download access with manifest-pinned references, tenant/capability checks and no-store responses; GET must not create packages |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/291021e78d2545f591b2d9c43fa33889/receipt.json`.
 
 ### Selected-cohort compatibility inputs — 2026-09-10
 
