@@ -10,9 +10,9 @@ source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
 Human/visual confirmation and official issuance remain separate. Migration 0017 adds
 immutable generations for changed dependencies, preserving the number and prior packages.
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Next: synthetic legacy-key reconciliation and complete revision-bound compatibility export. See the
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Next: complete revision-bound cohort/identity compatibility export. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
-Existing environments remain unchanged; selected supervised release needs 0014–0018.
+Existing environments remain unchanged; selected supervised release needs 0014–0019.
 
 ## Consolidated contract — 2026-09-08
 
@@ -35,8 +35,8 @@ claims, creates eligible drafts and exposes revision-checked explicit resolution
 Migrations 0014/0015 are tested on disposable databases; existing environments are preserved.
 Synthetic input snapshots and all 44 canonical CSV columns are exported by
 `portal/release1a/a1_exports.py`, with versioned assignment facts and provenance.
-No DB-MIG cutover is accepted. Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution is revision-checked. Next: synthetic
-legacy-key reconciliation and complete compatibility export; selected supervised
+No DB-MIG cutover is accepted. Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution is revision-checked. Explicit synthetic legacy-key reconciliation is implemented. Next: complete
+cohort/identity compatibility export; selected supervised
 migration remains required before runtime use. Existing cutover dependencies remain unchanged.
 
 ## Purpose and current ownership

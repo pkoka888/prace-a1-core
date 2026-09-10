@@ -10,9 +10,9 @@ source/profile/dependencies and package UUID; retries recover the same package.
 Unknown certificate dates remain blank; every page has an UNVERIFIED DRAFT notice.
 Human/visual confirmation and official issuance remain separate. Migration 0017 adds
 immutable generations for changed dependencies, preserving the number and prior packages.
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Next: synthetic legacy-key reconciliation and complete revision-bound compatibility export. See the
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Next: complete revision-bound cohort/identity compatibility export. See the
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
-Existing environments remain unchanged; selected supervised release needs 0014–0018.
+Existing environments remain unchanged; selected supervised release needs 0014–0019.
 
 ## Local automation and data ownership — 2026-09-08
 
@@ -27,8 +27,8 @@ completed batches reuse the shared intake/OCR adapter, preserve proposals and
 resume failed runs. Durable evaluations and typed-identifier claims now support
 conditional unconfirmed drafts; explicit resolution has source/revision checks.
 Revision-bound canonical input snapshots/exports and assignment facts (0015) are implemented.
-Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution is revision-checked. Next is synthetic
-legacy-key reconciliation and complete revision-bound compatibility export. The selected supervised environment needs migrations 0014–0018;
+Generation-bound visual confirmation is implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution is revision-checked. Explicit synthetic legacy-key reconciliation is implemented. Next is complete
+revision-bound cohort/identity export. The selected supervised environment needs migrations 0014–0019;
 see the child contract and delivery record for the precise acceptance scope.
 
 ## Shared intake Git delivery — 2026-09-08

@@ -110,8 +110,8 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Next: synthetic legacy-key reconciliation and complete revision-bound compatibility export. Apply
-0014–0018 through the selected supervised release before runtime use; the existing
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Next: complete revision-bound cohort/identity compatibility export. Apply
+0014–0019 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
 ## Generation visual confirmation checkpoint — 2026-09-09
@@ -142,8 +142,17 @@ identity revision. GET creates no decisions. POST rechecks evidence under locks,
 records the machine evaluation and calls `resolve_identity_evaluation`; an override
 requires a reason. No individual facts are confirmed by association.
 
-Next: implement synthetic legacy-key reconciliation and complete revision-bound
-CSV/cohort/identity compatibility export. Full cutover remains separate.
+Migration 0019 adds nullable organization-unique legacy keys and structured source/actor
+provenance. `portal/release1a/legacy_reconciliation.py` accepts explicit revision-bound
+mappings, validates the full batch, reserves the `worker-<number>` fallback namespace,
+and rejects collisions or replacement of established keys. Exact retries reuse the
+original mapping. A new mapping increments the worker revision and stales older A1
+inputs; new canonical CSV/JSON snapshots freeze the mapped key. No identity fields
+are confirmed. Historical workers remain unmapped; rollback refuses mapped-key loss.
+
+Next: complete revision-bound cohort/identity compatibility exports through the
+existing export service, with selected-cohort collision checks and round-trip tests.
+Real-data reconciliation and accepted cutover remain separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
 
@@ -164,7 +173,7 @@ institution profiles. Canonical readiness reports existing gate blockers honestl
 The subsequent draft checkpoint above implements the unverified publisher mode,
 stable DB-bound numbering, generation revisions and artifact QA. BO UI
 revision checks proceed in parallel; BO completion is not a future draft gate.
-Migrations 0014–0018 require application in the selected supervised release before
+Migrations 0014–0019 require application in the selected supervised release before
 runtime use; the existing development database remains at its recorded 0013 state.
 Validation, publication and deployment evidence are in the delivery record.
 
@@ -200,10 +209,10 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: synthetic legacy-key reconciliation and complete revision-bound
-compatibility export. BO association and field confirmation now check the revisions
+Next functional phase: complete revision-bound cohort/identity compatibility export
+after the implemented explicit synthetic legacy-key mapping service. BO association and field confirmation now check the revisions
 displayed to the operator. BO UI completion is not a gate for eligible unverified
-A1 drafts. Apply 0014–0018 through the selected supervised development release workflow
+A1 drafts. Apply 0014–0019 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
 retain the scenario list below. A successful intake is not full automation,
 accepted DB cutover, PDF approval or real-data activation.
@@ -478,7 +487,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, implementing synthetic legacy-key reconciliation and
-complete revision-bound compatibility exports before accepted DB-MIG cutover. Jan supplies
+Next owner: engineering, completing revision-bound cohort/identity compatibility
+exports and round-trip evidence before accepted DB-MIG cutover. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.

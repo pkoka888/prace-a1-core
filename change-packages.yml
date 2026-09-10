@@ -58,6 +58,8 @@
         "portal/release1a/intake_views.py",
         "portal/release1a/field_review.py",
         "portal/release1a/identity_review.py",
+        "portal/release1a/legacy_reconciliation.py",
+        "tests/document_web/test_legacy_reconciliation.py",
         "tests/document_web/test_identity_review.py",
         "tests/document_web/test_field_review.py",
         "portal/release1a/services.py",
@@ -103,7 +105,7 @@
         "scripts/test_document_intake.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_field_review tests.document_web.test_identity_review tests.document_web.test_inbox tests.document_web.test_identity tests.document_web.test_a1_exports tests.document_web.test_a1_drafts tests.document_web.test_a1_generation_access tests.document_web.test_a1_generation_confirmation tests.document_web.test_a1_drafts_postgres tests.document_web.test_a1_exports_postgres tests.document_web.test_identity_postgres tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_field_review tests.document_web.test_identity_review tests.document_web.test_legacy_reconciliation tests.document_web.test_inbox tests.document_web.test_identity tests.document_web.test_a1_exports tests.document_web.test_a1_drafts tests.document_web.test_a1_generation_access tests.document_web.test_a1_generation_confirmation tests.document_web.test_a1_drafts_postgres tests.document_web.test_a1_exports_postgres tests.document_web.test_identity_postgres tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
         "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py -q",
         "venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
       ],
@@ -128,6 +130,7 @@
         "portal/release1a/migrations/0016_a1_draft_reservation.py",
         "portal/release1a/migrations/0017_a1_draft_generation.py",
         "portal/release1a/migrations/0018_a1_generation_confirmation.py",
+        "portal/release1a/migrations/0019_worker_legacy_key.py",
         "tests/test_release1a_migration_chain.py"
       ],
       "checks": [

@@ -56,7 +56,7 @@ The table uses these explicit destinations:
   the existing display labels cannot represent. It currently holds unconfirmed values; structured source references remain in
   snapshot provenance/owning records. Changes through the service increment `Assignment.version`. S freezes the selected
   values and assignment IDs/versions. It is not an independent worker master.
-- **W+**: **planned** nullable `Worker.legacy_employee_id`, with a conditional
+- **W+**: migration 0019 implements nullable `Worker.legacy_employee_id`, with a conditional
   uniqueness constraint on organization plus nonempty key. It is an explicit
   legacy association, not the database primary key or a filename identity guess.
   Compatibility export uses this established key when present; a DB-native worker
@@ -65,7 +65,12 @@ The table uses these explicit destinations:
   export, and fail on a collision rather than remapping a confirmed association.
   Never derive this key from a name, filename or another personal identifier.
 
-W+ remains a schema gap; A+ has an additive migration and version-checked service. Other listed destinations reuse existing
+W+ now has an additive migration and explicit revision-checked reconciliation service;
+`Worker.legacy_key_provenance` records source hash, mapping hash, actor, time and
+expected worker version. Mapping is not identity confirmation. Existing workers
+remain unmapped; no backfill guesses keys. Established keys cannot be replaced by
+the service; exact retries preserve provenance. The numeric `worker-<id>` namespace
+is reserved for native keys. A+ has an additive migration and version-checked service. Other listed destinations reuse existing
 columns with planned validation/service contracts. DB-MIG must prove historical
 migration transitions with `MigrationExecutor`, add constraints only after
 reconciliation, and enforce organization ownership on every referenced object.
@@ -96,7 +101,7 @@ for each visual confirmation. Identity facts and case issuance state remain sepa
 BO field confirmation now uses `portal/release1a/field_review.py` and existing
 FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
 and the current confirmed revision; replacement of a confirmed value requires reason.
-BO identity association uses signed choices and the canonical revision-checked resolution service. Legacy-key reconciliation and cohort export remain follow-up work.
+BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; cohort/identity export remains follow-up work.
 
 ## Complete CSV mapping
 

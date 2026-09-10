@@ -79,13 +79,17 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
     if worker.state == Worker.State.ARCHIVED:
         raise ValueError("WORKER_ARCHIVED")
     row = dict.fromkeys(CSV_FIELDS, "")
-    row.update(employee_id=f"worker-{worker.pk}", identity_reviewed="NO", certificate_reviewed="NO",
+    row.update(employee_id=worker.legacy_employee_id or f"worker-{worker.pk}", identity_reviewed="NO", certificate_reviewed="NO",
                approved_for_pdf="NO", validated_by_user="0")
     for subject in ("activity", "certificate", "signatory"):
         row[subject + "_source_status"] = "UNVERIFIED"
     provenance, blockers = {}, []
     dependencies = {"worker_ref": worker.pk, "worker_version": worker.version,
                     "activity_profile": worker.activity_profile, "worker_state": worker.state}
+    if worker.legacy_employee_id:
+        dependencies["legacy_key_provenance"] = worker.legacy_key_provenance
+        provenance["employee_id"] = {"kind": "explicit_legacy_mapping", "worker_ref": worker.pk,
+                                     **worker.legacy_key_provenance}
     def put(field, value, source):
         row[field] = _value(field, value)
         provenance[field] = source
@@ -184,7 +188,7 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
                     put(field, value, {"kind": "policy_default", "policy": "self-employed-provisional-section5-v1", "confirmed": False})
     else:
         blockers.append("assignment_missing")
-    provenance["employee_id"] = {"kind": "database_key", "worker_ref": worker.pk, "confirmed": False}
+    provenance.setdefault("employee_id", {"kind": "database_key", "worker_ref": worker.pk, "confirmed": False})
     for field in CSV_FIELDS:
         provenance.setdefault(field, {"kind": "system_state" if row[field] else "missing", "confirmed": False})
     # Gate inputs remain honest: accepted individual fields are not whole-input approval.

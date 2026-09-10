@@ -177,6 +177,7 @@ class GenerationConfirmationPostgresTests(TransactionTestCase):
             self.assertFalse(current.get_model('release1a','A1GenerationConfirmation').objects.exists())
             MigrationExecutor(connection).migrate(before)
             MigrationExecutor(connection).migrate(after)
+            MigrationExecutor(connection).migrate(leaves)  # Runtime services require the current Worker schema.
             receipt = self.confirm(generation)
             with self.assertRaises(ValueError):
                 MigrationExecutor(connection).migrate(before)

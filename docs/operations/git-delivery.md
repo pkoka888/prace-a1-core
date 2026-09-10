@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Explicit synthetic legacy-key reconciliation — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Migration 0019 adds nullable tenant-unique legacy keys and structured source/actor/mapping provenance. The canonical reconciliation service validates a complete explicit worker/version/key batch, rejects collisions/reserved fallback keys/replacement, preserves exact retry evidence, increments changed worker revisions and stales prior cases. New canonical CSV/JSON snapshots freeze the selected key. Historical workers are not auto-mapped; reverse migration refuses mapped-key loss |
+| Validation | Focused PostgreSQL service/export/historical migration/concurrency checks in progress; final evidence recorded below |
+| Publication | Local scoped implementation pending commit; inherited outgoing history requires review before private-origin publication |
+| Deployment | None. Migrations run only on disposable synthetic databases; selected supervised release requires 0014–0019 |
+| Activation | Unchanged. Source hashes identify explicitly selected reconciliation inputs; the service does not claim external file verification, real-data reconciliation or identity confirmation |
+| Limitations | This is the key-mapping foundation and single-case CSV/JSON integration. Complete selected-cohort/identity compatibility export and real-data reconciliation remain separate |
+| Next owner | Engineering: complete cohort/identity compatibility exports through the shared export service, reject duplicate selected workers/keys and prove revision-bound round trips before DB-MIG cutover |
+
 ### Revision-checked BO identity association — 2026-09-10
 
 | Field | Evidence / state |

@@ -104,6 +104,17 @@ class TenantModel(models.Model):
     class Meta: abstract = True
 
 class Worker(TenantModel):
+    legacy_employee_id = models.CharField(max_length=120, null=True, blank=True)
+    legacy_key_provenance = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["organization", "legacy_employee_id"],
+                condition=models.Q(legacy_employee_id__isnull=False), name="unique_org_worker_legacy_key"),
+            models.CheckConstraint(condition=models.Q(legacy_employee_id__isnull=True) |
+                ~models.Q(legacy_employee_id=""), name="worker_legacy_key_not_empty"),
+        ]
+
     given_name = models.CharField(max_length=80)
     family_name = models.CharField(max_length=80)
     birth_date = models.DateField()
