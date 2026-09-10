@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### BO assignment and institution facts — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Assignment editor links to a version-bound pending-facts form using the canonical update_assignment_facts service. Employment/activity facts and institution selection are editable; certificate dates/numbers/signatory evidence are preserved. Blank optional fields retain canonical Section 5 defaults. Verified profiles are selectable and unavailable stored selections remain preservable. The ordinary assignment editor now shares the organization lock, requires the displayed version, stales affected cases and rolls back on audit failure |
+| Validation | All 14 focused BO/export tests passed. PostgreSQL integration and targeted old-editor/fact-update race checks passed. Required hooks and scoped committed-source acceptance pending |
+| Publication | Scoped local implementation pending commit; inherited outgoing-history review remains separate |
+| Deployment | None; no schema migration or durable environment changes |
+| Activation | Unchanged; saving facts does not mark them human-verified or establish issuance |
+| Limitations | Missing profiles and required inputs still block only affected draft generation. Profile choices use canonical VERIFIED profiles; unavailable existing choices can be retained. Certificate metadata is not editable on this pending-facts form |
+| Next owner | Engineering: cold-start operator readiness checks using address and assignment/institution entry; identify any remaining required-field completion gaps |
+
 ### Source-linked structured address review — 2026-09-10
 
 | Field | Evidence / state |

@@ -560,8 +560,16 @@ def assignment_create(request, worker_pk):
 
 
 @require_org_membership
+@transaction.atomic
 def assignment_edit(request, worker_pk, pk):
     """J3: Assignment edit — stale concurrent edit, overlap, A1 ambiguity."""
+    from .identity import _authorize, _lock_organization
+    from .services import Forbidden
+    try:
+        _authorize(request.user, request.organization, "assignment:update")
+    except Forbidden:
+        return HttpResponseForbidden("ACCESS_DENIED")
+    _lock_organization(request.organization)
     worker = get_object_or_404(Worker, pk=worker_pk, organization=request.organization)
     assignment = get_object_or_404(Assignment, pk=pk, organization=request.organization, worker=worker)
 
@@ -577,26 +585,28 @@ def assignment_edit(request, worker_pk, pk):
             try:
                 # Optimistic locking: reject stale concurrent edits.
                 submitted_version = form.cleaned_data.get("version")
-                if submitted_version is not None and submitted_version != assignment.version:
+                if submitted_version is None or submitted_version != assignment.version:
                     form.add_error(None, _("Přiřazení bylo změněno jiným uživatelem. Načtěte prosím znovu."))
                 else:
-                    form.instance.version = assignment.version + 1
-                    form.save()
-                    AuditEvent.objects.create(
-                        organization=request.organization,
-                        actor_ref=f"user:{request.user.pk}",
-                        event_type="assignment.updated",
-                        object_ref=f"assignment:{assignment.pk}",
-                        outcome="success",
-                    )
+                    with transaction.atomic():
+                        form.instance.version = assignment.version + 1
+                        form.save()
+                        AuditEvent.objects.create(
+                            organization=request.organization,
+                            actor_ref=f"user:{request.user.pk}",
+                            event_type="assignment.updated",
+                            object_ref=f"assignment:{assignment.pk}",
+                            outcome="success",
+                        )
+                        A1Case.objects.filter(organization=request.organization, worker=worker).update(is_stale=True)
                     if request.headers.get("HX-Request"):
                         return render(request, "portal/partials/assignment_row.html", {
                             "assignment": assignment,
                             "overlap_warning": getattr(form, "overlap_warning", False),
                         })
                     return redirect("worker_detail", pk=worker.pk)
-            except Exception as e:
-                form.add_error(None, str(e))
+            except Exception:
+                form.add_error(None, _("Změnu nelze uložit. Obnovte formulář a zkuste to znovu."))
     else:
         # Include current version for optimistic locking
         initial = {"version": assignment.version}

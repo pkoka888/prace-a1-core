@@ -55,7 +55,10 @@ from .views import (
 
 from .input_bundle_views import input_bundle_publish, input_bundle_download, input_cohort_publish
 
+from .assignment_facts import assignment_facts_edit
+
 urlpatterns = [
+    path("workers/<int:worker_pk>/assignments/<int:pk>/a1-inputs/", assignment_facts_edit, name="assignment_facts_edit"),
     path("a1/inputs/", input_cohort_publish, name="input_cohort_publish"),
     path("a1/<int:pk>/inputs/", input_bundle_publish, name="input_bundle_publish"),
     path("a1/<int:pk>/inputs/<str:manifest_hash>/download/", input_bundle_download, name="input_bundle_download"),

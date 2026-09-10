@@ -98,6 +98,56 @@ class PostgresA1InputConcurrencyTests(TransactionTestCase):
         self.assertNotEqual(self.assignment.a1_facts_json, loser[2])
 
 
+    def test_assignment_editor_and_fact_update_share_version_lock(self):
+        from concurrent.futures import TimeoutError
+        from threading import Event
+        from unittest.mock import patch
+        from django.test import Client
+        from tests.test_j4_minimum import _mfa_login
+        from portal.release1a.forms import AssignmentForm
+        self.user.set_password('test-m2'); self.user.save()
+        client=Client(); _mfa_login(client,self.user)
+        ready, release, updating=Event(),Event(),Event()
+        original=AssignmentForm.is_valid
+        def pause(form):
+            valid=original(form)
+            ready.set()
+            if not release.wait(10): raise RuntimeError('Synthetic timeout')
+            return valid
+        def details():
+            close_old_connections()
+            try:
+                return client.post(f'/workers/{self.worker.pk}/assignments/{self.assignment.pk}/edit/',
+                    {'version':1,'workplace_label':'Synthetic edited','activity_label':'Synthetic',
+                     'start':'2026-01-01','end':'2026-12-31','state':'planned'}).status_code
+            finally: connection.close()
+        def facts():
+            close_old_connections()
+            try:
+                updating.set()
+                try:
+                    update_assignment_facts(self.user,self.org,self.assignment.pk,
+                        {'employment':{'employer_id':'SYNTHETIC-RACE'}},expected_version=1)
+                    return 'updated'
+                except StaleWrite: return 'stale'
+            finally: connection.close()
+        with patch.object(AssignmentForm,'is_valid',pause), ThreadPoolExecutor(max_workers=2) as pool:
+            edit=pool.submit(details)
+            try:
+                self.assertTrue(ready.wait(10))
+                update=pool.submit(facts)
+                self.assertTrue(updating.wait(10))
+                # A fact update cannot commit while the editor holds an older instance.
+                with self.assertRaises(TimeoutError): update.result(timeout=0.5)
+            finally: release.set()
+            self.assertEqual(edit.result(timeout=15),302)
+            self.assertEqual(update.result(timeout=15),'stale')
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.version,2)
+        self.assertEqual(self.assignment.a1_facts_json,{})
+        self.assertEqual(self.assignment.workplace_label,'Synthetic edited')
+
+
 @skipUnless(connection.vendor == "postgresql", "Disposable PostgreSQL required")
 class PostgresA1FactsMigrationTests(TransactionTestCase):
     def test_0015_preserves_records_defaults_facts_and_reverses(self):

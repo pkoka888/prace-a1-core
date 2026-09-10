@@ -162,3 +162,105 @@ class A1ExportTests(TransactionTestCase):
         self.assertNotIn("conflict:dob", current["blockers"])
         self.assertEqual(current["row"]["dob"], "15.03.1990")
         self.assertEqual(current["provenance"]["dob"]["kind"], "confirmed_revision")
+
+    def facts_bo(self):
+        from tests.test_j4_minimum import _mfa_login
+        self.inputs()
+        self.user.set_password('test-m2'); self.user.save(); _mfa_login(self.client,self.user)
+        return f'/workers/{self.worker_id}/assignments/{self.assignment.pk}/a1-inputs/'
+
+    def facts_post(self):
+        from portal.release1a.assignment_facts import FIELDS
+        return {'version':self.assignment.version,'status_profile':'self_employed_multi_state',
+            **{f'{group}__{field}':'' for group,fields in FIELDS.items() for field in fields}}
+
+    def test_bo_assignment_facts_preserve_evidence_and_canonical_defaults(self):
+        from portal.release1a.models import AuditEvent
+        url=self.facts_bo()
+        self.assignment.a1_facts_json={'certificate':{'document_id':'SYNTHETIC-REF'},
+            'institution':{'signed_by':'Synthetic evidence','issue_date':'2026-09-01'}}
+        self.assignment.save()
+        before=self.prepare()
+        self.assertContains(self.client.get(url),'name="employment__employer_id"')
+        self.assertFalse(AuditEvent.objects.filter(event_type='a1.assignment_facts_updated').exists())
+        post=self.facts_post(); post['employment__employer_id']='SYNTHETIC-123'
+        post['certificate__document_id']='INJECTED'
+        self.assertEqual(self.client.post(url,post).status_code,302)
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.a1_facts_json['certificate']['document_id'],'SYNTHETIC-REF')
+        self.assertEqual(self.assignment.a1_facts_json['institution']['signed_by'],'Synthetic evidence')
+        self.assertEqual(self.assignment.version,2)
+        before.refresh_from_db(); self.assertTrue(before.is_stale)
+        row=self.prepare().source_snapshot_json['row']
+        self.assertEqual((row['activity_name'],row['activity_address']),('','DE, CZ'))
+        self.assertEqual(row['employment_id'],'SYNTHETIC-123')
+        self.assertEqual(row['validated_by_user'],'0')
+        self.assertEqual(self.client.post(url,post).status_code,409)
+        post['version']=2; post['activity__address']='DE, CZ, AT'
+        self.assertEqual(self.client.post(url,post).status_code,302)
+        self.assertEqual(self.prepare().source_snapshot_json['row']['activity_address'],'DE, CZ, AT')
+
+    def test_bo_assignment_facts_scope_csrf_invalid_and_missing_fields(self):
+        from django.test import Client
+        from tests.test_j4_minimum import _mfa_login
+        from portal.release1a.models import Membership
+        url=self.facts_bo(); post=self.facts_post()
+        self.assertEqual(self.client.post(url,{'version':1}).status_code,400)
+        self.assertEqual(self.client.post(url,dict(post,version=[1,1])).status_code,400)
+        csrf=Client(enforce_csrf_checks=True); _mfa_login(csrf,self.user)
+        self.assertEqual(csrf.post(url,post).status_code,403)
+        bad=dict(post,status_profile='unsupported')
+        self.assertEqual(self.client.post(url,bad).status_code,200)
+        self.assignment.refresh_from_db(); self.assertEqual(self.assignment.version,1)
+        Membership.objects.filter(user=self.user).update(role='privacy_admin')
+        self.assertEqual(self.client.get(url).status_code,403)
+        self.assertEqual(self.client.post(url,post).status_code,403)
+        Membership.objects.filter(user=self.user).update(role='organization_admin',organization=self.other)
+        self.assertEqual(self.client.get(url).status_code,404)
+        Membership.objects.filter(user=self.user).update(organization=self.org)
+        with override_settings(M2_SYNTHETIC_ONLY=False): self.assertEqual(self.client.get(url).status_code,403)
+
+    def test_assignment_editor_rejects_old_version_without_overwriting_facts(self):
+        self.facts_bo()
+        update_assignment_facts(self.user,self.org,self.assignment.pk,
+            {'employment':{'employer_id':'SYNTHETIC-NEW'}},expected_version=1)
+        url=f'/workers/{self.worker_id}/assignments/{self.assignment.pk}/edit/'
+        post={'version':1,'workplace_label':'Synthetic edit','activity_label':'Synthetic',
+              'start':'2026-09-01','end':'2026-12-31','state':'planned'}
+        self.assertEqual(self.client.post(url,post).status_code,200)
+        self.assignment.refresh_from_db(); self.assertEqual(self.assignment.version,2)
+        post['version']=2
+        self.assertEqual(self.client.post(url,post).status_code,302)
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.a1_facts_json['employment']['employer_id'],'SYNTHETIC-NEW')
+        self.assertEqual(self.assignment.version,3)
+
+    def test_assignment_editor_audit_failure_rolls_back_update(self):
+        self.facts_bo()
+        url=f'/workers/{self.worker_id}/assignments/{self.assignment.pk}/edit/'
+        post={'version':1,'workplace_label':'Synthetic edit','activity_label':'Synthetic',
+              'start':'2026-09-01','end':'2026-12-31','state':'planned'}
+        with patch('portal.release1a.views.AuditEvent.objects.create',side_effect=RuntimeError('Synthetic audit failure')):
+            self.assertEqual(self.client.post(url,post).status_code,200)
+        self.assignment.refresh_from_db()
+        self.assertEqual(self.assignment.version,1)
+        self.assertEqual(self.assignment.workplace_label,'Synthetic workplace')
+
+    def test_profile_choices_exclude_unverified_files_but_preserve_existing_selection(self):
+        from portal.release1a.assignment_facts import profile_choices
+        from tests.test_a1_application_draft import synthetic_profile
+        directory=self.storage/'profiles'; directory.mkdir(mode=0o700)
+        (directory/'synthetic.json').write_text(json.dumps(synthetic_profile()))
+        (directory/'pending.json').write_text(json.dumps(dict(synthetic_profile(),review_status='PROVISIONAL')))
+        (directory/'alias.json').symlink_to(directory/'synthetic.json')
+        (directory/'invalid.json').write_text('[]')
+        (directory/'null.json').write_text('null')
+        (directory/'bad-date.json').write_text(json.dumps(dict(synthetic_profile(),verified_on=7)))
+        (directory/'bad-institution.json').write_text(json.dumps(dict(synthetic_profile(),institution=[])))
+        with override_settings(A1_DRAFT_PROFILE_ROOT=directory):
+            choices=dict(profile_choices('unavailable'))
+        self.assertIn('synthetic',choices)
+        self.assertIn('unavailable',choices)
+        self.assertNotIn('pending',choices)
+        self.assertNotIn('alias',choices)
+        for key in ('invalid','null','bad-institution','bad-date'): self.assertNotIn(key,choices)

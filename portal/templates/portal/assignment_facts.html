@@ -1,0 +1,9 @@
+{% extends "portal/base.html" %}
+{% block content %}
+<h2>Podklady A1 pro přiřazení #{{ assignment.pk }}</h2>
+<p>Neznámé údaje ponechte prázdné. Uložení podkladů nepotvrzuje vydání A1.</p>
+<p>U předběžného návrhu OSVČ ve více státech zůstává 5.1 standardně prázdné; 5.2 standardně obsahuje DE, CZ. Výslovně zadané země se zachovají.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}
+<button type="submit">Uložit podklady</button></form>
+<p><a href="{% url 'assignment_edit' worker_pk=assignment.worker_id pk=assignment.pk %}">Zpět na přiřazení</a></p>
+{% endblock %}
