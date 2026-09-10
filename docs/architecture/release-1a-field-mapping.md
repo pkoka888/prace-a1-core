@@ -101,7 +101,7 @@ for each visual confirmation. Identity facts and case issuance state remain sepa
 BO field confirmation now uses `portal/release1a/field_review.py` and existing
 FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
 and the current confirmed revision; replacement of a confirmed value requires reason.
-BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; cohort/identity export remains follow-up work.
+BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; protected publication/profile binding remains follow-up work.
 
 ## Complete CSV mapping
 
@@ -237,6 +237,16 @@ Only DB-MIG acceptance and the applicable activation approval permit cutover.
 
 The input-only `export_input_case` interface above is implemented. Extend that
 owner for complete packages/direct-core mapping; do not add a competing exporter.
+`export_input_cohort(actor, organization, selections)` now returns deterministic
+bytes for review CSV, cohort maps, normalized identities, full input snapshots and
+a payload-hash manifest. Each selection supplies `case_id` and
+`expected_source_hash`. Canonical current-source validation runs in one transaction;
+duplicate cases/workers/keys/nonblank certificate IDs fail the entire export.
+The normalized person/residence fields and cohort date/number maps exactly match
+the frozen CSV rows, including unknown values. These are pending compatibility
+inputs: no manufactured review flags, profile bytes, generation numbers or issuance.
+The service writes no files; profile binding and protected publication remain next.
+
 The following richer interface remains **not implemented**:
 
 ```python

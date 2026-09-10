@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Selected-cohort compatibility inputs — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | `export_input_cohort` in the canonical export service validates explicit case/source-hash selections under an organization transaction, reuses current per-case validation, rejects duplicate cases/workers/keys/nonblank certificate IDs, and returns deterministic review CSV, cohort maps, normalized identities, source snapshots and a hash manifest. Failures roll back per-case export audits |
+| Validation | Focused round-trip, collision, stale-source, tenant and audit-rollback checks running; final evidence recorded here |
+| Publication | Local scoped implementation pending commit; inherited outgoing history requires review before private-origin publication |
+| Deployment | None. No schema, existing database, PDF package or layout change |
+| Activation | Unchanged. Missing facts and review flags remain pending; these inputs do not imply generation readiness, human verification or issuance |
+| Limitations | Service returns input bytes. Institution profile bytes are not yet frozen into the bundle; no filesystem publication or CLI is added |
+| Next owner | Engineering: bind selected institution profiles and implement protected atomic bundle publication with retry/integrity evidence through the shared export service |
+
 ### Explicit synthetic legacy-key reconciliation — 2026-09-10
 
 | Field | Evidence / state |

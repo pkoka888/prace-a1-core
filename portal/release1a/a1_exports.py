@@ -244,3 +244,79 @@ def export_input_case(user, organization, case_id):
     writer.writerow(snapshot["row"])
     audit(user, organization, "a1.input_exported", f"a1:{case.pk}")
     return {"json": canonical_json(snapshot).encode("utf-8"), "csv": output.getvalue().encode("utf-8")}
+
+
+@transaction.atomic
+def export_input_cohort(user, organization, selections):
+    """Return deterministic compatibility inputs for explicitly pinned input cases.
+
+    No files, profiles or PDFs are published. Pending fields stay pending; this
+    bundle cannot bypass the canonical generation/confirmation gates.
+    """
+    import hashlib
+    import json
+    import re
+
+    _authorize(user, organization, "a1:prepare")
+    if not isinstance(selections, list) or not selections:
+        raise ValueError("A1_COHORT_SELECTION_REQUIRED")
+    selected = {}
+    for item in selections:
+        if (not isinstance(item, dict) or set(item) != {"case_id", "expected_source_hash"}
+                or type(item["case_id"]) is not int or item["case_id"] <= 0
+                or not isinstance(item["expected_source_hash"], str)
+                or not re.fullmatch(r"[0-9a-f]{64}", item["expected_source_hash"])):
+            raise ValueError("A1_COHORT_SELECTION_INVALID")
+        if item["case_id"] in selected:
+            raise ValueError("A1_COHORT_DUPLICATE_CASE")
+        selected[item["case_id"]] = item["expected_source_hash"]
+    _lock_organization(organization)
+    snapshots, workers, keys, document_ids = [], set(), set(), set()
+    for case_id in sorted(selected):
+        case = A1Case.objects.get(pk=case_id, organization=organization, worker__organization=organization)
+        if case.source_hash != selected[case_id]:
+            raise StaleWrite("A1_COHORT_SOURCE_STALE")
+        # Reuse the canonical current-source validation and audit in the same transaction.
+        snapshot = json.loads(export_input_case(user, organization, case_id)["json"])
+        key = snapshot["employee_id"]
+        document_id = snapshot["row"]["document_id"]
+        if case.worker_id in workers or key in keys:
+            raise ValueError("A1_COHORT_DUPLICATE_WORKER_OR_KEY")
+        if document_id and document_id in document_ids:
+            raise ValueError("A1_COHORT_DUPLICATE_DOCUMENT_ID")
+        workers.add(case.worker_id); keys.add(key)
+        if document_id:
+            document_ids.add(document_id)
+        snapshots.append((case_id, snapshot))
+    snapshots.sort(key=lambda entry: entry[1]["employee_id"])
+    rows = [snapshot["row"] for _, snapshot in snapshots]
+    output = io.StringIO(newline="")
+    writer = csv.DictWriter(output, fieldnames=CSV_FIELDS, lineterminator="\n")
+    writer.writeheader(); writer.writerows(rows)
+    employees = []
+    for case_id, snapshot in snapshots:
+        row = snapshot["row"]
+        employees.append({"id": row["employee_id"],
+            "person": {field: row[field] for field in (
+                "surname", "given_name", "dob", "birth_place", "nationality", "sex", "insurance_number")},
+            "residence": {field: row[field] for field in (
+                "street", "house_number", "city", "district", "postal_code", "country_code")},
+            "employment": {"kind": snapshot["dependencies"]["activity_profile"]},
+            "a1": {"status_profile": row["status_profile"]},
+            "provenance": {"kind": "database_input_snapshot", "case_ref": case_id,
+                "source_hash": selected[case_id], "fields": snapshot["provenance"]}})
+    cohort = {"issue_dates": {row["employee_id"]: row["issue_date"] for row in rows},
+              "document_ids": {row["employee_id"]: row["document_id"] for row in rows},
+              "additional_people": []}
+    payloads = {"review.csv": output.getvalue().encode("utf-8"),
+                "cohort.json": canonical_json(cohort).encode("utf-8"),
+                "employees_normalized.json": canonical_json({"employees": employees}).encode("utf-8"),
+                "input_snapshots.json": canonical_json({"snapshots": [s for _, s in snapshots]}).encode("utf-8")}
+    manifest = {"schema_version": "a1-input-cohort-1", "organization_ref": organization.pk,
+        "scope": "pending_compatibility_inputs", "sources": [
+            {"case_ref": case_id, "source_hash": selected[case_id], "employee_id": snapshot["employee_id"]}
+            for case_id, snapshot in snapshots],
+        "payload_sha256": {name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}}
+    payloads["manifest.json"] = canonical_json(manifest).encode("utf-8")
+    audit(user, organization, "a1.cohort_exported", f"cohort:{result_hash(manifest)}")
+    return payloads

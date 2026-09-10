@@ -110,7 +110,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Next: complete revision-bound cohort/identity compatibility export. Apply
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Next: protected publication with bound institution profiles. Apply
 0014–0019 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -150,8 +150,17 @@ original mapping. A new mapping increments the worker revision and stales older 
 inputs; new canonical CSV/JSON snapshots freeze the mapped key. No identity fields
 are confirmed. Historical workers remain unmapped; rollback refuses mapped-key loss.
 
-Next: complete revision-bound cohort/identity compatibility exports through the
-existing export service, with selected-cohort collision checks and round-trip tests.
+`portal/release1a/a1_exports.py::export_input_cohort` now accepts explicit case IDs
+and expected source hashes. It reuses canonical per-case validation under one
+transaction, rejects duplicate cases/workers/keys/nonblank certificate IDs and
+returns deterministic `review.csv`, `cohort.json`, `employees_normalized.json`,
+`input_snapshots.json` and a hash manifest. Every file uses the same frozen keys
+and values. Pending fields remain pending; no profile bytes or PDFs are published.
+Failure rolls back per-case export audits.
+
+Next: bind selected institution-profile bytes and publish this input bundle through
+a protected atomic writer, with retry and integrity evidence. The richer
+`export_a1_snapshot`/CLI interface remains follow-up work.
 Real-data reconciliation and accepted cutover remain separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
@@ -209,8 +218,8 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: complete revision-bound cohort/identity compatibility export
-after the implemented explicit synthetic legacy-key mapping service. BO association and field confirmation now check the revisions
+Next functional phase: protected compatibility-bundle publication and institution-profile
+binding after the implemented legacy-key mapping and selected-cohort input services. BO association and field confirmation now check the revisions
 displayed to the operator. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0019 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
@@ -487,7 +496,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, completing revision-bound cohort/identity compatibility
-exports and round-trip evidence before accepted DB-MIG cutover. Jan supplies
+Next owner: engineering, binding institution profiles and publishing protected
+compatibility bundles before accepted DB-MIG cutover. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.

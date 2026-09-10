@@ -177,6 +177,7 @@ APPROVED_STAGED_SETTINGS_PATHS = frozenset({
 # Tracked source test files. Filenames legitimately embed pipeline words.
 APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/document_web/test_a1_exports.py",
+    "tests/document_web/test_a1_cohort_exports.py",
     "tests/document_web/test_a1_drafts.py",
     "tests/document_web/test_a1_generation_access.py",
     "tests/document_web/test_a1_generation_confirmation.py",
