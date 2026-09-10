@@ -178,6 +178,9 @@ APPROVED_STAGED_SETTINGS_PATHS = frozenset({
 APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/document_web/test_a1_exports.py",
     "tests/document_web/test_a1_cohort_exports.py",
+    "tests/document_web/test_a1_input_publication.py",
+    "tests/test_a1_input_artifacts.py",
+    "portal/release1a/management/commands/a1_export_inputs.py",
     "tests/document_web/test_a1_drafts.py",
     "tests/document_web/test_a1_generation_access.py",
     "tests/document_web/test_a1_generation_confirmation.py",

@@ -320,3 +320,62 @@ def export_input_cohort(user, organization, selections):
     payloads["manifest.json"] = canonical_json(manifest).encode("utf-8")
     audit(user, organization, "a1.cohort_exported", f"cohort:{result_hash(manifest)}")
     return payloads
+
+
+def _bound_input_profiles(payloads):
+    """Freeze validated profile bytes without changing the underlying input snapshots."""
+    import hashlib
+    import json
+    import os
+    from pathlib import Path
+    from django.conf import settings
+    from scripts.finalize_a1 import _slug, validate_profile
+
+    root = Path(getattr(settings, "A1_DRAFT_PROFILE_ROOT", settings.BASE_DIR / "config/institutions"))
+    if not root.is_absolute() or any(p.is_symlink() for p in (root, *root.parents)):
+        raise ValueError("A1_PROFILE_ROOT_INVALID")
+    snapshots = json.loads(payloads["input_snapshots.json"])["snapshots"]
+    files = {}
+    for snapshot in snapshots:
+        key = _slug(snapshot["row"]["institution_profile"])
+        name = f"profiles/{key}.json"
+        if name in files:
+            continue
+        path = root / f"{key}.json"
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as stream:
+            import stat
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("A1_PROFILE_NOT_REGULAR")
+            raw = stream.read()
+        validate_profile(json.loads(raw), key, provisional=True)
+        files[name] = raw
+    result = dict(payloads)
+    result.update(files)
+    manifest = json.loads(result["manifest.json"])
+    manifest["schema_version"] = "a1-bound-input-cohort-1"
+    manifest["payload_sha256"].update({name: hashlib.sha256(raw).hexdigest() for name, raw in files.items()})
+    result["manifest.json"] = canonical_json(manifest).encode("utf-8")
+    return result
+
+
+@transaction.atomic
+def publish_input_cohort(user, organization, selections):
+    """Publish or recover one protected synthetic input bundle, never a PDF approval."""
+    import hashlib
+    from django.conf import settings
+    from .input_artifacts import publish_input_artifact
+
+    _authorize(user, organization, "a1:prepare")
+    _lock_organization(organization)
+    inputs = export_input_cohort(user, organization, selections)
+    payloads = _bound_input_profiles(inputs)
+    # Detect a profile edit while collecting/validating the selected set.
+    if _bound_input_profiles(inputs) != payloads:
+        raise StaleWrite("A1_INPUT_PROFILES_CHANGED")
+    reference = publish_input_artifact(settings.DOCUMENT_STORAGE_ROOT, payloads)
+    if _bound_input_profiles(inputs) != payloads:
+        raise StaleWrite("A1_INPUT_PROFILES_CHANGED")
+    audit(user, organization, "a1.input_bundle_published", f"bundle:{reference['manifest_sha256']}")
+    return {**reference, "status": "PENDING_COMPATIBILITY_INPUTS",
+            "bundle_sha256": hashlib.sha256(payloads["manifest.json"]).hexdigest()}

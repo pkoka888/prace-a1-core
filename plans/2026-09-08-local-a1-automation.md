@@ -110,7 +110,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Next: protected publication with bound institution profiles. Apply
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Next: BO bundle access with pinned manifest hashes. Apply
 0014–0019 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -158,9 +158,23 @@ returns deterministic `review.csv`, `cohort.json`, `employees_normalized.json`,
 and values. Pending fields remain pending; no profile bytes or PDFs are published.
 Failure rolls back per-case export audits.
 
-Next: bind selected institution-profile bytes and publish this input bundle through
-a protected atomic writer, with retry and integrity evidence. The richer
-`export_a1_snapshot`/CLI interface remains follow-up work.
+`publish_input_cohort` now binds exact canonically validated institution-profile
+bytes, checks for profile changes around publication and calls
+`portal/release1a/input_artifacts.py`. Protected packages live under
+`<DOCUMENT_STORAGE_ROOT>/a1-input/<manifest-sha256>/`, with the five input files
+and `profiles/<profile-key>.json`. Directories/files use 0700/0600. This separate
+input-package layout does not change the source-document storage regex or J4 PDF
+layout. A private stage, fsync and locked rename publish all files together. Exact
+retries verify every file/mode/hash; damaged packages are preserved and rejected.
+Changed profiles create a new package; late DB audit failure permits exact recovery.
+
+The thin synthetic CLI is `manage.py a1_export_inputs --organization-id <id>
+--actor-id <id> --case <case-id>:<source-sha256>` (repeat `--case` for a cohort).
+It prints only private package references/hashes, not worker values. Missing or
+invalid profiles block publication, while unbound input exports remain available.
+
+Next: BO publication/download access with pinned manifest hashes, authorization
+and no-store protected responses. No read request should create a package.
 Real-data reconciliation and accepted cutover remain separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
@@ -218,8 +232,8 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: protected compatibility-bundle publication and institution-profile
-binding after the implemented legacy-key mapping and selected-cohort input services. BO association and field confirmation now check the revisions
+Next functional phase: BO access to profile-bound protected compatibility bundles
+after the implemented shared publisher and synthetic CLI. BO association and field confirmation now check the revisions
 displayed to the operator. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0019 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
@@ -496,7 +510,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, binding institution profiles and publishing protected
-compatibility bundles before accepted DB-MIG cutover. Jan supplies
+Next owner: engineering, exposing protected compatibility bundles in BO with pinned
+hashes and explicit publication actions before accepted DB-MIG cutover. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.

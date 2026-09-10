@@ -101,7 +101,7 @@ for each visual confirmation. Identity facts and case issuance state remain sepa
 BO field confirmation now uses `portal/release1a/field_review.py` and existing
 FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
 and the current confirmed revision; replacement of a confirmed value requires reason.
-BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; protected publication/profile binding remains follow-up work.
+BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; profile-bound publication and the synthetic CLI are implemented; BO bundle access remains follow-up work.
 
 ## Complete CSV mapping
 
@@ -245,7 +245,16 @@ duplicate cases/workers/keys/nonblank certificate IDs fail the entire export.
 The normalized person/residence fields and cohort date/number maps exactly match
 the frozen CSV rows, including unknown values. These are pending compatibility
 inputs: no manufactured review flags, profile bytes, generation numbers or issuance.
-The service writes no files; profile binding and protected publication remain next.
+This unbound service writes no files. `publish_input_cohort` binds exact profile
+bytes using canonical `validate_profile`, rechecks them around publication and
+uses `input_artifacts.py` for private atomic publication. The separate layout is
+`<DOCUMENT_STORAGE_ROOT>/a1-input/<manifest-sha256>/`, including
+`profiles/<safe-profile-key>.json`, with directories/files 0700/0600. Source-document
+regexes and the J4 PDF layout remain separate. Exact retries verify all bytes and
+modes; changed profile content creates another immutable bundle. A late audit
+failure leaves a recoverable protected bundle rather than a partial publication.
+The thin `a1_export_inputs` command takes explicit case/source-hash selections.
+Missing profiles block publication only. BO bundle access remains next.
 
 The following richer interface remains **not implemented**:
 

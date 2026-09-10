@@ -137,8 +137,8 @@ def acceptance_commands(python, state):
         [python, "-c", PLANNING_CHECK],
         [python, "-m", "pytest", "-p", "no:cacheprovider", "--basetemp", str(state / "pytest"),
          "tests/m2/test_synthetic_containment.py", "tests/test_release_reproducer.py",
-         "tests/test_finalize_a1.py", "tests/test_a1_stabilization.py", "tests/test_a1_application_draft.py", "-q"],
-        [python, "manage.py", "test", "tests.document_web.test_inbox", "tests.document_web.test_field_review", "tests.document_web.test_identity_review", "tests.document_web.test_legacy_reconciliation", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_cohort_exports", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "--noinput", "--verbosity", "1"],
+         "tests/test_finalize_a1.py", "tests/test_a1_stabilization.py", "tests/test_a1_application_draft.py", "tests/test_a1_input_artifacts.py", "-q"],
+        [python, "manage.py", "test", "tests.document_web.test_inbox", "tests.document_web.test_field_review", "tests.document_web.test_identity_review", "tests.document_web.test_legacy_reconciliation", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_cohort_exports", "tests.document_web.test_a1_input_publication", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "--noinput", "--verbosity", "1"],
     ]
 
 

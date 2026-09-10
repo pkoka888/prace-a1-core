@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Profile-bound input publication — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Shared publisher binds exact canonically validated institution-profile bytes and checks for changes around a protected atomic write. `input_artifacts.py` owns `<DOCUMENT_STORAGE_ROOT>/a1-input/<manifest-sha256>/`, separate from source-document/J4 layouts. Private staged files, fsync and locked rename publish the complete package; exact retries validate bytes, modes and file set. Thin `a1_export_inputs` CLI accepts explicit case/source-hash selections |
+| Validation | Focused storage/service/CLI tests in progress; final evidence recorded here |
+| Publication | Local scoped implementation pending commit; inherited outgoing history requires review before private-origin publication |
+| Deployment | None; disposable synthetic storage only. No database migration, production package or PDF layout change |
+| Activation | Unchanged. Package contains pending compatibility inputs, not issued certificates or human confirmations |
+| Limitations | Missing/invalid profiles block publication but not unbound exports. Changed profiles create new bundles. A post-write validation/audit failure can leave a protected recoverable bundle; obsolete-bundle classification remains separate. BO access is not yet implemented |
+| Next owner | Engineering: BO publication and download access with manifest-pinned references, tenant/capability checks and no-store responses; GET must not create packages |
+
 ### Selected-cohort compatibility inputs — 2026-09-10
 
 | Field | Evidence / state |
