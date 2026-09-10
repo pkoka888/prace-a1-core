@@ -117,3 +117,55 @@ class InputBundleBOTests(TransactionTestCase):
         Worker.objects.filter(pk=second_worker.pk).update(version=99)
         self.assertEqual(self.client.get(self.download_url(bundle)).status_code, 409)
         self.assertEqual(self.client.get(self.download_url(single)).status_code, 200)
+
+    def test_cohort_bo_explicit_selection_retry_and_atomic_stale_rejection(self):
+        from portal.release1a.a1_exports import prepare_input_case
+        from portal.release1a.models import Assignment
+        second_worker = Worker.objects.create(organization=self.org, given_name='BETA',
+            family_name='SYNTHETIC', birth_date='1980-01-01', activity_profile='self_employed')
+        Assignment.objects.create(organization=self.org, worker=second_worker,
+            start='2026-01-01', end='2026-12-31', workplace_label='Synthetic',
+            a1_facts_json={'institution': {'profile_key': 'synthetic'}})
+        second = prepare_input_case(self.user, self.org, second_worker.pk)
+        url = '/a1/inputs/'
+        values = [f'{c.pk}:{c.source_hash}' for c in (self.case, second)]
+        page = self.client.get(url)
+        for value in values: self.assertContains(page, value)
+        self.assertFalse((self.storage/'a1-input').exists())
+        response = self.client.post(url, {'selection': values})
+        self.assertEqual(response.status_code, 200)
+        publication = AuditEvent.objects.filter(event_type='a1.input_bundle_published').latest('pk')
+        digest = publication.object_ref.removeprefix('bundle:')
+        self.assertContains(response, self.url + digest + '/download/')
+        self.assertEqual(self.client.get(self.url + digest + '/download/').status_code, 200)
+        retry = self.client.post(url, {'selection': list(reversed(values))})
+        self.assertContains(retry, digest)
+        Worker.objects.filter(pk=second_worker.pk).update(version=99)
+        before = AuditEvent.objects.filter(event_type='a1.input_exported').count()
+        self.assertEqual(self.client.post(url, {'selection': values}).status_code, 409)
+        self.assertEqual(AuditEvent.objects.filter(event_type='a1.input_exported').count(), before)
+        self.assertEqual(len([p for p in (self.storage/'a1-input').iterdir() if p.is_dir()]), 1)
+
+    def test_cohort_bo_invalid_selection_csrf_role_and_tenant(self):
+        from portal.release1a.models import A1Case
+        url = '/a1/inputs/'
+        value = f'{self.case.pk}:{self.case.source_hash}'
+        for values in ([], [value, value], [value]*51, ['bad'], ['0:'+'a'*64],
+                       ['9999999999999999999:'+'a'*64]):
+            self.assertEqual(self.client.post(url, {'selection': values}).status_code, 400)
+        csrf = Client(enforce_csrf_checks=True)
+        _mfa_login(csrf, self.user)
+        self.assertEqual(csrf.post(url, {'selection': [value]}).status_code, 403)
+        foreign_worker = Worker.objects.create(organization=self.other, given_name='GAMMA',
+            family_name='SYNTHETIC', birth_date='1980-01-01', activity_profile='employee')
+        foreign = A1Case.objects.create(organization=self.other, worker=foreign_worker,
+            source_hash='f'*64, source_snapshot_json={'schema_version':'a1-input-1'})
+        self.assertNotContains(self.client.get(url), 'GAMMA')
+        self.assertEqual(self.client.post(url, {'selection':[value, f'{foreign.pk}:{foreign.source_hash}']}).status_code, 404)
+        self.assertFalse(AuditEvent.objects.filter(event_type='a1.input_exported').exists())
+        with override_settings(M2_SYNTHETIC_ONLY=False):
+            self.assertEqual(self.client.get(url).status_code, 403)
+        Membership.objects.filter(user=self.user).update(role='privacy_admin')
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.post(url, {'selection':[value]}).status_code, 403)
+        self.assertFalse((self.storage/'a1-input').exists())

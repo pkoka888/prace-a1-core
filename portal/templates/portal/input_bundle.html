@@ -1,16 +1,37 @@
 {% extends "portal/base.html" %}
 {% block content %}
-<h2 class="text-2xl font-semibold mb-4">Podklady A1 — případ #{{ case.pk }}</h2>
+<h2 class="text-2xl font-semibold mb-4">Podklady A1{% if not cohort_mode %} — případ #{{ case.pk }}{% endif %}</h2>
 <p class="mb-4">Balíček obsahuje uložené podklady a profil instituce. Nejde o vydané A1 ani potvrzení správnosti údajů.</p>
 {% if bundle %}
 <p role="status">Balíček je připraven.</p>
-<a href="{% url 'input_bundle_download' pk=case.pk manifest_hash=bundle.manifest_sha256 %}">Stáhnout tento balíček (ZIP)</a>
+<a href="{% url 'input_bundle_download' pk=download_case manifest_hash=bundle.manifest_sha256 %}">Stáhnout tento balíček (ZIP)</a>
 {% else %}
 <form method="post">
     {% csrf_token %}
+    {% if cohort_mode %}
+    <p>Vyberte případy na této stránce (nejvýše 50). Pokud se podklady některého případu změnily, celý výběr vyžaduje obnovení.</p>
+    {% for item in page_obj %}
+    <label class="block my-2">
+        <input type="checkbox" name="selection" value="{{ item.pk }}:{{ item.source_hash }}">
+        {{ item.worker.family_name }} {{ item.worker.given_name }} — případ #{{ item.pk }}
+    </label>
+    {% empty %}<p>Nejsou dostupné žádné aktuální podklady.</p>{% endfor %}
+    {% else %}
     <input type="hidden" name="expected_source_hash" value="{{ case.source_hash }}">
+    {% endif %}
     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Připravit balíček podkladů</button>
 </form>
 {% endif %}
+{% if cohort_mode %}
+{% if not bundle %}
+<nav aria-label="Stránky případů">
+{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Předchozí</a>{% endif %}
+<span>Strana {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}</span>
+{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Další</a>{% endif %}
+</nav>
+{% endif %}
+<p class="mt-4"><a href="{% url 'a1_list' %}">Zpět na případy</a></p>
+{% else %}
 <p class="mt-4"><a href="{% url 'a1_case_detail' pk=case.pk %}">Zpět na případ</a></p>
+{% endif %}
 {% endblock %}

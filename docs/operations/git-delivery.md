@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Selected-cohort BO publication — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | A1 list links to `/a1/inputs/`. Operators explicitly select up to 50 current cases per page; POST sends each displayed case/source hash to the existing atomic publisher. The returned ZIP link pins the manifest hash and uses existing tenant/current-source download checks. Reversed selections reuse the same bundle |
+| Validation | Seven focused BO integration tests passed, including multi-case retry, stale-member rollback, foreign-case rejection, malformed/duplicate/oversized selections, CSRF and capability checks. Required commit hooks pending |
+| Publication | Local implementation pending commit; inherited outgoing history review remains required before origin publication |
+| Deployment | None; no durable database, artifact or service changes |
+| Activation | Unchanged; selected compatibility inputs do not imply human confirmation or issuance |
+| Limitations | Selection is limited to the current page; cross-page selection persistence is not implemented. Existing CLI supports explicit larger cohorts |
+| Next owner | Engineering: integrated synthetic operator-workflow acceptance from inbox intake through BO review, eligible draft generation and selected-cohort download; record gaps without activating an environment |
+
 ### Case-level BO input bundles — 2026-09-10
 
 | Field | Evidence / state |

@@ -1,7 +1,9 @@
 """Case-scoped BO publication and manifest-pinned private downloads."""
 import io
+import re
 import zipfile
 
+from django.core.paginator import Paginator
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -44,7 +46,7 @@ def input_bundle_publish(request, pk):
                 [{'case_id': case.pk, 'expected_source_hash': tokens[0]}])
         except (Forbidden, ObjectDoesNotExist, StaleWrite, ValueError, OSError) as exc:
             return _failure(request, pk, exc, 'a1.input_bundle_publish')
-    response = render(request, 'portal/input_bundle.html', {'case': case, 'bundle': bundle})
+    response = render(request, 'portal/input_bundle.html', {'case': case, 'bundle': bundle, 'download_case': case.pk})
     response['X-Content-Type-Options'] = 'nosniff'
     return response
 
@@ -66,5 +68,41 @@ def input_bundle_download(request, pk, manifest_hash):
             archive.writestr(info, data)
     response = HttpResponse(output.getvalue(), content_type='application/zip')
     response['Content-Disposition'] = f'attachment; filename="a1-input-{manifest_hash}.zip"'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
+@never_cache
+@require_http_methods(['GET', 'POST'])
+@require_org_membership
+def input_cohort_publish(request):
+    """Explicit current-case selections; one atomic canonical publication per POST."""
+    try:
+        _authorize(request.user, request.organization, 'a1:prepare')
+    except Forbidden as exc:
+        return _failure(request, 'cohort', exc, 'a1.input_bundle_publish')
+    bundle, selected_case = None, None
+    if request.method == 'POST':
+        raw = request.POST.getlist('selection')
+        if not 1 <= len(raw) <= 50 or any(
+                not re.fullmatch(r'[1-9][0-9]{0,18}:[0-9a-f]{64}', value) for value in raw):
+            return JsonResponse({'error': 'INPUT_SELECTION_REQUIRED_OR_INVALID'}, status=400)
+        selections = [{'case_id': int(value.split(':')[0]),
+                       'expected_source_hash': value.split(':')[1]} for value in raw]
+        if (len({item['case_id'] for item in selections}) != len(selections)
+                or any(item['case_id'] > 9223372036854775807 for item in selections)):
+            return JsonResponse({'error': 'INPUT_SELECTION_REQUIRED_OR_INVALID'}, status=400)
+        try:
+            bundle = publish_input_cohort(request.user, request.organization, selections)
+        except (Forbidden, ObjectDoesNotExist, StaleWrite, ValueError, OSError) as exc:
+            return _failure(request, 'cohort', exc, 'a1.input_bundle_publish')
+        selected_case = selections[0]['case_id']
+    cases = A1Case.objects.filter(organization=request.organization,
+        worker__organization=request.organization, is_stale=False,
+        source_snapshot_json__schema_version='a1-input-1').select_related('worker').order_by('-pk')
+    response = render(request, 'portal/input_bundle.html', {
+        'cohort_mode': True, 'page_obj': Paginator(cases, 50).get_page(request.GET.get('page')),
+        'bundle': bundle, 'download_case': selected_case,
+    })
     response['X-Content-Type-Options'] = 'nosniff'
     return response

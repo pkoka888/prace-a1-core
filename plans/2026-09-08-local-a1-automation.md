@@ -110,7 +110,7 @@ rollback refuses loss of replacement generations. `A1Case.artifact_reference` re
 the immutable first-package projection for legacy consumers; the command and inbox
 return the matching generation reference/revision and its private package instead.
 
-BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Next: selected-cohort BO publication through the shared exporter. Apply
+BO generation access and generation-bound visual confirmation are implemented. BO field confirmation is revision-checked. BO identity association/conflict resolution now submits source- and worker-revision-bound choices to the canonical identity service. Explicit synthetic legacy-key reconciliation is implemented. Selected-cohort CSV/identity input bundles are implemented. Profile-bound protected publication and the synthetic export CLI are implemented. Case-level BO publication and manifest-pinned ZIP download are implemented. Selected-cohort BO publication is implemented. Next: integrated synthetic operator-workflow acceptance. Apply
 0014–0019 through the selected supervised release before runtime use; the existing
 development DB remains at recorded 0013. Cutover and §14 activation are unchanged.
 
@@ -178,8 +178,10 @@ and `portal/release1a/input_bundle_access.py`. GET does not publish; explicit PO
 the displayed source hash. ZIP downloads pin the manifest hash, require a committed
 organization-scoped publication audit, and recheck every selected source/profile.
 Responses are private/no-store; ZIP members retain 0600 modes. Download reads use
-anchored no-follow descriptors and verify the exact bytes returned. Next: selected-cohort
-BO publication using the existing shared exporter.
+anchored no-follow descriptors and verify the exact bytes returned. Selected-cohort BO publication now uses the same exporter at `/a1/inputs/`.
+The page lists up to 50 current cases per page, posts only explicit case/hash pairs,
+and rejects malformed, duplicate or stale selections atomically. Navigation does not
+carry unchecked or previous-page selections. Next: integrated synthetic operator-workflow acceptance.
 Real-data reconciliation and accepted cutover remain separate.
 
 ## A1 input preparation checkpoint — 2026-09-09
@@ -237,8 +239,8 @@ use discards their evidence and therefore requires retention/export review first
 The existing supervised development database remains at its recorded 0013 state;
 this delivery tests migration on disposable databases, not a deployed environment.
 
-Next functional phase: selected-cohort BO publication through the existing shared exporter,
-after implemented case-level publication and manifest-pinned ZIP download. BO association and field confirmation now check the revisions
+Next functional phase: integrated synthetic operator-workflow acceptance covering
+intake, revision-checked BO review, eligible drafts and selected-cohort downloads. BO association and field confirmation now check the revisions
 displayed to the operator. BO UI completion is not a gate for eligible unverified
 A1 drafts. Apply 0014–0019 through the selected supervised development release workflow
 before using durable intake there. Add PostgreSQL concurrency evidence for new database write paths;
@@ -515,7 +517,7 @@ A directory-scoped subagent assignment likewise is not a security sandbox.
 No tool installation, new credentials, paid service, history rewrite, force-push,
 public release or deployment belongs to this documentation delivery.
 
-Next owner: engineering, adding explicit selected-cohort BO publication to the implemented
-case-level bundle controls before accepted DB-MIG cutover. Jan supplies
+Next owner: engineering, exercising the integrated synthetic operator workflow and
+recording any remaining gaps before accepted DB-MIG cutover. Jan supplies
 missing business facts and confirms revisions in BO; no recurring per-batch
 engineering permission step or mandatory second human reviewer is introduced.

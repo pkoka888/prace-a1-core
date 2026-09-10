@@ -62,6 +62,7 @@
         "portal/release1a/input_bundle_access.py",
         "portal/release1a/input_bundle_views.py",
         "portal/templates/portal/input_bundle.html",
+        "portal/templates/portal/a1_list.html",
         "tests/document_web/test_input_bundle_bo.py",
         "portal/release1a/management/commands/a1_export_inputs.py",
         "tests/test_a1_input_artifacts.py",
