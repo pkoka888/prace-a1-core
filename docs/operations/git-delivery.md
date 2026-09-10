@@ -36,8 +36,8 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Assignment editor links to a version-bound pending-facts form using the canonical update_assignment_facts service. Employment/activity facts and institution selection are editable; certificate dates/numbers/signatory evidence are preserved. Blank optional fields retain canonical Section 5 defaults. Verified profiles are selectable and unavailable stored selections remain preservable. The ordinary assignment editor now shares the organization lock, requires the displayed version, stales affected cases and rolls back on audit failure |
-| Validation | All 14 focused BO/export tests passed. PostgreSQL integration and targeted old-editor/fact-update race checks passed. Required hooks and scoped committed-source acceptance pending |
-| Publication | Scoped local implementation pending commit; inherited outgoing-history review remains separate |
+| Validation | All 14 focused BO/export tests passed. PostgreSQL integration and targeted old-editor/fact-update race checks passed. Mandatory hooks passed: 236 Django tests (26 skips), 80 runtime/artifact tests, 31 containment tests, 24 planning checks, 29 tooling tests and 17 J4 tests. All 14 BO/export tests also passed from the immutable implementation source; receipt runtime/portal/temporary/release-reproducer/25dda2dd3c65474ead3653a37df85df5/receipt.json records unchanged source integrity. This is scoped integration acceptance, not a full release-candidate run |
+| Publication | Local implementation commit 4f5df59; not pushed. Inherited outgoing-history review remains separate |
 | Deployment | None; no schema migration or durable environment changes |
 | Activation | Unchanged; saving facts does not mark them human-verified or establish issuance |
 | Limitations | Missing profiles and required inputs still block only affected draft generation. Profile choices use canonical VERIFIED profiles; unavailable existing choices can be retained. Certificate metadata is not editable on this pending-facts form |
