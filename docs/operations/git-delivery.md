@@ -36,8 +36,8 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Document intake offers partial entry of birthplace, nationality, sex and insurance number when the selected region has no proposal and the worker has no confirmed value. The existing confirmation service stores operator-origin proposals and decisions, bound to document/version/run/region and current worker revision. Stale submissions, invalid batches and existing-field overwrites are rejected; input cases become stale |
-| Validation | Focused SQLite review/inbox checks passed (37 tests, three PostgreSQL-only skips); extended sparse-input journey passes canonical draft-input validation after explicit BO completion. PostgreSQL concurrency acceptance pending |
-| Publication | Working-tree implementation and previous cold-start checkpoint; not committed or pushed |
+| Validation | Focused SQLite review/inbox checks passed (37 tests, three PostgreSQL-only skips); extended sparse-input journey passes canonical draft-input validation after explicit BO completion. All 37 PostgreSQL tests passed, including concurrent missing-fact entry. Mandatory hooks passed: 239 Django tests (27 skips), 80 runtime/artifact tests, 31 containment tests, 24 planning checks and 29 tooling tests. Scoped committed-source acceptance passed with unchanged source integrity; receipt runtime/portal/temporary/release-reproducer/c9305321da1649a1a89401e78c78fcbb/receipt.json |
+| Publication | Local implementation commit 1cd13b2 includes the previous cold-start checkpoint; not pushed. Inherited outgoing-history review remains separate |
 | Deployment | None; no schema changes or durable environment mutation |
 | Activation | Unchanged; individual field confirmation does not grant whole-identity or PDF approval |
 | Limitations | Scripted synthetic OCR; no artifact generation or visual acceptance in this increment. Operators enter only facts established from the selected source; absent evidence remains blank |
@@ -48,12 +48,12 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Extended the synthetic inbox journey through actual BO address confirmation, assignment creation and assignment/institution fact entry; no complete-input identity fixture is injected |
-| Validation | Focused cold-start test passed. Canonical draft validation identifies exactly birth_place, nationality, sex and insurance_number as absent in this sparse OP fixture. Blocked retry preserves worker/OCR/decision counts; Section 5 defaults and unverified flags remain intact. All 20 inbox tests and 24 planning checks passed; whitespace review passed. Mandatory publication hooks have not run for this uncommitted checkpoint |
-| Publication | Working-tree test/documentation change; no publication claimed |
+| Validation | Focused cold-start test passed. Canonical draft validation identifies exactly birth_place, nationality, sex and insurance_number as absent in this sparse OP fixture. Blocked retry preserves worker/OCR/decision counts; Section 5 defaults and unverified flags remain intact. All 20 inbox tests and 24 planning checks passed; whitespace review passed. Subsequently included in the tested implementation commit 1cd13b2 and its mandatory hooks |
+| Publication | Included in local commit 1cd13b2; not pushed |
 | Deployment | None; isolated test database only |
 | Activation | Unchanged; no artifact generated or human acceptance claimed |
 | Limitations | Scripted OCR tests adapter/interpretation behavior, not real-engine extraction accuracy. Four missing fields describe this fixture. Existing complete-input journey evidence remains separate |
-| Next owner | Engineering: source-bound BO entry for required identity facts without OCR proposals, preserving operator provenance and stale-revision rejection |
+| Next owner | Completed in the increment above; next is sparse-input draft/artifact acceptance |
 
 ### BO assignment and institution facts — 2026-09-10
 
