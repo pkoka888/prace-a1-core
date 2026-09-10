@@ -36,12 +36,15 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | Case-level BO page publishes through the existing cohort service on explicit CSRF-protected POST with the displayed source hash. Manifest-pinned ZIP download requires active synthetic `a1:prepare`, organization-scoped publication evidence, current source/profile checks and exact protected file verification. Anchored no-follow reads return only verified bytes; GET never creates packages. Existing CSV rendering uses the extracted shared current-snapshot check |
-| Validation | Focused BO/export/publication integration: 19 tests passed; final five BO tests also cover a stale secondary cohort member and unrelated case scope. Filesystem read/write coverage: 34 tests passed. Required hooks and committed-source integration acceptance pending for this checkpoint |
-| Publication | Local implementation pending commit; inherited outgoing history remains subject to review before origin publication |
+| Validation | Focused BO/export/publication integration: 19 tests passed; final five BO tests also cover a stale secondary cohort member and unrelated case scope. Filesystem read/write coverage: 34 tests passed. Five BO scenarios also passed on disposable PostgreSQL. Required hooks passed: 221 Django tests (24 environment-specific skips), 80 runtime/artifact checks, 31 containment checks, 29 tooling checks and 24 planning checks. Committed-source `f04e8e2` acceptance passed 23 applicable planning checks, 132 tooling/artifact tests plus 18 subtests, and 105 workflow tests (six PostgreSQL-only skips); source integrity remained intact |
+| Publication | Implementation committed locally as `f04e8e2`; this evidence-only checkpoint preserves tested source blobs. Inherited outgoing history remains subject to review before origin publication |
 | Deployment | None; no durable database, PDF package or service changes |
 | Activation | Unchanged; compatibility input download does not verify identity, confirm PDF appearance or issue A1 |
 | Limitations | Initial BO publication selects one case; the existing CLI/service handles explicit cohorts. Stale bundles are retained but rejected for download. Orphaned post-write packages require publisher retry before BO access |
 | Next owner | Engineering: selected-cohort BO selection and publication through the existing exporter, preserving per-case source pins and atomic failure behavior |
+
+Protected committed-source receipt:
+`runtime/portal/temporary/release-reproducer/adbbe61679d94c1f914040e99ee6bb09/receipt.json`.
 
 ### Profile-bound input publication — 2026-09-10
 
