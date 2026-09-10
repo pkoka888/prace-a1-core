@@ -36,8 +36,8 @@ safe work. No history rewrite, force-push, public release, deployment or activat
 | Field | Evidence / state |
 |---|---|
 | Implementation | `export_input_cohort` in the canonical export service validates explicit case/source-hash selections under an organization transaction, reuses current per-case validation, rejects duplicate cases/workers/keys/nonblank certificate IDs, and returns deterministic review CSV, cohort maps, normalized identities, source snapshots and a hash manifest. Failures roll back per-case export audits |
-| Validation | Focused round-trip, collision, stale-source, tenant and audit-rollback checks running; final evidence recorded here |
-| Publication | Local scoped implementation pending commit; inherited outgoing history requires review before private-origin publication |
+| Validation | All 13 focused cohort/single-case export tests passed; the four cohort tests passed again after adding foreign-case selection coverage. Required hooks passed: 210 Django tests with 24 environment-specific skips, 46 runtime/artifact checks, 31 containment checks, 95 planning regressions, 29 tooling checks and 24 planning checks. Delivered source blobs match tested inputs. This ordinary service increment uses focused/hook evidence; no new release-candidate acceptance is claimed |
+| Publication | Implementation committed locally as `6c39cc5`; this evidence-only checkpoint preserves tested source blobs. Inherited outgoing history requires review before private-origin publication |
 | Deployment | None. No schema, existing database, PDF package or layout change |
 | Activation | Unchanged. Missing facts and review flags remain pending; these inputs do not imply generation readiness, human verification or issuance |
 | Limitations | Service returns input bytes. Institution profile bytes are not yet frozen into the bundle; no filesystem publication or CLI is added |
