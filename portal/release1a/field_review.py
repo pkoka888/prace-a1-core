@@ -21,7 +21,7 @@ def _record(instance):
     return json.loads(json.dumps(values, cls=DjangoJSONEncoder))
 
 
-def _context(user, organization, proposal_id, *, lock=False):
+def _context(user, organization, proposal_id, *, lock=False, allow_decided=False):
     query = FieldProposal.objects.filter(organization=organization)
     if lock:
         query = query.select_for_update()
@@ -49,7 +49,7 @@ def _context(user, organization, proposal_id, *, lock=False):
     latest = document.documentversion_set.order_by("-version_number").first()
     if latest is None or latest.organization_id != organization.pk:
         raise Forbidden("cross-organization version")
-    if latest.pk != version.pk or FieldDecision.objects.filter(field_proposal=proposal).exists():
+    if latest.pk != version.pk or (not allow_decided and FieldDecision.objects.filter(field_proposal=proposal).exists()):
         raise StaleWrite("FIELD_REVIEW_STALE")
     if proposal.state not in (FieldProposal.State.PROPOSED, FieldProposal.State.CONFLICT):
         raise ValueError("FIELD_PROPOSAL_NOT_REVIEWABLE")
@@ -147,3 +147,71 @@ def confirm_review_batch(user, organization, selections, *, reason=""):
         prepared.append((proposal, normalized))
     return [confirm_field_proposal(user, organization, proposal, corrected_value=value, reason=reason)
             for proposal, value in prepared]
+
+
+ADDRESS_FIELDS = ('street', 'house_number', 'city', 'postal_code', 'country_code')
+
+
+def _address_context(user, organization, proposal_id, *, lock=False):
+    proposal, worker, context = _context(user, organization, proposal_id,
+        lock=lock, allow_decided=True)
+    if proposal.field_name != 'residence_address' or worker.state == Worker.State.ARCHIVED:
+        raise ValueError('ADDRESS_SOURCE_REQUIRED')
+    revision = WorkerIdentityRevision.objects.filter(organization=organization,
+        worker=worker).order_by('-revision_number', '-pk').first()
+    fields = revision.confirmed_fields if revision else {}
+    return proposal, worker, {**context, 'values': {f: fields.get(f, '') for f in ADDRESS_FIELDS}}
+
+
+@transaction.atomic
+def address_review_context(user, organization, proposal_id):
+    from .identity import _authorize, _lock_organization
+    _authorize(user, organization, 'document:confirm')
+    _lock_organization(organization)
+    return _address_context(user, organization, proposal_id)[2]
+
+
+@transaction.atomic
+def confirm_address_review(user, organization, proposal_id, expected_token, values, *, reason=''):
+    """Record explicitly entered source-linked fields; never label them as OCR output."""
+    from .identity import _authorize, _lock_organization
+    from .document_intake import audit
+    from .models import A1Case
+    import re
+    import unicodedata
+    _authorize(user, organization, 'document:confirm')
+    _lock_organization(organization)
+    proposal, worker, context = _address_context(user, organization, proposal_id, lock=True)
+    if (not isinstance(expected_token, str) or not expected_token.isascii()
+            or not compare_digest(expected_token, context['token'])):
+        raise StaleWrite('ADDRESS_REVIEW_STALE')
+    if (not isinstance(values, dict) or set(values) != set(ADDRESS_FIELDS)
+            or not isinstance(reason, str)):
+        raise ValueError('ADDRESS_FIELDS_REQUIRED')
+    limits = dict(street=240, house_number=40, city=120, postal_code=20, country_code=2)
+    normalized = {}
+    for field, value in values.items():
+        if (not isinstance(value, str) or not value.strip() or len(value.strip()) > limits[field]
+                or any(unicodedata.category(c).startswith('C') for c in value)):
+            raise ValueError('ADDRESS_VALUE_INVALID')
+        normalized[field] = value.strip()
+    normalized['country_code'] = normalized['country_code'].upper()
+    if not re.fullmatch('[A-Z]{2}', normalized['country_code']):
+        raise ValueError('ADDRESS_COUNTRY_INVALID')
+    if (proposal.validation_findings or any(context['values'][f] and context['values'][f] != normalized[f]
+            for f in ADDRESS_FIELDS)) and not reason.strip():
+        raise ValueError('CONFLICT_REASON_REQUIRED')
+    if context['values'] == normalized:
+        return []
+    decisions = []
+    for field in ADDRESS_FIELDS:
+        entered = FieldProposal.objects.create(organization=organization,
+            document=proposal.document, version=proposal.version, ocr_run=proposal.ocr_run,
+            document_region_id=proposal.document_region_id, field_name=field,
+            proposed_value=normalized[field], ocr_engine='operator')
+        decisions.append(confirm_field_proposal(user, organization, entered,
+            corrected_value=normalized[field], reason=reason))
+    A1Case.objects.filter(organization=organization, worker=worker,
+        source_snapshot_json__schema_version='a1-input-1').update(is_stale=True)
+    audit(user, organization, 'identity.address_confirmed', f'field_proposal:{proposal.pk}')
+    return decisions

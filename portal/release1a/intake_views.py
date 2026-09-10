@@ -5,7 +5,8 @@ from .models import Document, OcrRun, Worker, FieldProposal, DocumentRegionAssoc
 from .document_intake import (authorize, intake, read_result, execute_run,
                               download_original, audit, read_session)
 from .services import Forbidden, StaleWrite
-from .field_review import review_context, confirm_review_batch
+from .field_review import (review_context, confirm_review_batch, address_review_context,
+                           confirm_address_review, ADDRESS_FIELDS)
 from .identity_review import association_review_context, confirm_association
 from django.views.decorators.cache import never_cache
 from .document_labels import FIELD_LABELS
@@ -42,6 +43,25 @@ def detail(request, pk):
                 confirm_association(request.user, request.organization, token=tokens[0],
                     reason=request.POST.get("reason", ""),
                     allowed_run_ids=_association_run_ids(request.organization, run, session))
+            elif request.POST.get("action") == "confirm_address":
+                ids = request.POST.getlist("address_source")
+                tokens = request.POST.getlist("address_token")
+                if (len(ids) != 1 or not ids[0].isascii() or not ids[0].isdigit()
+                        or len(ids[0]) > 18 or len(tokens) != 1):
+                    raise StaleWrite("ADDRESS_SOURCE_REQUIRED")
+                source = FieldProposal.objects.filter(pk=int(ids[0]), organization=request.organization,
+                    ocr_run_id__in=_association_run_ids(request.organization, run, session),
+                    field_name="residence_address").first() if run else None
+                if source is None:
+                    raise StaleWrite("ADDRESS_SOURCE_REQUIRED")
+                values = {}
+                for field in ADDRESS_FIELDS:
+                    raw = request.POST.getlist("address_" + field)
+                    if len(raw) != 1:
+                        raise ValueError("ADDRESS_VALUE_REQUIRED")
+                    values[field] = raw[0]
+                confirm_address_review(request.user, request.organization, source.pk, tokens[0],
+                    values, reason=request.POST.get("reason", ""))
             else:
                 proposals = FieldProposal.objects.filter(organization=request.organization)
                 proposals = proposals.filter(ocr_run__in=session.ocr_runs.all()) if session else proposals.filter(ocr_run=run)
@@ -122,6 +142,16 @@ def detail(request, pk):
                     proposal.confirmed_value = context.get("confirmed_value")
                     proposal.review_value = (proposal.confirmed_value if proposal.confirmed_value is not None
                                              else proposal.proposed_value)
+            if region["association_record"]:
+                source = FieldProposal.objects.filter(organization=request.organization,
+                    ocr_run_id=region_run, document_region_id=region["document_id"],
+                    field_name="residence_address").order_by("-pk").first()
+                if source:
+                    try:
+                        region["address_review"] = address_review_context(request.user, request.organization, source.pk)
+                        region["address_source"] = source
+                    except (Forbidden, StaleWrite, ValueError, OSError):
+                        pass
             region["type_label"] = {"op": "Občanský průkaz", "zp": "Průkaz pojištěnce", "passport": "Cestovní pas"}.get(region["classification"]["type"], "Neurčený dokument")
             region["side_label"] = {"front": "přední strana", "back": "zadní strana"}.get(region["classification"]["side"], "")
             regions.append(region)

@@ -31,6 +31,18 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Source-linked structured address review — 2026-09-10
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | BO document review accepts five explicit address parts using a token bound to source/version/region/association/worker revision. Existing field confirmation services record operator-origin source-linked proposals, decisions and identity revisions atomically. Replacements require a reason; stale forms, source changes and archived workers are rejected. Raw OCR address confirmation remains separate. Changed address facts mark existing input cases stale |
+| Validation | Focused service/BO and cold-start export checks passed. All 15 PostgreSQL integration tests passed, including concurrent address submissions with one winner and one stale rejection. Required hooks and committed-source acceptance pending |
+| Publication | Scoped local implementation pending commit; inherited outgoing-history review remains separate |
+| Deployment | None; no schema migration, durable database or service changes |
+| Activation | Unchanged. Explicit address confirmation does not establish whole-identity verification, PDF visual approval or issuance |
+| Limitations | Source must have a residence_address proposal and worker association. No automatic address splitting, country default or external address verification. Other missing identity/business facts remain draft-local blockers |
+| Next owner | Engineering: BO assignment/institution fact entry using a1_exports.update_assignment_facts and its existing version/readiness contracts |
+
 ### Integrated synthetic operator workflow — 2026-09-10
 
 | Field | Evidence / state |

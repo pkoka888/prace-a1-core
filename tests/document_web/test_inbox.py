@@ -307,7 +307,7 @@ class InboxTests(TransactionTestCase):
         self.assertEqual(self.run_inbox()[0]["status"], "completed")
         self.assertEqual(OcrRun.objects.get().retry_count, 1)
 
-    def test_cold_start_address_stays_pending_without_structured_review(self):
+    def test_cold_start_address_stays_pending_until_structured_review(self):
         """Recognizing a free-form address is not structured A1 address acceptance."""
         from portal.release1a.models import A1Case, A1DraftGeneration
         lines = OP + ['TRVALY POBYT: Testovaci 12, 12345 Testov']
@@ -325,3 +325,24 @@ class InboxTests(TransactionTestCase):
         self.assertFalse(A1DraftGeneration.objects.exists())
         self.assertFalse(FieldDecision.objects.exists())
         self.assertFalse(WorkerIdentityRevision.objects.exists())
+
+        from tests.test_j4_minimum import _mfa_login
+        from portal.release1a.identity_review import association_review_context
+        from portal.release1a.field_review import address_review_context
+        from portal.release1a.a1_exports import prepare_input_case
+        self.user.set_password('test-m2'); self.user.save(); _mfa_login(self.client,self.user)
+        proposal = FieldProposal.objects.get(field_name='residence_address')
+        url = f'/documents/{proposal.document_id}/'
+        options = association_review_context(self.user,self.org,[proposal.ocr_run_id])[
+            (proposal.ocr_run_id,proposal.document_region_id)]['worker_options']
+        choice = next(o['token'] for o in options if o['worker'].pk == case.worker_id)
+        self.assertEqual(self.client.post(url,{'action':'associate','worker_choice':choice,
+            'reason':'Synthetic source checked'}).status_code,302)
+        values = dict(street='Testovaci',house_number='12',city='Testov',postal_code='12345',country_code='CZ')
+        token = address_review_context(self.user,self.org,proposal.pk)['token']
+        self.assertEqual(self.client.post(url,{'action':'confirm_address','address_source':proposal.pk,
+            'address_token':token,**{'address_'+k:v for k,v in values.items()}}).status_code,302)
+        fresh = prepare_input_case(self.user,self.org,case.worker_id)
+        for field,value in values.items(): self.assertEqual(fresh.source_snapshot_json['row'][field],value)
+        case.refresh_from_db(); self.assertTrue(case.is_stale)
+        self.assertFalse(A1DraftGeneration.objects.exists())

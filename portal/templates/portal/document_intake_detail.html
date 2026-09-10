@@ -46,6 +46,22 @@
 <label>Důvod opravy nebo vyřešení rozporu <input name="reason"></label>
 <button name="action" value="confirm">Potvrdit vybrané údaje</button></form>
 {% elif not region.association_record %}<p>Před potvrzením údajů přiřaďte dokument pracovníkovi.</p>{% endif %}
+{% if region.address_source %}
+<form method="post" class="my-4">{% csrf_token %}
+<h3>Potvrdit adresu pro A1</h3>
+<p>Zdrojový text: {{ region.address_source.proposed_value }}</p>
+<p>Vyplňte jednotlivé části podle zdroje. Uložením potvrdíte tyto údaje.</p>
+<input type="hidden" name="address_source" value="{{ region.address_source.pk }}">
+<input type="hidden" name="address_token" value="{{ region.address_review.token }}">
+<label>Ulice <input name="address_street" maxlength="240" required value="{{ region.address_review.values.street }}"></label>
+<label>Číslo domu <input name="address_house_number" maxlength="40" required value="{{ region.address_review.values.house_number }}"></label>
+<label>Obec <input name="address_city" maxlength="120" required value="{{ region.address_review.values.city }}"></label>
+<label>PSČ <input name="address_postal_code" maxlength="20" required value="{{ region.address_review.values.postal_code }}"></label>
+<label>Kód země (např. CZ) <input name="address_country_code" maxlength="2" required value="{{ region.address_review.values.country_code }}"></label>
+<label>Důvod změny již potvrzené adresy <input name="reason"></label>
+<button name="action" value="confirm_address">Potvrdit adresu</button>
+</form>
+{% endif %}
 </section>
 {% empty %}<p>Rozpoznané dokumenty zatím nejsou k dispozici.</p>{% endfor %}
 <p><a href="{% url 'document_intake_unassigned' %}">Nahrát další dokumenty</a></p>

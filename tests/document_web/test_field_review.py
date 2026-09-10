@@ -125,6 +125,106 @@ class FieldReviewTests(TransactionTestCase):
             review_context(self.user,self.org,[self.birth.pk])
 
 
+    def address_source(self):
+        return FieldProposal.objects.create(organization=self.org, document=self.doc,
+            version=self.version, ocr_run=self.run, document_region_id=self.birth.document_region_id,
+            field_name='residence_address', proposed_value='Testovaci 12, 12345 Testov')
+
+    def address_values(self):
+        return dict(street='Testovaci', house_number='12', city='Testov',
+                    postal_code='12345', country_code='CZ')
+
+    def test_address_http_confirmation_maps_to_a1_without_fabricated_ocr(self):
+        from portal.release1a.field_review import address_review_context
+        from portal.release1a.a1_exports import prepare_input_case
+        from portal.release1a.models import A1Case
+        source = self.address_source()
+        before = prepare_input_case(self.user, self.org, self.worker.pk)
+        count = FieldProposal.objects.count()
+        page = self.client.get(self.url)
+        self.assertContains(page, 'name="address_street"')
+        self.assertEqual(FieldProposal.objects.count(), count)
+        token = address_review_context(self.user,self.org,source.pk)['token']
+        post = {'action':'confirm_address', 'address_source':source.pk, 'address_token':token,
+                **{'address_'+f:v for f,v in self.address_values().items()}}
+        self.assertEqual(self.client.post(self.url,post).status_code,302)
+        self.assertEqual(self.client.post(self.url,post).status_code,409)
+        self.assertEqual(FieldDecision.objects.count(),5)
+        self.assertFalse(FieldDecision.objects.filter(field_proposal=source).exists())
+        entered = FieldProposal.objects.filter(ocr_engine='operator')
+        self.assertEqual(entered.count(),5)
+        for proposal in entered:
+            self.assertEqual(proposal.version_id,self.version.pk)
+            self.assertEqual(proposal.document_region_id,source.document_region_id)
+            self.assertEqual(proposal.raw_ocr_text,'')
+            self.assertIsNone(proposal.confidence)
+        before.refresh_from_db(); self.assertTrue(before.is_stale)
+        fresh = prepare_input_case(self.user,self.org,self.worker.pk)
+        for field,value in self.address_values().items():
+            self.assertEqual(fresh.source_snapshot_json['row'][field],value)
+            self.assertEqual(fresh.source_snapshot_json['provenance'][field]['kind'],'confirmed_revision')
+        self.assertEqual(fresh.source_snapshot_json['row']['identity_reviewed'],'NO')
+        self.assertFalse(fresh.visual_confirmed)
+
+    def test_address_validation_replacement_and_noop(self):
+        from portal.release1a.field_review import address_review_context, confirm_address_review
+        source = self.address_source()
+        def save(values, reason=''):
+            return confirm_address_review(self.user,self.org,source.pk,
+                address_review_context(self.user,self.org,source.pk)['token'],values,reason=reason)
+        for values in ({}, dict(self.address_values(), country_code='CZE'),
+                       dict(self.address_values(), street='bad\nvalue'),
+                       dict(self.address_values(), house_number='')):
+            with self.assertRaises(ValueError): save(values)
+        self.assertFalse(FieldDecision.objects.exists())
+        save(self.address_values())
+        count = WorkerIdentityRevision.objects.count()
+        self.assertEqual(save(self.address_values()),[])
+        self.assertEqual(WorkerIdentityRevision.objects.count(),count)
+        changed = dict(self.address_values(), house_number='13')
+        with self.assertRaises(ValueError): save(changed)
+        save(changed,'Synthetic changed source reviewed')
+        self.assertEqual(WorkerIdentityRevision.objects.latest('pk').confirmed_fields['house_number'],'13')
+
+    def test_address_source_revision_auth_and_confirmed_raw_source(self):
+        from portal.release1a.field_review import address_review_context, confirm_address_review
+        from portal.release1a.document_intake import supersede
+        from django.test import override_settings, Client
+        source = self.address_source()
+        token = address_review_context(self.user,self.org,source.pk)['token']
+        confirm_field_proposal(self.user,self.org,source)
+        with self.assertRaises(StaleWrite):
+            confirm_address_review(self.user,self.org,source.pk,token,self.address_values())
+        # Raw OCR text can already be confirmed; structured entry still remains available.
+        token = address_review_context(self.user,self.org,source.pk)['token']
+        self.assertContains(self.client.get(self.url),'name="address_street"')
+        with self.assertRaises(Forbidden): address_review_context(self.user,self.other,source.pk)
+        with override_settings(M2_SYNTHETIC_ONLY=False), self.assertRaises(Forbidden):
+            address_review_context(self.user,self.org,source.pk)
+        csrf = Client(enforce_csrf_checks=True); _mfa_login(csrf,self.user)
+        self.assertEqual(csrf.post(self.url,{'action':'confirm_address'}).status_code,403)
+        supersede(self.user,self.org,self.doc.pk,'synthetic.png','image/png',
+            fixtures.png(fixtures.card(fixtures.ZP)),processor=fixtures.processor(fixtures.ZP))
+        with self.assertRaises(StaleWrite):
+            confirm_address_review(self.user,self.org,source.pk,token,self.address_values())
+        self.assertEqual(FieldDecision.objects.count(),1)
+
+    def test_address_late_failure_rolls_back_all_entered_fields(self):
+        from portal.release1a.field_review import address_review_context, confirm_address_review
+        source = self.address_source()
+        token = address_review_context(self.user,self.org,source.pk)['token']
+        from portal.release1a.document_intake import audit as original_audit
+        def fail(user, org, event, ref, **kwargs):
+            if event == 'identity.address_confirmed': raise RuntimeError('Synthetic failure')
+            return original_audit(user, org, event, ref, **kwargs)
+        with patch('portal.release1a.document_intake.audit',side_effect=fail):
+            with self.assertRaises(RuntimeError):
+                confirm_address_review(self.user,self.org,source.pk,token,self.address_values())
+        self.assertFalse(FieldProposal.objects.filter(ocr_engine='operator').exists())
+        self.assertFalse(FieldDecision.objects.exists())
+        self.assertFalse(WorkerIdentityRevision.objects.exists())
+
+
 @skipUnless(connection.vendor=='postgresql','Disposable PostgreSQL required')
 class FieldReviewPostgresTests(TransactionTestCase):
     setUp=FieldReviewTests.setUp
@@ -161,3 +261,35 @@ class FieldReviewPostgresTests(TransactionTestCase):
         self.assertCountEqual(results,['confirmed','stale'])
         self.assertEqual(FieldDecision.objects.count(),1)
         self.assertEqual(WorkerIdentityRevision.objects.count(),1)
+
+
+    def test_concurrent_addresses_cannot_both_confirm(self):
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+        from django.db import close_old_connections
+        from portal.release1a.field_review import address_review_context, confirm_address_review
+        from portal.release1a.models import Organization
+        from django.contrib.auth import get_user_model
+        source = FieldReviewTests.address_source(self)
+        token = address_review_context(self.user,self.org,source.pk)['token']
+        barrier = Barrier(2,timeout=10)
+        def save(number):
+            close_old_connections()
+            try:
+                user=get_user_model().objects.get(pk=self.user.pk)
+                org=Organization.objects.get(pk=self.org.pk)
+                with connection.cursor() as cursor:
+                    cursor.execute("SET statement_timeout = '15s'")
+                    cursor.execute("SET lock_timeout = '10s'")
+                barrier.wait()
+                try:
+                    confirm_address_review(user,org,source.pk,token,
+                        dict(FieldReviewTests.address_values(self),house_number=number))
+                    return 'confirmed'
+                except StaleWrite: return 'stale'
+            finally: connection.close()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures=[pool.submit(save,n) for n in ('12','13')]
+            self.assertCountEqual([f.result(timeout=30) for f in futures],['confirmed','stale'])
+        self.assertEqual(FieldDecision.objects.count(),5)
+        self.assertEqual(WorkerIdentityRevision.objects.count(),5)

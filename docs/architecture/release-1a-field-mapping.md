@@ -101,7 +101,7 @@ for each visual confirmation. Identity facts and case issuance state remain sepa
 BO field confirmation now uses `portal/release1a/field_review.py` and existing
 FieldDecision/WorkerIdentityRevision records. Tokens bind proposal/source/association
 and the current confirmed revision; replacement of a confirmed value requires reason.
-BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; profile-bound publication and the synthetic CLI are implemented; case-level BO bundle access is implemented; selected-cohort BO publication is implemented; complete-input workflow checks pass; source-linked structured address entry in BO is next.
+BO identity association uses signed choices and the canonical revision-checked resolution service. Explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; profile-bound publication and the synthetic CLI are implemented; case-level BO bundle access is implemented; selected-cohort BO publication is implemented; complete-input workflow checks pass; source-linked structured address entry in BO is implemented; BO assignment/institution fact entry is next.
 
 ## Complete CSV mapping
 
@@ -255,7 +255,7 @@ modes; changed profile content creates another immutable bundle. A late audit
 failure leaves a recoverable protected bundle rather than a partial publication.
 The thin `a1_export_inputs` command takes explicit case/source-hash selections.
 Missing profiles block publication only. Case-level BO bundle access is implemented in `portal/release1a/input_bundle_access.py`
-and `portal/release1a/input_bundle_views.py`; selected-cohort BO publication is implemented; complete-input workflow checks pass; source-linked structured address entry in BO is next.
+and `portal/release1a/input_bundle_views.py`; selected-cohort BO publication is implemented; complete-input workflow checks pass; source-linked structured address entry in BO is implemented; BO assignment/institution fact entry is next.
 
 The following richer interface remains **not implemented**:
 
@@ -330,3 +330,14 @@ These records supplement the row mappings above; they do not change the canonica
 CSV contract or establish DB cutover. BO now uses signed actor/org/source/worker
 choices through `portal/release1a/identity_review.py`; persisted evaluations and
 resolutions remain owned by the existing identity models.
+
+
+### Operator-entered structured residence
+
+`field_review.confirm_address_review` accepts the five canonical address fields after
+explicit BO source review. It binds the original residence-address proposal's current
+version/run/region and worker revision. It creates source-linked proposals marked
+`ocr_engine=operator`, with empty raw OCR text and no OCR confidence, and confirms
+through existing FieldDecision/WorkerIdentityRevision records. The latter remain the
+export authority. No schema or automatic address parsing is introduced. Changed
+confirmed values need a reason; old input cases are stale after a successful change.
