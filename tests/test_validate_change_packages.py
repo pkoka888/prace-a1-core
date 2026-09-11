@@ -383,14 +383,14 @@ def test_dispatch_falls_back_to_broad_suite_for_source_change():
     storage, rendering or migrations spanning the whole portal."""
     from scripts.select_shared_document_portal_checks import select
     cmds = select(["portal/release1a/intake_views.py"])
-    assert len(cmds) == 1
+    assert len(cmds) == 2
     assert "manage.py test" in cmds[0]
 
 
 def test_dispatch_falls_back_to_broad_suite_for_migration_change():
     from scripts.select_shared_document_portal_checks import select
     cmds = select(["portal/release1a/migrations/0019_worker_legacy_key.py"])
-    assert len(cmds) == 1
+    assert len(cmds) == 2
     assert "manage.py test" in cmds[0]
 
 
@@ -418,3 +418,214 @@ def test_dispatch_via_cli_matches_in_process_select():
     # With no staged paths the CLI emits nothing; that is the empty
     # case. We only assert it does not crash and respects the contract.
     assert result.returncode == 0
+
+
+def test_dispatch_uses_django_database_runner():
+    from scripts.select_shared_document_portal_checks import select
+    commands = select(["tests/document_web/test_intake.py", "tests/test_j4_service.py"])
+    assert len(commands) == 1
+    assert "manage.py test tests.document_web.test_intake tests.test_j4_service" in commands[0]
+    assert "pytest" not in commands[0]
+
+
+def test_source_change_retains_integration_and_additional_edited_test():
+    from scripts.select_shared_document_portal_checks import select
+    commands = select(["portal/release1a/services.py", "tests/test_a1_employee_delivery.py"])
+    assert "manage.py test" in commands[0]
+    for path in ["tests/test_j4_artifacts.py", "tests/test_runtime_contract.py",
+                 "tests/test_a1_input_artifacts.py", "tests/m2/test_synthetic_containment.py",
+                 "tests/test_a1_employee_delivery.py"]:
+        assert path in commands[1]
+
+
+@pytest.mark.parametrize("path", ["tests/document_web/__init__.py",
+                                 "tests/document_web/test_deleted.py"])
+def test_helper_and_deleted_test_do_not_silently_skip(path):
+    from scripts.select_shared_document_portal_checks import select
+    assert "manage.py test" in select([path])[0]
+
+
+def test_selector_tooling_is_owned_by_git_workflow():
+    data = json.loads((Path(__file__).resolve().parents[1] / "change-packages.yml").read_text())
+    owners = [name for name, item in data["packages"].items()
+              if "scripts/select_shared_document_portal_checks.py" in item.get("paths", [])]
+    assert owners == ["infrastructure_git_workflow"]
+
+
+def test_standalone_selector_filters_mixed_index_in_requested_root(tmp_path):
+    import sys
+    root = repo(tmp_path)
+    (root / "tests").mkdir()
+    (root / "scripts").mkdir()
+    (root / "tests/test_example.py").write_text("def test_example(): pass")
+    (root / "scripts/unrelated.py").write_text("# synthetic tooling")
+    write_catalog(root, {
+        "shared_document_portal": package(["tests/test_example.py"]),
+        "tooling": package(["change-packages.yml", "scripts/unrelated.py"]),
+    })
+    run(root, "add", "change-packages.yml", "tests/test_example.py", "scripts/unrelated.py")
+    script = Path(__file__).resolve().parents[1] / "scripts/select_shared_document_portal_checks.py"
+    result = subprocess.run([sys.executable, str(script), "--root", str(root)],
+                            capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "pytest -q tests/test_example.py" in result.stdout
+    assert "manage.py" not in result.stdout
+
+
+def runner_repo(tmp_path, checks, selector_code=None):
+    """Exercise the real CLI and dispatcher protocol in an isolated Git index."""
+    root, catalog = staged_repo(tmp_path)
+    data = json.loads(catalog.read_text())
+    data["packages"]["safe"]["checks"] = checks
+    if selector_code is not None:
+        (root / "scripts").mkdir()
+        selector = root / "scripts/select_fixture.py"
+        selector.write_text(selector_code)
+        data["packages"]["safe"]["paths"].append("scripts/select_fixture.py")
+        run(root, "add", "scripts/select_fixture.py")
+    catalog.write_text(json.dumps(data))
+    run(root, "add", "change-packages.yml")
+    return root, catalog
+
+
+def runner_command(root):
+    import sys
+    script = Path(__file__).resolve().parents[1] / "scripts/validate_change_packages.py"
+    return [sys.executable, str(script), "--root", str(root), "--staged", "--run-checks"]
+
+
+def runner_report(root):
+    return json.loads(next((root / "runtime/portal/temporary").glob("change-checks-*/report.json")).read_text())
+
+
+@pytest.mark.parametrize("selector_code", [
+    "raise SystemExit(7)",
+    "print('echo should-never-run'); raise SystemExit(7)",
+    "import time; time.sleep(5)",
+])
+def test_selector_failure_never_uses_partial_or_previous_commands(tmp_path, monkeypatch, selector_code):
+    import scripts.validate_change_packages as runner
+    root, _ = runner_repo(tmp_path, ["echo should-never-run", "scripts/select_fixture.py"], selector_code)
+    # Shorten only the selector budget in this regression, not production defaults.
+    original = runner._run_command
+    def bounded(root, outcome, directory, number):
+        if outcome["kind"] == "selector":
+            outcome["timeout_s"] = 1
+        return original(root, outcome, directory, number)
+    monkeypatch.setattr(runner, "_run_command", bounded)
+    monkeypatch.setattr("sys.argv", runner_command(root)[1:])
+    assert runner.main() == 1
+    checks = runner_report(root)["check_run"]["checks"]
+    assert len(checks) == 1
+    assert checks[0]["status"] in {"FAIL", "TIMEOUT"}
+    assert checks[0]["kind"] == "selector"
+
+
+def test_mixed_commit_passes_only_owning_package_paths_to_selector(tmp_path):
+    code = """import argparse, json
+p = argparse.ArgumentParser()
+p.add_argument('--root'); p.add_argument('--paths-json')
+args = p.parse_args()
+assert json.loads(args.paths_json) == ['doc.md']
+"""
+    root, catalog = runner_repo(tmp_path, [], code)
+    data = json.loads(catalog.read_text())
+    data["packages"]["portal"] = package(["doc.md"])
+    data["packages"]["portal"]["checks"] = ["scripts/select_fixture.py"]
+    data["packages"]["safe"]["paths"].remove("doc.md")
+    catalog.write_text(json.dumps(data))
+    (root / "doc.md").write_text("synthetic")
+    run(root, "add", "change-packages.yml", "doc.md")
+    result = subprocess.run(runner_command(root), capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert runner_report(root)["check_run"]["checks"][0]["status"] == "PASS"
+
+
+def test_resolved_commands_deduplicated_across_packages(tmp_path):
+    root, catalog = runner_repo(tmp_path, ["echo shared"], "print('echo shared')")
+    data = json.loads(catalog.read_text())
+    data["packages"]["portal"] = package(["doc.md"])
+    data["packages"]["portal"]["checks"] = ["scripts/select_fixture.py"]
+    data["packages"]["safe"]["paths"].remove("doc.md")
+    catalog.write_text(json.dumps(data))
+    (root / "doc.md").write_text("synthetic")
+    run(root, "add", "change-packages.yml", "doc.md")
+    result = subprocess.run(runner_command(root), capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    checks = runner_report(root)["check_run"]["checks"]
+    assert len([c for c in checks if c["kind"] == "check"]) == 1
+
+
+@pytest.mark.parametrize("command", ["missing-synthetic-executable", "echo 'unclosed", "echo ok | cat"])
+def test_invalid_commands_retain_failure_report(tmp_path, command):
+    root, _ = runner_repo(tmp_path, [command])
+    result = subprocess.run(runner_command(root), capture_output=True, text=True)
+    assert result.returncode == 1
+    assert runner_report(root)["check_run"]["checks"][0]["status"] == "ERROR"
+
+
+def test_timeout_classification_ignores_pytest_flag_order(monkeypatch):
+    from scripts.validate_change_packages import _per_check_timeout
+    monkeypatch.delenv("VALIDATE_CHANGE_PACKAGES_TIMEOUT", raising=False)
+    assert _per_check_timeout("python -m pytest -q tests/test_one.py") == 120
+    assert _per_check_timeout("python -m pytest tests/test_one.py tests/test_two.py -q") == 600
+    assert _per_check_timeout("python -m pytest tests/document_web/ -q") == 600
+
+
+def test_full_output_and_private_default_report(tmp_path):
+    import stat
+    import sys
+    root, _ = runner_repo(tmp_path, [f'''{sys.executable} -c "print('first-marker'); print('x'*5000)"'''])
+    result = subprocess.run(runner_command(root), capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    report = runner_report(root)
+    check = report["check_run"]["checks"][0]
+    log = Path(check["stdout_log"])
+    assert "first-marker" in log.read_text()
+    assert "first-marker" not in check["stdout_tail"]
+    assert stat.S_IMODE(log.stat().st_mode) == 0o600
+    assert stat.S_IMODE(log.parent.stat().st_mode) == 0o700
+    assert stat.S_IMODE((log.parent / "report.json").stat().st_mode) == 0o600
+    assert "START [safe]" in result.stderr
+
+
+@pytest.mark.parametrize("termination", ["timeout", "SIGTERM", "SIGINT"])
+def test_cancellation_reaps_check_and_descendants(tmp_path, termination):
+    import signal
+    import sys
+    import time
+    root, _ = runner_repo(tmp_path, [f"{sys.executable} sleeper.py"])
+    # The marker is written only after the child exists, avoiding a signal race.
+    (root / "sleeper.py").write_text("""import subprocess, sys, time
+from pathlib import Path
+child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+Path('child.pid').write_text(str(child.pid))
+time.sleep(60)
+""")
+    proc = subprocess.Popen(runner_command(root), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, env={**os.environ, "VALIDATE_CHANGE_PACKAGES_TIMEOUT": "2"})
+    try:
+        assert "VALIDATION_REPORT:" in proc.stderr.readline()
+        assert "START [safe]" in proc.stderr.readline()
+        assert proc.poll() is None  # Progress is visible before completion.
+        deadline = time.monotonic() + 5
+        while not (root / "child.pid").exists() and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert (root / "child.pid").exists()
+        if termination != "timeout":
+            proc.send_signal(getattr(signal, termination))
+        stdout, stderr = proc.communicate(timeout=8)
+        assert proc.returncode == 1, (stdout, stderr)
+        check = runner_report(root)["check_run"]["checks"][0]
+        assert check["status"] == ("TIMEOUT" if termination == "timeout" else "INTERRUPTED")
+        pid = (root / "child.pid").read_text()
+        # A reparented zombie can briefly remain until the container init reaps it.
+        child_stat = Path(f"/proc/{pid}/stat")
+        deadline = time.monotonic() + 2
+        while child_stat.exists() and child_stat.read_text().split()[2] != "Z" and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert not child_stat.exists() or child_stat.read_text().split()[2] == "Z"
+    finally:
+        if proc.poll() is None:
+            proc.terminate()
+            proc.communicate(timeout=5)

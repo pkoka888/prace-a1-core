@@ -118,8 +118,7 @@
         "tests/test_runtime_contract.py",
         "tests/test_a1_cli_journey.py",
         "tests/test_a1_employee_delivery.py",
-        "scripts/test_document_intake.py",
-        "scripts/select_shared_document_portal_checks.py"
+        "scripts/test_document_intake.py"
       ],
       "checks": [
         "scripts/select_shared_document_portal_checks.py"
@@ -267,8 +266,8 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
-      "paths": ["change-packages.yml", "scripts/pre-commit", "scripts/validate_change_packages.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
+      "paths": ["change-packages.yml", "requirements.txt", "requirements-dev.txt", "scripts/pre-commit", "scripts/validate_change_packages.py", "scripts/select_shared_document_portal_checks.py", "scripts/build_release_manifest.py", "scripts/rehearse_synthetic_site.sh", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "tests/test_rehearse_synthetic_site.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "docs/operations/git-delivery.md", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
+      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_rehearse_synthetic_site.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
       "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
       "rollback": "Revert local workflow files; this package never changes remotes."
       ,"intended_commit": "test: add fail-closed change-package validation"

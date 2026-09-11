@@ -122,6 +122,17 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
   this once per release candidate, not per commit. Test-count growth is not
   a delivery target. Evidence-only commits must not become a substitute for
   a working demonstration.
+- For commit-bound changes, let the installed hook run its selected checks once;
+  do not first duplicate the same run with `--run-checks`. Read its private
+  `VALIDATION_REPORT` and per-command logs before retrying a failure. Keep hook
+  output visible: no `| tail` and no shorter outer `timeout git commit` wrapper.
+  A tool's wait/yield interval is not a reason to kill a progressing check.
+- Check selection uses each package's own staged paths. Validation-tool changes
+  run dispatch/runner regressions; they do not imply application integration.
+  Django database tests use `manage.py test` with isolated test settings. Preserve
+  integration coverage for affected shared behavior and release acceptance.
+  Treat routine validation approaching one minute as a profiling/selection review
+  trigger, not an automatic failure or permission to skip checks.
 
 ## Git delivery and planning checkpoint
 

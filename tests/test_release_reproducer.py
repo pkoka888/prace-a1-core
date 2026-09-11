@@ -11,6 +11,14 @@ import pytest
 from scripts.run_release_reproducer import digest, reproduce
 
 
+@pytest.fixture(autouse=True)
+def isolated_git_environment(monkeypatch):
+    """A hook's index/worktree must never be reused by synthetic repositories."""
+    for name in tuple(os.environ):
+        if name.startswith("GIT_"):
+            monkeypatch.delenv(name)
+
+
 @pytest.fixture
 def repo(tmp_path):
     root = tmp_path / "synthetic-repo"

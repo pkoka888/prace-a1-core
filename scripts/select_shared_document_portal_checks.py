@@ -1,39 +1,20 @@
 #!/usr/bin/env python3
-"""Select relevant regressions for the ``shared_document_portal`` package.
+"""Select checks from this package's staged paths, never the whole commit.
 
-The previous contract ran one broad 24-test-file Django ``manage.py test``
-command for every change to any path in the package. That command takes
-~5 minutes even when the change is a single test file or a documentation
-edit. This script inspects the actually-staged paths and emits the
-narrowest correct test command(s) for the work.
-
-Dispatch rules (executed in order; first match wins):
-
-1. No ``portal/`` source changed and no ``scripts/`` change → run only
-   the directly staged test file(s) with ``pytest`` (fast smoke). This
-   is the common case for test-only and documentation changes.
-2. ``portal/release1a/<file>.py`` source changed → run pytest on the
-   tests/test_<name>.py sibling plus the package's own test files
-   that import the changed module. This is the common case for source
-   edits; it covers the directly affected contract.
-3. ``portal/release1a/migrations/`` or ``portal/templates/`` changed →
-   add the existing migration-transitions and template-render checks.
-4. Any other change (settings, views, etc.) → fall back to the broad
-   24-test-file ``manage.py test`` suite. The broad run protects
-   authorization, storage and rendering regressions that span the
-   whole portal.
-
-Output: a list of shell command strings, one per line, suitable for
-the change-packages ``checks`` field. The dispatch is deterministic;
-the only side effect is reading the staged paths via ``git diff``.
+Test-only edits use the owning test runner. Source, fixture and deleted-test
+changes retain the existing integration checks. Tooling belongs to the Git
+workflow package and is tested there. Selection itself never imports app code.
 """
 from __future__ import annotations
 
-import os
-import subprocess
+import argparse
+import json
+import shlex
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from scripts.validate_change_packages import git, matches, nul_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTEST_BASE = (
@@ -44,82 +25,57 @@ MANAGE_PY = (
     "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests "
     "venv/bin/python manage.py test"
 )
+PURE_INTEGRATION_TESTS = {
+    "tests/test_j4_artifacts.py", "tests/test_runtime_contract.py",
+    "tests/test_a1_input_artifacts.py", "tests/m2/test_synthetic_containment.py",
+}
 
 
-def staged_paths() -> list[str]:
-    proc = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "diff", "--cached",
-         "--name-only", "--no-renames", "-z"],
-        capture_output=True, check=True,
-    )
-    parts = proc.stdout.split(b"\0")
-    return [p.decode("utf-8", "surrogateescape") for p in parts if p]
+def staged_paths(root: Path = REPO_ROOT) -> list[str]:
+    catalog = json.loads(git(root, "show", ":change-packages.yml"))
+    package = catalog["packages"]["shared_document_portal"]
+    paths = nul_paths(git(root, "diff", "--cached", "--name-only", "--no-renames", "-z"))
+    return sorted(p for p in paths if
+                  any(matches(p, r) for r in package.get("paths", [])) or
+                  any(matches(p, r, prefix=True) for r in package.get("prefixes", [])))
 
 
-def _route_for_path(path: str) -> str | None:
-    """Map a single staged path to a pytest test file (relative to repo root)."""
-    if path.startswith("tests/"):
-        candidate = REPO_ROOT / path
-        if candidate.exists() and candidate.suffix == ".py":
-            return path
-    if path.startswith("portal/release1a/") and path.endswith(".py"):
-        name = Path(path).stem
-        sibling = REPO_ROOT / "tests" / f"test_{name}.py"
-        if sibling.exists():
-            return str(sibling.relative_to(REPO_ROOT))
-    if path.startswith("scripts/") and path.endswith(".py"):
-        name = Path(path).stem
-        sibling = REPO_ROOT / "tests" / f"test_{name}.py"
-        if sibling.exists():
-            return str(sibling.relative_to(REPO_ROOT))
-    return None
+def django_test(path: str) -> bool:
+    return (path.startswith("tests/document_web/") or
+            path.startswith("tests/m2/") and path != "tests/m2/test_synthetic_containment.py" or
+            path in {"tests/test_j4_minimum.py", "tests/test_j4_service.py"})
 
 
-def select(paths: list[str]) -> list[str]:
-    """Pick the narrowest test command(s) for the staged paths.
-
-    Classification:
-    * Pure-documentation (no .py or .html under portal/scripts/tests)
-      → no test run; documentation changes must not require code tests.
-    * Test-only → run only the staged test file(s) with pytest.
-    * Source/script/migration/template/settings change → run the
-      broad integration suite.
-    """
-    routes: set[str] = set()
+def select(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
+    django_routes: set[str] = set()
+    pytest_routes: set[str] = set()
     needs_broad = False
-    for p in paths:
-        if p.startswith("portal/release1a/migrations/"):
+    for path in paths:
+        # Documentation outside application templates has no runtime behavior.
+        if path.startswith(("docs/", "plans/")) or path.endswith(".md"):
+            continue
+        candidate = root / path
+        if (path.startswith("tests/") and candidate.name.startswith("test_")
+                and candidate.suffix == ".py" and candidate.is_file()):
+            if django_test(path):
+                django_routes.add(path[:-3].replace("/", "."))
+            else:
+                pytest_routes.add(path)
+        else:
+            # Includes helpers/__init__, fixtures, deleted tests and owned source.
             needs_broad = True
-        elif p.startswith("portal/templates/"):
-            needs_broad = True
-        elif p.startswith("portal/release1a/") and p.endswith(".py"):
-            needs_broad = True
-            r = _route_for_path(p)
-            if r:
-                routes.add(r)
-        elif p.startswith("portal/"):
-            # Other portal files (settings, urls, etc.).
-            needs_broad = True
-        elif p.startswith("scripts/") and p.endswith(".py"):
-            needs_broad = True
-            r = _route_for_path(p)
-            if r:
-                routes.add(r)
-        elif p.startswith("tests/") and p.endswith(".py"):
-            r = _route_for_path(p)
-            if r:
-                routes.add(r)
-        # else: docs, schemas, plans, governance → no test command.
 
+    commands = []
     if needs_broad:
-        return [_broad_manage_test()]
-
-    if routes:
-        return [f"{PYTEST_BASE} -q " + " ".join(sorted(routes))]
-    # No relevant .py change among staged paths (e.g. doc-only).
-    # The dispatcher's contract is "skip the run" for non-code edits
-    # rather than running a wide smoke that adds no signal.
-    return []
+        broad = _broad_manage_test()
+        commands.append(broad)
+        django_routes.difference_update(shlex.split(broad))
+        pytest_routes.update(PURE_INTEGRATION_TESTS)
+    if django_routes:
+        commands.append(f"{MANAGE_PY} " + shlex.join(sorted(django_routes)) + " --noinput -v 1")
+    if pytest_routes:
+        commands.append(f"{PYTEST_BASE} -q " + shlex.join(sorted(pytest_routes)))
+    return commands
 
 
 def _broad_manage_test() -> str:
@@ -142,10 +98,15 @@ def _broad_manage_test() -> str:
 
 
 def main() -> int:
-    paths = staged_paths()
-    cmds = select(paths)
-    for c in cmds:
-        print(c)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=REPO_ROOT)
+    parser.add_argument("--paths-json", help="Exact paths supplied by the owning package receipt")
+    args = parser.parse_args()
+    paths = json.loads(args.paths_json) if args.paths_json is not None else staged_paths(args.root)
+    if not isinstance(paths, list) or not all(isinstance(p, str) for p in paths):
+        parser.error("paths must be a JSON array of strings")
+    for command in select(paths, args.root):
+        print(command)
     return 0
 
 

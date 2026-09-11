@@ -13,6 +13,8 @@ import json
 import os
 import re
 import shlex
+import signal
+import tempfile
 import sys
 import subprocess
 import time
@@ -65,33 +67,22 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _tail(text: str | None, max_chars: int) -> str:
-    if not text:
-        return ""
-    if len(text) <= max_chars:
-        return text
-    return "...[truncated]...\n" + text[-max_chars:]
-
-
 def _per_check_timeout(check: str) -> int:
-    """Per-check timeout proportional to the workload class.
-
-    A `manage.py test` command covering ~24 test files with real OCR
-    and PDF generation routinely needs 5–10 minutes; the previous
-    blanket 300s was insufficient. Fast single-file pytest runs get
-    a much smaller budget so a stuck command is caught quickly.
-
-    ``VALIDATE_CHANGE_PACKAGES_TIMEOUT`` overrides the per-class
-    budget for tests that need a deterministic value (it is the single
-    timeout applied to every check, not a multiplier).
-    """
+    """Measured integration budget; recognize pytest arguments independent of order."""
     override = os.environ.get("VALIDATE_CHANGE_PACKAGES_TIMEOUT", "").strip()
-    if override.isdigit():
+    if override:
+        if not override.isdigit() or int(override) <= 0:
+            raise ValueError("VALIDATE_CHANGE_PACKAGES_TIMEOUT must be a positive integer")
         return int(override)
-    if "manage.py test" in check:
+    tokens = shlex.split(check)
+    if any(Path(t).name == "manage.py" and tokens[i + 1:i + 2] == ["test"]
+           for i, t in enumerate(tokens)):
         return 900
-    if "pytest tests/" in check and "tests/test_" in check:
-        return 120
+    if "pytest" in tokens:
+        targets = [t.split("::", 1)[0] for t in tokens[tokens.index("pytest") + 1:]
+                   if not t.startswith("-") and t.startswith("tests/")]
+        if len(targets) == 1 and targets[0].endswith(".py"):
+            return 120
     return 600
 
 
@@ -230,6 +221,130 @@ def validate(root: Path, catalog_path: Path, *, staged: bool = False) -> tuple[d
     return report, 0 if not problems else 1
 
 
+def _write_report(path: Path, report: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.with_name(path.name + ".pending")
+    with temporary.open("w", encoding="utf-8") as stream:
+        temporary.chmod(0o600)
+        json.dump(report, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    temporary.replace(path)
+
+
+def _log_tail(path: Path) -> str:
+    with path.open("rb") as stream:
+        stream.seek(max(0, path.stat().st_size - 2000))
+        return stream.read().decode("utf-8", "replace")
+
+
+def _run_command(root: Path, outcome: dict, directory: Path, number: int) -> None:
+    """Bound the entire process group; keep full output without buffering it in RAM."""
+    started = time.monotonic()
+    proc = None
+    stdout = directory / f"check-{number}.stdout"
+    stderr = directory / f"check-{number}.stderr"
+    outcome.update(stdout_log=str(stdout), stderr_log=str(stderr))
+    print(f"START [{outcome['package']}] budget={outcome['timeout_s']}s "
+          f"{outcome['check']}\n  log: {stdout}", file=sys.stderr, flush=True)
+    try:
+        with stdout.open("wb") as out, stderr.open("wb") as err:
+            stdout.chmod(0o600)
+            stderr.chmod(0o600)
+            proc = subprocess.Popen(outcome["command"], cwd=root, stdout=out, stderr=err,
+                                    start_new_session=True,
+                                    env={**os.environ, "PYTHONUNBUFFERED": "1"})
+            while True:
+                remaining = outcome["timeout_s"] - (time.monotonic() - started)
+                if remaining <= 0:
+                    outcome.update(status="TIMEOUT", error=f"timeout after {outcome['timeout_s']}s")
+                    break
+                try:
+                    code = proc.wait(timeout=min(15, remaining))
+                    outcome.update(exit_code=code, status="PASS" if code == 0 else "FAIL")
+                    break
+                except subprocess.TimeoutExpired:
+                    print(f"RUNNING [{outcome['package']}] {time.monotonic() - started:.1f}s "
+                          f"(budget {outcome['timeout_s']}s)", file=sys.stderr, flush=True)
+    except KeyboardInterrupt:
+        outcome.update(status="INTERRUPTED", error="validation interrupted by signal")
+    except OSError as exc:
+        outcome.update(status="ERROR", error=f"{type(exc).__name__}: {exc}")
+    finally:
+        if proc is not None:
+            # Also stop descendants left behind after a wrapper exits.
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.wait()
+            outcome["exit_code"] = proc.returncode
+        outcome["elapsed_s"] = round(time.monotonic() - started, 3)
+        outcome["stdout_tail"] = _log_tail(stdout) if stdout.exists() else ""
+        outcome["stderr_tail"] = _log_tail(stderr) if stderr.exists() else ""
+    print(f"{outcome['status']} [{outcome['package']}] {outcome['elapsed_s']:.2f}s "
+          f"exit={outcome['exit_code']}", file=sys.stderr, flush=True)
+
+
+def _execute_checks(root: Path, report: dict, directory: Path, output: Path) -> bool:
+    receipt = report["check_run"]
+
+    def execute(package, check, *, selector=False, paths=None):
+        outcome = dict(package=package, check=check, kind="selector" if selector else "check",
+                       command=[], timeout_s=30 if selector else None, elapsed_s=0.0,
+                       status="RUNNING", exit_code=None, error=None,
+                       stdout_tail="", stderr_tail="")
+        receipt["checks"].append(outcome)
+        try:
+            command = shlex.split(check)
+            if not command or any(t in {"|", ";", "&&", "||", ">"} for t in command):
+                raise ValueError("unsafe or empty check command")
+            if selector:
+                if not safe_rule(check):
+                    raise ValueError("unsafe selector path")
+                command = [sys.executable, str(root / check), "--root", str(root),
+                           "--paths-json", json.dumps(paths)]
+            outcome["command"] = command
+            if not selector:
+                outcome["timeout_s"] = _per_check_timeout(check)
+            _write_report(output, report)
+            _run_command(root, outcome, directory, len(receipt["checks"]))
+        except (ValueError, OSError) as exc:
+            outcome.update(status="ERROR", error=f"{type(exc).__name__}: {exc}")
+        _write_report(output, report)
+        if outcome["status"] != "PASS":
+            print(f"PACKAGE_CHECK_FAILED ({outcome['status']}): {package} :: {check}\n"
+                  f"{outcome['error'] or ''}\n{outcome['stdout_tail']}\n{outcome['stderr_tail']}",
+                  file=sys.stderr, flush=True)
+        return outcome
+
+    resolved = []
+    for package in report["package_receipts"]:
+        if not package["path_count"]:
+            continue
+        for check in package["checks"]:
+            if check.startswith("scripts/select_") and check.endswith(".py"):
+                outcome = execute(package["package"], check, selector=True, paths=package["exact_paths"])
+                if outcome["status"] != "PASS":
+                    return False  # Never consume partial output from a failed selector.
+                commands = Path(outcome["stdout_log"]).read_text().splitlines()
+                resolved.extend((package["package"], c.strip()) for c in commands if c.strip())
+            else:
+                resolved.append((package["package"], check))
+    seen = set()
+    for package, check in resolved:
+        # Deduplicate actual commands across packages, after selector expansion.
+        try:
+            key = tuple(shlex.split(check))
+        except ValueError:
+            key = (check,)
+        if key in seen:
+            continue
+        seen.add(key)
+        if execute(package, check)["status"] != "PASS":
+            return False
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
@@ -245,136 +360,44 @@ def main() -> int:
     except (OSError, ValueError, RuntimeError, KeyError, TypeError):
         print("CHANGE_PACKAGE_VALIDATION_FAILED", file=sys.stderr)
         return 1
-    check_run_receipt = {"started_at": now_iso(),
-                          "finished_at": None,
-                          "checks": []}
+    report["check_run"] = dict(started_at=now_iso(), finished_at=None, checks=[])
+    output = (root / args.output) if args.output else None
     if args.run_checks:
-        if not args.staged or status:
-            return 1
-        # Build (package, check, timeout) tuples. Per-check timeout scales
-        # with the command class: a `manage.py test` covering ~24 test
-        # files needs a long budget; a fast pytest run of a single file
-        # does not. The blanket 300s timeout was the cause of the
-        # recent commit-hooks failing without diagnostic detail.
-        selected = []
-        seen = set()
-        for receipt in report["package_receipts"]:
-            if not receipt["path_count"]:
-                continue
-            for check in receipt["checks"]:
-                key = (receipt["package"], check)
-                if key in seen:
-                    continue
-                seen.add(key)
-                selected.append(key)
+        parent = root / "runtime/portal/temporary"
+        parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        directory = Path(tempfile.mkdtemp(prefix="change-checks-", dir=parent))
+        directory.chmod(0o700)
+        output = output or directory / "report.json"
+        print(f"VALIDATION_REPORT: {output}", file=sys.stderr, flush=True)
+        _write_report(output, report)
+        previous = {}
 
-        # Some checks are dispatch stubs that emit the actual command
-        # list at run time (e.g. ``scripts/select_*.py``). Resolve those
-        # first; an empty list means the package contributes no test
-        # command for the staged set (e.g. doc-only change).
-        resolved = []
-        for package_id, check in selected:
-            if check.startswith("scripts/select_") and check.endswith(".py"):
-                proc = subprocess.run(
-                    [sys.executable, str(root / check)],
-                    cwd=root, check=False, capture_output=True,
-                    text=True, timeout=30,
-                )
-                for line in (proc.stdout or "").splitlines():
-                    line = line.strip()
-                    if line:
-                        resolved.append((package_id, line))
-                if proc.returncode != 0 and not resolved:
-                    check_run_receipt["checks"].append({
-                        "package": package_id,
-                        "check": check,
-                        "command": [sys.executable, str(root / check)],
-                        "timeout_s": 30,
-                        "elapsed_s": 0.0,
-                        "status": "FAIL",
-                        "exit_code": proc.returncode,
-                        "error": (proc.stderr or "").strip()[:2000],
-                        "stdout_tail": "",
-                        "stderr_tail": "",
-                    })
-                    break
-            else:
-                resolved.append((package_id, check))
+        def interrupt(signum, frame):
+            raise KeyboardInterrupt
 
-        for package_id, check in resolved:
-            if not check.strip():
-                # Dispatcher emitted no command (e.g. doc-only change).
-                continue
-            command = shlex.split(check)
-            command = shlex.split(check)
-            if not command or any(token in {"|", ";", "&&", "||", ">"} for token in command):
-                print(f"ERROR: refused unsafe check command: {check!r}",
-                      file=sys.stderr)
-                return 1
-            budget = _per_check_timeout(check)
-            t0 = time.monotonic()
-            outcome = {"package": package_id, "check": check,
-                       "command": command, "timeout_s": budget,
-                       "elapsed_s": 0.0, "status": "FAIL", "exit_code": None,
-                       "error": None, "stdout_tail": "", "stderr_tail": ""}
-            try:
-                proc = subprocess.run(command, cwd=root, check=False,
-                                      capture_output=True, text=True, timeout=budget)
-                outcome["exit_code"] = proc.returncode
-                outcome["stdout_tail"] = _tail(proc.stdout, 2000)
-                outcome["stderr_tail"] = _tail(proc.stderr, 2000)
-                outcome["status"] = "PASS" if proc.returncode == 0 else "FAIL"
-            except subprocess.TimeoutExpired as exc:
-                outcome["status"] = "TIMEOUT"
-                outcome["elapsed_s"] = time.monotonic() - t0
-                outcome["error"] = f"timeout after {budget}s"
-                # Capture whatever partial output the subprocess produced
-                # so the failure is not a single opaque TIMEOUT line.
-                if exc.stdout:
-                    if isinstance(exc.stdout, bytes):
-                        exc.stdout = exc.stdout.decode("utf-8", "replace")
-                    outcome["stdout_tail"] = _tail(exc.stdout, 2000)
-                if exc.stderr:
-                    if isinstance(exc.stderr, bytes):
-                        exc.stderr = exc.stderr.decode("utf-8", "replace")
-                    outcome["stderr_tail"] = _tail(exc.stderr, 2000)
-            except (OSError, subprocess.SubprocessError) as exc:
-                outcome["error"] = f"{type(exc).__name__}: {exc}"
-            finally:
-                outcome["elapsed_s"] = round(time.monotonic() - t0, 3)
-            check_run_receipt["checks"].append(outcome)
-            print(f"  [{package_id}] {outcome['status']:7s} "
-                  f"{outcome['elapsed_s']:6.1f}s/{budget}s  {check[:80]}",
-                  file=sys.stderr)
-            if outcome["status"] != "PASS":
-                print(f"PACKAGE_CHECK_FAILED ({outcome['status']}): "
-                      f"{package_id} :: {check}", file=sys.stderr)
-                if outcome["stdout_tail"]:
-                    print(f"--- stdout tail ({package_id}) ---\n"
-                          f"{outcome['stdout_tail']}", file=sys.stderr)
-                if outcome["stderr_tail"]:
-                    print(f"--- stderr tail ({package_id}) ---\n"
-                          f"{outcome['stderr_tail']}", file=sys.stderr)
-                break
-        check_run_receipt["finished_at"] = now_iso()
-    report["check_run"] = check_run_receipt
-    rendered = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
-    if args.output:
-        output = args.output if args.output.is_absolute() else root / args.output
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(rendered, encoding="utf-8")
+        try:
+            for signum in (signal.SIGTERM, signal.SIGINT):
+                previous[signum] = signal.signal(signum, interrupt)
+            if not args.staged or status:
+                status = 1
+            elif not _execute_checks(root, report, directory, output):
+                status = 1
+        except KeyboardInterrupt:
+            report["problems"].append("validation interrupted")
+            status = 1
+        finally:
+            for signum, handler in previous.items():
+                signal.signal(signum, handler)
+            report["check_run"]["finished_at"] = now_iso()
+    if output:
+        _write_report(output, report)
     if args.json:
-        print(rendered, end="")
+        print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
         print(f"dirty={report['dirty_path_count']} classified={report['classified_path_count']} "
               f"eligible={report['eligible_path_count']} quarantined={report['quarantined_path_count']}")
         for problem in report["problems"]:
             print(f"ERROR: {problem}")
-    if args.run_checks and check_run_receipt["checks"]:
-        # Report even on failure; gate exit on the actual outcome.
-        any_failed = any(c["status"] != "PASS" for c in check_run_receipt["checks"])
-        if any_failed and not report["problems"]:
-            return 1
     return status
 
 

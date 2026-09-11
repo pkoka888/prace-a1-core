@@ -31,6 +31,65 @@ work separate; inspect explicit staged paths and all outgoing commits. A failure
 blocks the behavior it covers; record unrelated failures and continue independent
 safe work. No history rewrite, force-push, public release, deployment or activation.
 
+### Validation selection and failure recovery — 2026-09-11
+
+The first selector repair still treated unrelated staged scripts as portal
+changes and assigned the selector itself to the portal package. It also sent
+Django database tests to plain pytest, dropped supplemental integration checks,
+accepted some failed selectors, and buffered output behind an outer commit timeout.
+
+The corrected selector receives only its owning package's paths; validation
+scripts belong to the Git workflow package. Test-only edits use their actual
+runner. Shared-source changes retain the Django integration suite plus artifact,
+runtime, input and containment regressions; additional edited tests remain selected.
+Commands are deduplicated after selection. Helpers and deleted tests conservatively
+retain integration coverage. No authorization, rendering or data-integrity assertion
+was removed to achieve faster dispatch.
+The release-reproducer tests now clear inherited Git environment variables before
+creating synthetic repositories; the isolated-index hook rehearsal exposed 12
+failures that did not occur in a plain pytest invocation. This follows
+[Git's hook environment guidance](https://git-scm.com/docs/githooks#_description)
+for operations in other repositories.
+
+The runner prints command start, budget, 15-second progress and outcome. Full
+stdout/stderr and an incrementally written report are retained by default under
+`runtime/portal/temporary/change-checks-*/`, with directories `0700` and files `0600`.
+Selector failure, invalid command, timeout and interruption fail the run; cancellation
+stops its process group. SIGKILL cannot produce a final receipt, but the started
+command remains recorded. These are working-tree diagnostics, not cached acceptance.
+
+For a commit, inspect and stage the explicit scope, then run `git commit` directly.
+Do not first run the same checks manually, pipe the hook through `tail`, or wrap
+it in a shorter external timeout. Follow the printed report/log paths when debugging.
+Django integration has a 900-second ceiling, a single pytest file 120 seconds,
+and other checks 600 seconds. These are cancellation bounds, not performance targets.
+`VALIDATE_CHANGE_PACKAGES_TIMEOUT` accepts a positive integer for deliberate diagnostics.
+
+Prevention follows existing tools: select files or cases and measure slow fixtures
+with [pytest durations](https://docs.pytest.org/en/stable/how-to/usage.html#profiling-test-execution-duration);
+use [Django's database runner and isolation](https://docs.djangoproject.com/en/5.2/topics/testing/advanced/).
+Keep expensive OCR/PDF end-to-end coverage separate from narrow route/permission
+fixtures as those tests are maintained. Review routine validation approaching one
+minute, without making elapsed time another release gate. Django supports
+[parallel tests](https://docs.djangoproject.com/en/5.2/topics/testing/overview/#speeding-up-the-tests)
+when isolated; storage paths and OCR resources need isolation too. Do not enable
+parallelism or acceptance-result caching blindly. The
+[pre-commit framework's stage separation](https://pre-commit.com/#confining-hooks-to-run-at-certain-stages)
+is a useful future option; this repository retains its existing hook and CI rather
+than adding a second framework. Moving a required check to CI requires verified
+replacement coverage, not simply deleting it from the hook.
+
+Validation: the complete repository hook passed against seven explicitly selected
+paths in an isolated index, preserving the shared index: 59 runner/selector and
+release-reproducer tests in 11.49 seconds, 24 planning checks, staged classification
+and whitespace checks (about 12.4 seconds for dispatched commands). A selected
+Django field-review run passed 14 tests with 3 skips. The source/coverage suite
+was not broadly rerun: this is tooling acceptance, not full application or PostgreSQL
+acceptance. Changes remain in the working tree while the concurrent deployment
+session owns publication; no deployment or activation is established here.
+Next owner: engineering resumes Delivery 1's runnable testing
+site, with targeted fixture optimization when measured integration costs warrant it.
+
 ### Repository review and four-delivery sequence — 2026-09-10
 
 | Field | Evidence / state |
@@ -612,8 +671,8 @@ The pre-commit gate validates exact staged bytes and the staged package catalog.
 Missing/malformed catalogs, unknown or quarantined paths, protected paths, credential
 indicators, unsupported index entries and oversized files fail closed. Deleted
 ordinary source files are accepted without reading absent blobs. Unrelated unstaged
-work is excluded. Catalog checks run with argument arrays, no shell eval, and a
-five-minute timeout. Their execution still uses the working tree, so match evidence
+work is excluded. Catalog checks run with argument arrays and no shell eval; current per-command
+budgets and private diagnostics are described in the 2026-09-11 checkpoint above. Their execution still uses the working tree, so match evidence
 to the delivered inputs under the current operating policy above. Export checks are
 required when that match is unproven, not a duplicate suite for every small edit.
 This is not a full PII detector.
