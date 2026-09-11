@@ -118,12 +118,11 @@
         "tests/test_runtime_contract.py",
         "tests/test_a1_cli_journey.py",
         "tests/test_a1_employee_delivery.py",
-        "scripts/test_document_intake.py"
+        "scripts/test_document_intake.py",
+        "scripts/select_shared_document_portal_checks.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.document_web.test_intake tests.document_web.test_field_review tests.document_web.test_identity_review tests.document_web.test_legacy_reconciliation tests.document_web.test_inbox tests.document_web.test_identity tests.document_web.test_a1_exports tests.document_web.test_a1_cohort_exports tests.document_web.test_a1_input_publication tests.document_web.test_input_bundle_bo tests.document_web.test_a1_drafts tests.document_web.test_a1_generation_access tests.document_web.test_a1_generation_confirmation tests.document_web.test_a1_drafts_postgres tests.document_web.test_a1_exports_postgres tests.document_web.test_identity_postgres tests.m2.test_views tests.m2.test_release1a_vertical tests.m2.test_review_fixes tests.m2.test_j4_delivery tests.test_j4_minimum tests.m2.test_readiness --noinput -v 1",
-        "venv/bin/python -m pytest tests/test_j4_artifacts.py tests/test_runtime_contract.py tests/test_a1_input_artifacts.py -q",
-        "venv/bin/python -m pytest tests/m2/test_synthetic_containment.py -q"
+        "scripts/select_shared_document_portal_checks.py"
       ],
       "dependencies": [
         "shared_document_core",
@@ -220,7 +219,9 @@
     "cli_agent_tooling": {
       "purpose": "Sanitized CLI and agent verification tooling and reports.",
       "paths": ["cli-docs-update/README.md", "cli-docs-update/current-agent-dir-audit.json", "cli-docs-update/current-agent-dir-audit.md", "cli-docs-update/current-verification.json", "cli-docs-update/current-verification.md", "config/cli_verification_claims.schema.json", "docs/operations/agent-tooling-ledger.md", "scripts/verify_cli_claims.py", "scripts/playwright_smoke.py", "scripts/release_verifier.py", "scripts/seed_verification_db.py", "scripts/repair_a1_template_checkboxes.py", "scripts/reset_synthetic_reviewer_password.py", "scripts/smoke_synthetic_review_ui.mjs", "tests/test_verify_cli_claims.py", "tests/test_release_verifier.py", "tests/test_playwright_smoke.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_verify_cli_claims.py -q"],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_verify_cli_claims.py tests/test_release_verifier.py -q"
+      ],
       "dependencies": ["governance_truth"],
       "rollback": "Revert code, schema, tests, and generated reports together."
       ,"intended_commit": "test: reconcile CLI verification tooling"
@@ -258,7 +259,7 @@
     },
     "a1_policy": {
       "purpose": "Fail-closed A1 policy documentation; no real-data operation.",
-      "paths": [".agents/skills/a1-pdf-production/", "readme-employees-to-a1-form.md", "readme-scan-to-employees.md", "tests/test_comprehensive.py"],
+      "paths": [".agents/skills/a1-pdf-production/", "readme-employees-to-a1-form.md", "readme-scan-to-employees.md", "scripts/a1_quality_gate.py", "tests/test_comprehensive.py", "tests/test_a1_quality_gate.py"],
       "checks": ["venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py -q"],
       "dependencies": ["Private CSV seven-field update before regeneration"],
       "rollback": "Revert policy only and preserve existing private outputs."

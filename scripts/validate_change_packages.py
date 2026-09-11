@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shlex
 import sys
 import subprocess
+import time
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
@@ -57,6 +59,40 @@ def matches(path: str, exact_or_dir: str, *, prefix: bool = False) -> bool:
     if exact_or_dir.endswith("/"):
         return path.startswith(exact_or_dir)
     return path == exact_or_dir
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _tail(text: str | None, max_chars: int) -> str:
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return "...[truncated]...\n" + text[-max_chars:]
+
+
+def _per_check_timeout(check: str) -> int:
+    """Per-check timeout proportional to the workload class.
+
+    A `manage.py test` command covering ~24 test files with real OCR
+    and PDF generation routinely needs 5–10 minutes; the previous
+    blanket 300s was insufficient. Fast single-file pytest runs get
+    a much smaller budget so a stuck command is caught quickly.
+
+    ``VALIDATE_CHANGE_PACKAGES_TIMEOUT`` overrides the per-class
+    budget for tests that need a deterministic value (it is the single
+    timeout applied to every check, not a multiplier).
+    """
+    override = os.environ.get("VALIDATE_CHANGE_PACKAGES_TIMEOUT", "").strip()
+    if override.isdigit():
+        return int(override)
+    if "manage.py test" in check:
+        return 900
+    if "pytest tests/" in check and "tests/test_" in check:
+        return 120
+    return 600
 
 
 def load_catalog(path: Path) -> dict:
@@ -209,20 +245,119 @@ def main() -> int:
     except (OSError, ValueError, RuntimeError, KeyError, TypeError):
         print("CHANGE_PACKAGE_VALIDATION_FAILED", file=sys.stderr)
         return 1
+    check_run_receipt = {"started_at": now_iso(),
+                          "finished_at": None,
+                          "checks": []}
     if args.run_checks:
         if not args.staged or status:
             return 1
-        checks = dict.fromkeys(check for receipt in report["package_receipts"]
-                               if receipt["path_count"] for check in receipt["checks"])
-        for check in checks:
+        # Build (package, check, timeout) tuples. Per-check timeout scales
+        # with the command class: a `manage.py test` covering ~24 test
+        # files needs a long budget; a fast pytest run of a single file
+        # does not. The blanket 300s timeout was the cause of the
+        # recent commit-hooks failing without diagnostic detail.
+        selected = []
+        seen = set()
+        for receipt in report["package_receipts"]:
+            if not receipt["path_count"]:
+                continue
+            for check in receipt["checks"]:
+                key = (receipt["package"], check)
+                if key in seen:
+                    continue
+                seen.add(key)
+                selected.append(key)
+
+        # Some checks are dispatch stubs that emit the actual command
+        # list at run time (e.g. ``scripts/select_*.py``). Resolve those
+        # first; an empty list means the package contributes no test
+        # command for the staged set (e.g. doc-only change).
+        resolved = []
+        for package_id, check in selected:
+            if check.startswith("scripts/select_") and check.endswith(".py"):
+                proc = subprocess.run(
+                    [sys.executable, str(root / check)],
+                    cwd=root, check=False, capture_output=True,
+                    text=True, timeout=30,
+                )
+                for line in (proc.stdout or "").splitlines():
+                    line = line.strip()
+                    if line:
+                        resolved.append((package_id, line))
+                if proc.returncode != 0 and not resolved:
+                    check_run_receipt["checks"].append({
+                        "package": package_id,
+                        "check": check,
+                        "command": [sys.executable, str(root / check)],
+                        "timeout_s": 30,
+                        "elapsed_s": 0.0,
+                        "status": "FAIL",
+                        "exit_code": proc.returncode,
+                        "error": (proc.stderr or "").strip()[:2000],
+                        "stdout_tail": "",
+                        "stderr_tail": "",
+                    })
+                    break
+            else:
+                resolved.append((package_id, check))
+
+        for package_id, check in resolved:
+            if not check.strip():
+                # Dispatcher emitted no command (e.g. doc-only change).
+                continue
+            command = shlex.split(check)
             command = shlex.split(check)
             if not command or any(token in {"|", ";", "&&", "||", ">"} for token in command):
+                print(f"ERROR: refused unsafe check command: {check!r}",
+                      file=sys.stderr)
                 return 1
+            budget = _per_check_timeout(check)
+            t0 = time.monotonic()
+            outcome = {"package": package_id, "check": check,
+                       "command": command, "timeout_s": budget,
+                       "elapsed_s": 0.0, "status": "FAIL", "exit_code": None,
+                       "error": None, "stdout_tail": "", "stderr_tail": ""}
             try:
-                subprocess.run(command, cwd=root, check=True, timeout=300)
-            except (OSError, subprocess.SubprocessError):
-                print("PACKAGE_CHECK_FAILED", file=sys.stderr)
-                return 1
+                proc = subprocess.run(command, cwd=root, check=False,
+                                      capture_output=True, text=True, timeout=budget)
+                outcome["exit_code"] = proc.returncode
+                outcome["stdout_tail"] = _tail(proc.stdout, 2000)
+                outcome["stderr_tail"] = _tail(proc.stderr, 2000)
+                outcome["status"] = "PASS" if proc.returncode == 0 else "FAIL"
+            except subprocess.TimeoutExpired as exc:
+                outcome["status"] = "TIMEOUT"
+                outcome["elapsed_s"] = time.monotonic() - t0
+                outcome["error"] = f"timeout after {budget}s"
+                # Capture whatever partial output the subprocess produced
+                # so the failure is not a single opaque TIMEOUT line.
+                if exc.stdout:
+                    if isinstance(exc.stdout, bytes):
+                        exc.stdout = exc.stdout.decode("utf-8", "replace")
+                    outcome["stdout_tail"] = _tail(exc.stdout, 2000)
+                if exc.stderr:
+                    if isinstance(exc.stderr, bytes):
+                        exc.stderr = exc.stderr.decode("utf-8", "replace")
+                    outcome["stderr_tail"] = _tail(exc.stderr, 2000)
+            except (OSError, subprocess.SubprocessError) as exc:
+                outcome["error"] = f"{type(exc).__name__}: {exc}"
+            finally:
+                outcome["elapsed_s"] = round(time.monotonic() - t0, 3)
+            check_run_receipt["checks"].append(outcome)
+            print(f"  [{package_id}] {outcome['status']:7s} "
+                  f"{outcome['elapsed_s']:6.1f}s/{budget}s  {check[:80]}",
+                  file=sys.stderr)
+            if outcome["status"] != "PASS":
+                print(f"PACKAGE_CHECK_FAILED ({outcome['status']}): "
+                      f"{package_id} :: {check}", file=sys.stderr)
+                if outcome["stdout_tail"]:
+                    print(f"--- stdout tail ({package_id}) ---\n"
+                          f"{outcome['stdout_tail']}", file=sys.stderr)
+                if outcome["stderr_tail"]:
+                    print(f"--- stderr tail ({package_id}) ---\n"
+                          f"{outcome['stderr_tail']}", file=sys.stderr)
+                break
+        check_run_receipt["finished_at"] = now_iso()
+    report["check_run"] = check_run_receipt
     rendered = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         output = args.output if args.output.is_absolute() else root / args.output
@@ -235,6 +370,11 @@ def main() -> int:
               f"eligible={report['eligible_path_count']} quarantined={report['quarantined_path_count']}")
         for problem in report["problems"]:
             print(f"ERROR: {problem}")
+    if args.run_checks and check_run_receipt["checks"]:
+        # Report even on failure; gate exit on the actual outcome.
+        any_failed = any(c["status"] != "PASS" for c in check_run_receipt["checks"])
+        if any_failed and not report["problems"]:
+            return 1
     return status
 
 

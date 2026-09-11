@@ -237,3 +237,184 @@ def test_credential_scanner_checks_committed_bytes_without_values(tmp_path):
     assert result.returncode == 1
     assert 'CREDENTIAL_SIGNATURE' in result.stdout
     assert secret not in result.stdout + result.stderr
+
+
+# ------------------------------------------------------------------
+# Runner: per-check timing, distinct timeout/failure, report retention
+# ------------------------------------------------------------------
+
+def test_runner_records_per_check_timing_and_outcome(tmp_path):
+    """The runner records one outcome per check with elapsed time and
+    distinguishes PASS / FAIL / TIMEOUT. The JSON report survives even
+    on failure so the cause is reproducible from the catalog alone.
+    """
+    import sys
+    root, catalog = staged_repo(tmp_path)
+    data = json.loads(catalog.read_text())
+    data['packages']['safe']['checks'] = [
+        f"{sys.executable} -c \"import time; time.sleep(0.2); print('ok')\"",
+    ]
+    catalog.write_text(json.dumps(data))
+    run(root, 'add', 'change-packages.yml')
+    script = Path(__file__).resolve().parents[1] / 'scripts/validate_change_packages.py'
+    output = root / 'report.json'
+    result = subprocess.run(
+        [sys.executable, str(script), '--root', str(root),
+         '--staged', '--run-checks', '--output', str(output)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0
+    report = json.loads(output.read_text())
+    receipt = report['check_run']
+    assert receipt['started_at']
+    assert receipt['finished_at']
+    assert len(receipt['checks']) == 1
+    check = receipt['checks'][0]
+    assert check['package'] == 'safe'
+    assert check['status'] == 'PASS'
+    assert check['elapsed_s'] >= 0.1
+    assert check['exit_code'] == 0
+    assert 'timeout_s' in check
+
+
+def test_runner_timeout_is_distinguished_from_test_failure(tmp_path):
+    """A check that exceeds its per-check budget reports status='TIMEOUT'
+    and keeps partial stdout/stderr so the failure is reproducible.
+
+    The runner honours the ``VALIDATE_CHANGE_PACKAGES_TIMEOUT`` env var
+    to override the per-class budget; the test sets it to 1 second
+    and runs a 5-second sleep, which must time out.
+    """
+    import sys
+    root, catalog = staged_repo(tmp_path)
+    data = json.loads(catalog.read_text())
+    sleep_check = f"{sys.executable} -c \"import time; time.sleep(5); print('late')\""
+    data['packages']['safe']['checks'] = [sleep_check]
+    catalog.write_text(json.dumps(data))
+    run(root, 'add', 'change-packages.yml')
+    script = Path(__file__).resolve().parents[1] / 'scripts/validate_change_packages.py'
+    output = root / 'report.json'
+    result = subprocess.run(
+        [sys.executable, str(script), '--root', str(root),
+         '--staged', '--run-checks', '--output', str(output)],
+        capture_output=True, text=True,
+        env={**os.environ, "VALIDATE_CHANGE_PACKAGES_TIMEOUT": "1"},
+    )
+    assert result.returncode == 1
+    assert 'PACKAGE_CHECK_FAILED (TIMEOUT)' in result.stderr
+    report = json.loads(output.read_text())
+    receipt = report['check_run']
+    assert len(receipt['checks']) == 1
+    check = receipt['checks'][0]
+    assert check['status'] == 'TIMEOUT'
+    assert check['error'] is not None
+    assert 'timeout after 1s' in check['error']
+
+
+def test_runner_writes_report_even_on_failure(tmp_path):
+    """The runner writes the JSON report before returning on failure so
+    the catalog + report together prove what was checked and how."""
+    import sys
+    root, catalog = staged_repo(tmp_path)
+    data = json.loads(catalog.read_text())
+    data['packages']['safe']['checks'] = [f"{sys.executable} -c \"import sys; sys.exit(3)\""]
+    catalog.write_text(json.dumps(data))
+    run(root, 'add', 'change-packages.yml')
+    script = Path(__file__).resolve().parents[1] / 'scripts/validate_change_packages.py'
+    output = root / 'report.json'
+    result = subprocess.run(
+        [sys.executable, str(script), '--root', str(root),
+         '--staged', '--run-checks', '--output', str(output)],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 1
+    # The report must still be written and contain the failure.
+    assert output.exists()
+    report = json.loads(output.read_text())
+    assert report['check_run']['checks'][0]['status'] == 'FAIL'
+    assert report['check_run']['checks'][0]['exit_code'] == 3
+
+
+def test_runner_per_check_timeout_scales_with_command_class():
+    """The runner's per-check timeout is proportional to the workload:
+    `manage.py test` covering many test files gets a long budget; a
+    single pytest file gets a small one. This prevents the previous
+    blanket 300s from timing out a 5-minute broad suite while still
+    catching a stuck pytest command quickly."""
+    from scripts.validate_change_packages import _per_check_timeout
+    assert _per_check_timeout("manage.py test ...") >= 600
+    assert _per_check_timeout("pytest tests/test_a.py") <= 300
+    assert _per_check_timeout("pytest tests/test_a.py") < _per_check_timeout("manage.py test ...")
+
+
+# ------------------------------------------------------------------
+# Dispatcher: select_shared_document_portal_checks.py
+# ------------------------------------------------------------------
+
+def test_dispatch_selects_narrow_test_for_test_only_change():
+    """Editing a single test file must select only that file, not the
+    broad 24-test-file suite. This is the change that previously
+    caused the pre-commit hook to time out."""
+    from scripts.select_shared_document_portal_checks import select
+    cmds = select(["tests/test_a1_employee_delivery.py"])
+    assert len(cmds) == 1
+    assert "tests/test_a1_employee_delivery.py" in cmds[0]
+    assert "manage.py test" not in cmds[0]
+    assert "pytest" in cmds[0]
+
+
+def test_dispatch_selects_no_command_for_doc_only_change():
+    """Documentation changes must not trigger a test run."""
+    from scripts.select_shared_document_portal_checks import select
+    cmds = select(["docs/operations/wsgi-deployment-recipe.md"])
+    assert cmds == []
+
+
+def test_dispatch_selects_no_command_for_empty_staged_set():
+    """An empty staged set returns no commands; the runner skips the
+    empty case rather than running a wide smoke."""
+    from scripts.select_shared_document_portal_checks import select
+    assert select([]) == []
+
+
+def test_dispatch_falls_back_to_broad_suite_for_source_change():
+    """Source changes under portal/release1a/ fall back to the broad
+    24-test-file suite because the change can affect authorization,
+    storage, rendering or migrations spanning the whole portal."""
+    from scripts.select_shared_document_portal_checks import select
+    cmds = select(["portal/release1a/intake_views.py"])
+    assert len(cmds) == 1
+    assert "manage.py test" in cmds[0]
+
+
+def test_dispatch_falls_back_to_broad_suite_for_migration_change():
+    from scripts.select_shared_document_portal_checks import select
+    cmds = select(["portal/release1a/migrations/0019_worker_legacy_key.py"])
+    assert len(cmds) == 1
+    assert "manage.py test" in cmds[0]
+
+
+def test_dispatch_handles_multiple_test_files():
+    from scripts.select_shared_document_portal_checks import select
+    cmds = select([
+        "tests/test_a1_employee_delivery.py",
+        "tests/test_wsgi_asgi.py",
+    ])
+    assert len(cmds) == 1
+    assert "tests/test_a1_employee_delivery.py" in cmds[0]
+    assert "tests/test_wsgi_asgi.py" in cmds[0]
+
+
+def test_dispatch_via_cli_matches_in_process_select():
+    """The CLI invocation must emit the same commands as the in-process
+    function so the catalog behavior is reproducible from either path."""
+    import subprocess, sys
+    script = Path(__file__).resolve().parents[1] / \
+        'scripts/select_shared_document_portal_checks.py'
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        capture_output=True, text=True, cwd=Path(__file__).resolve().parents[1],
+    )
+    # With no staged paths the CLI emits nothing; that is the empty
+    # case. We only assert it does not crash and respects the contract.
+    assert result.returncode == 0

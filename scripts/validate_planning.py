@@ -147,6 +147,8 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/templates/portal/a1_list.html",
     "portal/templates/portal/a1_generation_confirm.html",
     "scripts/a1_core.py",
+    "scripts/a1_quality_gate.py",
+    "scripts/a1_audit.py",
     "scripts/finalize_a1.py",
     "scripts/generate_provisional_a1.py",
     "portal/release1a/inbox.py",
