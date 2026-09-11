@@ -743,11 +743,13 @@ cmd_workflow() {
         echo "FAIL: gunicorn is not running. Run 'start' first." >&2
         exit 1
     fi
+    cd "$REPO_ROOT"
     local hostport="$BIND"
     local journey_tmp="$RUNTIME_ROOT/tmp/workflow-$$"
     mkdir -p "$journey_tmp"
     chmod 700 "$journey_tmp"
     local rc=0
+    PYTHONPATH="$REPO_ROOT:$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
     "$PYTHON_BIN" "$REPO_ROOT/tests/_rehearse_workflow_browser.py" \
         --base-url "http://$hostport" \
         --runtime-root "$RUNTIME_ROOT" \

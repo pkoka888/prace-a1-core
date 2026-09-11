@@ -792,3 +792,29 @@ Each finding is now fixed with a test or a documented contract.
 | Activation | Unchanged; `settings.M2_SYNTHETIC_ONLY` remains `True`; the supervised settings module still refuses the base default secret and still requires `PRACE_RUNTIME_ROOT` under `runtime/portal/supervised-*`; `intake` continues to refuse non-synthetic configuration. Real-data activation requires REV-003 per existing gates. |
 | Limitations | The real-browser journey uses the sparse synthetic OP card and worker so the OCR confirm stage and the application-draft artifact stage are recorded as documented skips, not failures; the dedicated `tests/document_web` cohort suite exercises the full A1 contract on a complete input row. PostgreSQL acceptance remains separate until an authorized scoped target is available; the lifecycle test runs against SQLite. |
 | Next owner | Engineering: full PostgreSQL acceptance against an authorized scoped target; then Delivery 2 (usable v1 workflow) and Delivery 3 (restricted production pilot). |
+
+### `rehearse_synthetic_site.sh workflow` standalone fix — 2026-09-11
+
+The previous Delivery-1 entry claimed the `workflow` subcommand was
+implemented; `bash scripts/rehearse_synthetic_site.sh workflow` actually
+exited 1 with `No module named 'tests'` because the shell-level
+invocation did not set `PYTHONPATH` (the browser helper imports
+`tests.test_document_core.helpers`) or `cwd` to the repo root (the
+test selector scripts rely on it). The pytest test ran fine because
+`pytest.ini` adds the repo root to `sys.path`; the standalone
+subcommand did not.
+
+The `cmd_workflow` body now `cd`s to `$REPO_ROOT` and exports
+`PYTHONPATH="$REPO_ROOT:$REPO_ROOT/src"` before invoking the helper,
+so the subcommand matches the documented exit-code table and the
+canonical browser journey contract.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | `cmd_workflow` in `scripts/rehearse_synthetic_site.sh` adds `cd "$REPO_ROOT"` and `PYTHONPATH="$REPO_ROOT:$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"` before invoking `tests/_rehearse_workflow_browser.py`. No source or test changes; only the shell entrypoint. |
+| Validation | Direct reproduction: `bash scripts/rehearse_synthetic_site.sh prepare && bash scripts/rehearse_synthetic_site.sh provision && bash scripts/rehearse_synthetic_site.sh start && bash scripts/rehearse_synthetic_site.sh workflow` now completes in ~36 s with all critical stages (`login_redirect`, `login_authenticated`, `totp_completed`, `worker_created`, `document_uploaded`, `document_associated`, `assignment_created`, `a1_prepared`, `a1_case_detail_visible`) reporting `ok: true`. The full focused suite (`tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_validate_change_packages.py tests/test_release_reproducer.py`) still passes 81 tests in ~178 s; `validate_planning.py` passes 24/24; `bash -n` passes. `bash scripts/rehearse_synthetic_site.sh stop && start` followed by a query-after-restart against the supervised SQLite still confirms `Worker.objects.filter(pk=...).exists()` and `A1Case.objects.filter(pk=...).exists()`. The recipe (`docs/operations/wsgi-deployment-recipe.md`) now documents `workflow` as the Delivery-1 acceptance subcommand and explicitly notes that the previous "missing a TLS proxy" claim is no longer correct for the local rehearsal (Chromium treats loopback as potentially-trustworthy, so Secure cookies work over plain HTTP). |
+| Publication | Local working tree; push to `origin/feat/prace-readiness-plan-2026-08-13` follows AGENTS.md authorization. No protected paths staged; no secrets/PII in diffs; staging restricted to the listed non-PII path set |
+| Deployment | None; isolated `runtime/portal/supervised-jan-r1-*` synthetic roots only. No operator-owned service, host database, real-data activation, public release or new remote |
+| Activation | Unchanged; `settings.M2_SYNTHETIC_ONLY` remains `True`; the supervised settings module still refuses the base default secret and still requires `PRACE_RUNTIME_ROOT` under `runtime/portal/supervised-*`; `intake` continues to refuse non-synthetic configuration. Real-data activation requires REV-003 per existing gates |
+| Limitations | The browser journey still uses the sparse synthetic OP card and worker so the OCR-confirm stage and the application-draft artifact stage are recorded as documented skip paths, not failures; the dedicated `tests/document_web` cohort suite exercises the full A1 contract on a complete input row. PostgreSQL acceptance remains separate until an authorized scoped target is available; the lifecycle test runs against SQLite |
+| Next owner | Engineering: full PostgreSQL acceptance against an authorized scoped target; then Delivery 2 (usable v1 workflow) and Delivery 3 (restricted production pilot). |

@@ -101,11 +101,14 @@ and confined (mode 0600).
 `scripts/rehearse_synthetic_site.sh` exercises the full supervised-synthetic
 lifecycle without touching real data or operator-owned services. It is the
 canonical entrypoint for the bounded integration tests in
-`tests/test_rehearse_synthetic_site_lifecycle.py` (anonymous HTTP) and
-`tests/test_rehearse_workflow.py` (end-to-end data path). The bounded
-negative fixtures for F1 (wrong-server / stopped-server smoke
-failures), F2 (child symlink before mkdir/chmod), and F8 (umask-022
-file modes) live in `tests/test_rehearse_synthetic_site.py`.
+`tests/test_rehearse_synthetic_site_lifecycle.py` (anonymous HTTP),
+`tests/_rehearse_workflow_browser.py` (real Chromium authenticated
+journey against the running gunicorn) and
+`tests/test_rehearse_workflow.py` (which drives the same journey as a
+pytest case plus the restart-survival query). The bounded negative
+fixtures for F1 (wrong-server / stopped-server smoke failures), F2
+(child symlink before mkdir/chmod), and F8 (umask-022 file modes) live
+in `tests/test_rehearse_synthetic_site.py`.
 
 ```bash
 # 1. Confine-validate, mkdir, write the manifest, migrate, collectstatic.
@@ -130,7 +133,14 @@ bash scripts/rehearse_synthetic_site.sh start
 #    external-host redirects all fail.
 bash scripts/rehearse_synthetic_site.sh smoke
 
-# 5. Graceful stop. Verifies PID ownership before SIGTERM.
+# 5. Real-browser authenticated journey against gunicorn. Drives a
+#    headless Chromium through the natural allauth login + TOTP
+#    challenge, worker creation, document upload, document association,
+#    OCR, assignment, and A1 preparation. Exit 0 on every documented
+#    stage; exit 7 on a journey failure.
+bash scripts/rehearse_synthetic_site.sh workflow
+
+# 6. Graceful stop. Verifies PID ownership before SIGTERM.
 bash scripts/rehearse_synthetic_site.sh stop
 
 # Rollback stops the server; the operator removes the runtime root
@@ -143,11 +153,40 @@ is what the cheap unit tests use. The bounded lifecycle test exercises
 the real gunicorn path and proves the smoke contract now catches
 HTTP-500, no-server, a stale-pidfile scenario, and the same-origin
 redirect contract. The workflow test (`tests/test_rehearse_workflow.py`)
-covers prepare + provision + start + real HTTP against gunicorn +
-worker + assignment + A1 case (the data path via
-`portal.release1a.services`) + sparse-data blocked only on the
-rendering operation (`reserve_application_draft`) + records surviving
-restart + stop.
+covers prepare + provision + start + a real headless Chromium browser
+journey against gunicorn (login + TOTP + worker + document upload +
+document association + OCR + assignment + A1 preparation) + stop +
+restart + query-after-restart + stop. The browser journey uses the
+operator's session cookies through the natural allauth login form and
+TOTP challenge — no service-side shortcut, no helper-side membership
+widening. Sparse-input stages (OCR confirm when no proposals exist;
+PDF download when the 44-field A1 contract is incomplete) are recorded
+as documented skip paths, not failures. Restart-survival of the
+synthetic record set is verified by stopping gunicorn, restarting it,
+and querying the supervised-synthetic database for the worker and case
+captured during the journey.
+
+The `workflow` subcommand is implemented as a real entrypoint and is
+the documented Delivery-1 acceptance path:
+
+```bash
+# After prepare + provision + start:
+bash scripts/rehearse_synthetic_site.sh workflow
+# Exit 0 on every documented stage; exit 7 on a journey failure.
+```
+
+The same journey is exposed as a pytest test
+(`tests/test_rehearse_workflow.py`); the standalone subcommand and
+the pytest test exercise identical paths through the real Chromium
+journey script (`tests/_rehearse_workflow_browser.py`).
+
+Playwright + Chromium are usable on loopback: Secure cookies over
+plain HTTP are accepted because Chromium treats loopback as
+potentially-trustworthy. The earlier "missing a TLS proxy" claim was
+investigated and is no longer correct for the local rehearsal; a
+TLS-terminating proxy is not a prerequisite for the synthetic browser
+journey. PostgreSQL acceptance remains separate until an authorized
+scoped target is available; the lifecycle test runs against SQLite.
 
 ## Distinguishing this synthetic hosting configuration from real-data
 
