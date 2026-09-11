@@ -88,12 +88,48 @@ and confined (mode 0600).
 * `django-q2` is installed but `Q_CLUSTER` is intentionally not configured;
   background jobs continue to run inline or as separate processes. Queue
   dispatch is Delivery-3 work.
-* No automated test exercises a real gunicorn/uwsgi process against this
-  WSGI entrypoint. The contract test (`tests/test_wsgi_asgi.py`) verifies
-  the entrypoint imports and the Django test client serves expected routes.
+* The synthetic SQLite database at `<runtime-root>/db.sqlite3` is operator-
+  owned; the rehearsal lifecycle test (see below) prepares and tears down
+  isolated roots under `runtime/portal/supervised-lifecycle-*`; production
+  rehearsal roots must live outside the repository to avoid staging.
 * Real-data activation is not enabled by importing the WSGI/ASGI module.
   `settings.M2_SYNTHETIC_ONLY` remains `True`; intake refuses non-synthetic
   configuration.
+
+## Rehearsal lifecycle (Delivery-1 testing site)
+
+`scripts/rehearse_synthetic_site.sh` exercises the full supervised-synthetic
+lifecycle without touching real data or operator-owned services. It is the
+canonical entrypoint for the bounded integration test in
+`tests/test_rehearse_synthetic_site_lifecycle.py`.
+
+```bash
+# 1. Confine-validate, mkdir, write the manifest, migrate, collectstatic.
+bash scripts/rehearse_synthetic_site.sh prepare
+
+# 2. Launch gunicorn against the supervised settings module. The
+#    script asserts the bind is free, launches gunicorn with --pid,
+#    waits for /health/ to return 200 with our manifest's commit, and
+#    records the launch identity so stop can refuse wrong PIDs.
+bash scripts/rehearse_synthetic_site.sh start
+
+# 3. Strict smoke: /health/, /login/, /accounts/login/, /review/,
+#    /readiness/, and the static assets actually shipped
+#    (htmx-1.9.10.min.js, tailwind-2.2.19.min.css). 000/500/404 all fail.
+bash scripts/rehearse_synthetic_site.sh smoke
+
+# 4. Graceful stop. Verifies PID ownership before SIGTERM.
+bash scripts/rehearse_synthetic_site.sh stop
+
+# Rollback stops the server; the operator removes the runtime root
+# manually after inspection.
+bash scripts/rehearse_synthetic_site.sh rollback
+```
+
+The `prepare-manifest-only` subcommand skips migrate/collectstatic and
+is what the cheap unit tests use. The bounded lifecycle test exercises
+the real gunicorn path and proves the smoke contract now catches
+HTTP-500, no-server, and a stale-pidfile scenario.
 
 ## Distinguishing this synthetic hosting configuration from real-data
 

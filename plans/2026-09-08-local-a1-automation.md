@@ -21,7 +21,7 @@ delivery" shows what each piece currently satisfies.
 
 | Delivery | What Jan receives | This plan contributes |
 |---|---|---|
-| **1. Integrated testing site** | Stable private URL, individual login, persistent PostgreSQL database, existing frontend/backend wired together | Implemented: J2 intake, BO entry, drafts, generation access, visual confirmation. Wiring (WSGI entrypoint, persistent DB, login, URL hosting) is the active next step. |
+| **1. Integrated testing site** | Stable private URL, individual login, persistent PostgreSQL database, existing frontend/backend wired together | Implemented: J2 intake, BO entry, drafts, generation access, visual confirmation, WSGI/ASGI entrypoints, supervised-synthetic settings, gunicorn + WhiteNoise + confined runtime, `scripts/rehearse_synthetic_site.sh` lifecycle. Persistent PostgreSQL DB and individual authenticated login are the active next step. |
 | **2. Usable v1 workflow** | Clear missing-data messages, retry controls, working downloads, concise Czech instructions and a known-limitations list | In scope: missing-data messages, retry, correction, regeneration, downloads. Existing BO confirmation + retry + draft-recovery covers most of this; UI strings and known-limitations note are the active gap. |
 | **3. Restricted production pilot** | Same app configured for Jan's approved organization and real records | Deferred to Delivery 3 by design; this plan's components are reusable. Production settings module and queue dispatch are the implementation gap, not strategy. |
 | **4. Later releases (1B+)** | Additional fields, richer queues, reporting, partner access | Out of scope for this plan; tracked elsewhere. |

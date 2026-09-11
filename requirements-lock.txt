@@ -12,6 +12,7 @@ django-picklefield==3.4.0
 django-q2==1.11.0
 fido2==2.2.1
 flatbuffers==25.12.19
+gunicorn==23.0.0
 idna==3.19
 iniconfig==2.3.0
 jsonschema==4.26.0
@@ -44,3 +45,4 @@ six==1.17.0
 sqlparse==0.6.0
 tqdm==4.70.0
 urllib3==2.7.0
+whitenoise==6.12.0

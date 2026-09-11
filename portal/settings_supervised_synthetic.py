@@ -162,6 +162,26 @@ SECRET_KEY = _secret
 ALLOWED_HOSTS = _allowed_hosts
 CSRF_TRUSTED_ORIGINS = _trusted_origins
 
+# WhiteNoise serves static assets for gunicorn + DEBUG=False. The
+# synthetic M2 base uses DEBUG=True with runserver's auto-serve, so
+# the base MIDDLEWARE does not include WhiteNoise. Here we replace
+# the base MIDDLEWARE with one that includes WhiteNoise right after
+# SecurityMiddleware so the login form's CSS/JS render in the
+# rehearsal without requiring a reverse proxy.
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+# WhiteNoise uses the default staticfiles storage; no need to switch to
+# the compressed manifest backend in the supervised deployment.
+
 PRACE_RUNTIME_ROOT = _runtime_root
 PRACE_RELEASE_MANIFEST = _manifest
 PRACE_RELEASE_MANIFEST_PATH = _manifest_path

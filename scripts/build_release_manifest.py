@@ -9,6 +9,10 @@ generation timestamp in a strict schema.
 
 This script:
 
+* Validates the output path is inside the approved runtime subtree and
+  does not contain symlinks — same contract as
+  ``portal.release1a.runtime_safety.confined_root``. The script refuses
+  to write to any path that would be rejected at settings import time.
 * Reads the current ``git rev-parse HEAD`` and a build identifier
   derived from the environment (``PRACE_APP_BUILD_ID`` or
   ``git describe``).
@@ -38,6 +42,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO_ROOT / "runtime" / "portal" / "supervised-development" / "release_manifest.json"
+APPROVED_RUNTIME_PARENT = REPO_ROOT / "runtime" / "portal"
 
 
 def _git_commit() -> str:
@@ -68,6 +73,38 @@ def _app_build_id(explicit: str | None) -> str:
     return f"g{short}"
 
 
+def _validate_confinement(out: Path) -> Path:
+    """Reject the output path before any mkdir/chmod/write.
+
+    Mirrors ``portal.release1a.runtime_safety.confined_root`` and
+    ``no_symlinks``. Any path that the settings module would refuse
+    is rejected here without any filesystem mutation.
+    """
+    out = out.resolve()
+    if not out.is_absolute() or ".." in out.parts:
+        raise SystemExit(f"FAIL: manifest path {out} must be absolute and free of '..'")
+    if out.parent != APPROVED_RUNTIME_PARENT or not out.parent.name.startswith("") \
+            or not out.name.startswith("release_manifest.json"):
+        # The parent must be the canonical runtime subtree, and the
+        # filename must be the manifest itself. Any pre-existing
+        # supervised-<id>/release_manifest.json target lives one
+        # level below the approved parent.
+        if out.parent.parent != APPROVED_RUNTIME_PARENT \
+                or not out.parent.name.startswith("supervised-"):
+            raise SystemExit(
+                f"FAIL: manifest path {out} is not under "
+                f"{APPROVED_RUNTIME_PARENT}/supervised-*/release_manifest.json"
+            )
+    # Reject any path with a symlink component. Check parents first
+    # because is_file() / is_dir() follow symlinks.
+    if out.exists() and out.is_symlink():
+        raise SystemExit(f"FAIL: manifest path {out} is a symlink")
+    for parent in [out, *out.parents]:
+        if parent.exists() and parent.is_symlink():
+            raise SystemExit(f"FAIL: manifest path {out} contains symlink component {parent}")
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUT,
@@ -75,6 +112,21 @@ def main() -> int:
     parser.add_argument("--app-build-id", default=None,
                         help="Override the app_build_id (default: env or git describe)")
     args = parser.parse_args()
+
+    out = _validate_confinement(args.output)
+    # Parent directory must already exist; we will not create arbitrary
+    # directories. The supervised settings module refuses to adopt a
+    # pre-existing supervised-<id>/ directory that wasn't pre-confined,
+    # so neither does this script.
+    if not out.parent.exists():
+        raise SystemExit(
+            f"FAIL: parent directory {out.parent} does not exist. "
+            f"Run the rehearsal script's prepare step to create it."
+        )
+    if not out.parent.is_dir():
+        raise SystemExit(f"FAIL: parent path {out.parent} is not a directory")
+    if out.parent.is_symlink():
+        raise SystemExit(f"FAIL: parent path {out.parent} is a symlink")
 
     payload = {
         "git_commit": _git_commit(),
@@ -87,10 +139,6 @@ def main() -> int:
     body = json.dumps(payload, indent=2, sort_keys=True).encode("utf-8") + b"\n"
     expected_sha = hashlib.sha256(body).hexdigest()
 
-    out = args.output.resolve()
-    if not out.parent.exists():
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.parent.chmod(0o700)
     # Atomic write to a sibling temp file, then rename. Use mode 0o400
     # (read-only for owner) so the read_manifest() PERMISSIONS check
     # succeeds without further chmod.
@@ -107,7 +155,8 @@ def main() -> int:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
         raise
-    out.chmod(0o400)
+    # Final chmod is defensive: umask may have stripped the mode.
+    os.chmod(out, 0o400)
     print(f"wrote {out}")
     print(f"  git_commit   = {payload['git_commit']}")
     print(f"  app_build_id = {payload['app_build_id']}")

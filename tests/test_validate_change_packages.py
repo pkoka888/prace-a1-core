@@ -472,6 +472,39 @@ def test_standalone_selector_filters_mixed_index_in_requested_root(tmp_path):
     assert "manage.py" not in result.stdout
 
 
+def test_standalone_selector_routes_browser_test_to_playwright_entrypoint(tmp_path):
+    """The browser journey test must NOT be selected under
+    settings_document_tests (the previous selection silently skipped
+    the test with no executed browser coverage). The selector must
+    route it to scripts/playwright_smoke.py with the
+    settings_browser_tests module.
+    """
+    import sys
+    root = repo(tmp_path)
+    (root / "tests").mkdir()
+    (root / "tests" / "document_web").mkdir(parents=True)
+    (root / "tests/document_web/test_browser_journey.py").write_text(
+        "def test_browser_journey(): pass"
+    )
+    write_catalog(root, {
+        "shared_document_portal": package(["tests/document_web/test_browser_journey.py"]),
+    })
+    run(root, "add", "tests/document_web/test_browser_journey.py")
+    script = Path(__file__).resolve().parents[1] / "scripts/select_shared_document_portal_checks.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--root", str(root),
+         "--paths-json", json.dumps(["tests/document_web/test_browser_journey.py"])],
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    out = result.stdout
+    # The browser journey must be invoked via the isolated entrypoint.
+    assert "playwright_smoke.py" in out
+    assert "settings_browser_tests" in out
+    # It must not be routed via manage.py test (which would silently skip).
+    assert "manage.py test tests.document_web.test_browser_journey" not in out
+
+
 def runner_repo(tmp_path, checks, selector_code=None):
     """Exercise the real CLI and dispatcher protocol in an isolated Git index."""
     root, catalog = staged_repo(tmp_path)

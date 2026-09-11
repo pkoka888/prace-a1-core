@@ -14,6 +14,7 @@ django-q2==1.11.0
 psycopg[binary]==3.3.4
 cryptography==50.0.0
 gunicorn==23.0.0
+whitenoise==6.12.0
 
 # Scan/OCR workflow. Keep local-first; external model use is optional and policy-gated.
 rapidocr==3.9.2

@@ -25,6 +25,16 @@ MANAGE_PY = (
     "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests "
     "venv/bin/python manage.py test"
 )
+# Browser journey is a real-browser test that requires a different
+# settings module and Playwright/Chromium to be installed. The
+# isolated entrypoint is scripts/playwright_smoke.py.
+BROWSER_TESTS = {
+    "tests/document_web/test_browser_journey.py",
+}
+BROWSER_PY = (
+    "env DJANGO_SETTINGS_MODULE=portal.settings_browser_tests "
+    "venv/bin/python scripts/playwright_smoke.py"
+)
 PURE_INTEGRATION_TESTS = {
     "tests/test_j4_artifacts.py", "tests/test_runtime_contract.py",
     "tests/test_a1_input_artifacts.py", "tests/m2/test_synthetic_containment.py",
@@ -49,6 +59,7 @@ def django_test(path: str) -> bool:
 def select(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
     django_routes: set[str] = set()
     pytest_routes: set[str] = set()
+    browser_routes: set[str] = set()
     needs_broad = False
     for path in paths:
         # Documentation outside application templates has no runtime behavior.
@@ -57,7 +68,9 @@ def select(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
         candidate = root / path
         if (path.startswith("tests/") and candidate.name.startswith("test_")
                 and candidate.suffix == ".py" and candidate.is_file()):
-            if django_test(path):
+            if path in BROWSER_TESTS:
+                browser_routes.add(path)
+            elif django_test(path):
                 django_routes.add(path[:-3].replace("/", "."))
             else:
                 pytest_routes.add(path)
@@ -75,6 +88,12 @@ def select(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
         commands.append(f"{MANAGE_PY} " + shlex.join(sorted(django_routes)) + " --noinput -v 1")
     if pytest_routes:
         commands.append(f"{PYTEST_BASE} -q " + shlex.join(sorted(pytest_routes)))
+    if browser_routes:
+        # Browser tests run via their isolated entrypoint so the
+        # current settings module matches the test (settings_browser_tests)
+        # and unavailable browsers are reported as a separate exit
+        # rather than masked by an all-skipped run.
+        commands.append(BROWSER_PY)
     return commands
 
 
