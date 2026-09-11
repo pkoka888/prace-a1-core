@@ -38,20 +38,40 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def _bounded_request(url: str, host_header: str, method: str = "GET",
                     connect_timeout: float = 2.0, read_timeout: float = 5.0):
-    """One bounded request. Returns (status, headers, body, content_type).
+    """One bounded request. Returns (status, headers, body).
 
-    No automatic redirect follow; no cookie jar. Read timeout applies
-    to the body read; connect timeout applies to the TCP connect.
+    No automatic redirect follow; no cookie jar. ``read_timeout`` is the
+    overall request deadline: TCP connect plus response body read must
+    both finish within the budget. ``connect_timeout`` is the TCP connect
+    ceiling; urllib's ``timeout`` parameter covers connect+read, so we
+    enforce the overall budget with a wall-clock deadline check below.
+
+    The configured ``Host`` header and ``method`` are honored by sending
+    the ``Request`` object to the opener (the prior implementation
+    discarded it, which silently rewrote ``Host`` and turned ``HEAD``
+    into ``GET``).
     """
+    import time as _time
     request = urllib.request.Request(url, method=method)
     request.add_header("Host", host_header)
     opener = urllib.request.build_opener(
         NoRedirect,
         urllib.request.ProxyHandler({}),
     )
+    deadline = _time.monotonic() + read_timeout
     try:
-        response = opener.open(url, timeout=read_timeout)
-        raw = response.read(1_000_000)
+        # Pass the Request object, not the URL string — the URL string
+        # drops both the configured method and the Host header. The
+        # connect+read deadline is the same single timeout argument.
+        response = opener.open(request, timeout=read_timeout)
+        remaining = max(0.0, deadline - _time.monotonic())
+        if remaining <= 0:
+            raise TimeoutError(
+                f"connect exceeded {read_timeout:.1f}s budget")
+        raw = response.read(1_000_000) if hasattr(response, "read") else b""
+        if _time.monotonic() > deadline:
+            raise TimeoutError(
+                f"body read exceeded {read_timeout:.1f}s budget")
         status = response.status
         headers = response.headers
     except urllib.error.HTTPError as exc:

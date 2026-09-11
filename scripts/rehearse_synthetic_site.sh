@@ -724,6 +724,41 @@ sys.exit(0 if ok else 6)
 ' || exit 6
 }
 
+# Workflow: real browser journey through the running gunicorn. Requires
+# provision to have written operator.json with email/password/TOTP and
+# start to have launched the server. The journey script is the documented
+# Delivery-1 acceptance path: login + TOTP -> worker -> document upload
+# -> OCR -> assignment -> A1 draft -> PDF download. It exits 7 on any
+# journey failure (matching the documented exit-code table above).
+cmd_workflow() {
+    step "Workflow: real-browser authenticated journey"
+    ensure_runtime_root
+    ensure_env
+    require_executable "$PYTHON_BIN"
+    if [ ! -f "$RUNTIME_ROOT/operator.json" ]; then
+        echo "FAIL: $RUNTIME_ROOT/operator.json missing. Run 'provision' first." >&2
+        exit 1
+    fi
+    if [ ! -f "$PIDFILE" ] || ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        echo "FAIL: gunicorn is not running. Run 'start' first." >&2
+        exit 1
+    fi
+    local hostport="$BIND"
+    local journey_tmp="$RUNTIME_ROOT/tmp/workflow-$$"
+    mkdir -p "$journey_tmp"
+    chmod 700 "$journey_tmp"
+    local rc=0
+    "$PYTHON_BIN" "$REPO_ROOT/tests/_rehearse_workflow_browser.py" \
+        --base-url "http://$hostport" \
+        --runtime-root "$RUNTIME_ROOT" \
+        --tmpdir "$journey_tmp" || rc=$?
+    if [ "$rc" != "0" ]; then
+        echo "FAIL: workflow journey exited with $rc" >&2
+        exit 7
+    fi
+    echo "OK: real-browser journey completed"
+}
+
 # Synthetic operator + organization + MFA workflow. The first
 # operator is provisioned idempotently (email + username derived
 # from PRACE_OPERATOR_EMAIL, default synthetic-only), the
@@ -794,6 +829,7 @@ main() {
         logs)                 cmd_logs "$@" ;;
         smoke)                cmd_smoke "$@" ;;
         provision)            cmd_provision "$@" ;;
+        workflow)             cmd_workflow "$@" ;;
         rollback)             cmd_rollback "$@" ;;
         *)                    usage >&2; exit 1 ;;
     esac

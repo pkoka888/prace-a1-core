@@ -266,8 +266,8 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
-      "paths": ["change-packages.yml", "requirements.txt", "requirements-dev.txt", "requirements-lock.txt", "scripts/pre-commit", "scripts/validate_change_packages.py", "scripts/select_shared_document_portal_checks.py", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "tests/test_rehearse_synthetic_site.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "docs/operations/git-delivery.md", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_rehearse_synthetic_site.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json"],
+      "paths": ["change-packages.yml", "requirements.txt", "requirements-dev.txt", "requirements-lock.txt", "scripts/pre-commit", "scripts/validate_change_packages.py", "scripts/select_shared_document_portal_checks.py", "scripts/select_infrastructure_git_workflow_checks.py", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "docs/operations/git-delivery.md", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
+      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json", "scripts/select_infrastructure_git_workflow_checks.py"],
       "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
       "rollback": "Revert local workflow files; this package never changes remotes."
       ,"intended_commit": "test: add fail-closed change-package validation"
@@ -276,15 +276,18 @@
       "purpose": "Delivery-1 supervised synthetic rehearsal lifecycle and its bounded integration test. Runs only when rehearsal files or the lifecycle test are staged; not part of every infrastructure commit.",
       "paths": [
         "scripts/rehearse_synthetic_site.sh",
+        "scripts/rehearse_dev_local.sh",
         "scripts/build_release_manifest.py",
         "scripts/provision_synthetic_operator.py",
         "scripts/smoke_probe.py",
+        "tests/test_rehearse_synthetic_site.py",
         "tests/test_rehearse_synthetic_site_lifecycle.py",
         "tests/test_rehearse_workflow.py",
+        "tests/_rehearse_workflow_browser.py",
         "tests/_rehearse_workflow_data_path.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py -q"
+        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py -q"
       ],
       "dependencies": [
         "Existing supervised settings module and wsgi/asgi entrypoints",
