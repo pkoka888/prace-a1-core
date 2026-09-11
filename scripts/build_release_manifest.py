@@ -76,33 +76,48 @@ def _app_build_id(explicit: str | None) -> str:
 def _validate_confinement(out: Path) -> Path:
     """Reject the output path before any mkdir/chmod/write.
 
-    Mirrors ``portal.release1a.runtime_safety.confined_root`` and
-    ``no_symlinks``. Any path that the settings module would refuse
-    is rejected here without any filesystem mutation.
+    Mirrors ``portal.release1a.runtime_safety.no_symlinks`` and
+    ``confined_root``. The check operates on the raw path BEFORE
+    resolve() so symlink components are visible; resolve() follows
+    symlinks and would otherwise hide the very thing we want to
+    reject. The output parent must already exist as a directory we
+    own in the approved runtime subtree; we never create a new
+    supervised-<id> tree from this script.
     """
-    out = out.resolve()
-    if not out.is_absolute() or ".." in out.parts:
-        raise SystemExit(f"FAIL: manifest path {out} must be absolute and free of '..'")
-    if out.parent != APPROVED_RUNTIME_PARENT or not out.parent.name.startswith("") \
-            or not out.name.startswith("release_manifest.json"):
-        # The parent must be the canonical runtime subtree, and the
-        # filename must be the manifest itself. Any pre-existing
-        # supervised-<id>/release_manifest.json target lives one
-        # level below the approved parent.
-        if out.parent.parent != APPROVED_RUNTIME_PARENT \
-                or not out.parent.name.startswith("supervised-"):
-            raise SystemExit(
-                f"FAIL: manifest path {out} is not under "
-                f"{APPROVED_RUNTIME_PARENT}/supervised-*/release_manifest.json"
-            )
-    # Reject any path with a symlink component. Check parents first
-    # because is_file() / is_dir() follow symlinks.
-    if out.exists() and out.is_symlink():
-        raise SystemExit(f"FAIL: manifest path {out} is a symlink")
-    for parent in [out, *out.parents]:
+    raw = Path(out)
+    if not raw.is_absolute() or ".." in raw.parts:
+        raise SystemExit(f"FAIL: manifest path {raw} must be absolute and free of '..'")
+    # Reject any symlink component in the RAW path, before resolve().
+    if raw.exists() and raw.is_symlink():
+        raise SystemExit(f"FAIL: manifest path {raw} is a symlink")
+    for parent in [raw, *raw.parents]:
         if parent.exists() and parent.is_symlink():
-            raise SystemExit(f"FAIL: manifest path {out} contains symlink component {parent}")
-    return out
+            raise SystemExit(f"FAIL: manifest path {raw} contains symlink component {parent}")
+    # After the raw symlink check, resolve to a canonical form for
+    # the layout comparison.
+    resolved = raw.resolve()
+    expected_parent = APPROVED_RUNTIME_PARENT / "supervised-"  # any supervised-* child
+    if resolved.parent.parent != APPROVED_RUNTIME_PARENT \
+            or not resolved.parent.name.startswith("supervised-") \
+            or resolved.name != "release_manifest.json":
+        raise SystemExit(
+            f"FAIL: manifest path {resolved} is not under "
+            f"{APPROVED_RUNTIME_PARENT}/supervised-*/release_manifest.json"
+        )
+    # Parent must already exist as a confined layout (operator-owned
+    # 0700 directory under runtime/portal/). If it doesn't, the
+    # settings module would refuse to load — fail closed here too.
+    parent = raw.parent
+    if not parent.exists():
+        raise SystemExit(
+            f"FAIL: parent {parent} does not exist. Run the rehearsal "
+            f"script's prepare step to create it."
+        )
+    if not parent.is_dir() or parent.is_symlink():
+        raise SystemExit(f"FAIL: parent {parent} is not a directory (or is a symlink)")
+    if parent.stat().st_uid != os.getuid() or parent.stat().st_mode & 0o077:
+        raise SystemExit(f"FAIL: parent {parent} is not operator-owned mode 0700")
+    return raw
 
 
 def main() -> int:

@@ -277,10 +277,14 @@
       "paths": [
         "scripts/rehearse_synthetic_site.sh",
         "scripts/build_release_manifest.py",
-        "tests/test_rehearse_synthetic_site_lifecycle.py"
+        "scripts/provision_synthetic_operator.py",
+        "scripts/smoke_probe.py",
+        "tests/test_rehearse_synthetic_site_lifecycle.py",
+        "tests/test_rehearse_workflow.py",
+        "tests/_rehearse_workflow_data_path.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site_lifecycle.py -q"
+        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py -q"
       ],
       "dependencies": [
         "Existing supervised settings module and wsgi/asgi entrypoints",

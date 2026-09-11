@@ -100,25 +100,37 @@ and confined (mode 0600).
 
 `scripts/rehearse_synthetic_site.sh` exercises the full supervised-synthetic
 lifecycle without touching real data or operator-owned services. It is the
-canonical entrypoint for the bounded integration test in
-`tests/test_rehearse_synthetic_site_lifecycle.py`.
+canonical entrypoint for the bounded integration tests in
+`tests/test_rehearse_synthetic_site_lifecycle.py` (anonymous HTTP) and
+`tests/test_rehearse_workflow.py` (end-to-end data path). The bounded
+negative fixtures for F1 (wrong-server / stopped-server smoke
+failures), F2 (child symlink before mkdir/chmod), and F8 (umask-022
+file modes) live in `tests/test_rehearse_synthetic_site.py`.
 
 ```bash
 # 1. Confine-validate, mkdir, write the manifest, migrate, collectstatic.
 bash scripts/rehearse_synthetic_site.sh prepare
 
-# 2. Launch gunicorn against the supervised settings module. The
+# 2. Provision an individual synthetic operator + organization + TOTP MFA.
+#    operator.json (mode 0600) holds the password and TOTP secret;
+#    organization.json (mode 0600) holds the org record.
+bash scripts/rehearse_synthetic_site.sh provision
+
+# 3. Launch gunicorn against the supervised settings module. The
 #    script asserts the bind is free, launches gunicorn with --pid,
-#    waits for /health/ to return 200 with our manifest's commit, and
-#    records the launch identity so stop can refuse wrong PIDs.
+#    waits for /health/ to return 200 with our manifest's commit
+#    (delegated to scripts/smoke_probe.py for the strict JSON
+#    contract), and records the launch identity so stop can refuse
+#    wrong PIDs.
 bash scripts/rehearse_synthetic_site.sh start
 
-# 3. Strict smoke: /health/, /login/, /accounts/login/, /review/,
+# 4. Strict smoke: /health/, /login/, /accounts/login/, /review/,
 #    /readiness/, and the static assets actually shipped
-#    (htmx-1.9.10.min.js, tailwind-2.2.19.min.css). 000/500/404 all fail.
+#    (htmx-1.9.10.min.js, tailwind-2.2.19.min.css). 000/500/404 and
+#    external-host redirects all fail.
 bash scripts/rehearse_synthetic_site.sh smoke
 
-# 4. Graceful stop. Verifies PID ownership before SIGTERM.
+# 5. Graceful stop. Verifies PID ownership before SIGTERM.
 bash scripts/rehearse_synthetic_site.sh stop
 
 # Rollback stops the server; the operator removes the runtime root
@@ -129,7 +141,13 @@ bash scripts/rehearse_synthetic_site.sh rollback
 The `prepare-manifest-only` subcommand skips migrate/collectstatic and
 is what the cheap unit tests use. The bounded lifecycle test exercises
 the real gunicorn path and proves the smoke contract now catches
-HTTP-500, no-server, and a stale-pidfile scenario.
+HTTP-500, no-server, a stale-pidfile scenario, and the same-origin
+redirect contract. The workflow test (`tests/test_rehearse_workflow.py`)
+covers prepare + provision + start + real HTTP against gunicorn +
+worker + assignment + A1 case (the data path via
+`portal.release1a.services`) + sparse-data blocked only on the
+rendering operation (`reserve_application_draft`) + records surviving
+restart + stop.
 
 ## Distinguishing this synthetic hosting configuration from real-data
 

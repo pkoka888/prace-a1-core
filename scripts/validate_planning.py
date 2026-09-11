@@ -173,6 +173,10 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "scripts/reset_synthetic_reviewer_password.py",
     "scripts/playwright_smoke.py",
     "scripts/smoke_synthetic_review_ui.mjs",
+    "scripts/rehearse_synthetic_site.sh",
+    "scripts/build_release_manifest.py",
+    "scripts/provision_synthetic_operator.py",
+    "scripts/smoke_probe.py",
 })
 # Tracked source settings modules. Filenames legitimately embed pipeline words.
 APPROVED_STAGED_SETTINGS_PATHS = frozenset({

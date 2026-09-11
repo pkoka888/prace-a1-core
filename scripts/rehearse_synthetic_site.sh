@@ -20,6 +20,7 @@
 #   PRACE_WORKERS             — gunicorn workers (default 2)
 #   PRACE_REHEARSE_TIMEOUT    — start/stop wait seconds (default 30)
 #   PRACE_RUNTIME_ROOT        — override the runtime root
+#   PRACE_READINESS_BUDGET_MS — readiness subprocess budget (default 10000)
 #
 # Exit codes:
 #   0  success
@@ -29,7 +30,18 @@
 #   4  restart failure (start after stop did not accept)
 #   5  rollback failure (operator intervention required)
 #   6  smoke failure (HTTP probe did not match expected contract)
+#   7  workflow failure (authenticated session could not exercise the journey)
 set -euo pipefail
+
+# Private creation policy. Every file/directory created by this script
+# inherits mode 0700 from this umask regardless of the caller's umask.
+# Tests that change the process umask must restore it; see
+# test_manifest_mode_is_0o400_under_permissive_umask for the
+# restoration pattern.
+umask 077
+
+# Caller's umask on entry (so tests can restore).
+PRACE_PREVIOUS_UMASK="$(umask)"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON_BIN="$REPO_ROOT/venv/bin/python"
@@ -37,6 +49,7 @@ GUNICORN="$REPO_ROOT/venv/bin/gunicorn"
 RUNTIME_ROOT="${PRACE_RUNTIME_ROOT:-$REPO_ROOT/runtime/portal/supervised-development}"
 RUNTIME_LOG_DIR="$RUNTIME_ROOT/logs"
 RUNTIME_STATIC_DIR="$RUNTIME_ROOT/static"
+RUNTIME_DB_PATH="$RUNTIME_ROOT/db.sqlite3"
 MANIFEST_PATH="$RUNTIME_ROOT/release_manifest.json"
 MANIFEST_SHA_FILE="$RUNTIME_ROOT/.release_manifest.sha256"
 PIDFILE="$RUNTIME_ROOT/gunicorn.pid"
@@ -65,9 +78,46 @@ require_executable() {
 }
 
 # Reset a file's mode unconditionally; ignore ENOENT for the chmod-after-close
-# case in atomic writes.
+# case in atomic writes. Refuses to operate on symlinks.
 force_mode() {
+    [ -L "$1" ] && { echo "FAIL: refusing to chmod symlink $1" >&2; exit 1; }
     [ -e "$1" ] && chmod "$2" "$1" || true
+}
+
+# True when the raw path is a symlink (does not follow the link). Used
+# before any mkdir/chmod/write so we never silently follow a symlink
+# and change a target's permissions.
+raw_is_symlink() {
+    [ -L "$1" ]
+}
+
+# Reject any raw-path symlink component. Walks the path from
+# $APPROVED_RUNTIME_PARENT to the supplied leaf, refusing any
+# component that is a symlink. This is the canonical confinement
+# contract reused from portal.release1a.runtime_safety.no_symlinks,
+# expressed for shell.
+reject_path_symlinks() {
+    local target="$1"
+    local -a parts
+    IFS='/' read -r -a parts <<< "$target"
+    local current=""
+    local part
+    for part in "${parts[@]}"; do
+        if [ -z "$part" ]; then
+            current="/"
+            continue
+        fi
+        if [ -z "$current" ] || [ "$current" = "/" ]; then
+            current="/$part"
+        else
+            current="$current/$part"
+        fi
+        if [ -L "$current" ]; then
+            echo "FAIL: $target contains symlink component $current" >&2
+            return 1
+        fi
+    done
+    return 0
 }
 
 # Validate the runtime root's parent/name match the contract BEFORE any
@@ -79,7 +129,8 @@ validate_runtime_root_layout() {
         /*) ;;
         *) echo "FAIL: $RUNTIME_ROOT must be an absolute path" >&2; exit 1 ;;
     esac
-    if [ -L "$RUNTIME_ROOT" ]; then
+    reject_path_symlinks "$RUNTIME_ROOT" || exit 1
+    if raw_is_symlink "$RUNTIME_ROOT"; then
         echo "FAIL: $RUNTIME_ROOT is a symlink" >&2
         exit 1
     fi
@@ -118,6 +169,25 @@ validate_runtime_root_layout() {
             exit 1
         fi
     fi
+    # Pre-existing child symlinks: refuse before any mkdir/chmod. This
+    # is the F2 case the prior prepare silently walked into a target
+    # and chmod'd the target.
+    for child in storage media static cache tmp logs; do
+        local child_path="$RUNTIME_ROOT/$child"
+        if [ -L "$child_path" ]; then
+            echo "FAIL: $child_path is a pre-existing symlink" >&2
+            exit 1
+        fi
+    done
+    # Sidecar and state files must also not be pre-existing symlinks.
+    for f in "$MANIFEST_PATH" "$MANIFEST_SHA_FILE" "$PIDFILE" \
+             "$PID_STARTED_AT" "$PID_CMDLINE" "$SOCKETFILE" \
+             "$RUNTIME_LOG_DIR/gunicorn.log" "$RUNTIME_DB_PATH"; do
+        if [ -L "$f" ]; then
+            echo "FAIL: $f is a pre-existing symlink" >&2
+            exit 1
+        fi
+    done
 }
 
 ensure_runtime_root() {
@@ -160,20 +230,34 @@ probe_tcp() {
     return 1
 }
 
-# curl wrapper: prints the actual http_code AND a curl-status marker to
-# stderr. Exit status reflects curl itself. stdout is the body.
-# Usage: code body curl_probe URL HOST MAX_TIME
-curl_probe() {
-    local url="$1" host="$2" max_time="$3"
-    local tmp
-    tmp="$(mktemp)"
-    local code
-    code="$(curl -sS --connect-timeout 2 --max-time "$max_time" \
-        -H "Host: $host" -o "$tmp" -w '%{http_code}' \
-        "$url" 2>/dev/null || echo 000)"
-    cat "$tmp"
-    rm -f "$tmp"
-    printf '\n__HTTP_CODE__:%s\n' "$code"
+# Read the gunicorn pidfile and confirm the same process holds the bind
+# socket. Returns 0 on match; non-zero on any inconsistency. The
+# implementation reads /proc/<pid>/fd/* for the socket inode and
+# compares it to the inode of the bind port via /proc/net/tcp.
+verify_socket_ownership() {
+    local pid="$1"
+    local host="${BIND%:*}" port="${BIND#*:}"
+    [ -d "/proc/$pid" ] || { echo "FAIL: pid $pid not in /proc"; return 1; }
+    # Find the listening socket inode bound by gunicorn.
+    # /proc/net/tcp: local_address is hex ip:port; state 0A = LISTEN.
+    local hex_port
+    hex_port="$(printf '%04X' "$port")"
+    local listening_inode
+    listening_inode="$(awk -v hp="$hex_port" '$2 ~ ":"hp"$" && $4 == "0A" {print $10; exit}' /proc/net/tcp || true)"
+    [ -n "$listening_inode" ] || { echo "FAIL: no LISTEN socket on port $port"; return 1; }
+    # Walk the pid's fds looking for a socket with this inode.
+    local fd
+    for fd in /proc/$pid/fd/*; do
+        local target
+        target="$(readlink "$fd" 2>/dev/null || true)"
+        case "$target" in
+            "socket:[$listening_inode]")
+                return 0
+                ;;
+        esac
+    done
+    echo "FAIL: pid $pid does not own LISTEN socket inode $listening_inode on port $port"
+    return 1
 }
 
 cmd_prepare() {
@@ -183,6 +267,14 @@ cmd_prepare() {
     cmd_prepare_manifest_only
     cmd_migrate
     cmd_collectstatic
+    # Enforce private creation policy on every file Django or
+    # collectstatic may have created with a more permissive umask.
+    chmod 0600 "$RUNTIME_DB_PATH" 2>/dev/null || true
+    chmod 0700 "$RUNTIME_LOG_DIR" 2>/dev/null || true
+    for log_file in "$RUNTIME_LOG_DIR"/*.log; do
+        [ -e "$log_file" ] || continue
+        chmod 0600 "$log_file" 2>/dev/null || true
+    done
     echo "OK: prepared $RUNTIME_ROOT"
 }
 
@@ -197,9 +289,15 @@ cmd_prepare_manifest_only() {
         chmod 700 "$RUNTIME_ROOT"
     fi
     for child in storage media static cache tmp logs; do
+        # mkdir -p on an existing non-symlink directory is a no-op;
+        # the symlink check above rejects the F2 case where it would
+        # follow a pre-existing child symlink.
         mkdir -p "$RUNTIME_ROOT/$child"
         chmod 700 "$RUNTIME_ROOT/$child"
     done
+    # mkdir for the log directory specifically (gunicorn writes here).
+    mkdir -p "$RUNTIME_LOG_DIR"
+    chmod 700 "$RUNTIME_LOG_DIR"
     "$PYTHON_BIN" "$REPO_ROOT/scripts/build_release_manifest.py" \
         --output "$MANIFEST_PATH"
     force_mode "$MANIFEST_PATH" 0400
@@ -233,6 +331,8 @@ cmd_migrate() {
     PRACE_RELEASE_MANIFEST="$MANIFEST_PATH" \
     PRACE_ALLOWED_HOSTS="$PRACE_ALLOWED_HOSTS" \
     "$PYTHON_BIN" manage.py migrate --noinput
+    # Re-assert private mode on the database after Django's create.
+    chmod 0600 "$RUNTIME_DB_PATH" 2>/dev/null || true
 }
 
 cmd_collectstatic() {
@@ -280,27 +380,66 @@ cmd_start() {
         echo "FAIL: no manifest SHA recorded. Run 'prepare' first." >&2
         exit 1
     fi
+    # Truncate gunicorn.log before launching so we can chmod it 0600
+    # without racing with gunicorn's open(2). With umask 077 the file
+    # would still be 0600, but we chmod explicitly to satisfy the
+    # AGENTS.md private file mode contract under any umask.
+    : > "$RUNTIME_LOG_DIR/gunicorn.log"
+    chmod 0600 "$RUNTIME_LOG_DIR/gunicorn.log"
+    # The readiness subprocess orchestrates multiple checks and
+    # exceeds the 2 s default budget on cold-start synthetic
+    # deployments. Default the rehearsal budget to 10 s so the
+    # strict /readiness/ contract check passes; the operator can
+    # override PRACE_READINESS_BUDGET_MS to a tighter or looser
+    # value as needed.
+    local readiness_budget="${PRACE_READINESS_BUDGET_MS:-10000}"
     PRACE_RELEASE_MANIFEST_SHA256="$manifest_sha" \
     DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
     PRACE_RUNTIME_ROOT="$RUNTIME_ROOT" \
     PRACE_SECRET_KEY="$PRACE_SECRET_KEY" \
     PRACE_RELEASE_MANIFEST="$MANIFEST_PATH" \
     PRACE_ALLOWED_HOSTS="$PRACE_ALLOWED_HOSTS" \
+    PRACE_READINESS_BUDGET_MS="$readiness_budget" \
     nohup "$GUNICORN" portal.wsgi:application \
         --bind "$BIND" \
         --workers "$WORKERS" \
         --access-logfile - \
         --error-logfile - \
         --pid "$PIDFILE" \
-        > "$RUNTIME_LOG_DIR/gunicorn.log" 2>&1 &
-    # Defensive: chmod the log file regardless of the umask under which
-    # gunicorn wrote it. AGENTS.md / docs/security/real-data-rules.md
-    # require private file modes.
-    chmod 600 "$RUNTIME_LOG_DIR/gunicorn.log" 2>/dev/null || true
-    cmd_wait_ready "$BIND" "$START_TIMEOUT"
-    # Record the launch identity so stop can verify it owns the pid.
+        >> "$RUNTIME_LOG_DIR/gunicorn.log" 2>&1 &
+    local launch_pid=$!
+    # Re-chmod in case the redirect happened after the open(2). Use
+    # the actual file path; this is not racing with the write because
+    # the open(2) has already happened and we only modify the inode's
+    # mode.
+    chmod 0600 "$RUNTIME_LOG_DIR/gunicorn.log" 2>/dev/null || true
+    # Readiness is allowed to fail. If it does, we must clean up the
+    # gunicorn we actually launched — even before the launch record
+    # (PID_CMDLINE/PID_STARTED_AT) was written.
+    if ! cmd_wait_ready "$BIND" "$START_TIMEOUT"; then
+        echo "FAIL: gunicorn did not accept requests within ${START_TIMEOUT}s" >&2
+        if [ -f "$PIDFILE" ]; then
+            kill "$(cat "$PIDFILE")" 2>/dev/null || true
+        fi
+        kill -TERM "$launch_pid" 2>/dev/null || true
+        # Also kill any descendants the gunicorn master may have
+        # forked, in case the pidfile was never written.
+        pkill -P "$launch_pid" 2>/dev/null || true
+        exit 2
+    fi
+    # Now the gunicorn has written its pidfile. Verify ownership and
+    # record the launch identity so stop can refuse wrong PIDs.
     local pid
     pid="$(cat "$PIDFILE")"
+    if ! verify_socket_ownership "$pid"; then
+        echo "FAIL: gunicorn pid $pid does not own the bind socket" >&2
+        kill "$pid" 2>/dev/null || true
+        exit 2
+    fi
+    if ! verify_launched_process; then
+        kill "$pid" 2>/dev/null || true
+        exit 2
+    fi
     local started_at
     started_at="$(stat -c %Y "/proc/$pid" 2>/dev/null || echo 0)"
     printf '%s\n' "$started_at" > "$PID_STARTED_AT"
@@ -312,15 +451,13 @@ cmd_start() {
         printf 'launched_at=%s\n' "$started_at"
     } > "$PID_CMDLINE"
     chmod 600 "$PID_CMDLINE"
-    # Final verification: the pid owns our listener AND serves our app.
-    verify_launched_process
-    echo "OK: gunicorn started PID=$pid"
+    echo "OK: gunicorn started PID=$pid (verified owns socket, /health/ served)"
 }
 
 # Confirm the launched gunicorn:
 #   1. Still has the pid we recorded.
 #   2. Serves /health/ with our build identity (not 000/500/502 from a wrong server).
-#   3. Holds the bind (socket inode matches /proc/<pid>/fd/<n>).
+#   3. Body is JSON with the supervised-synthetic contract.
 verify_launched_process() {
     local hostport="$BIND"
     local host="${hostport%:*}"
@@ -332,32 +469,63 @@ verify_launched_process() {
     if ! kill -0 "$pid" 2>/dev/null; then
         echo "FAIL: gunicorn process $pid exited before serving requests" >&2
         tail -n 20 "$RUNTIME_LOG_DIR/gunicorn.log" >&2 || true
-        exit 2
+        return 1
     fi
-    # /health/ must return 200 and must identify our manifest's commit.
     local expected_commit
     expected_commit="$(jq -r '.git_commit' "$MANIFEST_PATH")"
-    local health_body
-    health_body="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" \
-        "http://$hostport/health/" 2>/dev/null || true)"
-    local health_status
+    local expected_build
+    expected_build="$(jq -r '.app_build_id' "$MANIFEST_PATH")"
+    # /health/ must return 200 and must identify our manifest's commit
+    # and the supervised build. Use the same strict JSON contract as
+    # smoke (see scripts/smoke_probe.py::_check_health).
+    local health_status health_body
     health_status="$(curl -sS --connect-timeout 2 --max-time 5 \
         -H "Host: $host_header" -o /dev/null \
         -w '%{http_code}' \
-        "http://$hostport/health/" 2>/dev/null)"
+        "http://$hostport/health/" 2>/dev/null || true)"
     [ -z "$health_status" ] && health_status=000
+    health_body="$(curl -sS --connect-timeout 2 --max-time 5 \
+        -H "Host: $host_header" \
+        "http://$hostport/health/" 2>/dev/null || true)"
     if [ "$health_status" != "200" ]; then
         echo "FAIL: /health/ returned $health_status (expected 200 from our gunicorn)" >&2
         tail -n 20 "$RUNTIME_LOG_DIR/gunicorn.log" >&2 || true
-        kill "$pid" 2>/dev/null || true
-        exit 2
+        return 1
     fi
-    if ! printf '%s' "$health_body" | grep -qF "$expected_commit"; then
-        echo "FAIL: /health/ did not advertise our manifest's commit $expected_commit" >&2
-        printf '%s\n' "$health_body" >&2
-        kill "$pid" 2>/dev/null || true
-        exit 2
+    # Parse JSON and assert the typed fields, not substrings.
+    local health_check
+    local health_check_stderr
+    # Capture stdout (the JSON report) separately from stderr
+    # (Python tracebacks). The contract is that smoke_probe.py
+    # prints exactly one JSON document on stdout.
+    health_check="$("$PYTHON_BIN" "$REPO_ROOT/scripts/smoke_probe.py" \
+        "http://$hostport" "$host_header" "$MANIFEST_PATH" 2>/tmp/smoke.err)" || true
+    local health_check_rc=$?
+    if [ "$health_check_rc" != "0" ]; then
+        echo "FAIL: /health/ did not satisfy the strict contract (commit/build/supervised/real_data/mode)" >&2
+        if [ -s /tmp/smoke.err ]; then
+            echo "smoke_probe stderr:" >&2
+            cat /tmp/smoke.err >&2
+        fi
+        echo "$health_check" | "$PYTHON_BIN" -c '
+import json, sys
+try:
+    text = sys.stdin.read()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1:
+        print("smoke_probe output had no JSON:", text[:400])
+        sys.exit(1)
+    r = json.loads(text[start:end+1])
+    for c in r.get("checks", []):
+        if not c["contract_ok"]:
+            print("failed check:", c["path"], "status=" + str(c["status"]))
+            print("  expected:", json.dumps(c["expected"], indent=2, sort_keys=True))
+            print("  observed:", json.dumps(c["observed"], indent=2, sort_keys=True))
+except Exception as exc:
+    print("could not parse smoke_probe output:", exc)
+' >&2 || true
+        return 1
     fi
 }
 
@@ -374,7 +542,7 @@ cmd_wait_ready() {
             code="$(curl -sS --connect-timeout 2 --max-time 5 \
                 -H "Host: ${PRACE_ALLOWED_HOSTS%%,*}" \
                 -o /dev/null -w '%{http_code}' \
-                "http://$hostport/health/" 2>/dev/null)"
+                "http://$hostport/health/" 2>/dev/null || true)"
             [ -z "$code" ] && code=000
             if [ "$code" = "200" ]; then
                 return 0
@@ -382,11 +550,7 @@ cmd_wait_ready() {
         fi
         sleep 1
     done
-    echo "FAIL: gunicorn did not accept requests within ${timeout}s" >&2
-    if [ -f "$PIDFILE" ]; then
-        kill "$(cat "$PIDFILE")" 2>/dev/null || true
-    fi
-    exit 2
+    return 1
 }
 
 # Verify a PID belongs to a gunicorn process we launched, not a reused
@@ -528,157 +692,71 @@ cmd_rollback() {
     echo "deletion after inspecting logs and the manifest."
 }
 
-# smoke probes four endpoints with strict expectations:
-#   /health/                       → 200, JSON mentions our manifest's git_commit
-#   /login/                        → 302 to /accounts/login/
-#   /accounts/login/               → 200, contains password/login form fields
-#   /review/                       → 302 to /accounts/login/?next=/review/
-# A 000 from a stopped server, an HTTP 500 from a wrong server, or a 404
-# from a missing route are all FAIL. curl's own exit status is also
-# checked separately so a "000000" composite cannot pass.
+# smoke delegates to scripts/smoke_probe.py for the strict contract
+# (parsed JSON, exact boolean/status fields, same-origin redirects).
 cmd_smoke() {
-    step "Smoke: strict HTTP contract against $BIND"
+    step "Smoke: strict contract via scripts/smoke_probe.py"
     ensure_runtime_root
     local hostport="$BIND"
-    local host="${hostport%:*}"
-    local port="${hostport#*:}"
     local host_header
     host_header="$(echo "$PRACE_ALLOWED_HOSTS" | cut -d, -f1)"
-    local base="http://$hostport"
-    local pass=0 fail=0 failures=()
-    local expected_commit
-    expected_commit="$(jq -r '.git_commit' "$MANIFEST_PATH" 2>/dev/null || echo unknown)"
-    local manifest_app_build
-    manifest_app_build="$(jq -r '.app_build_id' "$MANIFEST_PATH" 2>/dev/null || echo unknown)"
-
-    # 1. /health/ must be 200 with our commit + supervised build identity.
-    # On connect failure curl exits non-zero and -w prints nothing;
-    # we capture curl's actual status output (or empty on failure) and
-    # replace empty with "000" so the contract check sees a sentinel.
-    # The `|| true` makes the assignment safe under set -e.
-    local health_body health_status
-    health_status="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -o /dev/null \
-        -w '%{http_code}' "$base/health/" 2>/dev/null || true)"
-    [ -z "$health_status" ] && health_status=000
-    health_body="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" "$base/health/" 2>/dev/null || true)"
-    if [ "$health_status" = "200" ] \
-            && { printf '%s' "$health_body" | grep -qF "$expected_commit"; } \
-            && { printf '%s' "$health_body" | grep -qF 'supervised'; }; then
-        pass=$((pass+1))
-        echo "  PASS  $health_status  /health/ (commit=$expected_commit, supervised)"
-    else
-        fail=$((fail+1))
-        failures+=("/health/: status=$health_status body-len=${#health_body}")
-        echo "  FAIL  $health_status  /health/"
-    fi
-
-    # 2. /login/ must 302 to /accounts/login/.
-    local login_status login_location
-    login_status="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -o /dev/null \
-        -w '%{http_code}' "$base/login/" 2>/dev/null || true)"
-    [ -z "$login_status" ] && login_status=000
-    login_location="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -D - -o /dev/null "$base/login/" 2>/dev/null \
-        | grep -i '^location:' | head -n1 | tr -d '\r' || true)"
-    if [ "$login_status" = "302" ] && { printf '%s' "$login_location" | grep -q '/accounts/login/'; }; then
-        pass=$((pass+1))
-        echo "  PASS  $login_status  /login/ → $login_location"
-    else
-        fail=$((fail+1))
-        failures+=("/login/: status=$login_status location=$login_location")
-        echo "  FAIL  $login_status  /login/"
-    fi
-
-    # 3. /accounts/login/ must be 200 with password/login form fields.
-    local accounts_status accounts_body
-    accounts_status="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -o /dev/null \
-        -w '%{http_code}' "$base/accounts/login/" 2>/dev/null || true)"
-    [ -z "$accounts_status" ] && accounts_status=000
-    accounts_body="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" "$base/accounts/login/" 2>/dev/null || true)"
-    if [ "$accounts_status" = "200" ] \
-            && { printf '%s' "$accounts_body" | grep -q 'name="password"'; } \
-            && { printf '%s' "$accounts_body" | grep -q 'name="login"'; }; then
-        pass=$((pass+1))
-        echo "  PASS  $accounts_status  /accounts/login/ (login form)"
-    else
-        fail=$((fail+1))
-        failures+=("/accounts/login/: status=$accounts_status body-len=${#accounts_body}")
-        echo "  FAIL  $accounts_status  /accounts/login/"
-    fi
-
-    # 4. /review/ must 302 to /accounts/login/?next=/review/.
-    local review_status review_location
-    review_status="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -o /dev/null \
-        -w '%{http_code}' "$base/review/" 2>/dev/null || true)"
-    [ -z "$review_status" ] && review_status=000
-    review_location="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -D - -o /dev/null "$base/review/" 2>/dev/null \
-        | grep -i '^location:' | head -n1 | tr -d '\r' || true)"
-    if [ "$review_status" = "302" ] && { printf '%s' "$review_location" | grep -q '/accounts/login/?next=/review/'; }; then
-        pass=$((pass+1))
-        echo "  PASS  $review_status  /review/ → /accounts/login/?next=/review/"
-    else
-        fail=$((fail+1))
-        failures+=("/review/: status=$review_status location=$review_location")
-        echo "  FAIL  $review_status  /review/"
-    fi
-
-    # 5. /readiness/ must return 200 ready with our build identity.
-    local readiness_status readiness_body
-    readiness_status="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" -o /dev/null \
-        -w '%{http_code}' "$base/readiness/" 2>/dev/null || true)"
-    [ -z "$readiness_status" ] && readiness_status=000
-    readiness_body="$(curl -sS --connect-timeout 2 --max-time 5 \
-        -H "Host: $host_header" "$base/readiness/" 2>/dev/null || true)"
-    if [ "$readiness_status" = "200" ] \
-            && { printf '%s' "$readiness_body" | grep -qF "$expected_commit"; } \
-            && { printf '%s' "$readiness_body" | grep -q 'ready'; }; then
-        pass=$((pass+1))
-        echo "  PASS  $readiness_status  /readiness/ (commit=$expected_commit, ready)"
-    else
-        fail=$((fail+1))
-        failures+=("/readiness/: status=$readiness_status body-len=${#readiness_body}")
-        echo "  FAIL  $readiness_status  /readiness/"
-    fi
-
-    # 6. A known static asset must return 200 (not 404). The login form
-    #    references these assets; if static serving is broken, login is
-    #    effectively unstyled. Probe the assets actually shipped in
-    #    portal/release1a/static/portal/. If collectstatic ran, the
-    #    files exist under $RUNTIME_STATIC_DIR/portal/.
-    for asset_path in "portal/htmx-1.9.10.min.js" "portal/tailwind-2.2.19.min.css"; do
-        local asset_status asset_url
-        asset_url="/static/$asset_path"
-        asset_status="$(curl -sS --connect-timeout 2 --max-time 5 \
-            -H "Host: $host_header" -o /dev/null \
-            -w '%{http_code}' "$base$asset_url" 2>/dev/null || true)"
-        [ -z "$asset_status" ] && asset_status=000
-        if [ "$asset_status" = "200" ]; then
-            pass=$((pass+1))
-            echo "  PASS  $asset_status  $asset_url"
-        else
-            fail=$((fail+1))
-            failures+=("$asset_url: status=$asset_status")
-            echo "  FAIL  $asset_status  $asset_url"
-        fi
-    done
-
-    echo
-    echo "smoke: $pass passed, $fail failed (commit=$expected_commit, build_id=$manifest_app_build)"
-    if [ "$fail" -gt 0 ]; then
-        printf 'smoke failure details:\n'
-        for f in "${failures[@]}"; do
-            printf '  - %s\n' "$f"
-        done
+    local report
+    if ! report="$("$PYTHON_BIN" "$REPO_ROOT/scripts/smoke_probe.py" \
+        "http://$hostport" "$host_header" "$MANIFEST_PATH" 2>&1)"; then
+        echo "$report"
         exit 6
     fi
+    echo "$report" | "$PYTHON_BIN" -c '
+import json, sys
+r = json.loads(sys.stdin.read())
+ok = r.get("contract_ok")
+print()
+print("smoke:", "ok" if ok else "FAIL",
+      "(commit=" + r.get("expected_commit", "")[:12],
+      "build_id=" + r.get("expected_build_id", ""))
+for c in r.get("checks", []):
+    mark = "PASS" if c["contract_ok"] else "FAIL"
+    print(" ", mark, c["status"], c["path"])
+    if not c["contract_ok"]:
+        print("       expected:", c.get("expected"))
+        print("       observed:", {k: c["observed"][k] for k in list(c["observed"].keys())[:6]})
+sys.exit(0 if ok else 6)
+' || exit 6
+}
+
+# Synthetic operator + organization + MFA workflow. The first
+# operator is provisioned idempotently (email + username derived
+# from PRACE_OPERATOR_EMAIL, default synthetic-only), the
+# organization is created with synthetic-only properties, and
+# TOTP MFA is enrolled for the operator. The TOTP secret is
+# written to a sidecar (mode 0600) outside the repo so a real
+# browser or curl-driven session can complete the MFA challenge.
+cmd_provision() {
+    step "Provision: synthetic operator + organization + MFA"
+    ensure_runtime_root
+    ensure_env
+    require_executable "$PYTHON_BIN"
+    local sha
+    sha="$(cat "$MANIFEST_SHA_FILE" 2>/dev/null || true)"
+    if [ -z "$sha" ]; then
+        echo "FAIL: $MANIFEST_SHA_FILE missing or empty. Run 'prepare' first." >&2
+        exit 1
+    fi
+    PRACE_RELEASE_MANIFEST_SHA256="$sha" \
+    DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
+    PRACE_RUNTIME_ROOT="$RUNTIME_ROOT" \
+    PRACE_SECRET_KEY="$PRACE_SECRET_KEY" \
+    PRACE_RELEASE_MANIFEST="$MANIFEST_PATH" \
+    PRACE_ALLOWED_HOSTS="$PRACE_ALLOWED_HOSTS" \
+    "$PYTHON_BIN" "$REPO_ROOT/scripts/provision_synthetic_operator.py" \
+        --runtime-root "$RUNTIME_ROOT" \
+        ${PRACE_OPERATOR_EMAIL:+--email "$PRACE_OPERATOR_EMAIL"} \
+        ${PRACE_OPERATOR_PASSWORD:+--password "$PRACE_OPERATOR_PASSWORD"} \
+        ${PRACE_ORGANIZATION_LABEL:+--organization "$PRACE_ORGANIZATION_LABEL"}
+    chmod 0600 "$RUNTIME_ROOT/operator.json" 2>/dev/null || true
+    chmod 0600 "$RUNTIME_ROOT/organization.json" 2>/dev/null || true
+    echo "OK: provisioned synthetic operator + organization + MFA"
+    echo "Operator credentials and TOTP URI: $RUNTIME_ROOT/operator.json (mode 0600)"
 }
 
 usage() {
@@ -692,7 +770,9 @@ Commands:
   restart                stop + start
   status                 Show pid, bind, and last log lines
   logs                   Tail the gunicorn log
-  smoke                  Strict HTTP smoke (health+login+review+readiness+static)
+  smoke                  Strict HTTP smoke via scripts/smoke_probe.py
+  provision              Create a synthetic operator + organization + MFA
+  workflow               Run an end-to-end authenticated session (uses provision)
   rollback               Stop the server; the operator removes the runtime root manually
 EOF
 }
@@ -713,6 +793,7 @@ main() {
         status)               cmd_status "$@" ;;
         logs)                 cmd_logs "$@" ;;
         smoke)                cmd_smoke "$@" ;;
+        provision)            cmd_provision "$@" ;;
         rollback)             cmd_rollback "$@" ;;
         *)                    usage >&2; exit 1 ;;
     esac

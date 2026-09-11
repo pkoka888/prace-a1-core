@@ -246,11 +246,143 @@ def test_manifest_mode_is_0o400_under_permissive_umask(required_env, monkeypatch
     """With umask 022 the manifest file's mode would default to 0o644
     unless the script enforces 0o400 explicitly. The 2026-09-11 review
     observed a 0644 gunicorn.log file under the same permissive umask.
-    Confirm the manifest is 0o400 regardless of incoming umask."""
+    Confirm the manifest is 0o400 regardless of incoming umask. The
+    script sets umask 077 at startup so its creations are private
+    even if the caller had a permissive umask. Restore the umask
+    after this test to keep the rest of the suite deterministic.
+    """
     import os as _os
-    _os.umask(0o022)
-    r = _run(["prepare-manifest-only"], required_env, timeout=30)
-    assert r.returncode == 0, r.stderr
+    previous = _os.umask(0o022)
+    try:
+        r = _run(["prepare-manifest-only"], required_env, timeout=30)
+        assert r.returncode == 0, r.stderr
+        root = Path(required_env["PRACE_RUNTIME_ROOT"])
+        mode = (root / "release_manifest.json").stat().st_mode & 0o777
+        assert mode == 0o400, f"manifest mode is {oct(mode)}, expected 0o400"
+        # The manifest sidecar is 0600, not 0400, so the script can
+        # overwrite it on subsequent runs without chmod. Confirm.
+        sha_mode = (root / ".release_manifest.sha256").stat().st_mode & 0o777
+        assert sha_mode == 0o600, f"sidecar mode is {oct(sha_mode)}, expected 0o600"
+    finally:
+        _os.umask(previous)
+
+
+def test_child_symlink_is_refused_before_mkdir_chmod(required_env, monkeypatch):
+    """F2: a pre-existing child symlink must be rejected BEFORE any
+    mkdir/chmod/write, so the script cannot follow it and change
+    the target's permissions. The 2026-09-11 review observed
+    `storage` as a symlink and the script chmod'd the target
+    directory from 0755 to 0700.
+    """
+    import os as _os
     root = Path(required_env["PRACE_RUNTIME_ROOT"])
-    mode = (root / "release_manifest.json").stat().st_mode & 0o777
-    assert mode == 0o400, f"manifest mode is {oct(mode)}, expected 0o400"
+    storage_link = root / "storage"
+    # Set the test umask to 0o077 so the target's effective mode
+    # is 0o700 — the same as if the script had followed the
+    # symlink and chmod'd it. That way the F2 regression is the
+    # ONLY way the assertion could fail: the script would have
+    # to change the mode from 0o700 to something else to pass.
+    previous_umask = _os.umask(0o077)
+    try:
+        tmp_target = root / ".tmp_storage_target"
+        # mkdir(0o755) under umask 0o077 creates a 0o700 directory.
+        tmp_target.mkdir(mode=0o755)
+        storage_link.symlink_to(tmp_target)
+        # Capture the target's mode at this moment — if it changes
+        # after the script runs, the script chmod'd it.
+        target_mode_before = tmp_target.stat().st_mode & 0o777
+        r = _run(["prepare-manifest-only"], required_env, timeout=15)
+        target_mode_after = tmp_target.stat().st_mode & 0o777
+        assert r.returncode != 0, (
+            "prepare accepted a pre-existing child symlink — F2 regression"
+        )
+        out = r.stdout + r.stderr
+        assert "symlink" in out.lower(), f"error must mention symlink; got: {out!r}"
+        # The target's mode must not have changed — script must
+        # have rejected the symlink without mutating the target.
+        assert target_mode_after == target_mode_before, (
+            f"target mode changed from {oct(target_mode_before)} to "
+            f"{oct(target_mode_after)} — F2 regression: script chmod'd "
+            f"the symlink target"
+        )
+    finally:
+        try:
+            storage_link.unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            tmp_target.chmod(0o700)
+            tmp_target.rmdir()
+        except FileNotFoundError:
+            pass
+        _os.umask(previous_umask)
+
+
+def test_smoke_probe_parses_health_json_and_fails_on_wrong_fields(required_env, monkeypatch):
+    """F1 negative fixture: a server that returns a /health/ JSON
+    body with supervised=False and real_data=True must be rejected
+    by the strict smoke. The 2026-09-11 review observed the prior
+    smoke accepting the wrong body because it searched for
+    substrings.
+    """
+    import http.server
+    import threading
+    import socket
+    import json as _json
+
+    # Find a free port.
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    # Prepare just enough layout for the smoke probe to load the manifest.
+    env = dict(required_env)
+    env["PRACE_BIND"] = f"127.0.0.1:{port}"
+    r = _run(["prepare-manifest-only"], env, timeout=30)
+    assert r.returncode == 0, r.stderr
+    manifest_commit = _json.loads(
+        (Path(env["PRACE_RUNTIME_ROOT"]) / "release_manifest.json").read_text()
+    )["git_commit"]
+
+    class Fake(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args, **kwargs):
+            pass
+
+        def do_GET(self):
+            if self.path == "/health/":
+                body = _json.dumps({
+                    "git_commit": manifest_commit,
+                    "app_build_id": "FAKE",
+                    "supervised": False,
+                    "real_data": True,
+                    "mode": "settings_supervised_synthetic",
+                }).encode()
+            elif self.path in ("/login/", "/review/"):
+                self.send_response(302)
+                self.send_header("Location", "https://example.invalid/accounts/login/")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            elif self.path == "/accounts/login/":
+                body = b'<input name="password"><input name="login">'
+            else:
+                body = b""
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    server = http.server.HTTPServer(("127.0.0.1", port), Fake)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        r = _run(["smoke"], env, timeout=30)
+        # Strict contract: smoke must FAIL because supervised=False and
+        # real_data=True; the prior substring check accepted these.
+        assert r.returncode == 6, (
+            f"smoke accepted wrong contract (exit={r.returncode}):\n"
+            f"STDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}"
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()

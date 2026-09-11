@@ -836,6 +836,8 @@ def readiness(request):
     if elapsed > budget:
         body.update(status="not_ready", reason="deadline_exceeded")
     body.update(mode=runtime_contract.runtime_mode(), supervised=runtime_contract.is_supervised(),
+                synthetic_only=runtime_contract.synthetic_only(),
+                real_data=False,
                 build_id=runtime_contract.build_identity()[0], git_commit=runtime_contract.build_identity()[1],
                 budget_ms=budget, elapsed_ms=elapsed)
     return JsonResponse(body, status=200 if body['status']=='ready' else 503)
