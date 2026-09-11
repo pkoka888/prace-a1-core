@@ -1,6 +1,6 @@
 {
   "source_sha256": "84a6526b9bb12af6a900a5e6b92d4e07cd053664413836d23731a00a55370f3c",
-  "output_sha256": "c816d97525cd9070d00c1984c486e73fbf1fa08b8a507df32459dbaf9c23d27a",
+  "output_sha256": "0f7d602ecb0f77002feebbb72fb9f716c2f568b72d12587021eb3b5d5fed130a",
   "repairs": [
     {
       "page": 1,
@@ -34,20 +34,17 @@
     {
       "page": 1,
       "dpi": 144,
-      "outside_changed_pixels": 0,
-      "white_ratio": 0.8957475994513031
+      "outside_changed_pixels": 0
     },
     {
       "page": 2,
       "dpi": 144,
-      "outside_changed_pixels": 0,
-      "white_ratio": 1.0
+      "outside_changed_pixels": 0
     },
     {
       "page": 3,
       "dpi": 144,
-      "outside_changed_pixels": 0,
-      "white_ratio": 0.89
+      "outside_changed_pixels": 0
     },
     {
       "page": 1,
@@ -65,9 +62,6 @@
       "outside_changed_pixels": 0
     }
   ],
-  "updated": {
-    "reason": "template updated by 924c215 to align checkbox outlines",
-    "previous_output_sha256": "0f7d602ecb0f77002feebbb72fb9f716c2f568b72d12587021eb3b5d5fed130a",
-    "updated_at": "2026-09-10"
-  }
+  "purpose": "Receipt for the 2026-09-06 one-time repair that removed three baked selections from the canonical A1 background. The repair is bounded: pixels outside the bounded checkbox interiors remain unchanged at 144 and 300 DPI on all three pages. Current-template checks (template_sha256 == c816d975... and post-924c215 outline alignment) are owned by config/a1_checkbox_fix_receipt.json and the corresponding tests in tests/a1/test_a1_snapshots.py.",
+  "current_template_receipt": "config/a1_checkbox_fix_receipt.json"
 }

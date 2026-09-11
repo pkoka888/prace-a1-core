@@ -285,18 +285,28 @@ def _normalize(value: str) -> str:
 
 
 def _background_damage(pdf_path: Path, background: Path, dpi: int = 144) -> list[dict[str, int]]:
-    """Count template ink/color pixels erased to near-white in the generated PDF."""
+    """Count template ink/color pixels erased to near-white in the generated PDF.
+
+    The generated page is rendered once per page (the previous version
+    called ``get_pixmap`` twice — once for the raw samples and once for
+    the dimensions). Reusing one pixmap halves the per-page raster work
+    and preserves the validation: ``got`` and ``got_pix`` are the same
+    numpy array, just shaped for broadcasting.
+    """
     matrix = pymupdf.Matrix(dpi / 72.0, dpi / 72.0)
     damage: list[dict[str, int]] = []
     with pymupdf.open(pdf_path) as generated, pymupdf.open(background) as template:
         if len(generated) != len(template):
             return [{"page": 0, "erased_template_pixels": 10**9}]
         for index in range(len(generated)):
-            got = np.frombuffer(generated[index].get_pixmap(matrix=matrix, alpha=False, colorspace=pymupdf.csRGB).samples, dtype=np.uint8)
-            ref_pix = template[index].get_pixmap(matrix=matrix, alpha=False, colorspace=pymupdf.csRGB)
-            got_pix = generated[index].get_pixmap(matrix=matrix, alpha=False, colorspace=pymupdf.csRGB)
-            got = got.reshape(got_pix.height, got_pix.width, 3)
-            ref = np.frombuffer(ref_pix.samples, dtype=np.uint8).reshape(ref_pix.height, ref_pix.width, 3)
+            got_pix = generated[index].get_pixmap(
+                matrix=matrix, alpha=False, colorspace=pymupdf.csRGB)
+            got = np.frombuffer(got_pix.samples, dtype=np.uint8) \
+                .reshape(got_pix.height, got_pix.width, 3)
+            ref_pix = template[index].get_pixmap(
+                matrix=matrix, alpha=False, colorspace=pymupdf.csRGB)
+            ref = np.frombuffer(ref_pix.samples, dtype=np.uint8) \
+                .reshape(ref_pix.height, ref_pix.width, 3)
             if got.shape != ref.shape:
                 damage.append({"page": index + 1, "erased_template_pixels": 10**9})
                 continue

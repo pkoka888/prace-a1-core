@@ -95,6 +95,29 @@ and confined (mode 0600).
   `settings.M2_SYNTHETIC_ONLY` remains `True`; intake refuses non-synthetic
   configuration.
 
+## Distinguishing this synthetic hosting configuration from real-data
+
+The `portal.settings_supervised_synthetic` module is appropriate for the
+Delivery-1 testing site because it is *synthetic-only by design*: it fails
+closed on missing env vars, refuses to fall back to `DEBUG=True`, confines
+storage under `PRACE_RUNTIME_ROOT` with operator-only permissions, and
+keeps `M2_SYNTHETIC_ONLY=True` so intake refuses non-synthetic configuration.
+
+A future real-data deployment is **not** this settings module. Real-data
+activation requires:
+
+1. A dedicated real-data settings module that explicitly *flips*
+   `M2_SYNTHETIC_ONLY=False`, names the production database, names the
+   protected storage roots, and supplies the SOPS-decrypted secrets.
+2. Migration of historical databases from synthetic fixtures to operator-
+   approved real records.
+3. A separate delivery contract (Delivery 3 in the four-delivery sequence)
+   that records the activation evidence, the REV-003 approval and the
+   infrastructure handoff.
+
+The settings module shipped here is not a placeholder for real-data; it
+is the synthetic hosting configuration for the testing site only.
+
 ## Verification
 
 ```bash
