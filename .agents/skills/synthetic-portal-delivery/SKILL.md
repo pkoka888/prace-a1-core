@@ -1,6 +1,6 @@
 ---
 name: synthetic-portal-delivery
-description: Operate, debug, and extend the Delivery-1 supervised synthetic rehearsal site (prepare -> provision -> start -> real browser journey -> stop -> restart). Use when exercising, troubleshooting or extending the canonical rehearsal lifecycle, the provisioned jan_planner + TOTP operator, the real Chromium authenticated journey, restart-survival, the bounded negative fixtures, or the related change-package selectors.
+description: Operate, debug, and extend the Delivery-1 supervised synthetic rehearsal site (prepare -> provision -> start -> real browser journey incl. correction/regeneration -> stop -> restart). Use when exercising, troubleshooting or extending the canonical rehearsal lifecycle, the provisioned jan_planner + TOTP operator, the real Chromium authenticated journey, restart-survival, the sparse-input blocked evidence path, the bounded negative fixtures, or the related change-package selectors.
 ---
 
 # Synthetic portal delivery (Delivery 1)
@@ -66,9 +66,14 @@ root before invoking the journey helper, so it works as a standalone
 shell command without the pytest `pythonpath = .` setting.
 
 Convenience wrapper `scripts/rehearse_dev_local.sh` keeps the
-signing key stable across ordinary invocations (writes
-`$PRACE_RUNTIME_ROOT/.secret_key` once and reuses it on stop/start).
-Prefer it for one-shot local runs:
+signing key stable across ordinary invocations while confining the
+runtime root: it validates the RAW path before any `mkdir` (rejects
+out-of-tree and symlinked children), refuses a `.secret_key`
+symlink, and mints `$PRACE_RUNTIME_ROOT/.secret_key` atomically
+(`mktemp` + rename, mode 0600) when the caller does not supply
+`PRACE_SECRET_KEY`. It forwards every command to the canonical
+`rehearse_synthetic_site.sh` from the repo root. Prefer it for
+one-shot local runs:
 
 ```bash
 bash scripts/rehearse_dev_local.sh prepare
@@ -118,10 +123,15 @@ Chromium through the shipped frontend end-to-end:
   insurance_number)
 - address review form (street, house_number, city, postal_code,
   country_code)
-- assignment creation
+- assignment creation (facts filled incl. the verifiable `decin`
+  institution profile)
 - A1 case preparation
-- `a1_draft_generate` form submission
+- `a1_draft_generate` form submission / prepared-auto path
 - protected PDF download (verified against the `%PDF-` magic)
+- correction: one assignment input fact edited through the shipped
+  form and verified to persist
+- regeneration: a NEW A1 case prepared from the corrected snapshot;
+  its PDF must differ from the first (new sha256)
 
 Every stage uses real HTTP requests with the operator's session
 cookies. There is no JS route replacement, no hidden form/button
@@ -133,6 +143,27 @@ whether or not HTMX intercepts.
 The journey defines a single required-stage set; any required-stage
 failure makes the journey exit non-zero. The pytest test asserts the
 same set; the CLI and pytest share one outcome contract.
+
+## Sparse-input evidence path
+
+`tests/_rehearse_workflow_data_path.py` (standalone script; the
+workflow test runs it between stop and restart) exercises the
+canonical services against the same supervised SQLite after a
+journey: the `jan_planner` membership is intact, an unknown-optional-
+facts sparse worker still saves, its `prepare_a1` case has
+`readiness=BLOCKED`, and `reserve_application_draft` raises
+`DraftInputBlocked` naming the missing facts. Running it standalone
+requires the same env as the lifecycle (`PRACE_RUNTIME_ROOT`,
+`PRACE_SECRET_KEY`, manifest + sha vars, all four `PRACE_DB_*` when
+targeting PostgreSQL):
+
+```bash
+PYTHONPATH="$PWD" venv/bin/python tests/_rehearse_workflow_data_path.py \
+    /var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development
+```
+
+A fully-named sibling worker's A1 case is `READY`, so the script also
+proves that only the missing-facts path blocks.
 
 ## Validation policy
 
@@ -175,27 +206,42 @@ shipped static assets. It honors the configured `Host` header and
 method by passing the constructed `urllib.request.Request` to
 `opener.open(request, ...)`. Connect and body-read share one
 wall-clock deadline enforced through `time.monotonic()` checks
-before and after the body read; `HTTPError` paths still respect the
-budget because the read happens before the deadline check. Any
-000/500/404 or external-host redirect fails the contract.
+before and after the body read, and the underlying socket is armed
+with the remaining budget so a fully held-open body is interrupted
+at the OS level. The `HTTPError` path reads the body straight from
+the socket, which returns partial data and honors the armed
+timeout exactly, so a slow or held error body always raises
+`TimeoutError` within the budget. The success body is read through
+the http.client buffered reader (to preserve bytes already buffered
+with the response headers); a slow trickle is caught by the
+wall-clock check on the next iteration. Any 000/500/404 or
+external-host redirect fails the contract.
 
 ## Bounded negative fixtures
 
 `tests/test_rehearse_synthetic_site.py` covers the negative
 fixtures: wrong-server smoke failure, no-server smoke failure,
 stale-pidfile rejection, wrong-pidfile-contents rejection, child
-symlink rejection before mkdir/chmod, and permissive-umask mode
-contract. Each assertion reproduces one of the bugs the bounded
-lifecycle test caught.
+symlink rejection before mkdir/chmod, permissive-umask mode
+contract, wrapper out-of-tree path rejection, wrapper symlinked
+`.secret_key` rejection, wrapper positive root + atomic key
+creation, held-body socket-interruption regression (success +
+error), slow-drip wall-clock regression (success + error). Each
+assertion reproduces one of the bugs the bounded lifecycle test
+caught.
 
 ## Test cleanup
 
 `tests/test_rehearse_workflow.py` stops the test-owned gunicorn
 process in a `try/finally` block before the runtime root fixture
 removes its directory; a failed journey still leaves no leaked
-process. The stop helper accepts that the script's normal stop
-path will not find a stale pidfile and falls back to a direct
-SIGTERM/SIGKILL on the recorded pid.
+process. The canonical `stop` command runs **first** and refuses
+to signal a pidfile whose PID does not match the launch record
+(bind, runtime, start time, cmdline). The fallback direct signal
+runs only after the canonical stop, and repeats the same ownership
+checks (`.gunicorn.started_at` vs `/proc/<pid>` stat + cmdline
+containing `gunicorn` and `portal.wsgi:application`) before
+sending SIGTERM/SIGKILL.
 
 ## PostgreSQL acceptance
 
