@@ -154,6 +154,7 @@
         "portal/release1a/migrations/0017_a1_draft_generation.py",
         "portal/release1a/migrations/0018_a1_generation_confirmation.py",
         "portal/release1a/migrations/0019_worker_legacy_key.py",
+        "portal/release1a/migrations/0020_a1case_identity_binding.py",
         "tests/test_release1a_migration_chain.py"
       ],
       "checks": [
@@ -286,6 +287,7 @@
       "paths": [
         "scripts/rehearse_synthetic_site.sh",
         "scripts/rehearse_dev_local.sh",
+        "scripts/rehearse_verify_persistence.py",
         "scripts/build_release_manifest.py",
         "scripts/provision_synthetic_operator.py",
         "scripts/smoke_probe.py",

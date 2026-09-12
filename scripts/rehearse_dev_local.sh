@@ -159,16 +159,22 @@ else
     fi
     if [ -s "$SECRET_FILE" ]; then
         PRACE_SECRET_KEY="$(cat "$SECRET_FILE")"
-    else
+        if [ -z "$PRACE_SECRET_KEY" ]; then
+            rm -f "$SECRET_FILE"
+            PRACE_SECRET_KEY=""
+        fi
+    fi
+    if [ -z "${PRACE_SECRET_KEY:-}" ]; then
         PRACE_SECRET_KEY="$("$PYTHON_BIN" -c 'import secrets; print(secrets.token_urlsafe(50))')"
         key_tmp="$(mktemp -p "$PRACE_RUNTIME_ROOT" ".secret_key.XXXXXX")"
         chmod 0600 "$key_tmp"
         printf '%s' "$PRACE_SECRET_KEY" > "$key_tmp"
-        if ! mv -n "$key_tmp" "$SECRET_FILE"; then
+        if ! mv -f "$key_tmp" "$SECRET_FILE"; then
             rm -f "$key_tmp"
             echo "FAIL: could not publish $SECRET_FILE (concurrent creation?)" >&2
             exit 1
         fi
+        rm -f "$key_tmp"
         chmod 0600 "$SECRET_FILE"
     fi
 fi

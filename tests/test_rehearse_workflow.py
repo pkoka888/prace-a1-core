@@ -204,7 +204,7 @@ def test_workflow_prepare_provision_browser_workflow_restart_persistence(
         r = _run_script(["workflow"], workflow_env, timeout=300)
         assert r.returncode == 0, (
             f"workflow command failed (rc={r.returncode}):\n"
-            f"STDOUT:\n{r.stdout[:2000]}\nSTDERR:\n{r.stderr[:1000]}")
+            f"STDOUT:\n{r.stdout[:4000]}\nSTDERR:\n{r.stderr[:2000]}")
         if not r.stdout.strip():
             raise AssertionError(
                 f"workflow command produced empty stdout:\n"
@@ -273,8 +273,7 @@ def test_workflow_prepare_provision_browser_workflow_restart_persistence(
         sparse_reserve = dp_evidence["stages"]["sparse_reserve_blocked"]
         assert sparse_reserve.get("ok") is True, (
             f"sparse reserve must block:\n{json.dumps(sparse_reserve, indent=2)}")
-        assert sparse_reserve.get("exception_class") in (
-            "DraftInputBlocked", "ValueError"), (
+        assert sparse_reserve.get("exception_class") == "DraftInputBlocked", (
             f"unexpected exception class {sparse_reserve.get('exception_class')}")
         assert sparse_reserve.get("message"), (
             "sparse reserve block must carry an actionable message")

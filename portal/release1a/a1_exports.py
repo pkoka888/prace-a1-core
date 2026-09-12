@@ -13,7 +13,7 @@ from .document_intake import audit, read_result
 from .identity import _authorize, _lock_organization, _lock_sources
 from .models import (A1Case, Assignment, Worker, WorkerIdentityRevision,
                      WorkerIdentityClaim, FieldProposal)
-from .services import StaleWrite
+from .services import StaleWrite, J4_IDENTITY_BINDING
 
 IDENTITY = {"surname": "surname", "family_name": "surname", "given_name": "given_name",
             "dob": "dob", "birth_date": "dob", **{f: f for f in (
@@ -247,20 +247,35 @@ def _current_input_snapshot(user, organization, case):
     deps = snapshot.get("dependencies")
     if deps is None:
         # J4 ``prepare_a1`` snapshots carry the J4 subset
-        # ``{schema_version, profile, assignments}`` without a
+        # ``{schema_version, profile, assignments}`` (plus the identity
+        # binding for rows prepared under ``a1-j4-identity-v1``) without a
         # ``dependencies`` block. The stored-hash check above is the
         # corruption guard for those rows; staleness is bound by
         # recomputing the live J4 source hash through the canonical
-        # ``current_a1_source`` contract (profile projection +
-        # assignment facts/version/state/dates) and comparing it to
-        # the prepared ``source_hash``. An out-of-band mutation that
-        # never set ``is_stale``—e.g. a direct assignment-fact or
-        # worker-projection write—therefore cannot leak into the
-        # rebuilt canonical row under the original hash.
-        from .services import current_a1_source
-        _, _, live_hash = current_a1_source(case.worker, case.organization)
-        if live_hash != case.source_hash:
+        # identity-aware contract and comparing it to the prepared
+        # ``source_hash``. An out-of-band mutation that never set
+        # ``is_stale``—e.g. a direct assignment-fact,
+        # worker-projection or confirmed-identity write—therefore cannot
+        # leak into the rebuilt canonical row under the original hash.
+        from .services import current_case_source
+        if current_case_source(case) != case.source_hash:
             raise StaleWrite("A1_INPUT_STALE")
+        if snapshot.get("source_contract") != J4_IDENTITY_BINDING:
+            # Legacy pre-binding row: adopt the current identity binding once,
+            # then treat later identity drift like profile/assignment drift.
+            # Re-publishing under the original hash after an out-of-band
+            # ``confirmed_fields`` write is thereby rejected, while rows that
+            # predate the binding get documented bindings instead of being
+            # dropped. The adoption is recorded (opaque references only) and
+            # does not re-issue any decision or readiness.
+            from .services import current_identity_source
+            identity_hash = result_hash(current_identity_source(case.worker, case.organization))
+            if case.bound_identity_sha256:
+                if case.bound_identity_sha256 != identity_hash:
+                    raise StaleWrite("A1_INPUT_STALE")
+            else:
+                A1Case.objects.filter(pk=case.pk).update(bound_identity_sha256=identity_hash)
+                audit(user, organization, "a1.identity_revision_bound_legacy", f"a1:{case.pk}")
         # Build the canonical ``row`` / ``dependencies`` shape on the
         # fly so downstream renderers (``export_input_case`` and the
         # application-draft publisher) receive the contract they

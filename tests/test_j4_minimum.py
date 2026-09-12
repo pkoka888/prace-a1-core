@@ -27,11 +27,13 @@ from allauth.mfa.models import Authenticator
 
 from portal.release1a.models import (
     A1Case, AuditEvent, Assignment, Membership, Organization, Worker,
+    Document, DocumentVersion, WorkerIdentityRevision,
 )
 from portal.release1a.services import (
-    create_assignment, create_worker, prepare_a1, StaleWrite,
+    create_assignment, create_worker, prepare_a1, StaleWrite, current_a1_source, current_identity_source,
 )
 from portal.release1a.a1_exports import export_input_case
+from src.document_core.serialization import result_hash
 
 
 def _mfa_login(client, user, *, password="test-m2"):
@@ -362,6 +364,98 @@ class TestJ4LegacyExportSourceBinding(TransactionTestCase):
         Assignment.objects.filter(pk=assignment.pk).update(
             a1_facts_json={**facts, "employment": {**facts["employment"], "employer_name": "Drift GmbH"}}
         )
+        with self.assertRaises(StaleWrite):
+            export_input_case(user, org, case.pk)
+
+
+class TestJ4IdentityBinding(TransactionTestCase):
+    """J4 identity source binding: new-contract cases carry live identity
+    content; legacy rows adopt once and then drift is blocked."""
+
+    def test_prepare_binds_live_identity_and_blocks_confirmed_field_mutation(self):
+        org, user = _setup_org_user("synthetic-j4-identity-bind", "J4 identity bind")
+        worker = _make_worker(user, org, activity_profile="self_employed")
+        assignment, _ = _make_assignment(user, org, worker, date(2026, 9, 1), date(2026, 9, 30))
+        Assignment.objects.filter(pk=assignment.pk).update(
+            a1_facts_json={
+                "status_profile": "self_employed_multi_state",
+                "employment": {"employer_name": "Bind GmbH"},
+                "activity": {"name": "Test role", "address": "DE, CZ"},
+                "institution": {"resolved_ossz": "OSSZ Děčín", "profile_key": "decin"},
+            },
+            version=1,
+        )
+        doc = Document.objects.create(
+            organization=org, worker=worker, opaque_key="synthetic-identity-doc",
+            sha256="f" * 64, content_type="image/png", purpose="worker_intake",
+        )
+        version = DocumentVersion.objects.create(
+            organization=org, document=doc, version_number=1, opaque_key="v1",
+            sha256="e" * 64, content_type="image/png", byte_size=1,
+        )
+        WorkerIdentityRevision.objects.create(
+            organization=org, worker=worker, source_document=doc, source_version=version,
+            revision_number=1, confirmed_fields={"birth_place": "Syntetický"},
+            confirmed_by=user,
+        )
+
+        case = prepare_a1(user, org, worker)
+        self.assertEqual(case.source_snapshot_json["source_contract"], "a1-j4-identity-v1")
+        identity = case.source_snapshot_json["identity"]["identity_revision"]
+        self.assertEqual(identity["fields_sha256"], result_hash({"birth_place": "Syntetický"}))
+        export_input_case(user, org, case.pk)
+
+        WorkerIdentityRevision.objects.filter(pk=identity["ref"]).update(confirmed_fields={"birth_place": "AFTER"})
+        with self.assertRaises(StaleWrite):
+            export_input_case(user, org, case.pk)
+
+    def test_legacy_row_adopts_identity_binding_once_then_blocks_drift(self):
+        org, user = _setup_org_user("synthetic-j4-legacy-bind", "J4 legacy bind")
+        worker = _make_worker(user, org, activity_profile="self_employed")
+        assignment, _ = _make_assignment(user, org, worker, date(2026, 9, 1), date(2026, 9, 30))
+        Assignment.objects.filter(pk=assignment.pk).update(
+            a1_facts_json={
+                "status_profile": "self_employed_multi_state",
+                "employment": {"employer_name": "Legacy GmbH"},
+                "activity": {"name": "Test", "address": "DE, CZ"},
+                "institution": {"resolved_ossz": "OSSZ Děčín", "profile_key": "decin"},
+            },
+            version=1,
+        )
+        doc = Document.objects.create(
+            organization=org, worker=worker, opaque_key="synthetic-legacy-doc",
+            sha256="d" * 64, content_type="image/png", purpose="worker_intake",
+        )
+        version = DocumentVersion.objects.create(
+            organization=org, document=doc, version_number=1, opaque_key="v1",
+            sha256="c" * 64, content_type="image/png", byte_size=1,
+        )
+        revision = WorkerIdentityRevision.objects.create(
+            organization=org, worker=worker, source_document=doc, source_version=version,
+            revision_number=1, confirmed_fields={"birth_place": "Legacy"},
+            confirmed_by=user,
+        )
+
+        profile, normalized, _ = current_a1_source(worker, org)
+        legacy_snapshot = {
+            "schema_version": "a1-input-1",
+            "profile": profile,
+            "assignments": normalized,
+        }
+        legacy_hash = result_hash(legacy_snapshot)
+        case = A1Case.objects.create(
+            organization=org, worker=worker, source_hash=legacy_hash,
+            source_snapshot_json=legacy_snapshot,
+            readiness=A1Case.Readiness.READY,
+            is_stale=False,
+        )
+        export_input_case(user, org, case.pk)
+        case.refresh_from_db()
+        self.assertEqual(case.bound_identity_sha256, result_hash(current_identity_source(worker, org)))
+        self.assertTrue(
+            AuditEvent.objects.filter(event_type="a1.identity_revision_bound_legacy", object_ref=f"a1:{case.pk}").exists()
+        )
+        WorkerIdentityRevision.objects.filter(pk=revision.pk).update(confirmed_fields={"birth_place": "DRIFT"})
         with self.assertRaises(StaleWrite):
             export_input_case(user, org, case.pk)
 

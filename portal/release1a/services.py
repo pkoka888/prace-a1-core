@@ -9,7 +9,7 @@ from src.document_core.serialization import result_hash
 from .models import (
     A1Case, Assignment, AuditEvent, Document, DocumentVersion, DocumentClassification,
     FieldProposal, FieldDecision, IntakeSession, Membership, OcrRun,
-    ReviewTask, StatusEvent, Worker, Organization
+    ReviewTask, StatusEvent, Worker, WorkerIdentityClaim, WorkerIdentityRevision, Organization
 )
 
 class Forbidden(Exception): pass
@@ -138,12 +138,79 @@ def current_a1_source(worker, organization):
     return profile, normalized, live_hash
 
 
+J4_IDENTITY_BINDING = "a1-j4-identity-v1"
+
+
+def current_identity_source(worker, organization):
+    """Identity/source bindings the J4 journey actually prepared from.
+
+    Mirrors ``a1_exports._snapshot``'s identity consumption: the latest
+    confirmed ``WorkerIdentityRevision`` content (fields digest, not just
+    presence) plus the single selected ``WorkerIdentityClaim``. Binding the
+    confirmed-field digest means out-of-band writes to ``confirmed_fields``
+    or OCR claim/version drift change the live hash and block republishing
+    under the original case hash.
+    """
+    if worker.organization_id != organization.id:
+        raise Forbidden("cross-organization worker")
+    bindings = {}
+    revision = WorkerIdentityRevision.objects.filter(
+        organization=organization, worker=worker
+    ).order_by("-revision_number", "-pk").first()
+    if revision is not None:
+        if (not revision.confirmed_by_id or not revision.source_document_id or not revision.source_version_id or
+                revision.source_document.organization_id != organization.pk or
+                revision.source_version.organization_id != organization.pk or
+                revision.source_version.document_id != revision.source_document_id):
+            raise ValueError("A1_REVISION_EVIDENCE_REQUIRED")
+        bindings["identity_revision"] = {
+            "ref": revision.pk, "number": revision.revision_number,
+            "fields_sha256": result_hash(revision.confirmed_fields),
+            "version_ref": revision.source_version_id,
+            "source_document_ref": revision.source_document_id,
+        }
+    claims = list(WorkerIdentityClaim.objects.filter(
+        organization=organization, worker=worker).order_by("pk"))
+    if len(claims) > 1:
+        raise ValueError("A1_CLAIM_SELECTION_REQUIRED")
+    if claims:
+        claim = claims[0]
+        run = claim.ocr_run
+        bindings["claim"] = {
+            "claim_ref": claim.pk, "evaluation_ref": claim.evaluation_id,
+            "run_ref": run.pk, "region_ref": claim.region_id, "version_ref": run.version_id,
+            "source_sha256": run.version.sha256, "output_sha256": run.output_sha256,
+        }
+    return bindings
+
+
+def _j4_journey_snapshot(worker, organization):
+    """The extended J4 stored snapshot; binds identity sources, not only
+    profile projection + assignment facts."""
+    profile, normalized, _ = current_a1_source(worker, organization)
+    return {
+        "schema_version": "a1-input-1",
+        "source_contract": J4_IDENTITY_BINDING,
+        "profile": profile,
+        "assignments": normalized,
+        "identity": current_identity_source(worker, organization),
+    }
+
+
+def current_case_source(case):
+    """Live hash comparable with ``case.source_hash`` on its stored shape."""
+    snapshot = case.source_snapshot_json or {}
+    if isinstance(snapshot, dict) and snapshot.get("source_contract") == J4_IDENTITY_BINDING:
+        return result_hash(_j4_journey_snapshot(case.worker, case.organization))
+    return current_a1_source(case.worker, case.organization)[2]
+
+
 def current_artifact_dependencies(case):
     """Current mutable dependencies; accepted input/QA snapshots stay immutable."""
     from django.conf import settings
     from .j4_artifacts import _hash
     dependencies = dict(case.artifact_dependencies)
-    dependencies.update(source_hash=current_a1_source(case.worker, case.organization)[2],
+    dependencies.update(source_hash=current_case_source(case),
                         template_sha256=_hash((settings.BASE_DIR/'templates/a1_background.pdf').read_bytes()),
                         layout_sha256=_hash((settings.BASE_DIR/'config/a1_layout.json').read_bytes()),
                         renderer_sha256=_hash((settings.BASE_DIR/'scripts/a1_core.py').read_bytes()),
@@ -191,11 +258,7 @@ def prepare_a1(user, organization, worker):
     # version key so the hash is bound to the J4 storage shape, not
     # the pre-J4 {profile, assignments}-only shape that
     # ``prototypes.a1_prepare`` hashes internally.
-    snapshot = {
-        "schema_version": "a1-input-1",
-        "profile": profile,
-        "assignments": normalized,
-    }
+    snapshot = _j4_journey_snapshot(worker, organization)
     snapshot_hash = result_hash(snapshot)
 
     # Staleness on the previous case is a like-for-like digest comparison
@@ -338,7 +401,7 @@ def attach_a1_artifact(user, organization, case_id, *, expected_source_hash,
 
     require_capability(user, organization, "a1:approve")
     case = A1Case.objects.select_for_update().get(pk=case_id, organization=organization)
-    _, _, live_hash = current_a1_source(case.worker, organization)
+    live_hash = current_case_source(case)
     if case.source_hash != expected_source_hash or case.source_hash != live_hash or case.is_stale:
         raise StaleWrite("A1_SOURCE_CHANGED")
     if case.readiness != A1Case.Readiness.READY:

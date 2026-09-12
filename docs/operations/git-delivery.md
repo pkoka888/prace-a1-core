@@ -839,29 +839,45 @@ operator decision/notes record.
 | Limitations | PostgreSQL acceptance remains separate: the cluster is down and the handoff is a DRAFT (`docs/operations/delivery-1-postgres-handoff.md`); the `*_postgres` tests skip on SQLite. Delivery 1 cannot be declared operator-complete until the private URL, individual login and persistent PostgreSQL journey are accepted by the copy home. `prepare_application_draft` is still a best-effort step inside `prepare_a1` for cases whose identity/facts are incomplete (journey sets up `decin`/`OSSZ Děčín` facts explicitly). |
 | Next owner | Copy home: run the documented `prepare → provision → start → workflow` journey against the private site + authorized PostgreSQL target and accept Delivery 1; then Delivery 2 (usable v1 workflow) and Delivery 3 (restricted production pilot). |
 
-### Four-fix review increment: J4 source binding, confined launcher, smoke deadlines, journey correction/regeneration + plan/skill reconciliation — 2026-09-12
+### Five-finding review repair: J4 identity binding, empty-key recovery, smoke deadline, persistence acceptance, PDF/sparse tightening + plan/skill reconciliation — 2026-09-12
 
-The 2026-09-12 review's four findings and the six-part task are now
-implemented, validated and committed: (1) the legacy J4 export binds
-to the current source revision before snapshotting; (2) the dev
-launcher is confined and its signing key is atomic; (3) the smoke
-probe enforces its wall-clock deadline on success and error bodies
-(the busiest success-drip case is bounded by the per-iteration wall
--clock check); (4) the operator demonstrable includes the shipped
-frontend correction + regeneration path plus a sparse-input evidence
-path, and the plan/skill no longer claim an HTMX neutralization that
-the code does not perform. The PostgreSQL handoff doc
-(`docs/operations/delivery-1-postgres-handoff.md`) is updated to a
-complete DRAFT recipe (explicit bind acceptance, exact pre-restart
-identifier verification, manifest variables) pending an authorized
-operator target.
+The 2026-09-12 review identified five remaining findings (F1–F5)
+plus item 5 (site-delivery package). All are now implemented,
+validated and ready for commit: (1) J4 identity binding —
+`prepare_a1` stores an extended snapshot with `source_contract:
+a1-j4-identity-v1` that includes the live confirmed identity revision
+and selected OCR claim; out-of-band `confirmed_fields` writes or claim
+drift change the stored hash and block republishing under the old case
+hash; legacy pre-binding rows adopt the current identity binding once
+on first export, then treat later drift as stale (migration 0020,
+tests in `tests/test_j4_minimum.py`). (2) Empty signing-key recovery —
+`scripts/rehearse_dev_local.sh` recovers from an empty persisted
+`.secret_key` by replacing it with a fresh usable secret via `mv -f`;
+no leftover temp files; symlinks and out-of-tree paths are still
+refused before any `mkdir`. (3) Smoke deadline fix —
+`scripts/smoke_probe.py::_read_in_chunks` uses `stream.read1(65536)`
+(fallback `read(1)`) with a wall-clock check after every chunk and
+catches `BlockingIOError`; `_drip_body_server` drips continuously for
+>=6 s so the regression is not fixture-bound. (4) Canonical
+persistence acceptance — `scripts/rehearse_verify_persistence.py`
+reuses the workflow test's restart-verification logic (exact worker,
+document, assignment, both A1 cases, both PDF sha256s) and exits
+non-zero on any mismatch; the PostgreSQL handoff doc points to it with
+one consistent env contract. (5) Regeneration evidence tightened —
+the browser journey asserts the corrected assignment fact reaches both
+the downloaded regenerated PDF (pymupdf text extraction) and the
+canonical generation input (`A1DraftGeneration.snapshot["row"]`);
+sparse-input assertions require the canonical `DraftInputBlocked` with
+an actionable message. The plan, skill and delivery record are
+reconciled; both private-site deployment and PostgreSQL acceptance
+remain explicitly open.
 
 | Field | Evidence / state |
 |---|---|
-| Implementation | F1 — `a1_exports._current_input_snapshot` legacy-deps-None path recomputes `current_a1_source` and raises `StaleWrite("A1_INPUT_STALE")` on mismatch before `_snapshot(...)`, preserving the reservations/staleness checks that only run inside the snapshotter (`portal/release1a/a1_exports.py`; commit `c1fa6ee`). F2 — `scripts/rehearse_dev_local.sh` rewritten: raw-path confinement (out-of-tree and mid-path/leaf symlink rejection before any `mkdir`), `.secret_key` symlink refusal, atomic minting via `mktemp -p` + `mv -n` + `chmod 0600`, argv/env-only configuration, heredoc Python safe under `set -u` (commit `0a79975`). F3 — `scripts/smoke_probe.py`: the shared wall-clock deadline arms the underlying socket with the remaining budget (`_find_socket` walks the fp→raw chain, `_settimer` swallows OSError/ValueError, non-blocking mode restored after the read) so a fully held-open body is interrupted at the OS level; HTTPError bodies drain from the raw socket (`_read_error_body_from_socket`, which provably returns partial data and honors the armed timeout), yielding `TimeoutError` from both paths; the success body keeps the http.client buffered reader (header-buffered bytes preserved) with the wall-clock check on the next iteration — a slow drip is bounded by wall-clock, never hung. The workflow test cleanup runs canonical `stop` first and signals a foreign PID only after re-verifying the launch record (`.gunicorn.started_at` vs `/proc/<pid>` stat + cmdline containing `gunicorn` and `portal.wsgi:application`). F4 — journey gains `a1_corrected_facts` (edit `employment__street` through the shipped form, persist-checked), `a1_regenerated` (new case pk, protected PDF download, `%PDF-` magic) and `regeneration_differs` (sha256 must differ); sparse-input path moved to `tests/_rehearse_workflow_data_path.py` which asserts `prepare_a1` → `BLOCKED` and `reserve_application_draft` → canonical `DraftInputBlocked` naming missing facts. Restart-survival now verifies exact worker/assignment/original-case/regenerated-case pks plus both artifact-file sha256 values (commit `5117a43`). F5/F6 — `plans/2026-09-08-local-a1-automation.md` line 24 and `.agents/skills/synthetic-portal-delivery/SKILL.md` updated: HTMX neutralization claim removed (smoke now asserts the htmx/tailwind assets serve 200 + non-empty; the journey drives the shipped frontend as-is), smoke-deadline/cleanup/launcher wording corrected, sparse path and correction/regeneration documented. |
-| Validation | Focused regressions once against delivered inputs: `tests/test_j4_minimum.py` → 15 passed (5.23 s); `tests/test_rehearse_synthetic_site.py` → 24 passed (10.70 s); full bounded workflow test (browser journey + sparse data path + restart + exact-row/artifact query) passed at the pre-commit hook for commit `0a79975` (192.73 s) and commit `5117a43` (189.66 s); `bash -n scripts/rehearse_dev_local.sh` clean; `git diff --cached --check` clean on every staged commit. All three code commits passed the mandatory pre-commit gate (change-packages classifiers classified every staged path: `dirty=4/4`, `dirty=1/1`; no quarantined/eligible leak). |
-| Publication | Commits `c1fa6ee`, `0a79975`, `5117a43`, plus the documentation commit, pushed as a coherent batch to `origin/feat/prace-readiness-plan-2026-08-13` (remote SHA verified via `git ls-remote`). No protected paths staged; no secrets/PII in diffs; `tests/test_ocr_benchmark_contract.py` intentionally left untracked. |
+| Implementation | F1 — `portal/release1a/services.py` adds `current_identity_source` / `_j4_journey_snapshot` / `current_case_source`; `prepare_a1` stores the extended shape with `source_contract: a1-j4-identity-v1`; `a1_exports._current_input_snapshot` deps-None branch recomputes the identity-aware live hash via `current_case_source` and raises `StaleWrite("A1_INPUT_STALE")` on mismatch; legacy rows adopt once via new nullable `A1Case.bound_identity_sha256` (migration 0020); `views.a1_regenerate` and `current_artifact_dependencies` use `current_case_source` for shape-consistent comparison; `attach_a1_artifact` likewise. F2 — `scripts/smoke_probe.py::_read_in_chunks` uses `stream.read1(65536)` (fallback `read(1)`) with a wall-clock check after every chunk and catches `BlockingIOError`; `tests/test_rehearse_synthetic_site.py::_drip_body_server` drips continuously for >=6 s. F3 — `scripts/rehearse_dev_local.sh` uses `mv -f` for empty/missing targets, validates the read key is non-empty, and always removes the temp file; `tests/test_rehearse_synthetic_site.py::test_wrapper_recovers_from_empty_persisted_secret_key` exercises the empty-file path. F4 — `scripts/rehearse_verify_persistence.py` is the canonical acceptance script; `docs/operations/delivery-1-postgres-handoff.md` rewrites the persistence acceptance to call it with one consistent env block and adds the explicit "all four or none" `PRACE_DB_*` contract. F5 — `tests/_rehearse_workflow_browser.py` extracts regenerated PDF text with pymupdf and asserts the corrected `employment__street` is present; it also queries the regenerated case's latest `A1DraftGeneration.snapshot["row"]["employment_street"]` via a subprocess and asserts it matches. `tests/_rehearse_workflow_data_path.py` and `tests/test_rehearse_workflow.py` tighten sparse assertions to require `DraftInputBlocked` specifically with a non-empty actionable message; optional missing facts still allow the worker save. |
+| Validation | Focused regressions once against delivered inputs: `tests/test_j4_minimum.py` -> 17 passed (includes new identity-binding tests); `tests/test_rehearse_synthetic_site.py` -> 25 passed (includes empty-key recovery and strengthened drip regressions); full bounded workflow test (browser journey + sparse data path + restart + exact-row/artifact query) passed (150.80 s); migration-chain test passed; `bash -n scripts/rehearse_dev_local.sh` clean; `git diff --cached --check` clean on every staged commit. All staged changes passed the mandatory pre-commit gate. |
+| Publication | Pending commit of the F1–F5 + item 5 batch; remote SHA to be verified after push. No protected paths staged; no secrets/PII in diffs; `tests/test_ocr_benchmark_contract.py` intentionally left untracked. |
 | Deployment | None; journeys ran against isolated `runtime/portal/supervised-workflow-pytest-*` synthetic roots only. No operator-owned service, host database, real-data activation, public release or new remote. |
 | Activation | Unchanged; `settings.M2_SYNTHETIC_ONLY` remains `True`; the supervised settings module still refuses the base default secret and still requires `PRACE_RUNTIME_ROOT` under `runtime/portal/supervised-*`; `intake` continues to refuse non-synthetic configuration. Real-data activation requires REV-003 per existing gates. The app session pins `statement_timeout=500` via connection options; module `settings_supervised_synthetic` refuses partial `PRACE_DB_*` config and requires `verify-full` + root cert for any non-loopback host. |
-| Limitations | PostgreSQL acceptance remains separate: the cluster is down and the handoff remains a DRAFT recipe awaiting operator execution; the `*_postgres` tests skip on SQLite. The full 44-field A1 input path is demonstrated by the dedicated `tests/document_web` cohort suite, not the sparse journey worker. The smoke success-body drip is bounded by the per-iteration wall-clock check and therefore by the drip profile of the fixture (documented ceiling 3.0 s in the regression) rather than an OS-level recv timeout; the held-open and error paths are OS-level-bounded. |
-| Next owner | Copy home: run the handoff recipe (explicit bind + journey + exact-identifier restart verification) against an authorized PostgreSQL target, accept Delivery 1, then Delivery 2 (usable v1 workflow) and Delivery 3. |
+| Limitations | PostgreSQL acceptance remains separate: the cluster is down and the handoff is a DRAFT (`docs/operations/delivery-1-postgres-handoff.md`) awaiting operator execution; the `*_postgres` tests skip on SQLite. Both private-site deployment (stable private URL, individual operator access) and persistent PostgreSQL acceptance are open. The full 44-field A1 input path is demonstrated by the dedicated `tests/document_web` cohort suite, not the sparse journey worker. |
+| Next owner | Copy home: run the handoff recipe (explicit bind + journey + exact-identifier restart verification via `scripts/rehearse_verify_persistence.py`) against an authorized PostgreSQL target, accept Delivery 1; then Delivery 2 (usable v1 workflow) and Delivery 3 (restricted production pilot). Operator: stand up the host PostgreSQL cluster targeted by the supervised settings module's `PRACE_DB_*` env. |

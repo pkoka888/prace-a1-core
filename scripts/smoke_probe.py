@@ -116,12 +116,15 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
     def _read_in_chunks(stream, *, label: str) -> bytes:
         """Read the success body through the http.client reader.
 
-        The reader is required so body bytes that arrived together with
-        the response headers (already buffered inside the reader) are
-        not lost. The reader's own read does not return partial data
-        for large chunk sizes on this stack, so a held-open body is
-        interrupted by the armed socket timeout and a slow drip is
-        bounded by the wall-clock check on the following iteration.
+        ``read1`` returns partial data without waiting for the reader's
+        full internal buffer, so each iteration observes the wall-clock
+        deadline even against a continuously dripping server. On
+        readers that lack ``read1`` (unexpected on this stack), fall
+        back to ``read(1)`` which also returns immediately. ``TimeoutError``
+        and ``BlockingIOError`` are treated as budget overruns and
+        propagated as ``TimeoutError``. After every successful chunk,
+        the wall-clock is checked so a slow drip cannot outrun the
+        budget by dogging it past the deadline.
         """
         chunks = []
         total = 0
@@ -130,11 +133,16 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
             if sock is not None:
                 _arm_socket_timeout(sock, label=label)
             try:
-                chunk = stream.read(65536)
-            except (TimeoutError, socket.timeout) as exc:
+                if hasattr(stream, "read1"):
+                    chunk = stream.read1(65536)
+                else:
+                    chunk = stream.read(1)
+            except (TimeoutError, socket.timeout, BlockingIOError) as exc:
                 raise TimeoutError(
                     f"{label} chunk read exceeded {read_timeout:.1f}s "
                     f"budget: {exc}") from exc
+            if _time.monotonic() > deadline:
+                _overrun("body read")
             if not chunk:
                 break
             chunks.append(chunk)

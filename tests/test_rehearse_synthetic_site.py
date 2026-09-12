@@ -397,6 +397,29 @@ def test_wrapper_rejects_symlinked_secret_key(rehearsal_root):
     assert foreign.read_text() == "existing", "foreign target was modified"
 
 
+def test_wrapper_recovers_from_empty_persisted_secret_key(rehearsal_root):
+    """A pre-existing but empty .secret_key must be replaced with a
+    usable key on the next invocation, and no leftover temp files
+    may accumulate."""
+    key_file = rehearsal_root / ".secret_key"
+    key_file.write_text("")
+    key_file.chmod(0o600)
+    assert key_file.stat().st_size == 0
+
+    env = _wrapper_env(rehearsal_root, with_secret=False)
+    r = _run_wrapper(["status"], env)
+    assert r.returncode == 0, r.stderr
+    assert key_file.is_file()
+    assert key_file.stat().st_size > 0, "empty key must be replaced"
+    assert not list(rehearsal_root.glob(".secret_key.*")), \
+        "recovery must not leave temp key files behind"
+
+    # Second invocation reuses the regenerated stable key.
+    second = _run_wrapper(["status"], env)
+    assert second.returncode == 0, second.stderr
+    assert key_file.read_text() == key_file.read_text()
+
+
 def test_smoke_probe_parses_health_json_and_fails_on_wrong_fields(required_env, monkeypatch):
     """F1 negative fixture: a server that returns a /health/ JSON
     body with supervised=False and real_data=True must be rejected
@@ -531,12 +554,12 @@ def test_bounded_request_enforces_deadline_on_success_body():
         server.server_close()
 
 
-def _drip_body_server(status):
-    """A server that writes a trickle of body bytes for ~2 s (never
-    completing the Content-Length body), against which a short smoke
-    deadline must fire on the wall-clock checks (each chunk read
-    returns fast, so socket-level timeouts alone cannot save the
-    budget)."""
+def _drip_body_server(status, *, drip_seconds=6.0, chunk=64, gap=0.05):
+    """A server that continuously writes a trickle of body bytes for at
+    least ``drip_seconds`` (never completing the Content-Length body),
+    against which a short smoke deadline must fire on the wall-clock
+    checks (each read1 chunk returns fast, so socket-level timeouts
+    alone cannot save the budget)."""
     import http.server as _httpserver
     import socket as _socket
     import threading as _threading
@@ -560,13 +583,14 @@ def _drip_body_server(status):
             self.send_header("Content-Length", "1048576")
             self.end_headers()
             self.wfile.flush()
-            for _ in range(40):
+            deadline = _time.monotonic() + drip_seconds
+            while _time.monotonic() < deadline:
                 try:
-                    self.wfile.write(b"x" * 64)
+                    self.wfile.write(b"x" * chunk)
                     self.wfile.flush()
                 except OSError:
                     break
-                _time.sleep(0.05)
+                _time.sleep(gap)
 
     server = _httpserver.HTTPServer(("127.0.0.1", port), Drip)
     thread = _threading.Thread(target=server.serve_forever, daemon=True)
@@ -588,15 +612,13 @@ def _assert_timed_out(call, label, ceiling=1.0):
 
 
 def test_bounded_request_enforces_deadline_on_slow_success_drip():
-    """F4: a 200 server that slowly trickles a never-ending body must
+    """F2: a 200 server that continuously trickles a long-lived body must
     still terminate with TimeoutError (the smoke must never report the
     wrapped-up request as healthy). The success body is read through
     the http.client reader (so bytes buffered with the headers are not
-    lost), which returns large chunks only when the full chunk or EOF
-    arrives, so a slow drip is caught by the wall-clock check right
-    after the blocked read completes; a fully held-open body is instead
-    interrupted at the OS level within the budget (see the
-    _success_body test above).
+    lost); each read1 returns partial data without blocking for the
+    full internal buffer, so the wall-clock check on every iteration
+    bounds a drip regardless of how long the server keeps writing.
     """
     from scripts.smoke_probe import _bounded_request
     server, thread, port = _drip_body_server(200)
@@ -606,7 +628,7 @@ def test_bounded_request_enforces_deadline_on_slow_success_drip():
                 f"http://127.0.0.1:{port}/health/", "localhost",
                 read_timeout=0.2),
             "slow success drip",
-            ceiling=3.0,
+            ceiling=1.5,
         )
     finally:
         server.shutdown()

@@ -2,10 +2,11 @@
 
 **STATUS: DRAFT — recipe complete, operator execution pending.** The
 recipe now contains an explicit bind acceptance, a single consistent
-environment contract, and a persistence acceptance that verifies the
-exact pre-restart identifiers and artifact bytes (no replacement
-rows). No host service, configuration or database change in this
-repository activates this draft. See
+environment contract, a canonical persistence-acceptance script, and a
+persistence acceptance that verifies the exact pre-restart identifiers
+and artifact bytes (no replacement rows). No host service,
+configuration or database change in this repository activates this
+draft. See
 `plans/2026-09-08-local-a1-automation.md` § Delivery alignment for the
 engineering-side evidence and § PostgreSQL handoff for the open gap.
 
@@ -34,7 +35,9 @@ The supervised synthetic settings module refuses to start unless
 all four `PRACE_DB_NAME`, `PRACE_DB_USER`, `PRACE_DB_HOST`,
 `PRACE_DB_PORT` are set; remote TCP additionally requires
 `PRACE_DB_SSLMODE=verify-full` and a populated
-`PRACE_DB_SSLROOTCERT`.
+`PRACE_DB_SSLROOTCERT`. Omitting all four PostgreSQL variables permits
+the default SQLite target; a partial set (some but not all four)
+is rejected with `ImproperlyConfigured`.
 
 ## PostgreSQL cluster target
 
@@ -79,12 +82,15 @@ export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
 export PRACE_RUNTIME_ROOT="/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development"
 export PRACE_SECRET_KEY="$(cat /etc/prace/secret.key)"
 export PRACE_ALLOWED_HOSTS=prace-v-nemecku.tvoje.info,127.0.0.1
+# PostgreSQL target (all four set together; omit all four to use SQLite).
 export PRACE_DB_NAME=prace_synthetic
 export PRACE_DB_USER=prace_synth_app
 export PRACE_DB_HOST=127.0.0.1
 export PRACE_DB_PORT=5432
 export PRACE_DB_PASSWORD=set-by-operator
 # PRACE_DB_SSLMODE / PRACE_DB_SSLROOTCERT only for remote TCP.
+export PRACE_RELEASE_MANIFEST="$PRACE_RUNTIME_ROOT/release_manifest.json"
+export PRACE_RELEASE_MANIFEST_SHA256="$(cat "$PRACE_RUNTIME_ROOT/.release_manifest.sha256")"
 cd "$A1_PRIVATE_DIR"
 bash scripts/rehearse_synthetic_site.sh prepare
 bash scripts/rehearse_synthetic_site.sh provision
@@ -167,52 +173,33 @@ bash scripts/rehearse_synthetic_site.sh workflow \
 
 # 2. Copy the exact identifiers from that evidence (do not guess).
 export WORKER_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['worker_pk'])")"
+export DOCUMENT_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['document_pk'])")"
 export ASSIGNMENT_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['assignment_pk'])")"
 export CASE_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['case_pk'])")"
 export REGENERATED_CASE_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['regenerated_case_pk'])")"
 export PDF_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['stages']['a1_pdf_downloaded']['sha256'])")"
+export REGEN_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['stages']['regeneration_differs']['sha256'])")"
 
 # 3. Restart without touching data.
 bash scripts/rehearse_synthetic_site.sh stop
 bash scripts/rehearse_synthetic_site.sh start
 
-# 4. Verify the exact rows and the artifact bytes. Every check must
-#    print exactly one row / file and the expected sha256.
-env DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
-    PRACE_RUNTIME_ROOT=/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development \
-    PRACE_SECRET_KEY="$(cat /etc/prace/secret.key)" \
-    PRACE_ALLOWED_HOSTS=prace-v-nemecku.tvoje.info,127.0.0.1 \
-    PRACE_DB_NAME=prace_synthetic PRACE_DB_USER=prace_synth_app \
-    PRACE_DB_HOST=127.0.0.1 PRACE_DB_PORT=5432 \
-    PRACE_DB_PASSWORD=set-by-operator \
-    PRACE_RELEASE_MANIFEST=/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development/release_manifest.json \
-    PRACE_RELEASE_MANIFEST_SHA256="$(cat /var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development/.release_manifest.sha256)" \
-    WORKER_PK="$WORKER_PK" ASSIGNMENT_PK="$ASSIGNMENT_PK" \
-    CASE_PK="$CASE_PK" REGENERATED_CASE_PK="$REGENERATED_CASE_PK" \
-    PDF_SHA256="$PDF_SHA256" \
-    venv/bin/python manage.py shell -c "
-import os, hashlib
-from pathlib import Path
-from django.conf import settings
-from portal.release1a.models import Worker, Assignment, A1Case, Document
-
-checks = []
-for model, pk in ((Worker, int(os.environ['WORKER_PK'])),
-                  (Assignment, int(os.environ['ASSIGNMENT_PK'])),
-                  (A1Case, int(os.environ['CASE_PK'])),
-                  (A1Case, int(os.environ['REGENERATED_CASE_PK']))):
-    qs = model.objects.filter(pk=pk)
-    checks.append(f'{model.__name__} pk={pk}: {qs.count()} row(s)')
-for label, pk in (('original', int(os.environ['CASE_PK'])),
-                  ('regenerated', int(os.environ['REGENERATED_CASE_PK']))):
-    case = A1Case.objects.get(pk=pk)
-    key = (case.artifact_reference or {}).get('key')
-    pdf = Path(settings.DOCUMENT_STORAGE_ROOT) / 'j4' / key / 'artifact.pdf'
-    digest = hashlib.sha256(pdf.read_bytes()).hexdigest() if pdf.is_file() else 'MISSING'
-    checks.append(f'artifact {label}: exists={pdf.is_file()} sha256={digest}')
-print('\\n'.join(checks))
-"
+# 4. Verify the exact rows and the artifact bytes with the canonical
+#    acceptance script. Exit 0 means every row and every byte matches
+#    the pre-restart evidence; any other exit blocks publication.
+cd "$A1_PRIVATE_DIR"
+venv/bin/python scripts/rehearse_verify_persistence.py
 ```
+
+The script reuses the same post-restart query logic exercised by
+`tests/test_rehearse_workflow.py`: it queries the supervised database
+for the worker, document, assignment and both A1 cases captured during
+the browser journey, and verifies the published artifact bytes on disk
+still match the PDF the operator downloaded. It exits non-zero with an
+actionable message on mismatch or missing configuration. When the
+PostgreSQL target is unavailable the script exits 2
+(`PERSISTENCE_ACCEPTANCE_BLOCKED`) so the operator can distinguish a
+transport failure from a data mismatch.
 
 Each `Worker`/`Assignment`/`A1Case` check must print exactly `1
 row(s)`, both artifacts must print `exists=True`, and both sha256

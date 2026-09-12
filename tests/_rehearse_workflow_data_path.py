@@ -148,25 +148,24 @@ def main() -> int:
 
     # reserve_application_draft on the *sparse* worker must block
     # with a clear domain exception. The canonical expected class is
-    # ``DraftInputBlocked`` naming the missing facts; ``ValueError``
-    # is the upstream signal when the case snapshot is still in the
-    # older ``prepare_a1`` shape. Both prove the contract that the
-    # rendering operation is the only one blocked by missing data.
+    # ``DraftInputBlocked`` naming the missing facts; that proves the
+    # rendering operation is the only one blocked by missing data
+    # while optional missing facts still allow the worker save above.
     sparse_case = prepare_a1(user, org, sparse)
     sparse_reserve_blocked = False
     sparse_reserve_error = ""
     sparse_reserve_error_class = ""
     try:
         reserve_application_draft(user, org, sparse_case.pk)
-    except (DraftInputBlocked, ValueError) as exc:
+    except DraftInputBlocked as exc:
         sparse_reserve_blocked = True
         sparse_reserve_error = str(exc)
         sparse_reserve_error_class = type(exc).__name__
     except Exception as exc:
         sparse_reserve_blocked = False
         sparse_reserve_error = (
-            f"WRONG_EXCEPTION: expected DraftInputBlocked or "
-            f"ValueError, got {type(exc).__name__}: {exc}"
+            f"WRONG_EXCEPTION: expected DraftInputBlocked, "
+            f"got {type(exc).__name__}: {exc}"
         )
         sparse_reserve_error_class = type(exc).__name__
     evidence["stages"]["sparse_reserve_blocked"] = {

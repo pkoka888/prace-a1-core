@@ -768,8 +768,8 @@ def a1_regenerate(request, pk):
         return JsonResponse({"error": "Nelze regenerovat již vydané/předané A1."}, status=400)
 
     worker = case.worker
-    from .services import current_a1_source, current_artifact_dependencies
-    _, _, current_hash = current_a1_source(worker, request.organization)
+    from .services import current_artifact_dependencies, current_case_source
+    current_hash = current_case_source(case)
     artifact_changed = bool(case.artifact_reference) and current_artifact_dependencies(case) != case.artifact_dependencies
 
     if current_hash == case.source_hash and not artifact_changed:

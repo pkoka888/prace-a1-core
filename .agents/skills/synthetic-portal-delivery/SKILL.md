@@ -69,11 +69,12 @@ Convenience wrapper `scripts/rehearse_dev_local.sh` keeps the
 signing key stable across ordinary invocations while confining the
 runtime root: it validates the RAW path before any `mkdir` (rejects
 out-of-tree and symlinked children), refuses a `.secret_key`
-symlink, and mints `$PRACE_RUNTIME_ROOT/.secret_key` atomically
-(`mktemp` + rename, mode 0600) when the caller does not supply
-`PRACE_SECRET_KEY`. It forwards every command to the canonical
-`rehearse_synthetic_site.sh` from the repo root. Prefer it for
-one-shot local runs:
+symlink, recovers from an empty persisted key by replacing it with a
+fresh usable secret, and mints `$PRACE_RUNTIME_ROOT/.secret_key`
+atomically (`mktemp` + `mv -f` + `chmod 0600`) when the caller does
+not supply `PRACE_SECRET_KEY`. It forwards every command to the
+canonical `rehearse_synthetic_site.sh` from the repo root. Prefer it
+for one-shot local runs:
 
 ```bash
 bash scripts/rehearse_dev_local.sh prepare
@@ -129,9 +130,12 @@ Chromium through the shipped frontend end-to-end:
 - `a1_draft_generate` form submission / prepared-auto path
 - protected PDF download (verified against the `%PDF-` magic)
 - correction: one assignment input fact edited through the shipped
-  form and verified to persist
+  form and verified to persist; the regenerated PDF is extracted
+  with pymupdf and must contain the corrected text
 - regeneration: a NEW A1 case prepared from the corrected snapshot;
-  its PDF must differ from the first (new sha256)
+  its PDF must differ from the first (new sha256) and the canonical
+  generation input (`A1DraftGeneration.snapshot["row"]`) is queried
+  to confirm the corrected value was bound
 
 Every stage uses real HTTP requests with the operator's session
 cookies. There is no JS route replacement, no hidden form/button
@@ -172,6 +176,7 @@ The rehearsal selects tests through `change-packages.yml`'s
 
 - `scripts/rehearse_synthetic_site.sh`
 - `scripts/rehearse_dev_local.sh`
+- `scripts/rehearse_verify_persistence.py`
 - `scripts/build_release_manifest.py`
 - `scripts/provision_synthetic_operator.py`
 - `scripts/smoke_probe.py`
@@ -212,10 +217,13 @@ at the OS level. The `HTTPError` path reads the body straight from
 the socket, which returns partial data and honors the armed
 timeout exactly, so a slow or held error body always raises
 `TimeoutError` within the budget. The success body is read through
-the http.client buffered reader (to preserve bytes already buffered
-with the response headers); a slow trickle is caught by the
-wall-clock check on the next iteration. Any 000/500/404 or
-external-host redirect fails the contract.
+the http.client buffered reader using `read1` (which returns partial
+data without waiting for the full internal buffer) so each
+iteration observes the wall-clock deadline even against a
+continuously dripping server; a slow drip is bounded by the
+per-iteration wall-clock check, and `BlockingIOError` is treated as
+a budget overrun. Any 000/500/404 or external-host redirect fails
+the contract.
 
 ## Bounded negative fixtures
 
@@ -248,16 +256,31 @@ sending SIGTERM/SIGKILL.
 PostgreSQL is a target-dependent acceptance step. Set all four
 `PRACE_DB_NAME`, `PRACE_DB_USER`, `PRACE_DB_HOST`, `PRACE_DB_PORT`;
 remote TCP additionally requires `PRACE_DB_SSLMODE=verify-full` and
-`PRACE_DB_SSLROOTCERT`. The lifecycle test runs against SQLite by
-default. The supervised settings module is synthetic-only and
-intentionally refuses real-data configuration; PostgreSQL acceptance
-does not change that posture.
+`PRACE_DB_SSLROOTCERT`. Omitting all four permits the default SQLite
+target; a partial set is rejected by the supervised settings module.
+The lifecycle test runs against SQLite by default. The supervised
+settings module is synthetic-only and intentionally refuses real-data
+configuration; PostgreSQL acceptance does not change that posture.
 
 Host PostgreSQL is sysadmin-owned (cluster start, configuration,
 backup, recovery). Engineering prepares a scoped recipe (database
-name, user, storage root, environment contract, acceptance
-commands, recovery steps) and hands it to the operator. Local
-synthetic implementation does not require a running cluster.
+name, user, storage root, environment contract, acceptance commands,
+recovery steps) and hands it to the operator. Local synthetic
+implementation does not require a running cluster.
+
+After the documented `prepare → provision → start → workflow`
+journey, run the canonical acceptance script:
+
+```bash
+venv/bin/python scripts/rehearse_verify_persistence.py
+```
+
+It reuses the workflow test's restart-verification logic (exact
+worker, assignment, both A1 cases, both PDF sha256s) and exits
+non-zero with an actionable message on mismatch or missing
+configuration. When the PostgreSQL target is unavailable it exits 2
+(`PERSISTENCE_ACCEPTANCE_BLOCKED`) so the operator can distinguish a
+transport failure from a data mismatch.
 
 ## Avoid
 

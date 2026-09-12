@@ -180,6 +180,8 @@ APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "scripts/build_release_manifest.py",
     "scripts/provision_synthetic_operator.py",
     "scripts/smoke_probe.py",
+    "scripts/rehearse_verify_persistence.py",
+    "portal/release1a/migrations/0020_a1case_identity_binding.py",
 })
 # Tracked source settings modules. Filenames legitimately embed pipeline words.
 APPROVED_STAGED_SETTINGS_PATHS = frozenset({
@@ -205,6 +207,11 @@ APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/test_playwright_smoke.py",
     "tests/test_release_verifier.py",
     "tests/test_ocr_benchmark_contract.py",
+    "tests/test_j4_minimum.py",
+    "tests/test_rehearse_synthetic_site.py",
+    "tests/test_rehearse_workflow.py",
+    "tests/_rehearse_workflow_browser.py",
+    "tests/_rehearse_workflow_data_path.py",
 })
 # Tracked synthetic fixture files. Synthetic personal identifiers under
 # tests/fixtures/release_1a/orgonik_zivot_* are conspicuously fictional and

@@ -166,6 +166,9 @@ class A1Case(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
     source_hash = models.CharField(max_length=64)
     source_snapshot_json = models.JSONField(default=dict, blank=True)
+    # Identity binding adopted once for pre-``a1-j4-identity-v1`` rows so
+    # later confirmed-identity drift is detected like profile/assignment drift.
+    bound_identity_sha256 = models.CharField(max_length=64, blank=True, default="")
     is_stale = models.BooleanField(default=False)
 
     class Readiness(models.TextChoices):

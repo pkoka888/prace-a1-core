@@ -39,9 +39,12 @@ import base64
 import hashlib
 import hmac
 import json
+import os
+import pymupdf
 import re
 import secrets
 import struct
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -714,9 +717,54 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path) -> dict:
                 raise SystemExit(
                     f"FAIL: regenerated artifact does not begin with "
                     f"%PDF- magic (size={len(regen_bytes)})")
+
+            # The corrected assignment fact must reach both the canonical
+            # generation input (the row dict stored in A1DraftGeneration)
+            # and the downloaded PDF bytes.
+            regen_text = " ".join(
+                page.get_text() for page in pymupdf.open(stream=regen_bytes, filetype="pdf")
+            )
+            if corrected_street not in regen_text:
+                raise SystemExit(
+                    f"FAIL: regenerated PDF text does not contain "
+                    f"corrected street {corrected_street!r} "
+                    f"(extracted prefix: {regen_text[:200]!r})")
+            generation_street = subprocess.run(
+                [sys.executable, "-c", """
+import os, django; django.setup()
+from portal.release1a.models import A1DraftGeneration
+gen = A1DraftGeneration.objects.filter(
+    reservation__case_id=int(os.environ['REGENERATED_CASE_PK'])
+).order_by('-revision').first()
+if gen is None:
+    raise SystemExit('NO_GENERATION')
+print((gen.snapshot or {}).get('row', {}).get('employment_street', ''))
+"""],
+                env={
+                    **os.environ,
+                    "DJANGO_SETTINGS_MODULE": "portal.settings_supervised_synthetic",
+                    "PRACE_RUNTIME_ROOT": str(runtime_root),
+                    "PRACE_SECRET_KEY": os.environ.get("PRACE_SECRET_KEY", ""),
+                    "PRACE_RELEASE_MANIFEST": str(runtime_root / "release_manifest.json"),
+                    "PRACE_RELEASE_MANIFEST_SHA256": (runtime_root / ".release_manifest.sha256").read_text().strip(),
+                    "REGENERATED_CASE_PK": str(regenerated_case_pk),
+                },
+                cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+            )
+            if generation_street.returncode != 0:
+                raise SystemExit(
+                    f"FAIL: generation input query failed "
+                    f"(rc={generation_street.returncode}): "
+                    f"{generation_street.stderr}")
+            if generation_street.stdout.strip() != corrected_street:
+                raise SystemExit(
+                    f"FAIL: generation input street mismatch: "
+                    f"expected {corrected_street!r}, got "
+                    f"{generation_street.stdout.strip()!r}")
+
             evidence["stages"]["a1_regenerated"] = _stage_ok(
                 "a1_regenerated", regenerated_case_pk=regenerated_case_pk,
-                size=len(regen_bytes))
+                size=len(regen_bytes), corrected_street=corrected_street)
 
             # Stage 15: the corrected snapshot must change the
             # artifact bytes. Identical sha256 would mean the
