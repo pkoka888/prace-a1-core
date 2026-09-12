@@ -12,7 +12,7 @@
 {% if assignment.pk %}<p><a href="{% url 'assignment_facts_edit' worker_pk=worker.pk pk=assignment.pk %}">Podklady A1 k tomuto přiřazení</a></p>{% endif %}
 
 <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form id="assignment-form" hx-post="." hx-target="#assignment-form" hx-swap="outerHTML" class="space-y-6">
+    <form id="assignment-form" method="post" action="." class="space-y-6">
         {% csrf_token %}
 
         {% if form.non_field_errors %}

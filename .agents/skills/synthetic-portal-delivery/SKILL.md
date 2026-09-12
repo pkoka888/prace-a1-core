@@ -24,6 +24,10 @@ settings module is synthetic-only by design.
 5. Resolve the runtime root: `<repo>/runtime/portal/supervised-<name>/`,
    owned by the operator, mode 0700. The rehearsal script refuses any
    path outside this layout.
+6. Confirm prerequisites are installed: Playwright Python package plus
+   the matching Chromium build under `~/.cache/ms-playwright`. The
+   journey helper fails closed if Chromium cannot launch; no
+   service-side shortcut substitutes the real browser path.
 
 ## Canonical entrypoint
 
@@ -39,7 +43,8 @@ comment:
 4  restart failure (start after stop did not accept)
 5  rollback failure (operator intervention required)
 6  smoke failure (HTTP probe did not match expected contract)
-7  workflow failure (authenticated session could not exercise the journey)
+7  workflow failure (a required authenticated-browser stage failed
+   or the journey script returned non-zero)
 ```
 
 The full Delivery-1 lifecycle:
@@ -56,9 +61,14 @@ bash scripts/rehearse_synthetic_site.sh start          # 7 (restart-survival)
 bash scripts/rehearse_synthetic_site.sh stop
 ```
 
-Convenience wrapper `scripts/rehearse_dev_local.sh` generates a fresh
-synthetic secret on every invocation and forwards to the canonical
-script. Prefer it for one-shot local runs:
+The `workflow` subcommand sets `cwd` and `PYTHONPATH` to the repo
+root before invoking the journey helper, so it works as a standalone
+shell command without the pytest `pythonpath = .` setting.
+
+Convenience wrapper `scripts/rehearse_dev_local.sh` keeps the
+signing key stable across ordinary invocations (writes
+`$PRACE_RUNTIME_ROOT/.secret_key` once and reuses it on stop/start).
+Prefer it for one-shot local runs:
 
 ```bash
 bash scripts/rehearse_dev_local.sh prepare
@@ -81,34 +91,48 @@ reruns; rotation is explicit via `--rotate-credentials` or
 
 The script refuses to run unless `--runtime-root` equals the configured
 `PRACE_RUNTIME_ROOT` (preventing "fix one, point at a different
-database" foot-guns). `operator.json` (mode 0600) holds the password
-and TOTP secret; `organization.json` (mode 0600) holds the org record.
-Both live inside the operator-owned runtime root; the script never
-prints the password outside a deliberate read of that file.
+database" foot-guns). If an operator already exists without an
+`operator.json` and no rotation is requested, the script refuses
+rather than silently minting a credential it cannot record.
+
+`operator.json` (mode 0600) holds the password and TOTP secret;
+`organization.json` (mode 0600) holds the org record. Both live
+inside the operator-owned runtime root; the script never prints the
+password outside a deliberate read of that file. Evidence receipts
+and JSON journey outputs never include the TOTP code.
 
 ## Real-browser journey
 
-`tests/_rehearse_workflow_browser.py` drives a headless Chromium
-(Playwright 1.62.0+, Chromium 1228/1234 from `~/.cache/ms-playwright`)
-through the natural allauth login form and TOTP challenge, then
-worker creation, document upload, document association, OCR confirm
-(when proposals exist), assignment creation, A1 preparation, and case
-detail visibility. HTMX is neutralized at the network level so the
-Release 1A forms behave as plain HTML; every POST goes through the
-operator's session cookie jar — no service-side shortcut, no
-helper-side membership widening.
+`tests/_rehearse_workflow_browser.py` drives a real headless
+Chromium through the shipped frontend end-to-end:
 
-Sparse-input stages are documented skip paths, never failures:
+- login + TOTP
+- worker creation (the form has `method="post"`; the helper does not
+  inject attributes)
+- document upload (synthetic OP card with `PRIJMENI`, `JMENO`,
+  `DATUM NAROZENI` and `TRVALY POBYT` labels so the address review
+  form appears)
+- OCR proposal confirmation (family_name, given_name, birth_date,
+  residence_address)
+- missing-identity form (birth_place, nationality, sex,
+  insurance_number)
+- address review form (street, house_number, city, postal_code,
+  country_code)
+- assignment creation
+- A1 case preparation
+- `a1_draft_generate` form submission
+- protected PDF download (verified against the `%PDF-` magic)
 
-- `ocr_field_confirmed`: skipped when no OCR proposals match the
-  selected document/region (synthetic OP card fixture-specific).
-- `a1_pdf_downloaded`: skipped when the worker does not satisfy the
-  full 44-field A1 contract; the dedicated `tests/document_web`
-  cohort suite exercises the full A1 contract on a complete input row.
+Every stage uses real HTTP requests with the operator's session
+cookies. There is no JS route replacement, no hidden form/button
+injection, no service-side shortcut and no helper-side membership
+widening. HTMX is allowed to run; the templates provide `method="post"`
+and `action="."` so the browser's native submit path succeeds
+whether or not HTMX intercepts.
 
-Restart-survival of the synthetic record set is verified by stopping
-gunicorn, restarting it, and querying the supervised-synthetic
-database for the worker and case captured during the journey.
+The journey defines a single required-stage set; any required-stage
+failure makes the journey exit non-zero. The pytest test asserts the
+same set; the CLI and pytest share one outcome contract.
 
 ## Validation policy
 
@@ -135,11 +159,13 @@ venv/bin/python -m pytest \
     tests/test_rehearse_workflow.py -q
 ```
 
-The `infrastructure_git_workflow` package adds the rehearsal
-unit/lifecycle tests through
-`scripts/select_infrastructure_git_workflow_checks.py` whenever a
-`requirements*.txt` is staged, so a silent `whitenoise`/`rapidocr`
-regression does not slip past pure-tooling checks.
+Prose-only edits under `.agents/skills/synthetic-portal-delivery/`
+are routed through a separate package that runs only structural and
+planning checks; the 2½-minute rehearsal suite is not duplicated.
+
+`scripts/select_infrastructure_git_workflow_checks.py` adds the same
+rehearsal suite when a `requirements*.txt` is staged; the dispatcher
+deduplicates identical commands across packages.
 
 ## Smoke contract
 
@@ -148,17 +174,28 @@ regression does not slip past pure-tooling checks.
 shipped static assets. It honors the configured `Host` header and
 method by passing the constructed `urllib.request.Request` to
 `opener.open(request, ...)`. Connect and body-read share one
-wall-clock deadline so the timeout contract is documented and
-asserted. Any 000/500/404 or external-host redirect fails the contract.
+wall-clock deadline enforced through `time.monotonic()` checks
+before and after the body read; `HTTPError` paths still respect the
+budget because the read happens before the deadline check. Any
+000/500/404 or external-host redirect fails the contract.
 
 ## Bounded negative fixtures
 
-`tests/test_rehearse_synthetic_site.py` covers the F1–F8 negative
+`tests/test_rehearse_synthetic_site.py` covers the negative
 fixtures: wrong-server smoke failure, no-server smoke failure,
 stale-pidfile rejection, wrong-pidfile-contents rejection, child
 symlink rejection before mkdir/chmod, and permissive-umask mode
 contract. Each assertion reproduces one of the bugs the bounded
 lifecycle test caught.
+
+## Test cleanup
+
+`tests/test_rehearse_workflow.py` stops the test-owned gunicorn
+process in a `try/finally` block before the runtime root fixture
+removes its directory; a failed journey still leaves no leaked
+process. The stop helper accepts that the script's normal stop
+path will not find a stale pidfile and falls back to a direct
+SIGTERM/SIGKILL on the recorded pid.
 
 ## PostgreSQL acceptance
 
@@ -170,6 +207,12 @@ default. The supervised settings module is synthetic-only and
 intentionally refuses real-data configuration; PostgreSQL acceptance
 does not change that posture.
 
+Host PostgreSQL is sysadmin-owned (cluster start, configuration,
+backup, recovery). Engineering prepares a scoped recipe (database
+name, user, storage root, environment contract, acceptance
+commands, recovery steps) and hands it to the operator. Local
+synthetic implementation does not require a running cluster.
+
 ## Avoid
 
 - Do not invent a second settings module. Reuse
@@ -177,9 +220,10 @@ does not change that posture.
 - Do not add a helper-side membership widening or service-side
   shortcut in the journey — the operator role is what Jan would
   actually exercise.
-- Do not redirect through a TLS proxy in the rehearsal; Chromium
-  treats loopback as potentially-trustworthy and Secure cookies
-  work over plain HTTP locally.
+- Do not redirect through a TLS proxy in the local rehearsal;
+  Chromium treats loopback as potentially-trustworthy. A real
+  deployment still requires TLS, but it is not a rehearsal
+  prerequisite.
 - Do not stage protected paths (`a1/`, `scans/`, `data/`,
   `runtime/portal/`, `secrets/`, `.env`).
 - Do not delete the inherited `tests/test_ocr_benchmark_contract.py`.

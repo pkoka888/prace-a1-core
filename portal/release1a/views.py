@@ -658,31 +658,34 @@ def a1_prepare(request, worker_pk):
 @require_org_membership
 def a1_case_detail(request, pk):
     """J4: A1 case detail — approval denial, manual external status distinction."""
+    from .a1_drafts import DraftInputBlocked
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
 
-    is_application_draft = hasattr(case, "draft_reservation")
-    if is_application_draft:
-        if request.method == "POST":
-            return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
-        from django.core.exceptions import ObjectDoesNotExist
-        from .a1_generation_access import current_generation
-        from .services import Forbidden, StaleWrite
-        from .j4_artifacts import ArtifactError
+    # An "application draft" is any case that has been prepared through
+    # the prepare_a1 path. The draft_reservation may not exist yet —
+    # it is created on demand by the a1_draft_generate view. Show the
+    # application-draft UI (current-generation + draft-generation form)
+    # as soon as the case is ready, so the operator does not have to
+    # click through the legacy approve/reject form before generating
+    # the unverified draft.
+    is_application_draft = (
+        hasattr(case, "draft_reservation")
+        or case.readiness == A1Case.Readiness.READY
+    )
 
-        generation = None
-        try:
-            generation = current_generation(request.user, request.organization, case.pk)
-        except Forbidden:
-            return HttpResponseForbidden("ACCESS_DENIED")
-        except (ObjectDoesNotExist, StaleWrite, ValueError, OSError, ArtifactError):
-            pass
-        response = render(request, "portal/a1_case_detail.html", {
-            "case": case, "worker": case.worker, "is_application_draft": True,
-            "generation": generation,
-        })
-        from django.utils.cache import add_never_cache_headers
-        add_never_cache_headers(response)
-        return response
+    # A reserved-but-not-yet-published generation is a protected intermediate
+    # stage: the legacy operator decision form and any confirmation stay
+    # blocked until the protected draft bytes exist. ``reserve_application_generation``
+    # creates the generation row together with the reservation; publication is
+    # what stamps ``artifact_reference`` onto it.
+    from .models import A1DraftGeneration, A1DraftReservation
+    has_reservation = A1DraftReservation.objects.filter(case=case).exists()
+    has_published_generation = A1DraftGeneration.objects.filter(
+        reservation__case=case
+    ).exclude(prepared_artifact_hash="").exists()
+    pending_draft = has_reservation and not has_published_generation
+    if is_application_draft and request.method == "POST" and pending_draft:
+        return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
 
     if request.method == "POST":
         form = A1ApprovalForm(request.POST)
@@ -719,6 +722,27 @@ def a1_case_detail(request, pk):
             return redirect("a1_case_detail", pk=case.pk)
     else:
         form = A1ApprovalForm()
+
+    if is_application_draft:
+        from django.core.exceptions import ObjectDoesNotExist
+        from .a1_generation_access import current_generation
+        from .services import Forbidden, StaleWrite
+        from .j4_artifacts import ArtifactError
+
+        generation = None
+        try:
+            generation = current_generation(request.user, request.organization, case.pk)
+        except Forbidden:
+            return HttpResponseForbidden("ACCESS_DENIED")
+        except (ObjectDoesNotExist, StaleWrite, ValueError, OSError, ArtifactError):
+            pass
+        response = render(request, "portal/a1_case_detail.html", {
+            "case": case, "worker": case.worker, "is_application_draft": True,
+            "generation": generation, "has_reservation": has_reservation,
+        })
+        from django.utils.cache import add_never_cache_headers
+        add_never_cache_headers(response)
+        return response
 
     ctx = {"case": case, "form": form, "worker": case.worker}
     return render(request, "portal/a1_case_detail.html", ctx)
@@ -779,6 +803,45 @@ def a1_regenerate(request, pk):
     if request.headers.get("HX-Request"):
         return render(request, "portal/partials/a1_case_row.html", {"case": new_case})
     return redirect("a1_case_detail", pk=new_case.pk)
+
+
+@require_org_membership
+@require_http_methods(["POST"])
+def a1_draft_generate(request, pk):
+    """Generate the unverified A1 draft PDF (canonical unverified publisher).
+
+    The reservation may not exist yet; this view creates it through the
+    canonical unverified publisher (``prepare_application_draft``) and
+    redirects back to the case detail page, where the download links
+    become visible. A reservation-less case therefore represents a
+    prepared-but-not-yet-rendered state, not an error.
+    """
+    from .a1_drafts import prepare_application_draft, DraftInputBlocked
+    from .services import Forbidden, StaleWrite
+
+    case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
+    try:
+        generation = prepare_application_draft(request.user, request.organization, case.pk)
+    except DraftInputBlocked as exc:
+        AuditEvent.objects.create(
+            organization=request.organization, actor_ref=f"user:{request.user.pk}",
+            event_type="a1.draft_blocked", object_ref=f"a1:{case.pk}",
+            outcome="blocked",
+        )
+        return JsonResponse({"error": "A1_DRAFT_BLOCKED", "reason": str(exc)}, status=409)
+    except (Forbidden, StaleWrite, ValueError, OSError) as exc:
+        AuditEvent.objects.create(
+            organization=request.organization, actor_ref=f"user:{request.user.pk}",
+            event_type="a1.draft_failed", object_ref=f"a1:{case.pk}",
+            outcome="failed",
+        )
+        return JsonResponse({"error": "A1_DRAFT_FAILED", "reason": str(exc)}, status=409)
+    AuditEvent.objects.create(
+        organization=request.organization, actor_ref=f"user:{request.user.pk}",
+        event_type="a1.draft_generated", object_ref=f"generation:{generation.pk}",
+        outcome="success",
+    )
+    return redirect("a1_case_detail", pk=case.pk)
 
 
 # =============================================================================
@@ -1645,8 +1708,8 @@ WORKER_COMPLETION_REQUIRED_FIELDS = [
 WORKER_A1_REQUIRED_FIELDS = [
     "surname", "given_name", "dob", "birth_place",
     "nationality", "sex", "insurance_number",
-    "residence_street", "residence_house_number", "residence_city",
-    "residence_postal_code", "residence_country_code",
+    "street", "house_number", "city",
+    "postal_code", "country_code",
 ]
 
 

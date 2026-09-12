@@ -28,33 +28,17 @@ class WorkerForm(forms.ModelForm):
             "given_name": forms.TextInput(attrs={
                 "class": "input-field",
                 "placeholder": _("Křestní jméno"),
-                "hx-post": ".",
-                "hx-trigger": "blur changed",
-                "hx-target": "#worker-form",
-                "hx-swap": "outerHTML",
             }),
             "family_name": forms.TextInput(attrs={
                 "class": "input-field",
                 "placeholder": _("Příjmení"),
-                "hx-post": ".",
-                "hx-trigger": "blur changed",
-                "hx-target": "#worker-form",
-                "hx-swap": "outerHTML",
             }),
             "birth_date": forms.DateInput(attrs={
                 "class": "input-field",
                 "type": "date",
-                "hx-post": ".",
-                "hx-trigger": "change",
-                "hx-target": "#worker-form",
-                "hx-swap": "outerHTML",
             }, format="%Y-%m-%d"),
             "activity_profile": forms.Select(attrs={
                 "class": "select-field",
-                "hx-post": ".",
-                "hx-trigger": "change",
-                "hx-target": "#worker-form",
-                "hx-swap": "outerHTML",
             }),
             "state": forms.Select(attrs={
                 "class": "select-field",
@@ -108,10 +92,6 @@ class DocumentUploadForm(forms.ModelForm):
         widget=forms.ClearableFileInput(attrs={
             "class": "file-input",
             "accept": ".pdf,.png,.jpg,.jpeg,.tif,.tiff",
-            "hx-post": ".",
-            "hx-trigger": "change",
-            "hx-target": "#document-upload-form",
-            "hx-swap": "outerHTML",
         }),
         help_text=_("Povolené formáty: PDF, PNG, JPG. Maximální velikost: %(size)s MB.") % {"size": MAX_UPLOAD_BYTES // (1024 * 1024)}
     )
@@ -166,10 +146,6 @@ class OcrConfirmationForm(forms.Form):
                     required=False,
                     widget=forms.CheckboxInput(attrs={
                         "class": "checkbox-field",
-                        "hx-post": ".",
-                        "hx-trigger": "change",
-                        "hx-target": f"#ocr-proposal-{proposal.pk}",
-                        "hx-swap": "outerHTML",
                     }),
                 )
                 # Hidden field for the proposal value
@@ -204,34 +180,18 @@ class AssignmentForm(forms.ModelForm):
             "workplace_label": forms.TextInput(attrs={
                 "class": "input-field",
                 "placeholder": _("Název pracoviště"),
-                "hx-post": ".",
-                "hx-trigger": "blur changed",
-                "hx-target": "#assignment-form",
-                "hx-swap": "outerHTML",
             }),
             "activity_label": forms.TextInput(attrs={
                 "class": "input-field",
                 "placeholder": _("Popis činnosti"),
-                "hx-post": ".",
-                "hx-trigger": "blur changed",
-                "hx-target": "#assignment-form",
-                "hx-swap": "outerHTML",
             }),
             "start": forms.DateInput(attrs={
                 "class": "input-field",
                 "type": "date",
-                "hx-post": ".",
-                "hx-trigger": "change",
-                "hx-target": "#assignment-form",
-                "hx-swap": "outerHTML",
             }, format="%Y-%m-%d"),
             "end": forms.DateInput(attrs={
                 "class": "input-field",
                 "type": "date",
-                "hx-post": ".",
-                "hx-trigger": "change",
-                "hx-target": "#assignment-form",
-                "hx-swap": "outerHTML",
             }, format="%Y-%m-%d"),
             "state": forms.Select(attrs={
                 "class": "select-field",

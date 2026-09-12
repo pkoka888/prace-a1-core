@@ -61,7 +61,7 @@ WORKERS="${PRACE_WORKERS:-2}"
 START_TIMEOUT="${PRACE_REHEARSE_TIMEOUT:-30}"
 APPROVED_RUNTIME_PARENT="$REPO_ROOT/runtime/portal"
 
-step() { printf '\n=== %s ===\n' "$*"; }
+step() { printf '\n=== %s ===\n' "$*" >&2; }
 
 require() {
     if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
@@ -758,7 +758,7 @@ cmd_workflow() {
         echo "FAIL: workflow journey exited with $rc" >&2
         exit 7
     fi
-    echo "OK: real-browser journey completed"
+    echo "OK: real-browser journey completed" >&2
 }
 
 # Synthetic operator + organization + MFA workflow. The first

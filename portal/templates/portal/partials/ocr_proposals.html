@@ -8,9 +8,7 @@
                     <input type="checkbox" name="confirm_{{ proposal.field_name }}_{{ proposal.pk }}" value="true"
                            {% if proposal.confirmed %}checked{% endif %}
                            class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                           {% if proposal.confirmed %}disabled{% endif %}
-                           hx-post="." hx-target="#ocr-proposal-{{ proposal.pk }}" hx-swap="outerHTML"
-                           hx-include="[name='csrfmiddlewaretoken']">
+                           {% if proposal.confirmed %}disabled{% endif %}>
                     <div>
                         <p class="font-medium text-gray-900">{{ proposal.field_name }}</p>
                         <p class="text-sm text-gray-500">{% trans "Návrh" %}: <span class="font-mono">{{ proposal.proposed_value }}</span> | {% trans "Jistota" %}: {{ proposal.confidence|floatformat:2 }}%</p>

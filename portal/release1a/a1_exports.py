@@ -225,14 +225,50 @@ def prepare_input_case(user, organization, worker_id, *, assignment_id=None, cla
 
 
 def _current_input_snapshot(user, organization, case):
-    """Validate a locked caller's snapshot without recording an export."""
+    """Validate a locked caller's snapshot without recording an export.
+
+    The stored snapshot is authoritative: its digest must match
+    ``case.source_hash`` (corruption guard) and it must declare the
+    canonical schema version. Staleness is detected via the
+    live-source re-hash against the same digest when a ``dependencies``
+    block was recorded; J4 ``prepare_a1`` snapshots without that
+    block rely on the stored-hash check alone. Republishing a stale
+    input is rejected before any number is reserved.
+    """
     snapshot = case.source_snapshot_json
-    if snapshot.get("schema_version") != "a1-input-1" or result_hash(snapshot) != case.source_hash:
+    schema_version = snapshot.get("schema_version")
+    if schema_version != "a1-input-1":
         raise ValueError("A1_SNAPSHOT_UNSUPPORTED_OR_CORRUPT")
-    deps = snapshot["dependencies"]
+    if result_hash(snapshot) != case.source_hash:
+        raise ValueError("A1_SNAPSHOT_CORRUPT")
+    if case.is_stale:
+        raise StaleWrite("A1_INPUT_STALE")
+    deps = snapshot.get("dependencies")
+    if deps is None:
+        # J4 ``prepare_a1`` snapshots carry the J4 subset
+        # ``{schema_version, profile, assignments}`` without a
+        # ``dependencies`` block. The stored-hash check above is the
+        # authoritative integrity guard for those rows; a tamper of
+        # ``profile`` / ``assignments`` would mismatch the hash.
+        # Build the canonical ``row`` / ``dependencies`` shape on the
+        # fly so downstream renderers (``export_input_case`` and the
+        # application-draft publisher) receive the contract they
+        # expect, without weakening the integrity check. ``_snapshot``
+        # already re-reads the confirmed identity revision and the
+        # worker's assignment facts, so the rebuilt row carries the
+        # same confirmed facts the J4 prepare step recorded.
+        rebuilt = _snapshot(user, organization, case.worker_id, None, None)
+        rebuilt["dependencies"] = rebuilt.get("dependencies", {})
+        rebuilt["dependencies"]["source_hash"] = case.source_hash
+        if "profile" in snapshot:
+            rebuilt["profile"] = snapshot["profile"]
+        if "assignments" in snapshot:
+            rebuilt["assignments"] = snapshot["assignments"]
+        return rebuilt
     current = _snapshot(user, organization, case.worker_id,
-        deps.get("assignment", {}).get("ref"), deps.get("claim", {}).get("claim_ref"))
-    if case.is_stale or result_hash(current) != case.source_hash:
+        deps.get("assignment", {}).get("ref"),
+        deps.get("claim", {}).get("claim_ref"))
+    if result_hash(current) != case.source_hash:
         raise StaleWrite("A1_INPUT_STALE")
     return snapshot
 

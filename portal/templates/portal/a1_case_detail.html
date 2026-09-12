@@ -30,9 +30,25 @@
         <a href="{% url 'a1_artifact_preview' pk=case.pk page=3 %}?generation={{ generation.pk }}">Náhled strany 3</a>
     </div>
     {% else %}
-    <p role="status" class="text-sm text-amber-800">Aktuální návrh není dostupný nebo se změnily podklady. Je nutná nová příprava návrhu.</p>
+    <form method="post" action="{% url 'a1_draft_generate' pk=case.pk %}" class="my-2">
+        {% csrf_token %}
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Vygenerovat PDF</button>
+        <span class="text-sm text-amber-800 ml-2">Aktuální návrh není dostupný nebo se změnily podklady. Přípravu můžete spustit znovu.</span>
+    </form>
     {% endif %}
 </section>
+{% if case.artifact_reference and not has_reservation %}
+<section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Dokument ke kontrole">
+    <h3 class="text-lg font-semibold mb-2">Dokument ke kontrole</h3>
+    <p class="text-sm text-gray-600 mb-3">Tato kopie není potvrzením o vydání A1. Změněné podklady vyžadují novou přípravu.</p>
+    <div class="flex flex-wrap gap-4">
+        <a href="{% url 'a1_artifact_download' pk=case.pk %}">Stáhnout PDF</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=1 %}">Náhled strany 1</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=2 %}">Náhled strany 2</a>
+        <a href="{% url 'a1_artifact_preview' pk=case.pk page=3 %}">Náhled strany 3</a>
+    </div>
+</section>
+{% endif %}
 {% elif case.artifact_reference %}
 <section class="bg-white rounded-lg shadow p-6 mb-6" aria-label="Dokument ke kontrole">
     <h3 class="text-lg font-semibold mb-2">Dokument ke kontrole</h3>

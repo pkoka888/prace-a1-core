@@ -88,6 +88,15 @@
         "portal/templates/portal/a1_case_detail.html",
         "portal/templates/portal/a1_generation_confirm.html",
         "portal/templates/portal/a1_evidence_intake.html",
+        "portal/templates/portal/a1_prepare.html",
+        "portal/templates/portal/document_detail.html",
+        "portal/templates/portal/document_upload.html",
+        "portal/templates/portal/worker_form.html",
+        "portal/templates/portal/partials/a1_prepare_form.html",
+        "portal/templates/portal/partials/assignment_form.html",
+        "portal/templates/portal/partials/document_upload_form.html",
+        "portal/templates/portal/partials/ocr_proposals.html",
+        "portal/templates/portal/partials/worker_form.html",
         "tests/document_web/__init__.py",
         "tests/document_web/test_intake.py",
         "tests/document_web/test_inbox.py",
@@ -201,7 +210,7 @@
     },
     "repository_documentation": {
       "purpose": "Actual research-stage repository and protected-data boundaries.",
-      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md", "docs/operations/wsgi-deployment-recipe.md"],
+      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md", "docs/operations/wsgi-deployment-recipe.md", "docs/operations/delivery-1-postgres-handoff.md"],
       "checks": ["git diff --check"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert documentation without changing runtime or private data."
@@ -284,8 +293,7 @@
         "tests/test_rehearse_synthetic_site_lifecycle.py",
         "tests/test_rehearse_workflow.py",
         "tests/_rehearse_workflow_browser.py",
-        "tests/_rehearse_workflow_data_path.py",
-        ".agents/skills/synthetic-portal-delivery/"
+        "tests/_rehearse_workflow_data_path.py"
       ],
       "checks": [
         "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py -q"
@@ -296,6 +304,18 @@
       ],
       "rollback": "Revert rehearsal files; the script and lifecycle test never change runtime data."
       ,"intended_commit": "test: rehearsal lifecycle is bounded and selected on its own package"
+    },
+    "synthetic_portal_delivery_skill": {
+      "purpose": "Synthetic-portal-delivery skill metadata only. Prose edits must not run the 2½-minute rehearsal suite; structural and link checks are sufficient.",
+      "paths": [
+        ".agents/skills/synthetic-portal-delivery/SKILL.md"
+      ],
+      "checks": [
+        "venv/bin/python scripts/validate_planning.py",
+        "venv/bin/python -c \"import yaml, pathlib; doc = pathlib.Path('.agents/skills/synthetic-portal-delivery/SKILL.md').read_text(); assert doc.startswith('---'), doc[:200]; parts = doc.split('---', 2); meta = yaml.safe_load(parts[1]) if len(parts) >= 3 else None; assert isinstance(meta, dict) and 'name' in meta and 'description' in meta, repr(meta); assert 'synthetic-portal-delivery' in (meta['name'] or '') or 'synthetic portal delivery' in (meta['description'] or '').lower(), repr(meta)\""
+      ],
+      "dependencies": ["Existing canonical rehearsal scripts and tests"],
+      "rollback": "Revert skill text only; nothing in the runtime path depends on it."
     },
     "free_model_evaluation": {
       "purpose": "Synthetic-only bounded evaluation of named free OpenCode models with Codex control and deterministic safety gates.",

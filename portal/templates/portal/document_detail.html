@@ -16,7 +16,7 @@
         <h3 class="text-lg font-semibold text-gray-900 mb-4">OCR návrhy — potvrzení</h3>
 
         {% if proposals %}
-        <form id="ocr-confirmation-form" hx-post="." hx-target="#ocr-proposals" hx-swap="outerHTML" class="space-y-4">
+        <form id="ocr-confirmation-form" method="post" action="." class="space-y-4">
             {% csrf_token %}
 
             <div id="ocr-proposals" class="space-y-4">

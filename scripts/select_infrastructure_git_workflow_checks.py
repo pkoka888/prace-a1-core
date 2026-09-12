@@ -7,12 +7,14 @@ A dependency change must also exercise the live application so a
 silent regression in, say, ``whitenoise`` or ``rapidocr`` does not
 silently slip past the pure-tooling tests.
 
-When no dependency is staged, the selector returns the narrow
-tooling checks. When a dependency is staged, it returns the same
-narrow checks plus the supervised-synthetic rehearsal journey (the
-cheapest runnable evidence that the live application boots and
-serves its documented contracts) so a missing or broken dependency
-is reported as a hook failure rather than silently passing.
+When no dependency is staged, the selector returns nothing — the
+narrow tooling checks declared by the package already cover the
+pure-tooling surface. When a dependency is staged, it returns the
+supervised-synthetic rehearsal suite including the bounded real-
+browser workflow so the live application is exercised. The same
+exact command appears in ``delivery_lifecycle_rehearsal`` so the
+dispatch deduper collapses the two into one run when both packages
+fire.
 
 Selection never imports app code.
 """
@@ -34,9 +36,13 @@ DEPENDENCY_PATTERNS = (
     "requirements-dev.txt",
     "requirements-lock.txt",
 )
+# The rehearsal-package check already lists this exact command. The
+# dispatch deduper collapses both occurrences into a single run when
+# a commit stages both a dependency file and rehearsal scripts.
 APPLICATION_CHECK = (
     "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py "
-    "tests/test_rehearse_synthetic_site_lifecycle.py -q"
+    "tests/test_rehearse_synthetic_site_lifecycle.py "
+    "tests/test_rehearse_workflow.py -q"
 )
 
 
@@ -59,16 +65,9 @@ def has_dependency_change(paths: list[str]) -> bool:
 
 
 def select(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
-    commands = []
-    # Always run the narrow tooling checks declared by the package.
-    # The dispatch layer in ``scripts/validate_change_packages.py``
-    # already invokes the selector; the narrow tooling checks are
-    # declared in the package itself and we do not duplicate them
-    # here. We only add the dependency-application fallback when a
-    # dependency file is staged.
     if has_dependency_change(paths):
-        commands.append(APPLICATION_CHECK)
-    return commands
+        return [APPLICATION_CHECK]
+    return []
 
 
 def main() -> int:

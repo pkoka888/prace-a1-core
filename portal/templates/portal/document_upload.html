@@ -10,7 +10,7 @@
 </div>
 
 <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form id="document-upload-form" hx-post="." hx-target="#document-upload-form" hx-swap="outerHTML" class="space-y-6" enctype="multipart/form-data">
+    <form id="document-upload-form" method="post" action="." class="space-y-6" enctype="multipart/form-data">
         {% csrf_token %}
 
         {% if form.non_field_errors %}

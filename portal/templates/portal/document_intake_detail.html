@@ -25,7 +25,7 @@
 {% if region.worker_options %}
 <form method="post">{% csrf_token %}
 {% if region.suggested_worker %}<p>Navržený pracovník: {{ region.suggested_worker.given_name }} {{ region.suggested_worker.family_name }}</p>{% endif %}
-<label>Pracovník <select name="worker_choice" required><option value="">Vyberte pracovníka</option>{% for option in region.worker_options %}<option value="{{ option.token }}" {% if region.suggested_worker.pk == option.worker.pk %}selected{% endif %}>{{ option.worker.given_name }} {{ option.worker.family_name }}</option>{% endfor %}</select></label>
+<label>Pracovník <select name="worker_choice" required><option value="">Vyberte pracovníka</option>{% for option in region.worker_options %}<option value="{{ option.token }}" data-worker-pk="{{ option.worker.pk }}" {% if region.suggested_worker.pk == option.worker.pk %}selected{% endif %}>{{ option.worker.given_name }} {{ option.worker.family_name }} (#{{ option.worker.pk }})</option>{% endfor %}</select></label>
 <label>Důvod přiřazení nebo vyřešení rozporu <input name="reason"></label>
 <p>Jiná volba než jednoznačný návrh vyžaduje zdůvodnění. Přiřazení nepotvrzuje jednotlivé údaje.</p>
 <button name="action" value="associate">Přiřadit tento dokument</button></form>

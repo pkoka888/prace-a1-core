@@ -275,15 +275,35 @@ def main() -> int:
         password = args.password or secrets.token_urlsafe(24)
         user.set_password(password)
         user.save(update_fields=["password"])
-    else:
+    elif preserved_payload is not None:
         # Reuse the prior password verbatim — the operator.json file
         # is the source of truth for the credential a browser will use.
         password = preserved_payload["password"]
+    else:
+        # Existing user, no operator.json, no rotation requested: we
+        # cannot reuse a password we never recorded. Refuse rather than
+        # silently minting one (the previous behavior crashed inside a
+        # None subscript). The operator must rerun with
+        # ``--rotate-credentials`` (or ``--password``) to recover.
+        print(
+            f"FAIL: existing operator {user.email!r} has no operator.json "
+            f"and no --rotate-credentials was supplied; rerun with "
+            f"--rotate-credentials to mint a fresh password and TOTP "
+            f"secret, or supply --password explicitly.",
+            file=sys.stderr,
+        )
+        return 1
 
     # Membership for Jan's workflow is jan_planner. operator lacks
     # worker:create and assignment:create; organization_admin would
-    # broaden the rehearsal beyond Jan's actual capabilities.
+    # broaden the rehearsal beyond Jan's actual capabilities. A prior
+    # provisioner may have created a different role for the same user
+    # and organization; deactivate it so the rehearsal exposes only
+    # the role Jan actually exercises and the ``get_user_organization``
+    # not-multiple-memberships guard does not reject the session.
     membership_role = OPERATOR_ROLES[0]
+    Membership.objects.filter(user=user, organization=org).exclude(
+        role=membership_role).update(active=False)
     Membership.objects.update_or_create(
         user=user, organization=org, role=membership_role,
         defaults={"active": True},
@@ -324,14 +344,6 @@ def main() -> int:
     issuer = "Prace-v-Nemecku"
     otpauth_uri = (
         f"otpauth://totp/{issuer}:{username}?secret={totp_secret}&issuer={issuer}"
-    )
-
-    AuditEvent.objects.create(
-        organization=org,
-        actor_ref=f"user:{user.pk}",
-        event_type="provision.synthetic_operator",
-        object_ref=f"organization:{org.pk}",
-        outcome="success",
     )
 
     org_payload = {
@@ -378,6 +390,17 @@ def main() -> int:
     db_path = args.runtime_root / "db.sqlite3"
     if db_path.exists() and not db_path.is_symlink():
         os.chmod(db_path, 0o600)
+
+    # Audit row only after both credential files are written so a
+    # partially-failed provision does not leave a success audit
+    # without operator.json on disk.
+    AuditEvent.objects.create(
+        organization=org,
+        actor_ref=f"user:{user.pk}",
+        event_type="provision.synthetic_operator",
+        object_ref=f"organization:{org.pk}",
+        outcome="success",
+    )
 
     print(f"organization: id={org.pk} label={org.label}")
     print(f"operator: id={user.pk} email={user.email} role={membership_role}")

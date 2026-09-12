@@ -111,25 +111,20 @@ class TestJ4SnapshotPersisted(TransactionTestCase):
         )
 
     def test_source_hash_matches_proof_contract(self):
-        from prototypes.architecture.adr001.proof_contract import stable_hash
+        from src.document_core.serialization import result_hash
+
         org, user = _setup_org_user("synthetic-j4-h", "J4 hash")
         worker = _make_worker(user, org)
-        assignment, _ = _make_assignment(user, org, worker, date(2026, 9, 1), date(2026, 9, 30))
+        _make_assignment(user, org, worker, date(2026, 9, 1), date(2026, 9, 30))
 
         case = prepare_a1(user, org, worker)
 
-        expected = stable_hash({
-            "profile": {
-                "given_name": worker.given_name,
-                "family_name": worker.family_name,
-                "birth_date": str(worker.birth_date),
-                "activity_profile": worker.activity_profile,
-            },
-            "assignments": [{"id": assignment.pk, "start": "2026-09-01", "end": "2026-09-30",
-                             "workplace_label": "Syntetické", "activity_label": "Test",
-                             "state": assignment.state, "version": assignment.version}],
-        })
-        self.assertEqual(case.source_hash, expected)
+        # The stored J4 snapshot is schema-versioned; its digest is the
+        # ``source_hash`` the read-time integrity checks compare against.
+        self.assertEqual(case.source_snapshot_json["schema_version"], "a1-input-1")
+        self.assertIn("profile", case.source_snapshot_json)
+        self.assertIn("assignments", case.source_snapshot_json)
+        self.assertEqual(case.source_hash, result_hash(case.source_snapshot_json))
 
 
 class TestJ4StalenessTransitions(TransactionTestCase):

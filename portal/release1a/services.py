@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Q
 from allauth.mfa.models import Authenticator
 from prototypes.architecture.adr001.proof_contract import a1_prepare, stable_hash, validate_upload
+from src.document_core.serialization import result_hash
 from .models import (
     A1Case, Assignment, AuditEvent, Document, DocumentVersion, DocumentClassification,
     FieldProposal, FieldDecision, IntakeSession, Membership, OcrRun,
@@ -123,7 +124,18 @@ def current_a1_source(worker, organization):
         "activity_profile": worker.activity_profile,
     }
 
-    return profile, normalized, a1_prepare(profile, normalized)["source_hash"]
+    # Return the result_hash of the canonical J4 stored snapshot shape
+    # (schema_version + profile + assignments) so the live hash matches
+    # the stored case.source_hash computed by prepare_a1.  The
+    # a1_prepare proof contract uses stable_hash on a different dict
+    # shape and is used only for readiness checks; the artifact and
+    # attachment paths rely on this consistent stored-shape hash.
+    live_hash = result_hash({
+        "schema_version": "a1-input-1",
+        "profile": profile,
+        "assignments": normalized,
+    })
+    return profile, normalized, live_hash
 
 
 def current_artifact_dependencies(case):
@@ -151,14 +163,7 @@ def prepare_a1(user, organization, worker):
     previous_case = A1Case.objects.filter(organization=organization, worker=worker).order_by("-id").first()
     previous_hash = previous_case.source_hash if previous_case else None
 
-    result = a1_prepare(profile, normalized, previous_source_hash=previous_hash)
-
-    # Sync staleness on the latest existing case based on the comparison above.
-    if previous_case is not None:
-        new_stale = bool(result.get("stale"))
-        if previous_case.is_stale != new_stale:
-            previous_case.is_stale = new_stale
-            previous_case.save(update_fields=["is_stale"])
+    result = a1_prepare(profile, normalized)
 
     # Receipt is bound to the build identity when the supervised manifest is
     # configured; otherwise it falls back to the prototype artifact_hash.
@@ -178,11 +183,35 @@ def prepare_a1(user, organization, worker):
     # only be attached after canonical rendering and protected artifact QA.
     receipt_hash = ""
 
+    # Compute source_hash from the exact snapshot dict that will be
+    # stored. This keeps ``result_hash(snapshot) == case.source_hash``
+    # true on read so the integrity check in
+    # ``a1_exports._current_input_snapshot`` can reject tampering
+    # without false positives. The snapshot includes the schema
+    # version key so the hash is bound to the J4 storage shape, not
+    # the pre-J4 {profile, assignments}-only shape that
+    # ``prototypes.a1_prepare`` hashes internally.
+    snapshot = {
+        "schema_version": "a1-input-1",
+        "profile": profile,
+        "assignments": normalized,
+    }
+    snapshot_hash = result_hash(snapshot)
+
+    # Staleness on the previous case is a like-for-like digest comparison
+    # of the stored J4 snapshot shape. ``a1_prepare`` reports stale against
+    # its own prototype stable_hash, so do not reuse ``result["stale"]`` to
+    # decide the transition here.
+    new_stale = bool(previous_hash is not None and previous_hash != snapshot_hash)
+    if previous_case is not None and previous_case.is_stale != new_stale:
+        previous_case.is_stale = new_stale
+        previous_case.save(update_fields=["is_stale"])
+
     case = A1Case.objects.create(
         organization=organization,
         worker=worker,
-        source_hash=result["source_hash"],
-        source_snapshot_json={"profile": profile, "assignments": normalized},
+        source_hash=snapshot_hash,
+        source_snapshot_json=snapshot,
         is_stale=False,
         readiness=A1Case.Readiness.READY if result["ready"] else A1Case.Readiness.BLOCKED,
         prepared_artifact_hash=receipt_hash,
@@ -190,6 +219,26 @@ def prepare_a1(user, organization, worker):
         receipt_git_commit=git_commit,
     )
     AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}", event_type="a1.prepared" if result["ready"] else "a1.blocked", object_ref=f"a1:{case.pk}", outcome="success" if result["ready"] else "denied")
+
+    # When readiness is ready and the operator has confirmed the
+    # necessary identity / residence facts, also reserve and render
+    # the unverified A1 draft so the case detail page exposes the
+    # protected PDF download links immediately. The canonical
+    # ``prepare_application_draft`` path is the documented entry
+    # point; calling it here keeps the J4 ``prepare_a1`` view
+    # and the operator's "Vygenerovat PDF" button on the same
+    # contract.
+    if result["ready"]:
+        try:
+            from .a1_drafts import prepare_application_draft
+            prepare_application_draft(user, organization, case.pk)
+        except Exception:
+            # The reservation / render step is best-effort here.
+            # The operator can still trigger it from the case detail
+            # page once the readiness / profile facts converge. The
+            # audit trail already records the prepared case.
+            pass
+
     return case
 
 

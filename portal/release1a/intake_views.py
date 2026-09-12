@@ -120,8 +120,8 @@ def detail(request, pk):
         except StaleWrite:
             response_status = 409
             error = "Podklady nebo potvrzené údaje se změnily. Zkontrolujte aktuální hodnoty a potvrďte je znovu."
-        except (ValueError, OSError, OcrRun.DoesNotExist):
-            error = "Změnu nelze uložit. Zkontrolujte přiřazení pracovníka, vybraná pole a důvod opravy."
+        except (ValueError, OSError, OcrRun.DoesNotExist) as exc:
+            error = f"Změnu nelze uložit: {exc!s}. Zkontrolujte přiřazení pracovníka, vybraná pole a důvod opravy."
     payload = None
     if run and run.output_key:
         try:

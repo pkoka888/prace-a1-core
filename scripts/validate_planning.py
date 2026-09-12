@@ -145,6 +145,9 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
     "portal/templates/portal/a1_case_detail.html",
     "portal/templates/portal/a1_list.html",
+    "portal/templates/portal/a1_prepare.html",
+    "portal/templates/portal/partials/a1_prepare_form.html",
+    "portal/templates/portal/partials/ocr_proposals.html",
     "portal/templates/portal/a1_generation_confirm.html",
     "scripts/a1_core.py",
     "scripts/a1_quality_gate.py",

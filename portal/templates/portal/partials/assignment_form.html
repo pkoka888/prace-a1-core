@@ -1,5 +1,5 @@
 {% load i18n %}
-<form id="assignment-form" hx-post="." hx-target="#assignment-form" hx-swap="outerHTML" class="space-y-6">
+<form id="assignment-form" method="post" action="." class="space-y-6">
     {% csrf_token %}
 
     {% if form.non_field_errors %}

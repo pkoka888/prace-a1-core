@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -37,19 +38,27 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _bounded_request(url: str, host_header: str, method: str = "GET",
-                    connect_timeout: float = 2.0, read_timeout: float = 5.0):
+                    connect_timeout: float = 2.0, read_timeout: float = 5.0,
+                    body_cap: int = 8_388_608):
     """One bounded request. Returns (status, headers, body).
 
-    No automatic redirect follow; no cookie jar. ``read_timeout`` is the
-    overall request deadline: TCP connect plus response body read must
-    both finish within the budget. ``connect_timeout`` is the TCP connect
-    ceiling; urllib's ``timeout`` parameter covers connect+read, so we
-    enforce the overall budget with a wall-clock deadline check below.
+    No automatic redirect follow; no cookie jar. ``read_timeout`` is
+    the overall request deadline: TCP connect plus response body read
+    must both finish within the budget. The opener's ``timeout`` is
+    the urllib connect+read timeout; we additionally enforce the
+    same budget through wall-clock deadline checks before/after
+    every step so a slow body drip cannot slip past it. Body bytes
+    are read in 64 KiB chunks and the deadline is checked after
+    every chunk, on both success and HTTPError paths. ``body_cap``
+    bounds the accumulated body size (default 8 MiB so the bundled
+    Tailwind CSS survives; the helper raises
+    ``ValueError("SMOKE_BODY_CAP_EXCEEDED")`` once the cap is hit so
+    a malicious server cannot exhaust memory).
 
-    The configured ``Host`` header and ``method`` are honored by sending
-    the ``Request`` object to the opener (the prior implementation
-    discarded it, which silently rewrote ``Host`` and turned ``HEAD``
-    into ``GET``).
+    The configured ``Host`` header and ``method`` are honored by
+    sending the ``Request`` object to the opener. The previous
+    implementation discarded the Request, which silently rewrote
+    ``Host`` and turned ``HEAD`` into ``GET``.
     """
     import time as _time
     request = urllib.request.Request(url, method=method)
@@ -59,26 +68,67 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
         urllib.request.ProxyHandler({}),
     )
     deadline = _time.monotonic() + read_timeout
+    response = None
+    http_error_response = None
+
+    def _overrun(label: str) -> None:
+        raise TimeoutError(
+            f"{label} exceeded {read_timeout:.1f}s budget")
+
+    def _read_in_chunks(stream, *, label: str) -> bytes:
+        chunks = []
+        total = 0
+        while True:
+            if _time.monotonic() > deadline:
+                _overrun(label)
+            try:
+                chunk = stream.read(65536)
+            except (TimeoutError, socket.timeout) as exc:
+                raise TimeoutError(
+                    f"{label} chunk read exceeded {read_timeout:.1f}s "
+                    f"budget: {exc}") from exc
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > body_cap:
+                raise ValueError(
+                    f"SMOKE_BODY_CAP_EXCEEDED ({total} > {body_cap})")
+        return b"".join(chunks)
+
     try:
-        # Pass the Request object, not the URL string — the URL string
-        # drops both the configured method and the Host header. The
-        # connect+read deadline is the same single timeout argument.
-        response = opener.open(request, timeout=read_timeout)
-        remaining = max(0.0, deadline - _time.monotonic())
-        if remaining <= 0:
-            raise TimeoutError(
-                f"connect exceeded {read_timeout:.1f}s budget")
-        raw = response.read(1_000_000) if hasattr(response, "read") else b""
+        # Pass the Request object, not the URL string. Use a tighter
+        # connect ceiling by passing ``timeout=connect_timeout`` to
+        # opener.open so TCP setup respects it; the wall-clock
+        # deadline check after open covers any drift.
+        response = opener.open(request, timeout=connect_timeout)
         if _time.monotonic() > deadline:
-            raise TimeoutError(
-                f"body read exceeded {read_timeout:.1f}s budget")
+            _overrun("connect+headers")
+        raw = _read_in_chunks(response, label="body")
+        if _time.monotonic() > deadline:
+            _overrun("body read")
         status = response.status
         headers = response.headers
+        body = raw
     except urllib.error.HTTPError as exc:
-        raw = exc.read(1_000_000) if hasattr(exc, "read") else b""
+        http_error_response = exc
+        if _time.monotonic() > deadline:
+            _overrun("error body")
+        try:
+            raw = _read_in_chunks(exc, label="error body")
+        except (AttributeError, OSError):
+            raw = b""
         status = exc.code
         headers = exc.headers
-    return status, headers, raw
+        body = raw
+    finally:
+        for r in (response, http_error_response):
+            if r is not None:
+                try:
+                    r.close()
+                except Exception:
+                    pass
+    return status, headers, body
 
 
 def _parse_json_safely(body: bytes) -> dict[str, Any] | None:

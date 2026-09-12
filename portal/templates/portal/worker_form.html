@@ -10,7 +10,7 @@
 </div>
 
 <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-    <form id="worker-form" hx-post="." hx-target="#worker-form" hx-swap="outerHTML" class="space-y-6">
+    <form id="worker-form" method="post" action="." class="space-y-6">
         {% csrf_token %}
 
         {% if form.non_field_errors %}

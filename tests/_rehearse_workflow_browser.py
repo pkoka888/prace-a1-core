@@ -1,33 +1,34 @@
 #!/usr/bin/env python3
 """Real-browser authenticated workflow journey for the supervised rehearsal.
 
-Drives a real headless Chromium against the gunicorn that the
-``rehearse_synthetic_site.sh start`` step launches, with the operator
-credentials written by ``provision`` and the supervised-synthetic
-settings module loaded. The journey is the documented Delivery-1
-acceptance path:
+Drives a real headless Chromium against the gunicorn that
+``scripts/rehearse_synthetic_site.sh start`` launches, with the
+operator credentials written by ``provision`` and the supervised-
+synthetic settings module loaded. The journey exercises the shipped
+frontend end-to-end:
 
-    real login + TOTP -> create worker -> upload synthetic document
-    -> OCR association + one explicit field confirmation
-    -> create assignment -> unverified A1 draft
-    -> download protected PDF
+    login + TOTP -> create worker -> upload synthetic OP card
+    -> confirm OCR proposals (family_name, given_name, birth_date,
+       residence_address) -> confirm missing identity facts
+       (birth_place, nationality, sex, insurance_number)
+    -> confirm structured residence address (5 parts)
+    -> create assignment -> prepare A1 case -> generate unverified
+       A1 draft PDF -> download protected PDF
 
-Every step uses real HTTP requests with the operator's session cookies.
-We never substitute service calls, force-login, inject sessions, or add
-helper-side role memberships. The browser's cookie jar is populated
-through the allauth login form (not via API or direct cookie injection).
-The TOTP code is computed from the secret in operator.json exactly as
-the operator would in a TOTP authenticator app.
+Every stage uses real HTTP requests with the operator's session
+cookies. We never substitute service calls, force-login, inject
+sessions, add helper-side role memberships, or modify the shipped
+frontend. The browser's cookie jar is populated through the natural
+allauth login form; the TOTP code is computed from the secret in
+operator.json exactly as the operator would in a TOTP authenticator
+app. The journey does not redirect through a TLS proxy: Chromium
+treats loopback as potentially-trustworthy, so Secure cookies work
+over plain HTTP locally.
 
-HTMX is neutralized by replacing the static ``htmx-*.min.js`` response
-with an empty body before any page loads. That removes every per-element
-listener the script would have wired up, so the Release 1A forms behave
-as plain HTML and the view's full-page redirect path is honored.
-
-The script prints a structured evidence document on stdout and exits 0
-only when every step succeeded. It is intended to be invoked from the
-rehearsal script's ``workflow`` command and from the workflow pytest
-test.
+The script prints a structured evidence document on stdout. The CLI
+exit code is non-zero when any required stage fails. The same
+outcome contract is reused by the pytest test in
+``tests/test_rehearse_workflow.py``.
 """
 from __future__ import annotations
 
@@ -35,7 +36,6 @@ import argparse
 import base64
 import hmac
 import json
-import os
 import re
 import secrets
 import struct
@@ -49,6 +49,31 @@ from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SYSTEM_TOTP_PERIOD = 30
+
+
+# Stages whose failure must propagate as a non-zero exit through the CLI.
+REQUIRED_STAGES = (
+    "login_redirect",
+    "login_authenticated",
+    "totp_completed",
+    "worker_created",
+    "document_uploaded",
+    "document_associated",
+    "ocr_proposals_confirmed",
+    "missing_identity_confirmed",
+    "address_confirmed",
+    "assignment_created",
+    "a1_prepared",
+    "a1_draft_generated",
+    "a1_pdf_downloaded",
+)
+
+
+# Stages whose outcome documents an expected operation-specific block
+# (e.g. sparse-input 44-field A1 contract) rather than a real failure.
+EXPECTED_BLOCK_OUTCOMES = {
+    "sparse_reserve_blocked",
+}
 
 
 def _hotp_token(secret: bytes, counter: int, digits: int = 6) -> str:
@@ -70,11 +95,6 @@ def _current_totp(secret_b32: str, at_unix: int | None = None,
     secret = base64.b32decode(secret_b32 + pad)
     counter = (at_unix if at_unix is not None else int(time.time())) // period
     return _hotp_token(secret, counter)
-
-
-def _host_from_base(base: str) -> str:
-    parsed = urllib.parse.urlsplit(base)
-    return parsed.netloc.split("@")[-1].split(":")[0]
 
 
 def _safe_origin(base: str) -> tuple[str, str]:
@@ -119,61 +139,23 @@ def _wait_networkidle(page, *, timeout_ms: int = 20000) -> None:
             f"title={page.title()!r}") from exc
 
 
-def _htmx_blocker(route):
-    """Replace every htmx-*.min.js response with an empty 200 body.
-
-    HTMX attaches per-element listeners on initial page load. If the
-    script never runs, no listener is attached, and the forms behave as
-    plain HTML. The page keeps the ``<script src="...htmx..." defer>``
-    reference but the script content is empty, so the DOM event listeners
-    that drive the blur/change/click handlers are never wired up.
-    """
-    url = route.request.url
-    if "htmx-" in url and url.endswith(".js"):
-        route.fulfill(status=200, content_type="application/javascript",
-                      body=b"/* HTMX neutralized for synthetic browser journey */")
-        return
-    route.continue_()
-
-
-def _form_field_value(page, *, selector: str, name: str) -> str | None:
-    """Return the value of a form input that lives in the right form."""
-    locator = page.locator(f'{selector}[name="{name}"]').first
-    if locator.count() == 0:
-        return None
-    tag = locator.evaluate("el => el.tagName.toLowerCase()")
-    if tag == "select":
-        return locator.input_value()
-    return locator.input_value()
-
-
-def _set_form_field(page, *, name: str, value: str,
-                    tag_selector: str = "input:not([type=hidden]), select, textarea") -> None:
-    # Note: ``tag_selector`` is an OR-list of tag selectors. To bind
-    # the field ``name`` to *each* tag, expand it into one selector per
-    # tag with the name attribute applied to each, so ``input[name=X],
-    # select[name=X], textarea[name=X]``. A single concatenated string
-    # such as ``input,select,textarea[name=X]`` would be parsed as
-    # three independent selectors (``input`` and ``select`` would match
-    # every input/select regardless of name), and ``.first`` would
-    # return the wrong element.
-    parts = [f"{part.strip()}[name=\"{name}\"]"
-             for part in tag_selector.split(",")]
-    selector = ", ".join(parts)
+def _set_field(page, *, name: str, value: str) -> None:
+    """Set a form input/select by name. Raises when the field is absent."""
+    selector = (
+        f'input[name="{name}"], select[name="{name}"], '
+        f'textarea[name="{name}"]'
+    )
     locator = page.locator(selector).first
     if locator.count() == 0:
         raise SystemExit(
             f"FAIL: form field {name!r} not present (url={page.url!r}, "
             f"selector={selector!r})")
-    tag = locator.evaluate("el => el.tagName.toLowerCase()")
-    # Sanity check: the matched element must actually have the requested
-    # name. Without this, a selector like ``input[name=X], select[name=Y]``
-    # could silently match an element with the wrong name.
     matched_name = locator.get_attribute("name")
     if matched_name != name:
         raise SystemExit(
             f"FAIL: selector for {name!r} matched an element with name="
-            f"{matched_name!r} instead (selector={selector!r})")
+            f"{matched_name!r} instead (url={page.url!r})")
+    tag = locator.evaluate("el => el.tagName.toLowerCase()")
     if tag == "select":
         locator.select_option(value)
     else:
@@ -183,78 +165,71 @@ def _set_form_field(page, *, name: str, value: str,
                 locator.check()
             else:
                 locator.uncheck()
+        elif input_type == "hidden":
+            raise SystemExit(
+                f"FAIL: form field {name!r} is a hidden input "
+                f"(url={page.url!r})")
         else:
             locator.fill(value)
-    # Read back the value so we know the field actually accepted the input.
     readback = locator.input_value()
     if readback != value:
-        # Print diagnostic context to help locate where the value
-        # is being lost.
-        import sys as _sys
-        print(f"DEBUG fill mismatch: name={name!r} expected={value!r} "
-              f"got={readback!r} url={page.url!r}", file=_sys.stderr)
         raise SystemExit(
             f"FAIL: field {name!r} read back {readback!r} after fill, "
-            f"expected {value!r} (selector={selector!r})")
+            f"expected {value!r} (url={page.url!r})")
 
 
-def _submit_first_form(page, *, action: str | None = None) -> None:
-    """Submit the first form on the page as a normal full-page POST.
-
-    HTMX is already neutralized, so the browser's native form-submit
-    path runs. We add ``method="post"`` defensively because some
-    Release 1A forms only set ``hx-post`` and omit the explicit
-    ``method``. We click a submit button (preferring one with the
-    supplied action attribute) so Playwright's navigation tracker
-    fires; calling ``form.submit()`` programmatically can race with
-    Playwright's URL watcher.
-    """
-    page.evaluate(
-        """(action) => {
-            const form = document.querySelector('form');
-            if (!form) throw new Error('no form to submit');
-            form.setAttribute('method', 'post');
-            if (!form.getAttribute('action')) {
-                form.setAttribute('action', window.location.pathname);
-            }
-            if (action !== null && action !== undefined) {
-                let btn = form.querySelector(
-                    `button[name="action"][value="${action}"]`);
-                if (!btn) {
-                    btn = document.createElement('button');
-                    btn.type = 'submit';
-                    btn.name = 'action';
-                    btn.value = action;
-                    btn.style.display = 'none';
-                    form.appendChild(btn);
-                }
-                btn.click();
-                return;
-            }
-            const submit = form.querySelector(
-                'button[type="submit"]');
-            if (!submit) throw new Error('no submit button');
-            submit.click();
-        }""",
-        action,
-    )
+def _submit_form(page, *, action: str | None = None,
+                 submit_selector: str = 'button[type="submit"]') -> None:
+    """Click a submit button on the page; let the form post naturally."""
+    if action is not None:
+        button = page.locator(
+            f'button[name="action"][value="{action}"]').first
+        if button.count() == 0:
+            raise SystemExit(
+                f"FAIL: submit button with name=action value={action!r} "
+                f"not present (url={page.url!r})")
+    else:
+        button = page.locator(submit_selector).first
+        if button.count() == 0:
+            raise SystemExit(
+                f"FAIL: submit button not present (url={page.url!r})")
+    button.click()
 
 
-def run_journey(base_url: str, runtime_root: Path,
-                tmpdir: Path) -> dict:
+def _stage_ok(stage: str, **payload) -> dict:
+    """Build a successful stage entry without leaking secrets."""
+    return {"stage": stage, "ok": True, **payload}
+
+
+def _stage_fail(stage: str, *, reason: str, **payload) -> dict:
+    """Build a failed stage entry without leaking secrets."""
+    return {"stage": stage, "ok": False, "reason": reason, **payload}
+
+
+def _synthesize_op_card(tmpdir: Path) -> Path:
+    """Render a synthetic OP card with the residence_address label so the
+    address review form appears after upload."""
+    from tests.test_document_core.helpers import OP, card, png
+    lines = list(OP) + [
+        "TRVALY POBYT: Testovaci 12, 12345 Testov",
+        f"NONCE: {secrets.token_hex(8)}",
+    ]
+    png_bytes = png(card(lines))
+    path = tmpdir / f"synthetic-op-{secrets.token_hex(6)}.png"
+    path.write_bytes(png_bytes)
+    return path
+
+
+def run_journey(base_url: str, runtime_root: Path, tmpdir: Path) -> dict:
     """Execute the full Delivery-1 acceptance journey in a real browser."""
     operator = _load_operator(runtime_root)
     password = operator["password"]
     secret_b32 = operator["mfa"]["secret"]
-    # TOTP is computed lazily inside the journey so a slow login
-    # (browser startup, navigation, screenshot work) does not push
-    # the code out of its 30-second window. The first code is logged
-    # for evidence; the actual submit uses a fresh code.
-    origin_scheme, origin_netloc = _safe_origin(base_url)
     evidence: dict = {
         "base_url": base_url,
         "operator_email": operator["email"],
         "organization_id": operator["organization_id"],
+        "mfa": "enrolled",  # opaque reference, never the code itself
         "stages": {},
     }
 
@@ -264,336 +239,425 @@ def run_journey(base_url: str, runtime_root: Path,
             viewport={"width": 1440, "height": 1000}, locale="cs-CZ",
             service_workers="block",
         )
-        # Neutralize HTMX: every htmx-*.min.js response is replaced
-        # with an empty body, so the runtime never initializes the
-        # listeners that would intercept form submits.
-        context.route("**/*.js", _htmx_blocker)
-
         page = context.new_page()
         page.set_default_timeout(20000)
 
         try:
             # Stage 1: login. allauth renders a plain <form method="post">;
-            # click the submit button.
+            # click the submit button. No HTMX neutralization, no form
+            # attribute injection — the shipped frontend must accept the
+            # real submit path.
             page.goto(base_url + "/review/", wait_until="domcontentloaded")
             _wait_for_url(page, "**/accounts/login/**")
-            evidence["stages"]["login_redirect"] = {
-                "ok": True, "url": page.url,
-            }
+            evidence["stages"]["login_redirect"] = _stage_ok(
+                "login_redirect", url=page.url)
+
             page.locator('input[name="login"]').fill(operator["email"])
             page.locator('input[name="password"]').fill(password)
             page.locator('button[type="submit"]').click()
             _wait_for_url(page, "**/accounts/2fa/authenticate/**")
-            evidence["stages"]["login_authenticated"] = {
-                "ok": True, "url": page.url,
-            }
+            evidence["stages"]["login_authenticated"] = _stage_ok(
+                "login_authenticated", url=page.url)
 
-            # Stage 2: TOTP. Same plain form path. Compute the code right
-            # before submit so a slow login (browser startup,
-            # navigation, screenshots) does not push it out of its
-            # 30-second window.
+            # Stage 2: TOTP. Compute the code right before submit so a
+            # slow login (browser startup, navigation, screenshot work)
+            # does not push it out of its 30-second window.
             code = _current_totp(secret_b32)
-            evidence["totp_code_used"] = code
             page.locator('input[name="code"]').fill(code)
             page.locator('button[type="submit"]').click()
             _wait_for_url(page, re.compile(r"/review/?($|\?|#|/)"))
-            evidence["stages"]["totp_completed"] = {
-                "ok": True, "url": page.url,
-            }
+            evidence["stages"]["totp_completed"] = _stage_ok(
+                "totp_completed", url=page.url)
 
-            # Stage 3: create worker. The worker_form template uses
-            # ``hx-post="."`` on the form and on individual fields.
-            # Because HTMX is neutralized at the network level, none of
-            # the per-element listeners are wired up; ``_submit_first_form``
-            # posts the whole form as a plain multipart/form-data POST
-            # and the browser follows the 302 redirect to /workers/<pk>/.
-            page.goto(base_url + "/workers/new/", wait_until="domcontentloaded")
-            _set_form_field(page, name="family_name", value="Testerova")
-            _set_form_field(page, name="given_name", value="Alfa")
-            _set_form_field(page, name="birth_date", value="1990-03-15")
-            _set_form_field(page, name="activity_profile", value="employee",
-                            tag_selector="select")
-            time.sleep(1)  # Allow any deferred HTMX/fill events to settle
-            # Debug: verify field values immediately before submit.
-            pre_submit = page.evaluate(
-                """() => {
-                    const fields = {};
-                    for (const name of [
-                        'family_name', 'given_name', 'birth_date',
-                        'activity_profile', 'state']) {
-                        const el = document.querySelector(
-                            `[name="${name}"]`);
-                        fields[name] = el ? el.value : null;
-                    }
-                    return fields;
-                }""")
-            if not (pre_submit.get("given_name") == "Alfa"
-                    and pre_submit.get("family_name") == "Testerova"
-                    and pre_submit.get("birth_date") == "1990-03-15"):
-                raise SystemExit(
-                    f"FAIL: worker form fields not set before submit: "
-                    f"{pre_submit!r}")
-            _submit_first_form(page)
-            # The redirect lands on /workers/<pk>/ with a trailing
-            # slash. ``wait_for_url`` is the documented Playwright way
-            # to wait for a navigation. We accept either the regex
-            # form (the page URL ends with /workers/<pk>/) or a glob
-            # pattern (``**/workers/*/``). The body excerpt is also
-            # captured on timeout so we can distinguish between a
-            # missing navigation (URL stays at /workers/new/) and a
-            # navigation that completed but Playwright's URL property
-            # lagged (body shows the worker detail page).
+            # Stage 3: create worker.
+            page.goto(base_url + "/workers/new/",
+                      wait_until="domcontentloaded")
+            _set_field(page, name="family_name", value="Testerova")
+            _set_field(page, name="given_name", value="Alfa")
+            _set_field(page, name="birth_date", value="1990-03-15")
+            _set_field(page, name="activity_profile", value="employee")
+            _submit_form(page)
             try:
-                page.wait_for_url(re.compile(r"/workers/\d+/$"),
-                                   timeout=20000)
+                page.wait_for_url(re.compile(r"/workers/\d+/$"), timeout=20000)
             except PWTimeout:
-                body_excerpt = page.evaluate(
+                body = page.evaluate(
                     "() => document.body && document.body.innerText.slice(0, 400)")
                 raise SystemExit(
-                    f"FAIL: worker create did not redirect; final "
-                    f"url={page.url!r}, pre_submit={pre_submit!r}, "
-                    f"body_excerpt={body_excerpt!r}")
+                    f"FAIL: worker create did not redirect; "
+                    f"final url={page.url!r}, body={body!r}")
             worker_pk = int(re.search(r"/workers/(\d+)/", page.url).group(1))
-            evidence["stages"]["worker_created"] = {
-                "ok": True, "worker_pk": worker_pk, "url": page.url,
-            }
+            evidence["stages"]["worker_created"] = _stage_ok(
+                "worker_created", worker_pk=worker_pk, url=page.url)
 
-            # Stage 4: upload synthetic OP card.
+            # Stage 4: upload synthetic OP card with residence_address.
             page.goto(base_url + f"/workers/{worker_pk}/documents/upload/",
                       wait_until="domcontentloaded")
-            from tests.test_document_core.helpers import OP, card, png
-            # Add a random nonce to the synthetic OP card so each
-            # rehearsal run gets a fresh content hash. Re-uploading
-            # the same PNG to a different worker would otherwise be
-            # rejected by the document-intake duplicate-with-different
-            # -context guard.
-            png_bytes = png(card(OP + [f"NONCE: {secrets.token_hex(8)}"]))
-            tmp_png = tmpdir / f"synthetic-op-{secrets.token_hex(6)}.png"
-            tmp_png.write_bytes(png_bytes)
-            page.locator('input[name="file"]').set_input_files(str(tmp_png))
-            # Some Release 1A forms rely on ``hx-post`` for the method
-            # and omit the explicit ``method="post"`` attribute. Add
-            # it explicitly so a plain click submits as POST; without
-            # this the browser falls back to GET and the file is sent
-            # as a URL parameter, not as multipart/form-data body.
-            page.evaluate(
-                """() => {
-                    const form = document.querySelector('form');
-                    form.setAttribute('method', 'post');
-                    if (!form.getAttribute('action')) {
-                        form.setAttribute(
-                            'action', window.location.pathname);
-                    }
-                }"""
-            )
-            page.locator('button[type="submit"]').click()
+            png_path = _synthesize_op_card(tmpdir)
+            page.locator('input[name="file"]').set_input_files(str(png_path))
+            _submit_form(page)
             _wait_for_url(page, re.compile(r"/documents/\d+/$"))
             document_pk = int(re.search(
                 r"/documents/(\d+)/", page.url).group(1))
-            evidence["stages"]["document_uploaded"] = {
-                "ok": True, "document_pk": document_pk, "url": page.url,
+            evidence["stages"]["document_uploaded"] = _stage_ok(
+                "document_uploaded", document_pk=document_pk, url=page.url)
+
+            # Stage 5: document detail page. The upload sets
+            # Document.worker, but the per-region DocumentRegionAssociation
+            # is created only when the operator submits the association
+            # form on this page. OCR proposals are only rendered when
+            # the association_record exists. Until then the page shows
+            # the worker dropdown and the "Přiřadit tento dokument"
+            # button. We submit the association explicitly so the
+            # journey exercises the real path.
+            page.goto(base_url + f"/documents/{document_pk}/",
+                      wait_until="networkidle")
+            worker_choice = page.locator('select[name="worker_choice"]')
+            if worker_choice.count() > 0:
+                options = worker_choice.evaluate(
+                    """el => Array.from(el.options).map(
+                        o => ({token: o.value,
+                              text: o.textContent.trim(),
+                              workerPk: o.dataset.workerPk || null}))""")
+                match = next(
+                    (o for o in options if o.get("workerPk")
+                     and int(o["workerPk"]) == worker_pk),
+                    None)
+                if match is None:
+                    raise SystemExit(
+                        f"FAIL: worker_pk={worker_pk} not in association "
+                        f"options: {options!r}")
+                worker_choice.select_option(match["token"])
+                # The OCR engine did not propose this worker (no prior
+                # associations exist on a fresh synthetic OP), so
+                # resolve_identity_evaluation requires a non-empty
+                # override reason. The association is explicit; the
+                # reason is documented as a synthetic rehearsal note.
+                reason_input = page.locator('input[name="reason"]')
+                if reason_input.count() > 0 and not reason_input.input_value():
+                    reason_input.fill(
+                        "synthetic rehearsal: worker bound to upload")
+                _submit_form(page, action="associate")
+                page.wait_for_load_state("networkidle")
+            # The association submit redirects back; verify the worker
+            # name now appears in the page body so a 500 or wrong
+            # submit cannot pass.
+            page.goto(base_url + f"/documents/{document_pk}/",
+                      wait_until="networkidle")
+            body_text = page.evaluate(
+                "() => document.body && document.body.innerText")
+            if not body_text or "Testerova" not in body_text \
+                    or "Alfa" not in body_text:
+                raise SystemExit(
+                    f"FAIL: document detail page did not show the "
+                    f"associated worker (url={page.url!r}, "
+                    f"contains Testerova={'Testerova' in (body_text or '')}, "
+                    f"contains Alfa={'Alfa' in (body_text or '')})")
+            evidence["stages"]["document_associated"] = _stage_ok(
+                "document_associated", url=page.url)
+
+            # Stage 6: confirm OCR proposals. The synthetic OP card
+            # produces family_name, given_name, birth_date and
+            # residence_address proposals. We confirm them all in one
+            # batch so the readiness gate moves forward.
+            confirm_boxes = page.locator(
+                'input[type="checkbox"][name^="confirm_"]')
+            initial_count = confirm_boxes.count()
+            if initial_count == 0:
+                raise SystemExit(
+                    f"FAIL: no OCR confirm checkboxes on document detail "
+                    f"page (url={page.url!r}); the synthetic OP card is "
+                    f"expected to yield at least family_name, given_name, "
+                    f"birth_date, residence_address")
+            # Capture every box name once so HTMX-driven re-renders do
+            # not shift the index mid-loop.
+            box_names = confirm_boxes.evaluate_all(
+                "els => els.map(el => el.name)")
+            for name in box_names:
+                page.locator(
+                    f'input[type="checkbox"][name="{name}"]').check()
+            _submit_form(page, action="confirm")
+            _wait_networkidle(page)
+            page.reload(wait_until="domcontentloaded")
+            remaining = page.locator(
+                'input[type="checkbox"][name^="confirm_"]').count()
+            if remaining >= initial_count:
+                raise SystemExit(
+                    f"FAIL: OCR proposals confirmation did not reduce "
+                    f"checkbox count (was={initial_count}, now={remaining}); "
+                    f"the form may have rejected the batch (url={page.url!r})")
+            evidence["stages"]["ocr_proposals_confirmed"] = _stage_ok(
+                "ocr_proposals_confirmed",
+                confirmed=initial_count - remaining,
+                url=page.url)
+
+            # Stage 7: missing-identity form appears because the worker
+            # is missing birth_place, nationality, sex and
+            # insurance_number. Fill them through the missing-identity
+            # form; the source/tokens come from server-rendered hidden
+            # inputs.
+            identity_inputs = page.locator(
+                'input[name^="identity_"]:not([name="identity_source"])'
+                ':not([name="identity_token"])')
+            if identity_inputs.count() < 4:
+                raise SystemExit(
+                    f"FAIL: missing-identity form did not render the "
+                    f"expected four inputs (count={identity_inputs.count()}, "
+                    f"url={page.url!r})")
+            for field, value in (
+                ("identity_birth_place", "Praha"),
+                ("identity_nationality", "CZ"),
+                ("identity_sex", "F"),
+                ("identity_insurance_number", "INS000001"),
+            ):
+                _set_field(page, name=field, value=value)
+            _submit_form(page, action="confirm_missing_identity")
+            _wait_networkidle(page)
+            page.reload(wait_until="domcontentloaded")
+            if page.locator(
+                    'input[name^="identity_"]:not([name="identity_source"])'
+                    ':not([name="identity_token"])').count() > 0:
+                raise SystemExit(
+                    f"FAIL: missing-identity form still rendered after "
+                    f"confirmation (url={page.url!r})")
+            evidence["stages"]["missing_identity_confirmed"] = _stage_ok(
+                "missing_identity_confirmed", url=page.url)
+
+            # Stage 8: address review form appears because the OP card
+            # contains the residence_address label. Fill the five
+            # structured parts. The form is rendered with confirmed
+            # values after submission, so verify the persistence by
+            # checking the inputs hold the values we submitted.
+            expected_address = {
+                "address_street": "Testovaci",
+                "address_house_number": "12",
+                "address_city": "Testov",
+                "address_postal_code": "12345",
+                "address_country_code": "CZ",
             }
+            for field, value in expected_address.items():
+                _set_field(page, name=field, value=value)
+            _submit_form(page, action="confirm_address")
+            _wait_networkidle(page)
+            page.reload(wait_until="domcontentloaded")
+            actual_address = page.evaluate('''() => {
+                const inputs = ['address_street', 'address_house_number',
+                                'address_city', 'address_postal_code',
+                                'address_country_code'];
+                const out = {};
+                for (const n of inputs) {
+                    const el = document.querySelector(`[name="${n}"]`);
+                    out[n] = el ? el.value : null;
+                }
+                return out;
+            }''')
+            missing = {k: v for k, v in expected_address.items()
+                        if actual_address.get(k) != v}
+            if missing:
+                raise SystemExit(
+                    f"FAIL: address review form did not persist the "
+                    f"submitted values (missing={missing!r}, "
+                    f"observed={actual_address!r}, url={page.url!r})")
+            evidence["stages"]["address_confirmed"] = _stage_ok(
+                "address_confirmed", url=page.url)
 
-            # Stage 5: associate the document with the worker. The
-            # detail page renders a plain ``<form method="post">`` with
-            # ``<select name="worker_choice">`` whose options carry
-            # server-signed tokens.
-            try:
-                page.goto(base_url + f"/documents/{document_pk}/",
-                          wait_until="domcontentloaded")
-                worker_choice = page.locator('select[name="worker_choice"]')
-                if worker_choice.count() > 0:
-                    options = worker_choice.evaluate(
-                        """el => Array.from(el.options).map(
-                            o => ({token: o.value,
-                                  text: o.textContent.trim()}))""")
-                    match = next(
-                        (o for o in options if "Testerova" in o["text"]),
-                        None)
-                    if match is None:
-                        raise SystemExit(
-                            f"FAIL: worker Testerova not in association "
-                            f"options: {options!r}")
-                    worker_choice.select_option(match["token"])
-                    _submit_first_form(page, action="associate")
-                    _wait_networkidle(page)
-                evidence["stages"]["document_associated"] = {
-                    "ok": True, "url": page.url,
-                }
-
-                # Stage 6: confirm at least one OCR field, or fall back
-                # to the missing-identity form so the worker has at
-                # least one explicit human-confirmed fact. If the
-                # inline OCR rendering 500s (which happens on
-                # some synthetic PNG inputs through RapidOCR), we
-                # record the OCR step as a documented skip rather than
-                # failing the journey.
-                page.reload(wait_until="domcontentloaded")
-                confirmed_any = False
-                initial_count = page.locator(
-                    'input[type="checkbox"][name^="confirm_"]').count()
-                for i in range(initial_count):
-                    cb = page.locator(
-                        'input[type="checkbox"][name^="confirm_"]').first
-                    cb.check()
-                    _submit_first_form(page, action="confirm")
-                    _wait_networkidle(page)
-                    page.reload(wait_until="domcontentloaded")
-                    if page.locator(
-                            'input[type="checkbox"][name^="confirm_"]'
-                            ).count() < initial_count:
-                        confirmed_any = True
-                        break
-                if not confirmed_any:
-                    identity_input = page.locator(
-                        'input[name="identity_given_name"]:not([type=hidden])')
-                    if identity_input.count() > 0:
-                        identity_input.fill("Alfa")
-                        family_input = page.locator(
-                            'input[name="identity_family_name"]:not([type=hidden])')
-                        if family_input.count() > 0:
-                            family_input.fill("Testerova")
-                        _submit_first_form(
-                            page, action="confirm_missing_identity")
-                        _wait_networkidle(page)
-                        confirmed_any = True
-                evidence["stages"]["ocr_field_confirmed"] = {
-                    "ok": confirmed_any, "url": page.url,
-                }
-            except (SystemExit, Exception) as exc:
-                # OCR detail rendering sometimes 500s on synthetic
-                # inputs. The journey must still continue so the
-                # subsequent assignment + A1 stages exercise the rest
-                # of the integrated workflow. Record the OCR stage as
-                # a documented skip.
-                if isinstance(exc, SystemExit) and "FAIL" in str(exc) \
-                        and "Testerova" in str(exc):
-                    raise
-                evidence["stages"]["document_associated"] = {
-                    "ok": False,
-                    "reason": f"document detail page errored: "
-                              f"{type(exc).__name__}: {exc}",
-                }
-                evidence["stages"]["ocr_field_confirmed"] = {
-                    "ok": False,
-                    "reason": "skipped because document detail 500'd; "
-                              "the OCR confirm path is exercised by "
-                              "the dedicated document_web cohort tests",
-                }
-
-            # Stage 7: create assignment.
+            # Stage 9: create assignment.
             page.goto(base_url + f"/workers/{worker_pk}/assignments/new/",
                       wait_until="domcontentloaded")
-            _set_form_field(page, name="workplace_label",
-                            value="Acme GmbH Mnichov")
-            _set_form_field(page, name="activity_label",
-                            value="Montážní práce")
-            _set_form_field(page, name="start", value="2026-09-01")
-            _set_form_field(page, name="end", value="2026-09-30")
-            _submit_first_form(page)
-            _wait_networkidle(page)
-            evidence["stages"]["assignment_created"] = {
-                "ok": ("/workers/" in page.url and "/assignments/new/" \
-                       not in page.url),
-                "url": page.url,
-            }
+            _set_field(page, name="workplace_label",
+                       value="Acme GmbH Mnichov")
+            _set_field(page, name="activity_label",
+                       value="Montážní práce")
+            _set_field(page, name="start", value="2026-09-01")
+            _set_field(page, name="end", value="2026-09-30")
+            _submit_form(page)
+            try:
+                page.wait_for_url(re.compile(r"/workers/\d+/(?!.*assignments/new)"),
+                                  timeout=20000)
+            except PWTimeout:
+                raise SystemExit(
+                    f"FAIL: assignment create did not redirect "
+                    f"(url={page.url!r})")
+            evidence["stages"]["assignment_created"] = _stage_ok(
+                "assignment_created", url=page.url)
 
-# Stage 8: prepare A1 case.
+            # Stage 9b: fill the assignment's pending A1 facts
+            # (employment, activity, institution). The canonical
+            # ``prepare_application_draft`` validator requires these
+            # fields when ``status_profile != self_employed_multi_state``,
+            # so a synthetic minimum keeps the worker-employee path
+            # within policy. Without this step the A1 row stays
+            # blocked on missing institution / employment facts and
+            # the downstream render fails.
+            # assignment_create redirects to /workers/<pk>/ so the URL
+            # no longer carries the assignment pk. Discover the most
+            # recent assignment for this worker from the
+            # ``?tab=assignments`` listing — it shows an
+            # ``assignment_edit`` link per row.
+            page.goto(base_url + f"/workers/{worker_pk}/?tab=assignments",
+                      wait_until="networkidle")
+            detail_links = page.evaluate(
+                """() => Array.from(
+                    document.querySelectorAll(
+                        'a[href*="/assignments/"][href$="/edit/"]'))
+                    .map(a => a.href)""")
+            apk_match = None
+            for href in detail_links:
+                m = re.search(r"/assignments/(\d+)/edit/", href)
+                if m:
+                    apk_match = m.group(1)
+                    break
+            if apk_match is None:
+                raise SystemExit(
+                    f"FAIL: could not discover the new assignment pk "
+                    f"from worker detail links (url={page.url!r})")
+            assignment_pk = int(apk_match)
+            page.goto(base_url
+                      + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
+                      wait_until="networkidle")
+            assignment_facts_values = {
+                "status_profile": "employee_multi_state",
+                "employment__employer_id": "12345678",
+                "employment__employer_name": "Acme GmbH",
+                "employment__street": "Pracovní",
+                "employment__house_number": "1",
+                "employment__city": "Mnichov",
+                "employment__postal_code": "12345",
+                "employment__country_code": "DE",
+                "activity__name": "Montážní práce",
+                "activity__address": "DE, CZ",
+                "institution__resolved_ossz": "OSSZ Děčín",
+            }
+            # Pick the verifiable institution profile that matches the
+            # resolved OSSZ above. ``validate_application_draft_row``
+            # requires ``expected_ossz`` to equal ``resolved_ossz`` and
+            # ``resolved_ossz`` to appear in the institution name, so
+            # decin (OSSZ Děčín) satisfies both checks.
+            page.locator(
+                'select[name="institution__profile_key"]'
+            ).select_option("decin")
+            for field, value in assignment_facts_values.items():
+                _set_field(page, name=field, value=value)
+            _submit_form(page)
+            page.wait_for_load_state("networkidle")
+            chosen_profile = page.evaluate(
+                """() => {
+                    const sel = document.querySelector(
+                        'select[name="institution__profile_key"]');
+                    if (!sel || sel.selectedIndex < 0) return null;
+                    return sel.options[sel.selectedIndex].value || null;
+                }""")
+            if chosen_profile != "decin":
+                raise SystemExit(
+                    f"FAIL: assignment facts did not keep the decin "
+                    f"institution_profile (url={page.url!r})")
+            evidence["stages"]["assignment_facts_saved"] = _stage_ok(
+                "assignment_facts_saved",
+                url=page.url, institution_profile=chosen_profile)
+
+            # Stage 10: prepare A1 case. The /a1/prepare form posts
+            # back to /a1/<pk>/ with confirm_prepare=on. The case is
+            # ready (not blocked) only when identity, residence and
+            # assignment are complete.
             page.goto(base_url + f"/workers/{worker_pk}/a1/prepare/",
                       wait_until="domcontentloaded")
-            _set_form_field(page, name="confirm_prepare", value="on")
-            _submit_first_form(page)
+            _set_field(page, name="confirm_prepare", value="on")
+            _submit_form(page)
             _wait_for_url(page, re.compile(r"/a1/\d+/$"))
             case_pk = int(re.search(r"/a1/(\d+)/", page.url).group(1))
-            evidence["stages"]["a1_prepared"] = {
-                "ok": True, "case_pk": case_pk, "url": page.url,
-            }
+            body_text = page.evaluate(
+                "() => document.body && document.body.innerText")
+            if "blocked" in body_text.lower():
+                raise SystemExit(
+                    f"FAIL: A1 case detail shows blocked status; "
+                    f"identity/residence/assignment facts are incomplete "
+                    f"(url={page.url!r})")
+            evidence["stages"]["a1_prepared"] = _stage_ok(
+                "a1_prepared", case_pk=case_pk, url=page.url)
 
-            # Stage 9: the PDF download step is the natural next step
-            # for an application-draft case, but the canonical
-            # generation requires the full 44-field A1 input contract
-            # which the sparse synthetic worker does not supply. We
-            # verify the case detail page is reachable (rendered without
-            # a 500 from the inline OCR crop rendering) and capture the
-            # download URL when the link is present. The artifact PDF
-            # generation itself is exercised by the dedicated
-            # ``tests/document_web`` suite via the
-            # ``portal/release1a/a1_drafts.py::prepare_application_draft``
-            # path with a fully populated synthetic cohort.
-            page.goto(base_url + f"/a1/{case_pk}/",
-                      wait_until="domcontentloaded")
-            case_status = page.evaluate(
-                "() => document.body && document.body.innerText.length")
-            evidence["stages"]["a1_case_detail_visible"] = {
-                "ok": case_status is not None and case_status > 100,
-                "url": page.url, "body_len": case_status,
-            }
+            # Stage 11: unverified A1 draft PDF. When the case is
+            # prepared, ``prepare_a1`` already runs the canonical
+            # ``prepare_application_draft`` path, so the detail page
+            # usually exposes the protected PDF links immediately and
+            # hides the "Vygenerovat PDF" form. If the auto render did
+            # not complete, the form is shown instead and the operator
+            # (here the journey) triggers the POST explicitly. Record
+            # which path actually produced the artifact.
+            generate_form = page.locator(
+                'form[action$="/draft/generate/"]')
+            generate_status = 200
+            generate_mode = "prepared_auto"
+            if generate_form.count():
+                generate_mode = "operator_post"
+                try:
+                    with page.expect_response(
+                            lambda r: r.url.endswith("/draft/generate/")
+                            and r.request.method == "POST",
+                            timeout=30000) as resp_info:
+                        page.locator(
+                            'form[action$="/draft/generate/"] '
+                            'button[type="submit"]'
+                        ).click()
+                    generate_response = resp_info.value
+                    generate_status = generate_response.status
+                    generate_body = generate_response.body()[:300]
+                except PWTimeout:
+                    generate_status = 0
+                    generate_body = b"(no response captured before timeout)"
+                if generate_status != 200:
+                    raise SystemExit(
+                        f"FAIL: draft generate returned HTTP "
+                        f"{generate_status}; body={generate_body!r} "
+                        f"(url={page.url!r})")
+            page.wait_for_load_state("networkidle")
+            download_link = page.locator('a[href*="/artifact/"]').first
+            if download_link.count() == 0:
+                raise SystemExit(
+                    f"FAIL: a1 artifact download link not visible after "
+                    f"draft generation (url={page.url!r}, "
+                    f"status={generate_status})")
+            evidence["stages"]["a1_draft_generated"] = _stage_ok(
+                "a1_draft_generated",
+                url=page.url, http_status=generate_status,
+                generation_mode=generate_mode)
 
-            # Stage 9: download protected PDF when available. The sparse
-            # synthetic worker does not satisfy the full 44-field A1
-            # input contract, so ``prepare_application_draft`` is
-            # deliberately not invoked here — the dedicated
-            # ``tests/document_web`` cohort suite exercises the full
-            # download path with a complete input row. For this
-            # sparse journey we only check whether the link is visible
-            # and record the outcome; an absent link is recorded as a
-            # documented skip, never a failure.
-            try:
-                link = page.get_by_role(
-                    "link", name=re.compile("PDF", re.IGNORECASE)).first
-                if link.count() > 0:
-                    with page.expect_download(timeout=20000) as event:
-                        link.click()
-                    download = event.value
-                    pdf_path = tmpdir / (
-                        f"a1-{case_pk}-{secrets.token_hex(6)}.pdf")
-                    download.save_as(str(pdf_path))
-                    pdf_bytes = pdf_path.read_bytes()
-                    evidence["stages"]["a1_pdf_downloaded"] = {
-                        "ok": pdf_bytes[:5] == b"%PDF-",
-                        "path": str(pdf_path), "size": len(pdf_bytes),
-                    }
-                else:
-                    evidence["stages"]["a1_pdf_downloaded"] = {
-                        "ok": False,
-                        "reason": "sparse-input: artifact not generated; "
-                                  "PDF download is exercised by the "
-                                  "full-cohort document_web tests",
-                    }
-            except Exception as exc:
-                evidence["stages"]["a1_pdf_downloaded"] = {
-                    "ok": False, "error": f"{type(exc).__name__}: {exc}",
-                }
+            # Stage 12: download the protected PDF and verify it
+            # begins with the %PDF- magic.
+            with page.expect_download(timeout=20000) as event:
+                download_link.click()
+            download = event.value
+            pdf_path = tmpdir / f"a1-{case_pk}-{secrets.token_hex(6)}.pdf"
+            download.save_as(str(pdf_path))
+            pdf_bytes = pdf_path.read_bytes()
+            if pdf_bytes[:5] != b"%PDF-":
+                raise SystemExit(
+                    f"FAIL: downloaded artifact does not begin with %PDF- "
+                    f"magic (size={len(pdf_bytes)}, path={pdf_path})")
+            evidence["stages"]["a1_pdf_downloaded"] = _stage_ok(
+                "a1_pdf_downloaded",
+                path=str(pdf_path), size=len(pdf_bytes))
 
             evidence["worker_pk"] = worker_pk
             evidence["case_pk"] = case_pk
             evidence["document_pk"] = document_pk
-
-            # Capture the journey's pk identifiers so the calling
-            # pytest test can verify persistence after a gunicorn
-            # restart. The workflow test in tests/test_rehearse_workflow.py
-            # stops the server, restarts it, and queries these
-            # identifiers through a fresh subprocess to confirm
-            # restart-survival of the synthetic record set.
         except SystemExit:
             raise
         except Exception as exc:
-            evidence.setdefault("stages", {})["unexpected"] = {
-                "ok": False, "error": f"{type(exc).__name__}: {exc}",
-            }
+            evidence.setdefault("stages", {})["unexpected"] = _stage_fail(
+                "unexpected",
+                reason=f"{type(exc).__name__}: {exc}")
             raise SystemExit(f"FAIL: journey aborted: {exc}")
         finally:
             context.close()
             browser.close()
 
-    evidence["ok"] = all(
-        v.get("ok") for v in evidence["stages"].values())
-    # ``ok`` summarizes whether every stage met its contract. The
-    # sparse synthetic worker is expected to skip OCR confirm and
-    # application-draft artifact generation, so ``ok`` is False by
-    # design. Return evidence with the documented outcome and let the
-    # pytest test inspect individual stages rather than rejecting the
-    # whole journey on a sparse skip.
+    required_failed = [
+        name for name in REQUIRED_STAGES
+        if not evidence["stages"].get(name, {}).get("ok")
+    ]
+    evidence["required_stages"] = list(REQUIRED_STAGES)
+    evidence["ok"] = not required_failed
+    if required_failed:
+        evidence["failed_stages"] = required_failed
     return evidence
 
 
@@ -614,10 +678,10 @@ def main() -> int:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1
     print(json.dumps(evidence, indent=2, sort_keys=True, default=str))
-    # Exit 0 even when documented-skip stages did not run, so the
-    # pytest harness can assert stage-by-stage outcomes instead of
-    # treating the documented sparse-input skips as failures.
-    return 0
+    # Required-stage failure must propagate as a non-zero exit. Sparse
+    # cases are separate journeys that record their own blocked outcome
+    # without being declared "ok".
+    return 0 if evidence.get("ok") else 7
 
 
 if __name__ == "__main__":

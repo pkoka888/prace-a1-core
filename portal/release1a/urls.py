@@ -32,6 +32,7 @@ from .views import (
     a1_prepare,
     a1_case_detail,
     a1_regenerate,
+    a1_draft_generate,
     a1_artifact_download,
     a1_artifact_confirm,
     a1_evidence_intake,
@@ -105,6 +106,7 @@ urlpatterns = [
     path("a1/<int:pk>/confirm/", a1_artifact_confirm, name="a1_artifact_confirm"),
     path("a1/<int:pk>/evidence/", a1_evidence_intake, name="a1_evidence_intake"),
     path("a1/<int:pk>/regenerate/", a1_regenerate, name="a1_regenerate"),
+    path("a1/<int:pk>/draft/generate/", a1_draft_generate, name="a1_draft_generate"),
 
     # Planned future modules
     path("partners/", planned_page, name="planned_partners"),
