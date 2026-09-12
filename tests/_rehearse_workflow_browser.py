@@ -13,7 +13,9 @@ frontend end-to-end:
        (birth_place, nationality, sex, insurance_number)
     -> confirm structured residence address (5 parts)
     -> create assignment -> prepare A1 case -> generate unverified
-       A1 draft PDF -> download protected PDF
+       A1 draft PDF -> download protected PDF -> correct one
+       assignment input fact -> prepare a NEW A1 case -> download the
+       regenerated PDF and verify the bytes differ (new sha256)
 
 Every stage uses real HTTP requests with the operator's session
 cookies. We never substitute service calls, force-login, inject
@@ -34,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import hmac
 import json
 import re
@@ -66,6 +69,9 @@ REQUIRED_STAGES = (
     "a1_prepared",
     "a1_draft_generated",
     "a1_pdf_downloaded",
+    "a1_corrected_facts",
+    "a1_regenerated",
+    "regeneration_differs",
 )
 
 
@@ -87,6 +93,10 @@ def _hotp_token(secret: bytes, counter: int, digits: int = 6) -> str:
         | (digest[offset + 3] & 0xFF)
     )
     return str(code % (10 ** digits)).zfill(digits)
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
 
 def _current_totp(secret_b32: str, at_unix: int | None = None,
@@ -634,11 +644,98 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path) -> dict:
                     f"magic (size={len(pdf_bytes)}, path={pdf_path})")
             evidence["stages"]["a1_pdf_downloaded"] = _stage_ok(
                 "a1_pdf_downloaded",
-                path=str(pdf_path), size=len(pdf_bytes))
+                path=str(pdf_path), size=len(pdf_bytes),
+                sha256=_sha256(pdf_bytes))
+
+            # Stage 13: correction. The operator edits one assignment
+            # input fact through the shipped a1-inputs form, then the
+            # case is regenerated (stage 14). This exercises the
+            # assignment_j4_inputs path from view to service, and it
+            # is the input drift that the regeneration must reflect in
+            # the PDF bytes.
+            page.goto(base_url
+                      + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
+                      wait_until="networkidle")
+            corrected_street = "Pracovni 22"
+            _set_field(page, name="employment__street", value=corrected_street)
+            _submit_form(page)
+            page.wait_for_load_state("networkidle")
+            page.reload(wait_until="networkidle")
+            street_after = page.evaluate('''() => {
+                const el = document.querySelector('[name="employment__street"]');
+                return el ? el.value : null;
+            }''')
+            if street_after != corrected_street:
+                raise SystemExit(
+                    f"FAIL: assignment street edit did not persist "
+                    f"(expected {corrected_street!r}, got {street_after!r}, "
+                    f"url={page.url!r})")
+            evidence["stages"]["a1_corrected_facts"] = _stage_ok(
+                "a1_corrected_facts", assignment_pk=assignment_pk,
+                corrected_street=corrected_street, url=page.url)
+
+            # Stage 14: regeneration. prepare_a1 creates a NEW A1Case
+            # each POST, so the corrected snapshot produces a new case
+            # pk; the protected PDF must be regenerated for it. The
+            # detail page auto-renders the draft when the case is
+            # ready (same as the first case).
+            page.goto(base_url + f"/workers/{worker_pk}/a1/prepare/",
+                      wait_until="domcontentloaded")
+            _set_field(page, name="confirm_prepare", value="on")
+            _submit_form(page)
+            _wait_for_url(page, re.compile(r"/a1/\d+/$"))
+            regenerated_case_pk = int(
+                re.search(r"/a1/(\d+)/", page.url).group(1))
+            if regenerated_case_pk == case_pk:
+                raise SystemExit(
+                    f"FAIL: regeneration reused the same case pk "
+                    f"({regenerated_case_pk}); prepare_a1 must create a "
+                    f"new A1Case row for the corrected snapshot")
+            body_text = page.evaluate(
+                "() => document.body && document.body.innerText")
+            if "blocked" in body_text.lower():
+                raise SystemExit(
+                    f"FAIL: regenerated A1 case shows blocked status "
+                    f"after correction (url={page.url!r})")
+            page.wait_for_load_state("networkidle")
+            regen_link = page.locator('a[href*="/artifact/"]').first
+            if regen_link.count() == 0:
+                raise SystemExit(
+                    f"FAIL: regenerated A1 artifact link not visible "
+                    f"(url={page.url!r}, case_pk={regenerated_case_pk})")
+            with page.expect_download(timeout=20000) as event2:
+                regen_link.click()
+            regen_download = event2.value
+            regen_path = tmpdir / (
+                f"a1-{regenerated_case_pk}-{secrets.token_hex(6)}.pdf")
+            regen_download.save_as(str(regen_path))
+            regen_bytes = regen_path.read_bytes()
+            if regen_bytes[:5] != b"%PDF-":
+                raise SystemExit(
+                    f"FAIL: regenerated artifact does not begin with "
+                    f"%PDF- magic (size={len(regen_bytes)})")
+            evidence["stages"]["a1_regenerated"] = _stage_ok(
+                "a1_regenerated", regenerated_case_pk=regenerated_case_pk,
+                size=len(regen_bytes))
+
+            # Stage 15: the corrected snapshot must change the
+            # artifact bytes. Identical sha256 would mean the
+            # regeneration did not bind the edited fact.
+            if _sha256(regen_bytes) == _sha256(pdf_bytes):
+                raise SystemExit(
+                    f"FAIL: regenerated PDF sha256 equals the first case "
+                    f"PDF; the corrected assignment fact was not bound "
+                    f"to the artifact (url={page.url!r})")
+            evidence["stages"]["regeneration_differs"] = _stage_ok(
+                "regeneration_differs",
+                first_sha256=_sha256(pdf_bytes),
+                regenerated_sha256=_sha256(regen_bytes))
 
             evidence["worker_pk"] = worker_pk
             evidence["case_pk"] = case_pk
             evidence["document_pk"] = document_pk
+            evidence["assignment_pk"] = assignment_pk
+            evidence["regenerated_case_pk"] = regenerated_case_pk
         except SystemExit:
             raise
         except Exception as exc:
