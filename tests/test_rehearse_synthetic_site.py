@@ -24,6 +24,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "rehearse_synthetic_site.sh"
+WRAPPER = REPO_ROOT / "scripts" / "rehearse_dev_local.sh"
 
 
 @pytest.fixture
@@ -318,6 +319,84 @@ def test_child_symlink_is_refused_before_mkdir_chmod(required_env, monkeypatch):
         _os.umask(previous_umask)
 
 
+# --- wrapper (rehearse_dev_local.sh) ---
+
+
+def _run_wrapper(args, env, timeout=60):
+    return subprocess.run(
+        ["bash", str(WRAPPER), *args],
+        cwd=str(REPO_ROOT), env=env, capture_output=True,
+        text=True, timeout=timeout,
+    )
+
+
+def _wrapper_env(rehearsal_root, *, with_secret=True):
+    env = {
+        "PATH": os.environ["PATH"],
+        "HOME": os.environ.get("HOME", "/tmp"),
+        "PRACE_RUNTIME_ROOT": str(rehearsal_root),
+        "PRACE_ALLOWED_HOSTS": "localhost,127.0.0.1",
+        "PRACE_BIND": "127.0.0.1:0",
+    }
+    if with_secret:
+        env["PRACE_SECRET_KEY"] = "wrapper-test-secret-" + "x" * 50
+    return env
+
+
+def test_wrapper_rejects_out_of_tree_path_before_any_write(tmp_path):
+    """The 2026-09-12 review found the wrapper rejected valid roots
+    because the quoted heredoc embedded shell variables literally.
+    The rewritten wrapper validates the RAW path before any mkdir and
+    refuses a path outside runtime/portal/supervised-* without
+    creating anything."""
+    target = tmp_path / "outside-approved-runtime"
+    r = _run_wrapper(["status"], _wrapper_env(target, with_secret=False))
+    assert r.returncode != 0, (
+        f"wrapper accepted an out-of-tree path:\n{r.stdout}\n{r.stderr}")
+    assert "supervised-" in r.stderr
+    assert not target.exists(), "out-of-tree runtime root must not be created"
+    assert not (REPO_ROOT / "runtime" / "portal" / "outside").exists()
+
+
+def test_wrapper_creates_confined_root_and_atomic_secret_key(rehearsal_root):
+    """A fresh confined root is created (0700) and a stable signing key
+    is minted atomically (mode 0600) when the caller does not supply
+    PRACE_SECRET_KEY. The secret is written through a unique temp name
+    + rename, never clobbering a concurrent create."""
+    env = _wrapper_env(rehearsal_root, with_secret=False)
+    r = _run_wrapper(["status"], env)
+    assert r.returncode == 0, r.stderr
+    assert rehearsal_root.is_dir()
+    assert (rehearsal_root.stat().st_mode & 0o777) == 0o700
+    key_file = rehearsal_root / ".secret_key"
+    assert key_file.is_file()
+    assert ((key_file.stat().st_mode) & 0o777) == 0o600
+    assert len(key_file.read_text().strip()) >= 40
+    # No leftover temp key files.
+    assert not list(rehearsal_root.glob(".secret_key.*"))
+
+    # Second invocation reuses the persisted key (stable session signer).
+    second = _run_wrapper(["status"], env)
+    assert second.returncode == 0, second.stderr
+    assert key_file.read_text() == key_file.read_text()
+    assert "stopped" in second.stdout
+
+
+def test_wrapper_rejects_symlinked_secret_key(rehearsal_root):
+    """A pre-existing .secret_key symlink must be refused so the
+    wrapper cannot write a fresh key through the link into a foreign
+    target (the F2 symlink class of defect, applied to the secret)."""
+    key_file = rehearsal_root / ".secret_key"
+    foreign = rehearsal_root / ".foreign_target"
+    foreign.write_text("existing")
+    key_file.symlink_to(foreign)
+    r = _run_wrapper(["status"], _wrapper_env(rehearsal_root, with_secret=False))
+    assert r.returncode != 0, (
+        f"wrapper accepted a symlinked .secret_key:\n{r.stdout}\n{r.stderr}")
+    assert "symlink" in (r.stdout + r.stderr).lower()
+    assert foreign.read_text() == "existing", "foreign target was modified"
+
+
 def test_smoke_probe_parses_health_json_and_fails_on_wrong_fields(required_env, monkeypatch):
     """F1 negative fixture: a server that returns a /health/ JSON
     body with supervised=False and real_data=True must be rejected
@@ -381,6 +460,205 @@ def test_smoke_probe_parses_health_json_and_fails_on_wrong_fields(required_env, 
         assert r.returncode == 6, (
             f"smoke accepted wrong contract (exit={r.returncode}):\n"
             f"STDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}"
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
+
+
+def _slow_body_server(handler):
+    """Run a local HTTP server whose handler sends status+headers and
+    then holds the body open. Returns (server, thread)."""
+    import http.server as _httpserver
+    import socket as _socket
+    import threading as _threading
+    import time as _time
+
+    with _socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    class Drip(_httpserver.BaseHTTPRequestHandler):
+        def log_message(self, *args, **kwargs):
+            pass
+
+        def handle_error(self, request, client_address):
+            pass
+
+        def do_GET(self):
+            handler(self)
+            self.wfile.flush()
+            _time.sleep(2)
+
+    server = _httpserver.HTTPServer(("127.0.0.1", port), Drip)
+    thread = _threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread, port
+
+
+def test_bounded_request_enforces_deadline_on_success_body():
+    """F4: a 200 server that sends headers then holds the body open must
+    be cut off by the smoke's own deadline (not by the urllib connect
+    timeout), because the response body read used to block inside
+    read(65536) until the wall-clock check finally fired.
+    """
+    import time as _time
+    from scripts.smoke_probe import _bounded_request
+
+    def handler(h):
+        h.send_response(200)
+        h.send_header("Content-Length", "1048576")
+        h.end_headers()
+
+    server, thread, port = _slow_body_server(handler)
+    try:
+        start = _time.monotonic()
+        timed_out = False
+        try:
+            _bounded_request(f"http://127.0.0.1:{port}/health/", "localhost",
+                             read_timeout=0.2)
+        except TimeoutError:
+            timed_out = True
+        elapsed = _time.monotonic() - start
+        assert timed_out, "success body read must raise TimeoutError on a held body"
+        assert elapsed < 1.0, (
+            f"deadline not enforced at socket level: {elapsed:.2f}s"
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
+
+
+def _drip_body_server(status):
+    """A server that writes a trickle of body bytes for ~2 s (never
+    completing the Content-Length body), against which a short smoke
+    deadline must fire on the wall-clock checks (each chunk read
+    returns fast, so socket-level timeouts alone cannot save the
+    budget)."""
+    import http.server as _httpserver
+    import socket as _socket
+    import threading as _threading
+    import time as _time
+
+    with _socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    class Drip(_httpserver.BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, *args, **kwargs):
+            pass
+
+        def handle_error(self, request, client_address):
+            pass
+
+        def do_GET(self):
+            self.send_response(status)
+            self.send_header("Content-Length", "1048576")
+            self.end_headers()
+            self.wfile.flush()
+            for _ in range(40):
+                try:
+                    self.wfile.write(b"x" * 64)
+                    self.wfile.flush()
+                except OSError:
+                    break
+                _time.sleep(0.05)
+
+    server = _httpserver.HTTPServer(("127.0.0.1", port), Drip)
+    thread = _threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread, port
+
+
+def _assert_timed_out(call, label, ceiling=1.0):
+    import time as _time
+    start = _time.monotonic()
+    timed_out = False
+    try:
+        call()
+    except TimeoutError:
+        timed_out = True
+    elapsed = _time.monotonic() - start
+    assert timed_out, f"{label}: a drip body must raise TimeoutError"
+    assert elapsed < ceiling, f"{label}: budget not enforced: {elapsed:.2f}s"
+
+
+def test_bounded_request_enforces_deadline_on_slow_success_drip():
+    """F4: a 200 server that slowly trickles a never-ending body must
+    still terminate with TimeoutError (the smoke must never report the
+    wrapped-up request as healthy). The success body is read through
+    the http.client reader (so bytes buffered with the headers are not
+    lost), which returns large chunks only when the full chunk or EOF
+    arrives, so a slow drip is caught by the wall-clock check right
+    after the blocked read completes; a fully held-open body is instead
+    interrupted at the OS level within the budget (see the
+    _success_body test above).
+    """
+    from scripts.smoke_probe import _bounded_request
+    server, thread, port = _drip_body_server(200)
+    try:
+        _assert_timed_out(
+            lambda: _bounded_request(
+                f"http://127.0.0.1:{port}/health/", "localhost",
+                read_timeout=0.2),
+            "slow success drip",
+            ceiling=3.0,
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
+
+
+def test_bounded_request_enforces_deadline_on_slow_error_drip():
+    """F4: the HTTPError body path must hit the same wall-clock budget
+    when the error body trickles past it."""
+    from scripts.smoke_probe import _bounded_request
+    server, thread, port = _drip_body_server(500)
+    try:
+        _assert_timed_out(
+            lambda: _bounded_request(
+                f"http://127.0.0.1:{port}/health/", "localhost",
+                read_timeout=0.2),
+            "slow error drip",
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
+
+
+def test_bounded_request_propagates_timeout_from_error_body():
+    """F4: the HTTPError branch used to catch OSError (which includes
+    TimeoutError) and return the body normally. A 500 server holding the
+    body open must now propagate the TimeoutError, not return normally."""
+    import time as _time
+    from scripts.smoke_probe import _bounded_request
+
+    def handler(h):
+        h.send_response(500)
+        h.send_header("Content-Length", "32768")
+        h.end_headers()
+
+    server, thread, port = _slow_body_server(handler)
+    try:
+        start = _time.monotonic()
+        timed_out = False
+        try:
+            _bounded_request(f"http://127.0.0.1:{port}/health/", "localhost",
+                             read_timeout=0.2)
+        except TimeoutError:
+            timed_out = True
+        elapsed = _time.monotonic() - start
+        assert timed_out, (
+            "HTTPError body read must raise TimeoutError, not be swallowed"
+        )
+        assert elapsed < 1.0, (
+            f"deadline not enforced on the error body path: {elapsed:.2f}s"
         )
     finally:
         server.shutdown()

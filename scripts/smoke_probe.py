@@ -45,11 +45,20 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
     No automatic redirect follow; no cookie jar. ``read_timeout`` is
     the overall request deadline: TCP connect plus response body read
     must both finish within the budget. The opener's ``timeout`` is
-    the urllib connect+read timeout; we additionally enforce the
-    same budget through wall-clock deadline checks before/after
-    every step so a slow body drip cannot slip past it. Body bytes
-    are read in 64 KiB chunks and the deadline is checked after
-    every chunk, on both success and HTTPError paths. ``body_cap``
+    the urllib connect+read timeout; we additionally enforce the same
+    budget through wall-clock deadline checks before/after every step
+    and arm the underlying socket with the remaining budget before
+    each read so a server that holds the body open without delivering
+    bytes is interrupted at the OS level. A body that trickles bytes
+    slowly is caught by the wall-clock check on the iteration after
+    the blocked read completes (manual reads therefore never run
+    without a ceiling). The Error-body path reads directly from the
+    socket, which returns partial data immediately and honors the
+    armed timeout exactly, so a dripping or held error body always
+    raises ``TimeoutError`` within the deadline. ``TimeoutError``
+    propagates from the success path and from the HTTPError body path
+    alike (the error branch only carries a missing-body default).
+    ``body_cap``
     bounds the accumulated body size (default 8 MiB so the bundled
     Tailwind CSS survives; the helper raises
     ``ValueError("SMOKE_BODY_CAP_EXCEEDED")`` once the cap is hit so
@@ -75,17 +84,87 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
         raise TimeoutError(
             f"{label} exceeded {read_timeout:.1f}s budget")
 
+    def _find_socket(stream):
+        """Walk the body-stream chain to the real socket object.
+
+        http.client nests the stream: HTTPError/HTTPResponse expose
+        ``fp`` (a buffered reader) whose ``raw`` is a SocketIO holding
+        the socket. The success body must be read through the reader
+        (it may already hold body bytes), but its underlying socket is
+        what we arm with the remaining deadline.
+        """
+        candidate = stream
+        for _ in range(6):
+            sock = getattr(candidate, "_sock", None)
+            if sock is not None and getattr(sock, "fileno", None):
+                return sock
+            nxt = getattr(candidate, "fp", None) or getattr(candidate, "raw", None)
+            if nxt is None or nxt is candidate:
+                return None
+            candidate = nxt
+        return None
+
+    def _arm_socket_timeout(sock, *, label: str) -> None:
+        remaining = deadline - _time.monotonic()
+        if remaining <= 0:
+            _overrun(label)
+        try:
+            sock.settimeout(min(remaining, read_timeout))
+        except (OSError, ValueError):
+            pass
+
     def _read_in_chunks(stream, *, label: str) -> bytes:
+        """Read the success body through the http.client reader.
+
+        The reader is required so body bytes that arrived together with
+        the response headers (already buffered inside the reader) are
+        not lost. The reader's own read does not return partial data
+        for large chunk sizes on this stack, so a held-open body is
+        interrupted by the armed socket timeout and a slow drip is
+        bounded by the wall-clock check on the following iteration.
+        """
         chunks = []
         total = 0
         while True:
-            if _time.monotonic() > deadline:
-                _overrun(label)
+            sock = _find_socket(stream)
+            if sock is not None:
+                _arm_socket_timeout(sock, label=label)
             try:
                 chunk = stream.read(65536)
             except (TimeoutError, socket.timeout) as exc:
                 raise TimeoutError(
                     f"{label} chunk read exceeded {read_timeout:.1f}s "
+                    f"budget: {exc}") from exc
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > body_cap:
+                raise ValueError(
+                    f"SMOKE_BODY_CAP_EXCEEDED ({total} > {body_cap})")
+        return b"".join(chunks)
+
+    def _read_error_body_from_socket(stream, *, label: str) -> bytes:
+        """Drain an HTTPError body straight from the socket.
+
+        Error bodies are diagnostics only, so bytes still buffered in
+        the client reader are irrelevant. Reading at the socket level
+        is the one primitive on this stack that returns partial data
+        and honors ``settimeout`` precisely, which gives the error
+        path a real sub-second deadline even for a slow drip.
+        """
+        sock = _find_socket(stream)
+        if sock is None:
+            return b""
+        chunks = []
+        total = 0
+        while True:
+            _arm_socket_timeout(sock, label=label)
+            try:
+                chunk = sock.recv(65536)
+            except (TimeoutError, socket.timeout, BlockingIOError) as exc:
+                raise TimeoutError(
+                    f"{label} read exceeded {read_timeout:.1f}s "
                     f"budget: {exc}") from exc
             if not chunk:
                 break
@@ -115,8 +194,8 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
         if _time.monotonic() > deadline:
             _overrun("error body")
         try:
-            raw = _read_in_chunks(exc, label="error body")
-        except (AttributeError, OSError):
+            raw = _read_error_body_from_socket(exc, label="error body")
+        except AttributeError:
             raw = b""
         status = exc.code
         headers = exc.headers
