@@ -230,9 +230,10 @@ def _current_input_snapshot(user, organization, case):
     The stored snapshot is authoritative: its digest must match
     ``case.source_hash`` (corruption guard) and it must declare the
     canonical schema version. Staleness is detected via the
-    live-source re-hash against the same digest when a ``dependencies``
-    block was recorded; J4 ``prepare_a1`` snapshots without that
-    block rely on the stored-hash check alone. Republishing a stale
+    live-source re-hash against the same digest: ``dependencies``-
+    bound snapshots recompute the canonical ``_snapshot`` for the
+    recorded selections; J4 ``prepare_a1`` snapshots recompute the
+    canonical ``current_a1_source`` live hash. Republishing a stale
     input is rejected before any number is reserved.
     """
     snapshot = case.source_snapshot_json
@@ -248,15 +249,25 @@ def _current_input_snapshot(user, organization, case):
         # J4 ``prepare_a1`` snapshots carry the J4 subset
         # ``{schema_version, profile, assignments}`` without a
         # ``dependencies`` block. The stored-hash check above is the
-        # authoritative integrity guard for those rows; a tamper of
-        # ``profile`` / ``assignments`` would mismatch the hash.
+        # corruption guard for those rows; staleness is bound by
+        # recomputing the live J4 source hash through the canonical
+        # ``current_a1_source`` contract (profile projection +
+        # assignment facts/version/state/dates) and comparing it to
+        # the prepared ``source_hash``. An out-of-band mutation that
+        # never set ``is_stale``—e.g. a direct assignment-fact or
+        # worker-projection write—therefore cannot leak into the
+        # rebuilt canonical row under the original hash.
+        from .services import current_a1_source
+        _, _, live_hash = current_a1_source(case.worker, case.organization)
+        if live_hash != case.source_hash:
+            raise StaleWrite("A1_INPUT_STALE")
         # Build the canonical ``row`` / ``dependencies`` shape on the
         # fly so downstream renderers (``export_input_case`` and the
         # application-draft publisher) receive the contract they
-        # expect, without weakening the integrity check. ``_snapshot``
-        # already re-reads the confirmed identity revision and the
-        # worker's assignment facts, so the rebuilt row carries the
-        # same confirmed facts the J4 prepare step recorded.
+        # expect. ``_snapshot`` re-reads the confirmed identity
+        # revision and the worker's assignment facts; the live-hash
+        # check above already proved those profile/assignment inputs
+        # still match what the case was prepared from.
         rebuilt = _snapshot(user, organization, case.worker_id, None, None)
         rebuilt["dependencies"] = rebuilt.get("dependencies", {})
         rebuilt["dependencies"]["source_hash"] = case.source_hash

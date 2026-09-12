@@ -29,8 +29,9 @@ from portal.release1a.models import (
     A1Case, AuditEvent, Assignment, Membership, Organization, Worker,
 )
 from portal.release1a.services import (
-    create_assignment, create_worker, prepare_a1,
+    create_assignment, create_worker, prepare_a1, StaleWrite,
 )
+from portal.release1a.a1_exports import export_input_case
 
 
 def _mfa_login(client, user, *, password="test-m2"):
@@ -315,3 +316,76 @@ class TestJ4RegenerateSemantics(TransactionTestCase):
             A1Case.objects.filter(organization=org, worker=worker).count(),
             1,
         )
+
+
+class TestJ4LegacyExportSourceBinding(TransactionTestCase):
+    """Out-of-band mutations that bypass the canonical services layer must
+    not leak into the legacy export path under the original case hash.
+
+    ``_current_input_snapshot`` now recomputes ``current_a1_source``
+    (the canonical J4 live-hashing contract for profile + assignment
+    facts/version/state/dates) before rebuilding the legacy row shape,
+    so direct ``Assignment.a1_facts_json`` writes and
+    ``Worker.family_name`` writes that never set ``is_stale`` are
+    rejected as ``A1_INPUT_STALE``.
+    """
+
+    def test_legacy_export_binds_live_fact_drift_without_version_bump(self):
+        """Directly overwriting a1_facts_json without using
+        update_assignment_facts (which bumps version and sets is_stale)
+        must still be caught by the live-hash comparison.
+        """
+        org, user = _setup_org_user("synthetic-j4-fact-drift", "J4 fact drift")
+        worker = _make_worker(user, org)
+        _make_assignment(user, org, worker, date(2026, 9, 1), date(2026, 9, 30))
+        facts = {
+            "status_profile": "employee_multi_state",
+            "employment": {
+                "employer_id": "12345678",
+                "employer_name": "Original GmbH",
+                "street": "Pracovní",
+                "house_number": "1",
+                "city": "Mnichov",
+                "postal_code": "12345",
+                "country_code": "DE",
+            },
+            "activity": {"name": "Test role", "address": "DE, CZ"},
+            "institution": {"resolved_ossz": "OSSZ Děčín", "profile_key": "decin"},
+        }
+        assignment = Assignment.objects.get(organization=org, worker=worker)
+        Assignment.objects.filter(pk=assignment.pk).update(
+            a1_facts_json=facts, version=1
+        )
+        case = prepare_a1(user, org, worker)
+        export_input_case(user, org, case.pk)
+        # Direct DB mutation — no version bump, no is_stale set.
+        Assignment.objects.filter(pk=assignment.pk).update(
+            a1_facts_json={**facts, "employment": {**facts["employment"], "employer_name": "Drift GmbH"}}
+        )
+        with self.assertRaises(StaleWrite):
+            export_input_case(user, org, case.pk)
+
+    def test_legacy_export_binds_worker_projection_drift(self):
+        """Changing a worker projection field (family_name) via a direct
+        DB write without is_stale must be caught.
+        """
+        org, user = _setup_org_user("synthetic-j4-proj-drift", "J4 proj drift")
+        worker = _make_worker(user, org)
+        _make_assignment(user, org, worker, date(2026, 9, 1), date(2026, 9, 30))
+        Assignment.objects.filter(
+            organization=org, worker=worker
+        ).update(
+            a1_facts_json={
+                "status_profile": "employee_multi_state",
+                "employment": {"employer_name": "Acme GmbH"},
+                "activity": {"name": "Test", "address": "DE, CZ"},
+                "institution": {"resolved_ossz": "OSSZ Děčín", "profile_key": "decin"},
+            },
+            version=1,
+        )
+        case = prepare_a1(user, org, worker)
+        export_input_case(user, org, case.pk)
+        # Direct worker-projection write — no is_stale set.
+        Worker.objects.filter(pk=worker.pk).update(family_name="ProjDrift")
+        with self.assertRaises(StaleWrite):
+            export_input_case(user, org, case.pk)
