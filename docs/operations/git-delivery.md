@@ -3,6 +3,40 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## JAN-01/JAN-02 bounded repair — 2026-09-14
+
+Implementation: `f54d4e6bbf7997a4fa35042dc71df296440676c6`.
+HTTP uploads now persist pending OCR work; an explicitly scoped sequential worker
+uses existing leases/token fencing. Default inbox CLI processing returns terminal
+receipts. Rehearsal owns web/worker start, stop and restart. Czech status/refresh/retry
+and native browser interactions replace fixed completion sleeps. Worker edit/create
+cannot bypass archive permission; hard deletion remains denied pending separate policy.
+Roadmap, parent/child plans, AGENTS and the existing delivery skill reflect this scope.
+
+Validation: all 14 mandatory hook checks passed. Broad Django: 276 run, 27 skipped;
+canonical browser: PASS; rehearsal/lifecycle: 44 passed. The hook took 993.07s and
+still includes overlapping J4 execution (REL-04 follow-up). Three earlier hook
+failures and their corrections remain recorded; no checks were bypassed.
+Committed-source export: 33 OCR/authorization tests passed (11.694s command), and
+one canonical Chromium journey passed (139.709s command); source integrity verified.
+The commit matches all 42 reviewed path hashes. SQLite evidence does not establish
+PostgreSQL concurrency or target acceptance. Installed allauth65.19.2 still differs
+from pin65.19.1; no clean pinned-environment acceptance is claimed.
+
+Detailed commands, exit codes, durations, negative cases, skills/Context7 sources
+and failed-attempt history: `runtime/portal/temporary/jan-01-02-repair-20260914/handoff.md`.
+Final hook logs: `runtime/portal/temporary/change-checks-u797qrsw/report.json`.
+Export receipt: `runtime/portal/temporary/jan-01-02-repair-20260914/committed-source.json`.
+
+Publication: implementation pushed to the existing private-origin feature branch;
+remote SHA verified equal to the implementation SHA. Deployment/activation: none
+performed. Broader JAN-01/JAN-02 remain partial. Next owners: access engineering
+for recovery/pins; primary for JAN-03 core/optional-A1 profile separation; runtime
+engineering and authorized host owner for JAN-04 PostgreSQL/routed acceptance.
+REL-01/REL-02 remain separate. Official A1 is outside core v1. Synthetic email is
+local-only; password-recovery delivery is unverified. Inherited session/institution
+edits and unrelated untracked files remain outside this publication.
+
 ## Current operating policy — 2026-09-08 consolidation
 
 [AGENTS.md](../../AGENTS.md) is the concise operational authority. This section
