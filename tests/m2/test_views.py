@@ -308,3 +308,174 @@ class M2NavigationRegressionTests(TransactionTestCase):
         response = self.client.get(f"/workers/{self.worker.pk}/archive/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Archivovat")
+
+
+class WorkerAuthorizationTests(TransactionTestCase):
+    """Test worker authorization capability checks."""
+
+    def setUp(self):
+        self.org = Organization.objects.create(key="auth-org", label="Auth Org")
+        self.admin_user = get_user_model().objects.create_user("admin", password="test-m2")
+        self.operator_user = get_user_model().objects.create_user("operator", password="test-m2")
+        self.privacy_user = get_user_model().objects.create_user("privacy", password="test-m2")
+
+        Membership.objects.create(user=self.admin_user, organization=self.org, role="organization_admin")
+        Membership.objects.create(user=self.operator_user, organization=self.org, role="operator")
+        Membership.objects.create(user=self.privacy_user, organization=self.org, role="privacy_admin")
+
+        self.worker = Worker.objects.create(
+            organization=self.org,
+            given_name="Auth", family_name="Test",
+            birth_date=date(1990, 1, 1),
+            activity_profile="employee",
+        )
+        self.client = Client()
+
+    def test_worker_edit_requires_update_capability(self):
+        """Worker edit requires worker:update capability."""
+        _mfa_login(self.client, self.admin_user)
+        response = self.client.post(f"/workers/{self.worker.pk}/edit/", {
+            "given_name": "Updated",
+            "family_name": "Test",
+            "birth_date": "1990-01-01",
+            "activity_profile": "employee",
+            "state": "draft",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.given_name, "Updated")
+
+    def test_worker_edit_denies_without_capability(self):
+        """Worker edit denies access without worker:update capability."""
+        _mfa_login(self.client, self.privacy_user)
+        response = self.client.get(f"/workers/{self.worker.pk}/edit/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_worker_delete_denied_even_with_archive_capability(self):
+        """Archive authorization does not authorize permanent deletion."""
+        _mfa_login(self.client, self.admin_user)
+        response = self.client.delete(f"/workers/{self.worker.pk}/delete/")
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Worker.objects.filter(pk=self.worker.pk).exists())
+
+    def test_worker_delete_denies_without_capability(self):
+        """Operators cannot permanently delete records."""
+        _mfa_login(self.client, self.operator_user)
+        response = self.client.delete(f"/workers/{self.worker.pk}/delete/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_worker_archive_requires_archive_capability(self):
+        """Worker archive requires worker:archive capability."""
+        _mfa_login(self.client, self.admin_user)
+        response = self.client.post(f"/workers/{self.worker.pk}/archive/")
+        self.assertEqual(response.status_code, 302)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.state, Worker.State.ARCHIVED)
+
+    def test_worker_archive_denies_without_capability(self):
+        """Worker archive denies access without worker:archive capability."""
+        _mfa_login(self.client, self.operator_user)
+        response = self.client.post(f"/workers/{self.worker.pk}/archive/")
+        self.assertEqual(response.status_code, 403)
+
+    def _edit_data(self, state="draft"):
+        return {
+            "given_name": "Changed", "family_name": "Test",
+            "birth_date": "1990-01-01", "activity_profile": "employee",
+            "state": state,
+        }
+
+    def test_operator_can_edit_worker_without_archiving(self):
+        _mfa_login(self.client, self.operator_user)
+        response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data())
+        self.assertEqual(response.status_code, 302)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.given_name, "Changed")
+        self.assertEqual(self.worker.state, Worker.State.DRAFT)
+
+    def test_operator_cannot_archive_or_restore_through_edit(self):
+        _mfa_login(self.client, self.operator_user)
+        for original, requested in [(Worker.State.DRAFT, Worker.State.ARCHIVED),
+                                    (Worker.State.ARCHIVED, Worker.State.DRAFT)]:
+            with self.subTest(original=original, requested=requested):
+                Worker.objects.filter(pk=self.worker.pk).update(state=original)
+                before = Worker.objects.values().get(pk=self.worker.pk)
+                audits_before = AuditEvent.objects.filter(event_type="worker.updated").count()
+                response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data(requested))
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(Worker.objects.values().get(pk=self.worker.pk), before)
+                self.assertEqual(AuditEvent.objects.filter(event_type="worker.updated").count(), audits_before)
+
+    def test_admin_can_archive_and_restore_through_edit(self):
+        _mfa_login(self.client, self.admin_user)
+        for requested in (Worker.State.ARCHIVED, Worker.State.DRAFT):
+            with self.subTest(requested=requested):
+                response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data(requested))
+                self.assertEqual(response.status_code, 302)
+                self.worker.refresh_from_db()
+                self.assertEqual(self.worker.state, requested)
+
+    def test_privacy_role_cannot_mutate_worker_through_post(self):
+        _mfa_login(self.client, self.privacy_user)
+        before = Worker.objects.values().get(pk=self.worker.pk)
+        response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data())
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Worker.objects.values().get(pk=self.worker.pk), before)
+
+    def test_cross_org_actions_cannot_read_or_modify_worker(self):
+        other = Organization.objects.create(key="auth-other", label="Other synthetic org")
+        foreign = Worker.objects.create(organization=other, given_name="Foreign", family_name="Worker",
+                                        birth_date=date(1990, 1, 1), activity_profile="employee")
+        _mfa_login(self.client, self.admin_user)
+        before = Worker.objects.values().get(pk=foreign.pk)
+        for suffix in ("edit", "archive", "delete"):
+            with self.subTest(action=suffix):
+                response = self.client.post(f"/workers/{foreign.pk}/{suffix}/", self._edit_data("archived"))
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(Worker.objects.values().get(pk=foreign.pk), before)
+        response = self.client.get("/workers/")
+        self.assertNotContains(response, "Foreign")
+
+    def test_worker_list_requires_read_capability(self):
+        Membership.objects.filter(user=self.operator_user, organization=self.org).update(role="system_worker")
+        _mfa_login(self.client, self.operator_user)
+        for headers in ({}, {"HTTP_HX_REQUEST": "true"}):
+            with self.subTest(headers=headers):
+                response = self.client.get("/workers/", **headers)
+                self.assertEqual(response.status_code, 403)
+                self.assertNotIn(b"Auth", response.content)
+
+    def test_hard_delete_denied_for_all_current_roles_and_methods(self):
+        for user in (self.admin_user, self.operator_user, self.privacy_user):
+            _mfa_login(self.client, user)
+            before = Worker.objects.values().get(pk=self.worker.pk)
+            for method in (self.client.post, self.client.delete):
+                with self.subTest(user=user.pk, method=method.__name__):
+                    response = method(f"/workers/{self.worker.pk}/delete/")
+                    self.assertEqual(response.status_code, 403)
+                    self.assertEqual(Worker.objects.values().get(pk=self.worker.pk), before)
+        self.assertFalse(AuditEvent.objects.filter(event_type="worker.deleted").exists())
+
+
+    def test_planner_cannot_create_worker_in_archived_state(self):
+        from portal.release1a.services import Forbidden, create_worker
+        Membership.objects.filter(user=self.operator_user, organization=self.org).update(role="jan_planner")
+        _mfa_login(self.client, self.operator_user)
+        before_workers = Worker.objects.count()
+        before_audits = AuditEvent.objects.count()
+        with self.assertRaises(Forbidden):
+            create_worker(self.operator_user, self.org, **self._edit_data("archived"))
+        response = self.client.post("/workers/new/", self._edit_data("archived"))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Worker.objects.count(), before_workers)
+        self.assertEqual(AuditEvent.objects.count(), before_audits)
+        # The same planner can still create an ordinary worker.
+        response = self.client.post("/workers/new/", self._edit_data("draft"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Worker.objects.count(), before_workers + 1)
+
+    def test_admin_can_create_worker_in_archived_state(self):
+        _mfa_login(self.client, self.admin_user)
+        response = self.client.post("/workers/new/", self._edit_data("archived"))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Worker.objects.filter(organization=self.org, given_name="Changed", state="archived").exists())

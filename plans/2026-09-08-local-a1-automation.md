@@ -1,6 +1,6 @@
 # Local scan intake to worker database and A1 drafts
 
-Status: planned. Consolidated implementation contract, reviewed 2026-09-10;
+Status: active. Retained local automation contract; current scope refreshed 2026-09-14;
 seed/reproducer repairs and bounded synthetic J2 intake are implemented;
 durable identity evaluations and conditional unconfirmed worker drafts are implemented;
 revision-bound inputs and synthetic unverified PDF draft generation are implemented;
@@ -11,25 +11,29 @@ Parents: [PLAN-WORKERS](PLAN-WORKERS.md),
 [PLAN-REAL-DATA](PLAN-REAL-DATA.md). Extends existing DB-MIG-1 through DB-MIG-7 and J2/J4;
 no new top-level catalog entries or changes to registered approval states.
 
-## Delivery alignment (2026-09-10 update)
+## Current delivery alignment — 2026-09-14
 
-Per [AGENTS.md](../AGENTS.md) "Default delivery unit" and the 2026-09-10
-repository review, this plan now organizes work around four application
-deliverables instead of micro-gates. Implemented components feed one or
-more of the four outcomes below; the gap identification in §"Status by
-delivery" shows what each piece currently satisfies.
+Current backlog: [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md). This document retains existing
+local intake and optional A1 contracts; it is not a separate active task queue.
 
-| Delivery | What Jan receives | This plan contributes |
-|---|---|---|
-| **1. Integrated testing site** | Stable private URL, individual login, persistent PostgreSQL database, existing frontend/backend wired together | Implemented: J2 intake, BO entry, drafts, generation access, visual confirmation, WSGI/ASGI entrypoints, supervised-synthetic settings, gunicorn + WhiteNoise + confined runtime, `scripts/rehearse_synthetic_site.sh` lifecycle (prepare + provision + start + smoke + stop + rollback + workflow), `scripts/provision_synthetic_operator.py` (idempotent on rerun, jan_planner role + verified EmailAddress + TOTP MFA, refuses on PRACE_RUNTIME_ROOT mismatch), `scripts/smoke_probe.py` (typed JSON contract + same-origin redirect + Request-object host/method + socket-armed deadline on success and error-body paths, then a real asset check — the htmx/tailwind static files are asserted to serve 200 + non-empty, never replaced or excluded), `scripts/rehearse_dev_local.sh` (raw-path confinement + atomic signing key with empty-file recovery), `scripts/rehearse_verify_persistence.py` (canonical restart-verification script reusing the workflow test's exact-row/artifact query), and the end-to-end browser journey test (real login + TOTP via Chromium, worker + document + OCR confirmation + assignment + A1 prepare + protected PDF download + correction of one assignment fact + regeneration into a new case with differing PDF bytes + regenerated PDF text asserts the corrected fact + canonical generation input asserts the corrected fact; the shipped frontend is driven as-is with no HTMX neutralization or form rewriting). The sparse 44-field-A1 path is exercised as a separate evidence script (`tests/_rehearse_workflow_data_path.py`) which shows a sparse worker saves, its A1 case is `BLOCKED`, and `reserve_application_draft` raises the canonical `DraftInputBlocked` naming the missing facts. Restart-survival of the synthetic record set is verified by stopping gunicorn, restarting it, and querying the supervised-synthetic database for the exact worker, assignment, both A1 cases and the on-disk artifact bytes (sha256) captured during the journey. J4 identity binding: `prepare_a1` stores an extended snapshot that includes the live confirmed identity revision and selected OCR claim; out-of-band `confirmed_fields` writes or claim drift change the stored hash and block republishing under the old case hash. Legacy pre-binding rows adopt the current identity binding once on first export, then treat later drift as stale. The active gap: **both** private-site deployment (stable private URL, individual operator access) **and** PostgreSQL acceptance are gated on an authorized scoped target; Secure cookies over plain HTTP loopback work because Chromium treats loopback as potentially-trustworthy (verified empirically), so a TLS-terminating proxy is not required for the rehearsal. |
-| **2. Usable v1 workflow** | Clear missing-data messages, retry controls, working downloads, concise Czech instructions and a known-limitations list | In scope: missing-data messages, retry, correction, regeneration, downloads. Existing BO confirmation + retry + draft-recovery covers most of this; UI strings and known-limitations note are the active gap. |
-| **3. Restricted production pilot** | Same app configured for Jan's approved organization and real records | Deferred to Delivery 3 by design; this plan's components are reusable. Production settings module and queue dispatch are the implementation gap, not strategy. |
-| **4. Later releases (1B+)** | Additional fields, richer queues, reporting, partner access | Out of scope for this plan; tracked elsewhere. |
+| Delivery | Contribution and remaining acceptance |
+|---|---|
+| 1. Integrated testing site | Existing lifecycle, WSGI/ASGI, supervised settings, browser and persistence tooling are implementation inputs. JAN-01–04 must establish normal access, core workflow and exact persistence on the intended PostgreSQL/routed target |
+| 2. Usable v1 | Worker save with unknown optional fields, OCR review, assignment/correction/retry, protected source-document downloads and Czech guidance; no PDF prerequisite |
+| 3. Restricted pilot | Same core with scoped operational/privacy/backup and §14 evidence; no automatic activation or prescribed new settings/queue module |
+| 4. Later capabilities | Optional draft A1 generation/regeneration and richer automation according to Jan's priorities; official generation/issuance outside v1 |
 
-Incomplete optional fields are allowed: missing facts block their
-specific A1 operation with an actionable explanation; they do not block
-saving the worker or releasing the rest of the application. Documented
-manual fallbacks are acceptable when automation is not yet available.
+The existing full browser rehearsal includes optional A1 stages. JAN-03 will split
+core-required and optional acceptance while retaining shared safeguards and explicit
+failure reporting. This documentation does not claim that split already exists.
+No live target was verified at this checkpoint; older deployment/cluster claims
+must be rechecked. Sparse-input and optional PDF evidence never prove PG acceptance.
+
+## Historical implementation detail and retained optional contracts
+
+Sections below describe dated implementation steps and the existing local/A1
+contract. Earlier “next”, migration ranges and environment statements are dated
+history, not current execution instructions. Use the linked current backlog.
 
 ## Operator outcome
 

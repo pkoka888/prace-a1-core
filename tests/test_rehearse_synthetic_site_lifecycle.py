@@ -11,6 +11,7 @@ test_rehearse_synthetic_site.py stay fast.
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import socket
@@ -88,6 +89,15 @@ def test_real_lifecycle_prepare_start_smoke_restart_stop(lifecycle_root):
         assert (lifecycle_root / ".gunicorn.cmdline").exists()
         assert (lifecycle_root / ".gunicorn.started_at").exists()
 
+        # Start-before-provision is supported; provisioning a running site
+        # then starts its independently owned, authorized OCR worker.
+        assert not (lifecycle_root / ".ocr-worker.json").exists()
+        r = _run(["provision"], env, timeout=60)
+        assert r.returncode == 0, f"provision failed:\n{r.stderr}"
+        worker_before = json.loads((lifecycle_root / ".ocr-worker.json").read_text())
+        assert Path(f"/proc/{worker_before['pid']}").exists()
+        assert (lifecycle_root / ".ocr-worker.ready").read_text() == "ready\n"
+
         # smoke - strict contract
         r = _run(["smoke"], env, timeout=60)
         assert r.returncode == 0, f"smoke failed:\nSTDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}"
@@ -95,6 +105,12 @@ def test_real_lifecycle_prepare_start_smoke_restart_stop(lifecycle_root):
         # restart - real stop + start, both succeed
         r = _run(["restart"], env, timeout=60)
         assert r.returncode == 0, f"restart failed:\nSTDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}"
+
+        worker_after = json.loads((lifecycle_root / ".ocr-worker.json").read_text())
+        assert worker_after["pid"] != worker_before["pid"]
+        assert worker_after["actor_id"] == worker_before["actor_id"]
+        assert worker_after["organization_id"] == worker_before["organization_id"]
+        assert Path(f"/proc/{worker_after['pid']}").exists()
 
         # status reports running
         r = _run(["status"], env, timeout=10)
@@ -116,6 +132,7 @@ def test_real_lifecycle_prepare_start_smoke_restart_stop(lifecycle_root):
         # validates pid ownership and refuses to signal unrelated PIDs.
         r = _run(["stop"], env, timeout=30)
         assert r.returncode == 0, f"stop failed:\nSTDOUT:\n{r.stdout}\nSTDERR:\n{r.stderr}"
+        assert not (lifecycle_root / ".ocr-worker.json").exists()
 
 
 def test_real_lifecycle_smoke_fails_when_server_returns_500(lifecycle_root):

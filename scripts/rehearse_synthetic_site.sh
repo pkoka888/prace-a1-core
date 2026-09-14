@@ -362,7 +362,15 @@ assert_bind_is_free() {
     fi
 }
 
+# OCR is a separate sequential process; persisted OcrRun rows are its queue.
+# Credentials are read only by the confined helper; argv carries opaque IDs.
+cmd_ocr_worker() {
+    "$PYTHON_BIN" "$REPO_ROOT/scripts/run_ocr_worker_lifecycle.py" "$1" \
+        --runtime-root "$RUNTIME_ROOT" --timeout "$START_TIMEOUT"
+}
+
 cmd_start() {
+    validate_runtime_root_layout
     step "Start: gunicorn $BIND workers=$WORKERS"
     ensure_runtime_root
     ensure_env
@@ -451,6 +459,13 @@ cmd_start() {
         printf 'launched_at=%s\n' "$started_at"
     } > "$PID_CMDLINE"
     chmod 600 "$PID_CMDLINE"
+    if [ -f "$RUNTIME_ROOT/operator.json" ]; then
+        if ! cmd_ocr_worker start; then
+            echo "FAIL: OCR worker startup failed; stopping owned rehearsal" >&2
+            cmd_stop
+            exit 2
+        fi
+    fi
     echo "OK: gunicorn started PID=$pid (verified owns socket, /health/ served)"
 }
 
@@ -613,6 +628,10 @@ verify_pid_ownership() {
 }
 
 cmd_stop() {
+    validate_runtime_root_layout
+    if [ -d "$RUNTIME_ROOT" ]; then
+        cmd_ocr_worker stop || exit 3
+    fi
     step "Stop: verify pid ownership, then SIGTERM"
     if [ ! -f "$PIDFILE" ]; then
         echo "gunicorn not running (no pidfile)"
@@ -650,7 +669,10 @@ cmd_restart() {
 }
 
 cmd_status() {
-    step "Status: pid, listening port, last log line"
+    step "Status: pid, listening port, OCR worker, last log line"
+    if [ -d "$RUNTIME_ROOT" ]; then
+        cmd_ocr_worker status || return 1
+    fi
     if [ ! -f "$PIDFILE" ]; then
         echo "stopped (no pidfile at $PIDFILE)"
         return 0
@@ -731,6 +753,7 @@ sys.exit(0 if ok else 6)
 # -> OCR -> assignment -> A1 draft -> PDF download. It exits 7 on any
 # journey failure (matching the documented exit-code table above).
 cmd_workflow() {
+    validate_runtime_root_layout
     step "Workflow: real-browser authenticated journey"
     ensure_runtime_root
     ensure_env
@@ -745,6 +768,11 @@ cmd_workflow() {
     fi
     cd "$REPO_ROOT"
     local hostport="$BIND"
+    if ! verify_pid_ownership "$(cat "$PIDFILE")"; then
+        echo "FAIL: workflow requires the owned rehearsal server" >&2
+        exit 7
+    fi
+    cmd_ocr_worker start >&2 || exit 7
     local journey_tmp="$RUNTIME_ROOT/tmp/workflow-$$"
     mkdir -p "$journey_tmp"
     chmod 700 "$journey_tmp"
@@ -766,9 +794,10 @@ cmd_workflow() {
 # from PRACE_OPERATOR_EMAIL, default synthetic-only), the
 # organization is created with synthetic-only properties, and
 # TOTP MFA is enrolled for the operator. The TOTP secret is
-# written to a sidecar (mode 0600) outside the repo so a real
+# written to a sidecar (mode 0600) under the ignored private runtime so a real
 # browser or curl-driven session can complete the MFA challenge.
 cmd_provision() {
+    validate_runtime_root_layout
     step "Provision: synthetic operator + organization + MFA"
     ensure_runtime_root
     ensure_env
@@ -792,6 +821,10 @@ cmd_provision() {
         ${PRACE_ORGANIZATION_LABEL:+--organization "$PRACE_ORGANIZATION_LABEL"}
     chmod 0600 "$RUNTIME_ROOT/operator.json" 2>/dev/null || true
     chmod 0600 "$RUNTIME_ROOT/organization.json" 2>/dev/null || true
+    if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+        verify_pid_ownership "$(cat "$PIDFILE")" || exit 2
+        cmd_ocr_worker start || exit 2
+    fi
     echo "OK: provisioned synthetic operator + organization + MFA"
     echo "Operator credentials and TOTP URI: $RUNTIME_ROOT/operator.json (mode 0600)"
 }
@@ -802,8 +835,8 @@ Usage: $0 <command> [args]
 Commands:
   prepare                Validate confinement, build the manifest, migrate, collectstatic
   prepare-manifest-only  Same as prepare but skips migrate/collectstatic (used by tests)
-  start                  Launch gunicorn against the supervised settings module
-  stop                   Verify pid ownership, then SIGTERM
+  start                  Launch gunicorn and provisioned sequential OCR worker
+  stop                   Stop owned OCR worker and gunicorn
   restart                stop + start
   status                 Show pid, bind, and last log lines
   logs                   Tail the gunicorn log

@@ -3,6 +3,27 @@
 **Status**: active
 **Milestone**: M0–M2
 
+## Current execution — 2026-09-14
+
+Own REL-01–REL-06 and JAN-04 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md). Priorities are truthful
+completion evidence, proportional validation and usable private-site acceptance.
+Keep the existing custom hook/runner, Django/HTMX architecture and private receipts.
+Reconcile conflicting hook/CI entrypoints; no new MCP, queue, container platform or
+second settings module is a prerequisite. Host state must be rechecked before
+repeating historical “not deployed” or “cluster down” claims.
+
+The implementation backlog and parallel ownership live in the child plan. Core
+v1 excludes official A1 generation/issuance; drafts are optional. JAN-03 owns
+scope reconciliation in review UI/machine checks, with shared controls preserved.
+No registered approval is changed by this planning checkpoint.
+
+## Retained contracts and dated evidence
+
+The following older sections retain provenance and architecture/operational
+contracts. Their dated next-step/absence statements are historical, not the
+current queue; current scope and next actions are the section above and roadmap.
+
+
 ## Practical consolidation and delivery — 2026-09-08
 
 Follow the [local automation plan](2026-09-08-local-a1-automation.md): one editable

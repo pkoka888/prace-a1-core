@@ -1,7 +1,7 @@
 """Regression tests for review-fixed M2 behaviors.
 
 Covers bugs found in code review 2026-08-19:
-- worker delete with protected records (ProtectedError) -> friendly response
+- worker hard deletion is denied pending a scoped retention/deletion workflow
 - overlap warns instead of blocking (DEC-005)
 - optimistic locking rejects stale version edits
 - field evidence proposals and service audit events are not duplicated
@@ -55,19 +55,19 @@ class ReviewFixRegressionTests(TransactionTestCase):
         s.save()
 
     def test_worker_delete_with_a1_case_returns_denied_not_500(self):
-        """worker with related A1Case must not 500 (ProtectedError handled)."""
+        """Linked records survive a denied hard-delete request."""
         worker = create_worker(self.user, self.org, given_name="P", family_name="Q", birth_date=date(1990, 1, 1), activity_profile="employee")
         prepare_a1(self.user, self.org, worker)
         response = self.client.delete(f"/workers/{worker.pk}/delete/")
-        self.assertEqual(response.status_code, 200)  # friendly denied page
+        self.assertEqual(response.status_code, 403)  # scoped deletion is not implemented
         self.assertTrue(Worker.objects.filter(pk=worker.pk).exists())  # not deleted
         self.assertTrue(AuditEvent.objects.filter(event_type="worker.delete_denied").exists())
 
-    def test_worker_delete_without_records_succeeds(self):
+    def test_worker_delete_without_records_is_denied(self):
         worker = create_worker(self.user, self.org, given_name="A", family_name="B", birth_date=date(1990, 1, 1), activity_profile="employee")
         response = self.client.delete(f"/workers/{worker.pk}/delete/")
-        self.assertEqual(response.status_code, 302)  # redirect to list
-        self.assertFalse(Worker.objects.filter(pk=worker.pk).exists())
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(Worker.objects.filter(pk=worker.pk).exists())
 
     def test_overlap_warns_but_saves(self):
         """DEC-005: overlapping assignment is saved with a warning, not blocked."""

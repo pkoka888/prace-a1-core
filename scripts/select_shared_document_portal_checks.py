@@ -99,7 +99,7 @@ def select(paths: list[str], root: Path = REPO_ROOT) -> list[str]:
 
 def _broad_manage_test() -> str:
     return (
-        f"{MANAGE_PY} tests.document_web.test_intake "
+        f"{MANAGE_PY} tests.document_web.test_intake tests.document_web.test_ocr_worker "
         "tests.document_web.test_field_review tests.document_web.test_identity_review "
         "tests.document_web.test_legacy_reconciliation tests.document_web.test_inbox "
         "tests.document_web.test_identity tests.document_web.test_a1_exports "

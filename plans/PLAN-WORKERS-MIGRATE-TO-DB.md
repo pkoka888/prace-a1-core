@@ -3,6 +3,25 @@
 **Status**: planned
 **Milestone**: M2–M5 (accepted cutover after ENG-001 → REV-002)
 
+## Current scope and next work — 2026-09-14
+
+Core-v1 database acceptance belongs to JAN-02/JAN-04 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md):
+worker/document/assignment persistence, real PostgreSQL migration/concurrency checks
+and exact restart survival. Optional fields may remain null; complete A1 mappings
+or PDF equivalence do not gate saving workers or shipping the core portal.
+
+DB-MIG-1 through DB-MIG-7 remain traceable below. Their A1 export/render equivalence
+and legacy-master freeze are separate optional-A1/cutover work, not prerequisites
+for new synthetic core records. Accepted legacy cutover and real-data migration
+retain their explicit scope and authorization. Do not infer current target state
+from dated migration ranges or old reports. JAN-03 reconciles machine acceptance.
+
+## Retained migration contracts and dated evidence
+
+Historical implementation checkpoints below are not a current instruction to
+repeat seed/bootstrap/PDF work. The child reliability plan owns current priorities.
+
+
 
 2026-09-09 draft checkpoint: synthetic inbox/`a1_prepare_draft` now calls the
 canonical unverified-draft publisher. Migration 0016 reserves an immutable number,

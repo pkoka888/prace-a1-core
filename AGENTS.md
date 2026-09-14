@@ -12,6 +12,12 @@ where real data is not yet authorized) and a known-limitations note. The
 goal is to put working software in Jan's hands, not to satisfy internal
 checklists.
 
+Release 1A core scope is normal login/TOTP, workers, protected document/OCR review,
+assignments, correction/download and durable persistence. Official A1 PDF generation
+and issuance are outside v1; existing draft PDFs are optional. A1-only requirements
+must not gate core workflow acceptance. Shared access, provenance and real-data
+activation controls remain required. See the current roadmap for scope and owners.
+
 - Incomplete optional fields are allowed. Make them nullable; add them
   through later migrations. A missing fact needed for one A1 operation
   blocks that operation with an actionable explanation; it never blocks
@@ -30,7 +36,7 @@ checklists.
 ## Authority and task start
 
 `AGENTS.md` → [real-data rules](docs/security/real-data-rules.md) →
-[A1 skill](.agents/skills/a1-pdf-production/SKILL.md) → approved ADRs →
+[A1 skill, for A1 operations](.agents/skills/a1-pdf-production/SKILL.md) → approved ADRs →
 [roadmap](roadmap.md) → `prd.md` → [plan index](plans/INDEX.md).
 Research is context, not execution authority. Explicit user scope takes precedence.
 At task start read the roadmap, index and relevant plan/ADR/skill; inspect branch,
@@ -133,6 +139,16 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
   integration coverage for affected shared behavior and release acceptance.
   Treat routine validation approaching one minute as a profiling/selection review
   trigger, not an automatic failure or permission to skip checks.
+
+- Completion claims must reference inspected final files or executed evidence for
+  the actual tested source, dependencies and settings. Hashes prove identity;
+  schema/link checks prove structure; neither proves runtime or human acceptance.
+  Keep implementation, validation, publication, deployment and operator acceptance
+  separate. A proposed requirement or agent recommendation is not Jan approval.
+- After a rejected review, reconcile each finding with the actual diff and affected
+  evidence. Unchanged disputed bytes cannot be reported as corrected. Read receipts
+  before retrying; switch to a fresh bounded integration review if the same failed
+  correction repeats. Keep task detail in the active plan, not another global rule list.
 
 ## Git delivery and planning checkpoint
 

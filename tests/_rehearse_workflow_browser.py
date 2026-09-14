@@ -322,8 +322,22 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path) -> dict:
             # the worker dropdown and the "Přiřadit tento dokument"
             # button. We submit the association explicitly so the
             # journey exercises the real path.
-            page.goto(base_url + f"/documents/{document_pk}/",
-                      wait_until="networkidle")
+            response = page.goto(base_url + f"/documents/{document_pk}/",
+                                 wait_until="load")
+            deadline = time.monotonic() + 90
+            while True:
+                if response is None or response.status != 200:
+                    raise SystemExit("FAIL: OCR_STATUS_HTTP_" + str(
+                        response.status if response else "NO_RESPONSE"))
+                state = page.locator("[data-ocr-state]").get_attribute("data-ocr-state")
+                if state == "completed":
+                    break
+                if state == "failed" or time.monotonic() >= deadline:
+                    raise SystemExit("FAIL: OCR_COMPLETION_" + str(state))
+                time.sleep(0.25)
+                with page.expect_navigation(wait_until="load") as navigation:
+                    page.get_by_role("link", name="Obnovit stav").click(timeout=5000)
+                response = navigation.value
             worker_choice = page.locator('select[name="worker_choice"]')
             if worker_choice.count() > 0:
                 options = worker_choice.evaluate(

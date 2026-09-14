@@ -3,6 +3,26 @@
 **Status**: active
 **Milestone**: M1A–M3
 
+## Current execution — 2026-09-14
+
+Own JAN-01–JAN-03 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md): normal login/TOTP,
+role/tenant-safe worker management, protected documents/OCR review, assignments,
+correction/retry and downloads with durable persistence. Reproduce the existing
+subagent findings before changing behavior; source inspection is not a test pass.
+
+Official A1 generation/issuance is outside v1. Existing draft PDFs are optional;
+sparse worker saving and core acceptance must not require complete A1 inputs.
+Weekly-budget inclusion remains unresolved. Keep ADR-002 authorization, audit and
+revision contracts. JAN-03 reconciles optional A1 in machine gates and review UI;
+it must not mark human decisions approved or relax shared §14 controls.
+
+## Retained contracts and dated evidence
+
+The older implementation checkpoints and prototype gap tables below are dated
+source evidence. Their “next” tasks are not the active queue; the child plan owns
+current acceptance work. Existing task IDs and historical approval states remain.
+
+
 
 2026-09-09 draft checkpoint: synthetic inbox/`a1_prepare_draft` now calls the
 canonical unverified-draft publisher. Migration 0016 reserves an immutable number,

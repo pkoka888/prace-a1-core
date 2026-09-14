@@ -233,8 +233,13 @@ PRACE_RELEASE_MANIFEST_SHA256 = _manifest_sha256_raw
 # Security posture
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+
+# Cookie secure flag follows the bind scheme for supervised-synthetic.
+# Defaults to True; set PRACE_COOKIE_SECURE=false for plain-HTTP local rehearsal.
+_cookie_secure_raw = os.environ.get("PRACE_COOKIE_SECURE", "true").strip().lower()
+_cookie_secure = _cookie_secure_raw not in ("false", "0", "no")
+SESSION_COOKIE_SECURE = _cookie_secure
+CSRF_COOKIE_SECURE = _cookie_secure
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
 
@@ -324,6 +329,9 @@ LOGGING = {
         "django.db.backends": {"level": "WARNING", "handlers": ["file"], "propagate": False},
     },
 }
+
+# Email: in-memory only (no external SMTP in supervised synthetic)
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # Login routing remains allauth
 LOGIN_URL = "/accounts/login/"

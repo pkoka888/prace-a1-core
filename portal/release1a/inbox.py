@@ -81,7 +81,7 @@ def _manifest(batch_fd, organization):
     return files, hashlib.sha256(manifest_bytes).hexdigest()
 
 
-def process_inbox(user, organization, *, processor=None):
+def process_inbox(user, organization, *, processor=None, _sync=True):
     """Return only opaque references/outcomes; never approve identity or create PDFs."""
     if not getattr(settings, "M2_SYNTHETIC_ONLY", False):
         raise Forbidden("REAL_DATA_ACTIVATION_REQUIRED")
@@ -110,14 +110,14 @@ def process_inbox(user, organization, *, processor=None):
                 fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
                 raise ValueError("INBOX_BUSY") from None
-            return _process_batches(root_fd, user, organization, processor)
+            return _process_batches(root_fd, user, organization, processor, _sync=_sync)
         finally:
             os.close(lock_fd)
     finally:
         os.close(root_fd)
 
 
-def _process_batches(root_fd, user, organization, processor):
+def _process_batches(root_fd, user, organization, processor, _sync=True):
     receipts = []
     for batch in sorted(os.listdir(root_fd)):
         if not re.fullmatch(r"[a-f0-9]{32}", batch):
@@ -132,7 +132,7 @@ def _process_batches(root_fd, user, organization, processor):
             try:
                 files, result["manifest_sha256"] = _manifest(batch_fd, organization)
             except FileNotFoundError:
-                continue  # No atomically published ready manifest yet.
+                continue
             for item in files:
                 outcome = {"item_ref": item["name"].split(".")[0]}
                 try:
@@ -142,15 +142,14 @@ def _process_batches(root_fd, user, organization, processor):
                     existing = Document.objects.filter(organization=organization, sha256=item["sha256"]).exists()
                     document, version, _, run = intake(
                         user, organization, None, item["name"], TYPES[Path(item["name"]).suffix],
-                        content, processor=processor)
+                        content, processor=processor, _sync=_sync)
                     if version.sha256 != item["sha256"]:
                         raise ValueError("INBOX_SOURCE_SUPERSEDED")
                     if existing:
-                        run = execute_run(user, organization, run.pk, processor=processor)
+                        run = execute_run(user, organization, run.pk, processor=processor, _sync=_sync)
                     outcome.update(status=run.state, source_sha256=version.sha256,
                                    document_ref=document.pk, version_ref=version.pk, run_ref=run.pk)
                 except Exception:
-                    # Source content and arbitrary processor exception text must never escape.
                     outcome.update(status="rejected", reason="INTAKE_ITEM_REJECTED")
                 audit(user, organization, "inbox.item_processed", f"batch:{batch}:item:{outcome['item_ref']}",
                       "success" if outcome["status"] == "completed" else "failed")

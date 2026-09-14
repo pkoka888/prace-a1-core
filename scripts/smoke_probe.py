@@ -184,11 +184,9 @@ def _bounded_request(url: str, host_header: str, method: str = "GET",
         return b"".join(chunks)
 
     try:
-        # Pass the Request object, not the URL string. Use a tighter
-        # connect ceiling by passing ``timeout=connect_timeout`` to
-        # opener.open so TCP setup respects it; the wall-clock
-        # deadline check after open covers any drift.
-        response = opener.open(request, timeout=connect_timeout)
+        # urllib's timeout covers connection AND response headers. Never
+        # give that phase a larger budget than the whole request.
+        response = opener.open(request, timeout=min(connect_timeout, read_timeout))
         if _time.monotonic() > deadline:
             _overrun("connect+headers")
         raw = _read_in_chunks(response, label="body")
@@ -271,7 +269,17 @@ def _check_health(base: str, host_header: str, expected_commit: str,
 
 def _check_readiness(base: str, host_header: str, expected_commit: str,
                      expected_build_id: str) -> dict[str, Any]:
-    status, headers, body = _bounded_request(f"{base}/readiness/", host_header)
+    # The rehearsal configures a bounded subprocess probe (10s by default).
+    # Response headers only arrive after it finishes. The generic 2s header
+    # ceiling therefore cannot validate this endpoint's declared contract.
+    budget_ms = int(os.environ.get("PRACE_READINESS_BUDGET_MS", "10000"))
+    if not 100 <= budget_ms <= 60000:
+        raise ValueError("READINESS_BUDGET_OUTSIDE_100_60000_MS")
+    # One second covers bounded child cleanup and local HTTP transport.
+    budget_seconds = budget_ms / 1000 + 1
+    status, headers, body = _bounded_request(
+        f"{base}/readiness/", host_header,
+        connect_timeout=budget_seconds, read_timeout=budget_seconds)
     payload = _parse_json_safely(body) or {}
     result = {
         "path": "/readiness/",

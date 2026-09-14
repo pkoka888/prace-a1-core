@@ -1,6 +1,6 @@
 ---
 name: synthetic-portal-delivery
-description: Operate, debug, and extend the Delivery-1 supervised synthetic rehearsal site (prepare -> provision -> start -> real browser journey incl. correction/regeneration -> stop -> restart). Use when exercising, troubleshooting or extending the canonical rehearsal lifecycle, the provisioned jan_planner + TOTP operator, the real Chromium authenticated journey, restart-survival, the sparse-input blocked evidence path, the bounded negative fixtures, or the related change-package selectors.
+description: Operate, debug, and extend the Delivery-1 supervised synthetic rehearsal site (prepare -> provision -> start -> real browser core workflow and separately scoped optional A1 regression -> stop -> restart). Use when exercising, troubleshooting or extending the canonical rehearsal lifecycle, the provisioned jan_planner + TOTP operator, the real Chromium authenticated journey, restart-survival, the sparse-input blocked evidence path, the bounded negative fixtures, or the related change-package selectors.
 ---
 
 # Synthetic portal delivery (Delivery 1)
@@ -15,8 +15,9 @@ settings module is synthetic-only by design.
 
 1. Read `AGENTS.md` first; the four-delivery sequence, the proportional
    validation cadence and the real-data rules are authoritative.
-2. Read the active local automation plan
-   `plans/2026-09-08-local-a1-automation.md` for the Delivery-1 status.
+2. Read `roadmap.md` and the active
+   `plans/2026-09-14-delivery-reliability-and-jan-v1.md`; the older local
+   automation plan records historical A1 work, not the core-v1 acceptance scope.
 3. Read the current Delivery-1 entry in `docs/operations/git-delivery.md`
    for the demonstrated contract and limitations.
 4. Inspect `git status` and `git log --oneline -5`; preserve inherited edits
@@ -47,7 +48,7 @@ comment:
    or the journey script returned non-zero)
 ```
 
-The full Delivery-1 lifecycle:
+The supervised synthetic lifecycle (not routed-site/Jan acceptance):
 
 ```bash
 bash scripts/rehearse_synthetic_site.sh prepare        # 1
@@ -107,6 +108,39 @@ inside the operator-owned runtime root; the script never prints the
 password outside a deliberate read of that file. Evidence receipts
 and JSON journey outputs never include the TOTP code.
 
+## OCR execution and recovery
+
+HTTP intake/supersession persists `OcrRun.PENDING` and returns without running OCR.
+The existing intake/execute/inbox service defaults remain synchronous for CLI and
+business-rule callers. Do not use their `_sync=True` tests as async evidence.
+
+Rehearsal `start` launches one owned sequential OCR worker once provisioned;
+`provision` starts it if the owned web server is already running. `workflow`
+ensures it exists. `stop`/`restart` own both processes. Before provisioning,
+`start` may serve anonymous smoke checks without a worker.
+
+The canonical worker command is `venv/bin/python manage.py process_ocr
+--organization-id <id> --actor-id <id>`. Both IDs are mandatory; the active actor
+must have `document:upload`. Default processes at most one job; `--loop` polls
+once per second and reloads authorization each batch. Use the same supervised
+environment/DB as the web app. `--max-runs` bounds a sequential batch, not concurrency.
+The lifecycle helper supplies `--ready-file`; don't fabricate its handshake.
+
+Jobs become visible after commit; there is no request-launched thread or dispatch
+notification, so no `on_commit` callback is needed. If a future notification is
+added, schedule it with `on_commit`, never before the outer transaction commits.
+Expired fifteen-minute leases are recovered with a new attempt token; stale
+publishers cannot overwrite it. Failed jobs require explicit retry, up to three
+attempts. The Czech document page offers **Obnovit stav** and failed-job retry.
+An unavailable worker leaves a visible saved/pending document, not OCR success.
+
+`logs/ocr-worker.log` contains sanitized tags and opaque run IDs; use it with the
+existing audit/run state before retrying. DB outage preserves durable claims for
+lease recovery. A killed process may leave private unreferenced derivative files;
+retention review owns cleanup, never bulk-delete runtime artifacts.
+The worker PID record `.ocr-worker.json` binds runtime, actor/org, argv and Linux
+start ticks; the helper uses pidfd signals and refuses foreign/reused PIDs.
+
 ## Real-browser journey
 
 `tests/_rehearse_workflow_browser.py` drives a real headless
@@ -144,9 +178,15 @@ widening. HTMX is allowed to run; the templates provide `method="post"`
 and `action="."` so the browser's native submit path succeeds
 whether or not HTMX intercepts.
 
-The journey defines a single required-stage set; any required-stage
-failure makes the journey exit non-zero. The pytest test asserts the
-same set; the CLI and pytest share one outcome contract.
+The current extended rehearsal still includes A1 stages in its required set.
+This is an optional-A1 regression profile, not the core-v1 release definition.
+JAN-03 must implement separate core/optional profiles; no proposed flag exists yet.
+A failing required stage still exits nonzero; do not relabel a failure as a skip.
+`tests/document_web/test_browser_journey.py` independently exercises normal
+login/TOTP, protected upload, condition-based OCR refresh, native selection,
+confirmation, original download, tenant denial and logout. Its test-owned consumer
+uses the same processing primitive; the extended rehearsal exercises the separate
+worker command through Gunicorn. Neither SQLite run proves PostgreSQL acceptance.
 
 ## Sparse-input evidence path
 

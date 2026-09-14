@@ -305,6 +305,11 @@ def _readiness_passed():
 @require_org_membership
 def worker_list(request):
     """J1: Worker list with pagination and HTMX support."""
+    from .services import require_capability, Forbidden
+    try:
+        require_capability(request.user, request.organization, "worker:read")
+    except Forbidden:
+        return HttpResponse(status=403)
     workers = Worker.objects.filter(organization=request.organization).order_by("-id")
     paginator = Paginator(workers, 20)
     page_number = request.GET.get("page")
@@ -319,6 +324,7 @@ def worker_list(request):
 @require_org_membership
 def worker_create(request):
     """J1: Worker create — success, duplicate, invalid, forbidden, interrupted."""
+    from .services import Forbidden
     if request.method == "POST":
         form = WorkerForm(request.POST, organization=request.organization, user=request.user)
         if form.is_valid():
@@ -327,6 +333,8 @@ def worker_create(request):
                 if request.headers.get("HX-Request"):
                     return render(request, "portal/partials/worker_row.html", {"worker": worker})
                 return redirect("worker_detail", pk=worker.pk)
+            except Forbidden:
+                return HttpResponse(status=403)
             except Exception as e:
                 form.add_error(None, str(e))
     else:
@@ -370,15 +378,29 @@ def worker_detail(request, pk):
 
 
 @require_org_membership
+@transaction.atomic
 def worker_edit(request, pk):
     """J1: Worker edit — interrupted save, validation, duplicate check."""
-    worker = get_object_or_404(Worker, pk=pk, organization=request.organization)
+    from .services import require_capability, Forbidden
+    try:
+        require_capability(request.user, request.organization, "worker:update")
+    except Forbidden:
+        return HttpResponse(status=403)
+    workers = Worker.objects.select_for_update() if request.method == "POST" else Worker.objects.all()
+    worker = get_object_or_404(workers, pk=pk, organization=request.organization)
+    # ModelForm validation mutates its instance before save; retain persisted state.
+    original_state = worker.state
 
     if request.method == "POST":
         form = WorkerForm(request.POST, instance=worker, organization=request.organization, user=request.user)
         if form.is_valid():
             try:
-                # Check for duplicate (same name + birth_date in org)
+                new_state = form.cleaned_data.get("state")
+                if new_state != original_state and Worker.State.ARCHIVED in (original_state, new_state):
+                    try:
+                        require_capability(request.user, request.organization, "worker:archive")
+                    except Forbidden:
+                        return HttpResponse(status=403)
                 duplicate = Worker.objects.filter(
                     organization=request.organization,
                     given_name=form.cleaned_data["given_name"],
@@ -413,37 +435,26 @@ def worker_edit(request, pk):
 @require_org_membership
 @require_http_methods(["POST", "DELETE"])
 def worker_delete(request, pk):
-    """J1: Worker delete — blocked when protected records exist."""
-    from django.db.models.deletion import ProtectedError
-    worker = get_object_or_404(Worker, pk=pk, organization=request.organization)
-    worker_pk = worker.pk
+    """Hard deletion stays disabled until a scoped retention/deletion policy is wired."""
+    from .services import require_capability, Forbidden
     try:
-        worker.delete()
-    except ProtectedError:
-        # Worker has related documents/assignments/A1 cases — keep the record.
-        AuditEvent.objects.create(
-            organization=request.organization,
-            actor_ref=f"user:{request.user.pk}",
-            event_type="worker.delete_denied",
-            object_ref=f"worker:{worker_pk}",
-            outcome="denied",
-        )
-        message = _("Pracovník má přiřazené dokumenty, přiřazení nebo A1 případy a nelze ho smazat.")
-        if request.headers.get("HX-Request"):
-            from django.http import HttpResponseBadRequest
-            return HttpResponseBadRequest(message)
-        return render(request, "portal/worker_delete_denied.html", {"worker": worker, "message": message})
+        require_capability(request.user, request.organization, "worker:read")
+    except Forbidden:
+        return HttpResponse(status=403)
+    worker = get_object_or_404(Worker, pk=pk, organization=request.organization)
+    # worker:archive authorizes a reversible state change, never permanent erasure.
     AuditEvent.objects.create(
         organization=request.organization,
         actor_ref=f"user:{request.user.pk}",
-        event_type="worker.deleted",
-        object_ref=f"worker:{worker_pk}",
-        outcome="success",
+        event_type="worker.delete_denied",
+        object_ref=f"worker:{worker.pk}",
+        outcome="denied",
     )
-    if request.headers.get("HX-Request"):
-        # Empty response so hx-swap="outerHTML" removes the row cleanly
-        return HttpResponse("")
-    return redirect("worker_list")
+    return HttpResponse(
+        _("Trvalé smazání není dostupné. Požádejte správce o řízené vyřízení žádosti o výmaz."),
+        status=403,
+        content_type="text/plain; charset=utf-8",
+    )
 
 
 # =============================================================================
@@ -465,7 +476,7 @@ def document_upload(request, worker_pk):
         if form.is_valid():
             try:
                 file = form.cleaned_data["file"]
-                # upload_document validates content, creates the OCR proposal and
+                # upload_document validates content, queues durable OCR work and
                 # the document.uploaded audit event (services layer is authoritative).
                 document = upload_document(
                     request.user,
@@ -474,6 +485,7 @@ def document_upload(request, worker_pk):
                     file.name,
                     file.content_type,
                     file.read(),
+                    _sync=False,
                 )
 
                 if request.headers.get("HX-Request"):
@@ -1824,7 +1836,7 @@ def document_supersede(request, pk):
             return JsonResponse({"error": "Soubor je příliš velký."}, status=400)
         try:
             supersede(request.user, request.organization, document.pk,
-                      new_file.name, new_file.content_type, new_file.read(MAX_UPLOAD_BYTES + 1))
+                      new_file.name, new_file.content_type, new_file.read(MAX_UPLOAD_BYTES + 1), _sync=False)
         except Forbidden:
             return HttpResponse(status=403)
         except (ValueError, OSError):
@@ -1869,6 +1881,11 @@ def assignment_conflicts(request):
 @require_org_membership
 def worker_archive(request, pk):
     """Archive a worker - soft delete that preserves audit trail."""
+    from .services import require_capability, Forbidden
+    try:
+        require_capability(request.user, request.organization, "worker:archive")
+    except Forbidden:
+        return HttpResponse(status=403)
     worker = get_object_or_404(Worker, pk=pk, organization=request.organization)
 
     if request.method == "POST":
@@ -2237,6 +2254,7 @@ def a1_evidence_intake(request, pk):
                         filename=document.name,
                         content_type=document.content_type,
                         content=document.read(),
+                        _sync=False,
                     )
 
                     case.evidence_documents = list(case.evidence_documents or [])

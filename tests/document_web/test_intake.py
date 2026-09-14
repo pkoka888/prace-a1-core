@@ -53,7 +53,7 @@ class IntakeTests(TransactionTestCase):
 
     def ingest(self, proc=None):
         return intake(self.user, self.org, None, "misleading-passport.png", "image/png", self.content,
-                      processor=proc or processor())
+                      processor=proc or processor(), _sync=True)
 
     def test_preserved_source_separate_derivative_and_cli_parity(self):
         document, version, classifications, run = self.ingest()
@@ -79,7 +79,7 @@ class IntakeTests(TransactionTestCase):
         self.assertEqual(duplicate[0].pk,doc.pk)
         self.assertEqual(duplicate[3].pk,run.pk)
         self.assertEqual(read_result(self.user,self.org,run.pk),first)
-        self.assertEqual(execute_run(self.user,self.org,run.pk).output_key,run.output_key)
+        self.assertEqual(execute_run(self.user,self.org,run.pk,_sync=True).output_key,run.output_key)
 
     def test_failure_retry_and_completed_idempotency(self):
         class Broken:
@@ -91,7 +91,7 @@ class IntakeTests(TransactionTestCase):
         self.assertEqual(failed["status"],"failed")
         self.assertNotIn("sensitive",json.dumps(failed))
         self.assertFalse(FieldProposal.objects.exists())
-        run=execute_run(self.user,self.org,run.pk,processor=processor())
+        run=execute_run(self.user,self.org,run.pk,processor=processor(),_sync=True)
         self.assertEqual(run.state,"completed")
         self.assertEqual(run.retry_count,2)
         count=FieldProposal.objects.count()
@@ -152,7 +152,7 @@ class IntakeTests(TransactionTestCase):
         # Simulate crash before a first publication, not editing an existing accepted result.
         OcrRun.objects.filter(pk=run.pk).update(lease_expires_at=timezone.now()-timedelta(seconds=1), retry_count=0)
         FieldProposal.objects.filter(ocr_run=run).delete()
-        self.assertEqual(execute_run(self.user,self.org,run.pk,processor=processor()).state,"completed")
+        self.assertEqual(execute_run(self.user,self.org,run.pk,processor=processor(),_sync=True).state,"completed")
 
     def test_result_storage_failure_records_retryable_failed_run(self):
         from portal.release1a.document_storage import ProtectedDocumentStorage
@@ -166,7 +166,7 @@ class IntakeTests(TransactionTestCase):
         self.assertEqual(run.state, "failed")
         self.assertEqual(run.failure_reason, "OUTPUT_STORAGE_FAILED")
         self.assertEqual(run.output_key, "")
-        self.assertEqual(execute_run(self.user, self.org, run.pk, processor=processor()).state, "completed")
+        self.assertEqual(execute_run(self.user, self.org, run.pk, processor=processor(),_sync=True).state, "completed")
 
     def test_storage_has_no_public_url_and_requires_opaque_key(self):
         with self.assertRaises(ValueError): document_storage().url("anything")
@@ -180,11 +180,11 @@ class IntakeTests(TransactionTestCase):
 
     def test_cross_file_side_matching_and_reused_duplicate_in_session(self):
         first = IntakeSession.objects.create(organization=self.org, purpose="a1")
-        doc, _, _, run = intake(self.user,self.org,None,"front.png","image/png",self.content,first,processor=processor())
+        doc, _, _, run = intake(self.user,self.org,None,"front.png","image/png",self.content,first,processor=processor(),_sync=True)
         second = IntakeSession.objects.create(organization=self.org,purpose="a1")
-        intake(self.user,self.org,None,"same-front.png","image/png",self.content,second,processor=processor())
+        intake(self.user,self.org,None,"same-front.png","image/png",self.content,second,processor=processor(),_sync=True)
         back = png(card(td1()))
-        intake(self.user,self.org,None,"unrelated-name.png","image/png",back,second,processor=processor(td1()))
+        intake(self.user,self.org,None,"unrelated-name.png","image/png",back,second,processor=processor(td1()),_sync=True)
         result = read_session(self.user,self.org,second)
         self.assertEqual(len(result["documents"]),2)
         self.assertTrue(all(d["paired_with"] for d in result["documents"]))
@@ -198,7 +198,7 @@ class IntakeTests(TransactionTestCase):
         proposal=FieldProposal.objects.get(ocr_run=run,field_name="document_number")
         confirm_field_proposal(self.user,self.org,proposal)
         content=png(card(OP+["SYNTHETIC COPY"]))
-        _,_,_,new_run=intake(self.user,self.org,None,"copy.png","image/png",content,processor=processor())
+        _,_,_,new_run=intake(self.user,self.org,None,"copy.png","image/png",content,processor=processor(),_sync=True)
         association=read_result(self.user,self.org,new_run.pk)["result"]["documents"][0]["association"]
         self.assertEqual(association["status"],"proposed")
         self.assertEqual(association["worker_id"],str(self.worker.pk))
@@ -216,6 +216,9 @@ class IntakeTests(TransactionTestCase):
         self.assertEqual(response.status_code,302)
         document=Document.objects.get()
         run=OcrRun.objects.get()
+        self.assertEqual(run.state, OcrRun.State.PENDING)
+        from portal.release1a.document_intake import process_pending
+        process_pending(self.user, self.org, run_id=run.pk, processor=processor())
         self.assertContains(self.client.get(response.url),"Občanský průkaz")
         self.assertContains(self.client.get("/documents/"),"Nepřiřazeno")
         region=read_result(self.user,self.org,run.pk)["result"]["documents"][0]
@@ -244,14 +247,14 @@ class IntakeTests(TransactionTestCase):
         doc, old_version, _, old_run = self.ingest()
         receipt = read_result(self.user, self.org, old_run.pk)
         replacement = png(card(ZP))
-        version, run = supersede(self.user, self.org, doc.pk, "replacement.png", "image/png", replacement, processor=processor(ZP))
+        version, run = supersede(self.user, self.org, doc.pk, "replacement.png", "image/png", replacement, processor=processor(ZP),_sync=True)
         self.assertEqual(version.version_number, 2)
         self.assertEqual(run.state, "completed")
         self.assertEqual(download_original(self.user, self.org, doc)[0], replacement)
         with document_storage().open(old_version.opaque_key, "rb") as stream:
             self.assertEqual(stream.read(), self.content)
         self.assertEqual(read_result(self.user, self.org, old_run.pk), receipt)
-        duplicate, repeated = supersede(self.user, self.org, doc.pk, "retry.png", "image/png", replacement, processor=processor(ZP))
+        duplicate, repeated = supersede(self.user, self.org, doc.pk, "retry.png", "image/png", replacement, processor=processor(ZP),_sync=True)
         self.assertEqual((duplicate.pk, repeated.pk), (version.pk, run.pk))
         self.assertEqual(doc.documentversion_set.count(), 2)
         self.assertEqual(AuditEvent.objects.filter(event_type="document.superseded").count(), 1)
@@ -295,13 +298,13 @@ class IntakeTests(TransactionTestCase):
         class Broken:
             def process(self, *args, **kwargs):
                 raise RuntimeError("synthetic OCR failure")
-        version, run = supersede(self.user, self.org, doc.pk, "next.png", "image/png", png(card(ZP)), processor=Broken())
+        version, run = supersede(self.user, self.org, doc.pk, "next.png", "image/png", png(card(ZP)), processor=Broken(),_sync=True)
         self.assertEqual(run.state, "failed")
         with self.assertRaisesRegex(ValueError, "DOCUMENT_VERSION_SUPERSEDED"):
             confirm_field_proposal(self.user, self.org, proposal)
         with self.assertRaisesRegex(ValueError, "DOCUMENT_VERSION_SUPERSEDED"):
             associate_region(self.user, self.org, old_run.pk, region["document_id"], self.worker)
-        self.assertEqual(execute_run(self.user, self.org, run.pk, processor=processor(ZP)).state, "completed")
+        self.assertEqual(execute_run(self.user, self.org, run.pk, processor=processor(ZP),_sync=True).state, "completed")
         self.assertEqual(doc.documentversion_set.count(), 2)
 
     def test_http_supersede_uses_protected_pipeline(self):
@@ -316,6 +319,10 @@ class IntakeTests(TransactionTestCase):
                 "new_file": SimpleUploadedFile("replacement.png", png(card(ZP)), "image/png")})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(doc.documentversion_set.count(), 2)
+        new_run = OcrRun.objects.filter(document=doc).order_by("-pk").first()
+        self.assertEqual(new_run.state, OcrRun.State.PENDING)
+        from portal.release1a.document_intake import process_pending
+        process_pending(self.user, self.org, run_id=new_run.pk, processor=processor(ZP))
         self.assertEqual(self.client.get(f"/documents/{doc.pk}/download/").content, png(card(ZP)))
         self.assertContains(self.client.get(response.url), "Průkaz pojištěnce")
         Membership.objects.filter(user=self.user).update(role="operator")
@@ -341,14 +348,14 @@ class IntakeTests(TransactionTestCase):
         def finish_old():
             close_old_connections()
             try:
-                return execute_run(self.user, self.org, old_run.pk, processor=Slow()).state
+                return execute_run(self.user, self.org, old_run.pk, processor=Slow(),_sync=True).state
             finally:
                 close_old_connections()
         with ThreadPoolExecutor(max_workers=1) as pool:
             pending = pool.submit(finish_old)
             try:
                 self.assertTrue(started.wait(10))
-                supersede(self.user, self.org, doc.pk, "next.png", "image/png", png(card(ZP)), processor=processor(ZP))
+                supersede(self.user, self.org, doc.pk, "next.png", "image/png", png(card(ZP)), processor=processor(ZP),_sync=True)
                 Document.objects.filter(pk=doc.pk).update(state="confirmed")
             finally:
                 release.set()
@@ -369,7 +376,7 @@ class IntakeTests(TransactionTestCase):
             close_old_connections()
             try:
                 barrier.wait(timeout=10)
-                version, run = supersede(self.user, self.org, doc.pk, "next.png", "image/png", replacement, processor=processor(ZP))
+                version, run = supersede(self.user, self.org, doc.pk, "next.png", "image/png", replacement, processor=processor(ZP),_sync=True)
                 return version.pk, run.pk
             finally:
                 close_old_connections()
@@ -396,7 +403,7 @@ class IntakeTests(TransactionTestCase):
                 return processor().process(*args,**kwargs)
         def work():
             close_old_connections()
-            try: return execute_run(self.user,self.org,run.pk,processor=Slow()).state
+            try: return execute_run(self.user,self.org,run.pk,processor=Slow(),_sync=True).state
             finally: close_old_connections()
         with ThreadPoolExecutor(max_workers=1) as pool:
             future=pool.submit(work)
@@ -405,7 +412,7 @@ class IntakeTests(TransactionTestCase):
                 # A live lease prevents another attempt from reaching OCR.
                 self.assertEqual(execute_run(self.user,self.org,run.pk,processor=Broken()).state,"running")
                 OcrRun.objects.filter(pk=run.pk).update(lease_expires_at=timezone.now()-timedelta(seconds=1))
-                winner=execute_run(self.user,self.org,run.pk,processor=processor())
+                winner=execute_run(self.user,self.org,run.pk,processor=processor(),_sync=True)
                 self.assertEqual(winner.state,"completed")
                 saved=read_result(self.user,self.org,run.pk)
             finally:

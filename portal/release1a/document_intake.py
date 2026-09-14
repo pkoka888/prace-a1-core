@@ -5,6 +5,7 @@ run derivative keys are independent. OCR never confirms identity or associations
 """
 from datetime import timedelta
 import json
+import logging
 from pathlib import Path
 from uuid import uuid4
 from django.conf import settings
@@ -58,7 +59,7 @@ def validate_content(content, content_type, filename):
     return "synthetic_not_scanned"
 
 
-def intake(user, organization, worker, filename, content_type, content, intake_session=None, *, processor=None):
+def intake(user, organization, worker, filename, content_type, content, intake_session=None, *, processor=None, _sync=True):
     from .services import Forbidden
     authorize(user, organization, "document:upload")
     if not getattr(settings, "M2_SYNTHETIC_ONLY", False):
@@ -100,7 +101,7 @@ def intake(user, organization, worker, filename, content_type, content, intake_s
     except Exception:
         storage.delete(key)
         raise
-    run = execute_run(user, organization, run.pk, processor=processor)
+    run = execute_run(user, organization, run.pk, processor=processor, _sync=_sync)
     if intake_session:
         intake_session.state = "intake_complete"
         intake_session.save(update_fields=["state"])
@@ -125,7 +126,7 @@ def read_result(user, organization, run_id):
     return json.loads(content)
 
 
-def supersede(user, organization, document_id, filename, content_type, content, *, processor=None):
+def supersede(user, organization, document_id, filename, content_type, content, *, processor=None, _sync=True):
     """Persist a replacement version, preserving original bytes and run receipts."""
     from .services import Forbidden
     authorize(user, organization, "document:supersede")
@@ -167,34 +168,17 @@ def supersede(user, organization, document_id, filename, content_type, content, 
         if key is not None:
             storage.delete(key)
         raise
-    run = execute_run(user, organization, run.pk, processor=processor)
+    run = execute_run(user, organization, run.pk, processor=processor, _sync=_sync)
     return version, run
 
 
-def execute_run(user, organization, run_id, *, processor=None):
-    authorize(user, organization, "document:upload")
-    if not getattr(settings, "M2_SYNTHETIC_ONLY", False):
-        from .services import Forbidden
-        raise Forbidden("REAL_DATA_ACTIVATION_REQUIRED")
-    run = OcrRun.objects.select_related("version", "document").get(pk=run_id, organization=organization)
-    if run.version.organization_id != organization.pk or run.document.organization_id != organization.pk or run.version.document_id != run.document_id:
-        from .services import Forbidden
-        raise Forbidden("cross-organization run")
-    if run.state == OcrRun.State.COMPLETED:
-        return run
-    now, token = timezone.now(), uuid4().hex
-    eligible = Q(state__in=[OcrRun.State.PENDING, OcrRun.State.FAILED]) | Q(state=OcrRun.State.RUNNING, lease_expires_at__lte=now)
-    claimed = OcrRun.objects.filter(pk=run.pk, organization=organization, retry_count__lt=3).filter(eligible).update(
-        state=OcrRun.State.RUNNING, attempt_token=token, lease_expires_at=now+timedelta(minutes=15),
-        started_at=now, completed_at=None, failure_reason="", retry_count=F("retry_count")+1)
-    if not claimed:
-        run.refresh_from_db()
-        return run
+def _run_ocr_sync(run, organization, user, processor, token):
     storage, keys = document_storage(), []
     def store_crop(digest, content):
         key = f"generated/{token}/{digest}.png"
         if not storage.exists(key):
             keys.append(storage.save(key, ContentFile(content)))
+
     try:
         with storage.open(run.version.opaque_key, "rb") as stream:
             content = stream.read()
@@ -206,6 +190,7 @@ def execute_run(user, organization, run_id, *, processor=None):
     except Exception as exc:
         payload = {"status": "failed", "error_tag": error_tag(exc), "result": None,
                    "source_hash": run.version.sha256, "artifact_keys": keys}
+
     encoded = canonical_json(payload).encode()
     key = ""
     try:
@@ -213,6 +198,7 @@ def execute_run(user, organization, run_id, *, processor=None):
         keys.append(key)
     except OSError:
         payload = {"status": "failed", "error_tag": "OUTPUT_STORAGE_FAILED", "result": None}
+
     with transaction.atomic():
         current = OcrRun.objects.select_for_update().get(pk=run.pk, organization=organization)
         if current.attempt_token != token or current.state != OcrRun.State.RUNNING:
@@ -233,9 +219,107 @@ def execute_run(user, organization, run_id, *, processor=None):
                 document.state = Document.State.PROPOSAL_READY
                 document.save(update_fields=["state"])
         current.save()
-        audit(user, organization, "ocr.completed" if current.state == "completed" else "ocr.failed", f"ocr:{current.pk}:attempt:{token}",
+        audit(user, organization, "ocr.completed" if current.state == "completed" else "ocr.failed",
+              f"ocr:{current.pk}:attempt:{token}",
               "success" if current.state == "completed" else "failed")
     return current
+
+
+def _authorized_run(user, organization, run_id):
+    from .services import Forbidden
+    if not user.is_active:
+        raise Forbidden("OCR_ACTOR_INACTIVE")
+    authorize(user, organization, "document:upload")
+    if not getattr(settings, "M2_SYNTHETIC_ONLY", False):
+        raise Forbidden("REAL_DATA_ACTIVATION_REQUIRED")
+    run = OcrRun.objects.select_related("version", "document").get(pk=run_id, organization=organization)
+    if (run.version.organization_id != organization.pk or run.document.organization_id != organization.pk
+            or run.version.document_id != run.document_id):
+        raise Forbidden("cross-organization run")
+    return run
+
+
+def queue_run(user, organization, run_id):
+    """Persist work only. A separate worker sees it after the outermost commit.
+
+    No process/thread or notification is launched here, so rollback cannot dispatch
+    a job. A live lease is preserved; failed work requires an explicit retry.
+    """
+    run = _authorized_run(user, organization, run_id)
+    eligible = Q(state=OcrRun.State.FAILED) | Q(
+        state=OcrRun.State.RUNNING, lease_expires_at__lte=timezone.now())
+    OcrRun.objects.filter(pk=run.pk, organization=organization, retry_count__lt=3).filter(eligible).update(
+        state=OcrRun.State.PENDING, failure_reason="", lease_expires_at=None)
+    run.refresh_from_db()
+    return run
+
+
+def execute_run(user, organization, run_id, *, processor=None, _sync=True):
+    """Synchronously claim/process/publish one run; legacy _sync=False queues only."""
+    if not _sync:
+        return queue_run(user, organization, run_id)
+    run = _authorized_run(user, organization, run_id)
+    if run.state == OcrRun.State.COMPLETED:
+        return run
+    now, token = timezone.now(), uuid4().hex
+    eligible = Q(state__in=[OcrRun.State.PENDING, OcrRun.State.FAILED]) | Q(
+        state=OcrRun.State.RUNNING, lease_expires_at__lte=now)
+    claimed = OcrRun.objects.filter(pk=run.pk, organization=organization, retry_count__lt=3).filter(eligible).update(
+        state=OcrRun.State.RUNNING, attempt_token=token, lease_expires_at=now+timedelta(minutes=15),
+        started_at=now, completed_at=None, failure_reason="", retry_count=F("retry_count")+1)
+    if not claimed:
+        run.refresh_from_db()
+        return run
+    try:
+        return _run_ocr_sync(run, organization, user, processor, token)
+    except Exception:
+        # Never expose exception strings/tracebacks containing source values.
+        logging.getLogger(__name__).error("OCR_PUBLICATION_FAILED run_ref=%s", run.pk)
+        # Publication was atomic; fence failure updates as carefully as success.
+        # A DB outage may prevent this update: leave the durable lease recoverable
+        # and propagate a fixed code to the worker command.
+        try:
+            with transaction.atomic():
+                updated = OcrRun.objects.filter(pk=run.pk, organization=organization,
+                    state=OcrRun.State.RUNNING, attempt_token=token).update(
+                        state=OcrRun.State.FAILED, failure_reason="OCR_PUBLICATION_FAILED",
+                        completed_at=timezone.now(), lease_expires_at=None)
+                if updated:
+                    audit(user, organization, "ocr.failed", f"ocr:{run.pk}:attempt:{token}", "failed")
+        except Exception:
+            raise RuntimeError("OCR_STORAGE_OR_DATABASE_UNAVAILABLE") from None
+        raise RuntimeError("OCR_PUBLICATION_FAILED") from None
+
+
+def process_pending(user, organization, *, max_runs=1, run_id=None, processor=None):
+    """Process a bounded, sequential batch in one explicit actor/tenant scope."""
+    from .services import Forbidden
+    if not user.is_active or not getattr(settings, "M2_SYNTHETIC_ONLY", False):
+        raise Forbidden("OCR_WORKER_ACTIVATION_REQUIRED")
+    authorize(user, organization, "document:upload")
+    if type(max_runs) is not int or max_runs < 1:
+        raise ValueError("OCR_MAX_RUNS_INVALID")
+    now = timezone.now()
+    scope = OcrRun.objects.filter(organization=organization)
+    if run_id is not None:
+        scope = scope.filter(pk=run_id)
+        if not scope.exists():
+            raise ValueError("OCR_RUN_NOT_IN_SCOPE")
+    # An interrupted final attempt must not remain visibly RUNNING forever.
+    exhausted = scope.filter(state=OcrRun.State.RUNNING, lease_expires_at__lte=now, retry_count__gte=3)
+    with transaction.atomic():
+        for run in exhausted.select_for_update().order_by("pk")[:max_runs]:
+            run.state, run.failure_reason = OcrRun.State.FAILED, "OCR_RETRY_LIMIT_REACHED"
+            run.completed_at, run.lease_expires_at = now, None
+            run.save(update_fields=["state", "failure_reason", "completed_at", "lease_expires_at"])
+            audit(user, organization, "ocr.failed", f"ocr:{run.pk}", "failed")
+    eligible = Q(state=OcrRun.State.PENDING) | Q(state=OcrRun.State.RUNNING, lease_expires_at__lte=now)
+    ids = list(scope.filter(eligible, retry_count__lt=3).order_by("pk").values_list("pk", flat=True)[:max_runs])
+    results = []
+    for pk in ids:
+        run = execute_run(user, organization, pk, processor=processor)
+        results.append({"run_ref": run.pk, "state": run.state})
+    return results
 
 
 def persist_proposals(organization, run, result):

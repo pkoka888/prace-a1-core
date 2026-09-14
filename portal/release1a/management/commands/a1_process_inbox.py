@@ -32,7 +32,7 @@ class Command(BaseCommand):
                 raise ValueError("INBOX_OPERATOR_CONFIGURATION_REQUIRED")
             organization = Organization.objects.get(pk=organization_id)
             user = get_user_model().objects.get(pk=actor_id, is_active=True)
-            results = process_inbox(user, organization)
+            results = process_inbox(user, organization, _sync=True)
         except Exception:
             raise CommandError("INBOX_PROCESSING_DENIED_OR_UNAVAILABLE") from None
         self.stdout.write(json.dumps(results, sort_keys=True))

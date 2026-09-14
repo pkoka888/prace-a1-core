@@ -4,6 +4,17 @@
 **Milestone**: M5
 **Activation gate**: real-data-rules §14; this plan records the existing Sprint 1–4 dependencies and evidence
 
+## Core-v1 scope reconciliation — 2026-09-14
+
+The [current roadmap](../roadmap.md) excludes official A1 generation/issuance from
+v1; existing drafts are optional. JAN-03 in the
+[bounded plan](2026-09-14-delivery-reliability-and-jan-v1.md) must scope the existing
+review/gate definitions accordingly. The registered legacy J1–J4 dependency chain
+below remains recorded until that explicit reconciliation; it is not evidence
+that official PDFs belong in core v1. Shared access, storage, revisions, backup,
+retention/deletion and §14 real-data controls remain required. No gate is approved
+or live environment activated by this documentation change.
+
 ## Consolidation boundary — 2026-09-08
 
 The [local automation plan](2026-09-08-local-a1-automation.md) documents one data
@@ -24,7 +35,7 @@ implied. Final isolated-storage/cache reruns passed **15 PostgreSQL intake tests
 and **33 affected M2 tests**, with no model/migration drift. See the
 [stabilization report](../docs/research/2026-09-07-a1-stabilization.md).
 The broader A1 repair and engineering gates remain active/pending.
-See [roadmap stabilization](../roadmap.md#stabilization-synthetic-acceptance--2026-09-07).
+See [current roadmap and historical evidence policy](../roadmap.md).
 Next bounded J4/promotion engineering may start with sequential file ownership;
 this does not approve final promotion or activation. Minimum functioning
 J4 remains before ENG-001 → REV-002 → remaining activation gates → REV-003.

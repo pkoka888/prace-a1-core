@@ -53,6 +53,8 @@
       "purpose": "Protected synthetic intake, version supersession and dependent J4/runtime routes with acceptance tests.",
       "paths": [
         "portal/release1a/document_intake.py",
+        "portal/release1a/management/commands/process_ocr.py",
+        "tests/document_web/test_ocr_worker.py",
         "portal/release1a/inbox.py",
         "portal/release1a/identity.py",
         "portal/release1a/management/commands/a1_process_inbox.py",
@@ -211,8 +213,8 @@
     },
     "repository_documentation": {
       "purpose": "Actual research-stage repository and protected-data boundaries.",
-      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md", "docs/operations/wsgi-deployment-recipe.md", "docs/operations/delivery-1-postgres-handoff.md"],
-      "checks": ["git diff --check"],
+      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md", "docs/operations/wsgi-deployment-recipe.md", "docs/operations/delivery-1-postgres-handoff.md", "docs/operations/delivery-reliability-review-2026-09-14.md"],
+      "checks": ["git diff --cached --check"],
       "dependencies": ["governance_truth"],
       "rollback": "Revert documentation without changing runtime or private data."
       ,"intended_commit": "docs: add research-stage repository guide"
@@ -286,6 +288,8 @@
       "purpose": "Delivery-1 supervised synthetic rehearsal lifecycle and its bounded integration test. Runs only when rehearsal files or the lifecycle test are staged; not part of every infrastructure commit.",
       "paths": [
         "scripts/rehearse_synthetic_site.sh",
+        "scripts/run_ocr_worker_lifecycle.py",
+        "tests/test_ocr_worker_lifecycle.py",
         "scripts/rehearse_dev_local.sh",
         "scripts/rehearse_verify_persistence.py",
         "scripts/build_release_manifest.py",
@@ -298,7 +302,7 @@
         "tests/_rehearse_workflow_data_path.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py -q"
+        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_ocr_worker_lifecycle.py -q"
       ],
       "dependencies": [
         "Existing supervised settings module and wsgi/asgi entrypoints",

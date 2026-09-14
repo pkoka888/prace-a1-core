@@ -7,7 +7,7 @@ sequence in [roadmap.md](../../roadmap.md); the active automation plan
 Scope: deliver a stable private URL, individual login, persistent database,
 and the existing frontend/backend wired through a single WSGI/ASGI entrypoint.
 This recipe covers Delivery 1 of the four-delivery sequence. Deployment,
-real-data activation, queue dispatch and M3 queues/exceptions/retention
+real-data activation and M3 queue expansion/exceptions/retention
 remain separate work tracked elsewhere.
 
 This is **not** a production activation. Real-data activation remains
@@ -86,12 +86,13 @@ and confined (mode 0600).
   TLS certificate handling, secret delivery, backup scheduling) is owned
   by infrastructure, not this recipe.
 * `django-q2` is installed but `Q_CLUSTER` is intentionally not configured;
-  background jobs continue to run inline or as separate processes. Queue
-  dispatch is Delivery-3 work.
+  OCR now uses the existing durable `OcrRun` table and a sequential
+  `process_ocr` management command. Broader queue infrastructure stays deferred.
 * The synthetic SQLite database at `<runtime-root>/db.sqlite3` is operator-
   owned; the rehearsal lifecycle test (see below) prepares and tears down
   isolated roots under `runtime/portal/supervised-lifecycle-*`; production
-  rehearsal roots must live outside the repository to avoid staging.
+  rehearsal roots remain confined under repository `runtime/portal/supervised-*`
+  and are never staged.
 * Real-data activation is not enabled by importing the WSGI/ASGI module.
   `settings.M2_SYNTHETIC_ONLY` remains `True`; intake refuses non-synthetic
   configuration.
@@ -221,3 +222,35 @@ DJANGO_SETTINGS_MODULE=portal.settings_document_tests \
 Expected: 5 passed. The five tests confirm import, default settings
 contract, basic routing (login redirect, health endpoint, protected
 review page) and the synthetic-only posture.
+
+## JAN-01/JAN-02: durable OCR worker
+
+Upload returns after persisting pending work. Start the canonical rehearsal after
+`prepare` and `provision`; it owns both Gunicorn and one OCR consumer. Its `status`,
+`stop` and `restart` cover the worker as well. No host service is installed.
+
+For a supervised foreground diagnostic with the same environment as the web app:
+
+```bash
+venv/bin/python manage.py process_ocr --help
+# Replace the two IDs with the provisioned synthetic actor/organization IDs.
+venv/bin/python manage.py process_ocr --organization-id <organization-id> --actor-id <actor-id>
+```
+
+Default is a single sequential job; `--loop --poll-interval 1` keeps consuming.
+No guessed operator or organization is allowed. Only synthetic settings are accepted.
+The existing `a1_process_inbox` command remains synchronous and writes terminal
+receipts. Failed processing is visible on the Czech document page; **Obnovit stav**
+refreshes pending/completed state, **Opakovat zpracování** retries a failed attempt.
+Three attempts exhaust automatic processing; the operator investigates the private
+`logs/ocr-worker.log` and opaque run/audit references. Interrupted claims become
+eligible after the existing fifteen-minute lease; files and records remain durable.
+
+Worker state edits, initial archived creation, archive and restoration enforce the
+archive capability. Ordinary permitted editing continues. Permanent deletion is
+unavailable until a distinct authorized retention/deletion workflow is defined.
+This is a manual request to the responsible operator, not permission to delete SQL rows.
+
+Official A1 PDF production is outside Jan core v1. The current extended `workflow`
+command still covers optional A1 regression; splitting profiles is JAN-03. A SQLite
+browser/lifecycle pass alone does not complete Delivery 1 or authorize activation.

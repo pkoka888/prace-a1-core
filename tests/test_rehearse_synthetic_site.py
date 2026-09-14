@@ -686,3 +686,47 @@ def test_bounded_request_propagates_timeout_from_error_body():
         server.shutdown()
         thread.join(timeout=5)
         server.server_close()
+
+
+@pytest.mark.parametrize('budget_ms, delay, expected_ready', [(3000, 2.2, True), (100, 1.5, False)])
+def test_readiness_response_headers_follow_configured_bounded_probe_budget(monkeypatch, budget_ms, delay, expected_ready):
+    """Readiness can exceed generic 2s headers, but its configured ceiling holds."""
+    import http.server
+    import threading
+    import time
+    from scripts.smoke_probe import _check_readiness
+
+    monkeypatch.setenv('PRACE_READINESS_BUDGET_MS', str(budget_ms))
+    body = json.dumps(dict(status='ready', git_commit='a' * 40,
+                           build_id='synthetic', supervised=True, real_data=False)).encode()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_GET(self):
+            time.sleep(delay)
+            try:
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+    server = http.server.HTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    started = time.monotonic()
+    try:
+        if expected_ready:
+            result = _check_readiness(f'http://127.0.0.1:{server.server_port}', 'localhost', 'a' * 40, 'synthetic')
+            assert result['contract_ok'] is True
+        else:
+            with pytest.raises(TimeoutError):
+                _check_readiness(f'http://127.0.0.1:{server.server_port}', 'localhost', 'a' * 40, 'synthetic')
+            assert time.monotonic() - started < 1.5
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)

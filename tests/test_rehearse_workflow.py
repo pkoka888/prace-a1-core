@@ -202,8 +202,17 @@ def test_workflow_prepare_provision_browser_workflow_restart_persistence(
         # sets PYTHONPATH/cwd before invoking the browser helper, so
         # the standalone and the pytest entrypoint are equivalent.
         r = _run_script(["workflow"], workflow_env, timeout=300)
+        # Preserve bounded error categories even though fixture cleanup removes
+        # private runtime logs. Never copy request bodies or credentials.
+        log_path = workflow_root / "logs" / "gunicorn.log"
+        log_text = log_path.read_text() if log_path.is_file() else ""
+        error_categories = [name for name in (
+            "OperationalError", "database is locked", "IntegrityError",
+            "PermissionDenied", "WORKER TIMEOUT",
+        ) if name in log_text]
         assert r.returncode == 0, (
             f"workflow command failed (rc={r.returncode}):\n"
+            f"SERVER_ERROR_CATEGORIES: {error_categories}\n"
             f"STDOUT:\n{r.stdout[:4000]}\nSTDERR:\n{r.stderr[:2000]}")
         if not r.stdout.strip():
             raise AssertionError(

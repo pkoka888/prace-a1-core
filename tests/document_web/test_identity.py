@@ -21,7 +21,7 @@ class IdentityTests(TransactionTestCase):
 
     def evaluation(self, content=None, lines=OP):
         _, _, _, run = intake(self.user, self.org, None, "synthetic.png", "image/png",
-            content or self.content, processor=DocumentProcessor(lambda: ScriptedEngine([lines, lines])))
+            content or self.content, processor=DocumentProcessor(lambda: ScriptedEngine([lines, lines])),_sync=True)
         evaluation = identity.persist_identity_evaluation(self.user, self.org, [run.pk])
         return evaluation, run, evaluation.evidence["regions"][0]["region_ref"]
 

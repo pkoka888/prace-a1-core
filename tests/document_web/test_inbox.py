@@ -68,8 +68,8 @@ class InboxTests(TransactionTestCase):
                 "files": items}).encode())
         return path, items
 
-    def run_inbox(self, proc=None):
-        return process_inbox(self.user, self.org, processor=proc or processor())
+    def run_inbox(self, proc=None, sync=True):
+        return process_inbox(self.user, self.org, processor=proc or processor(), _sync=sync)
 
     def test_retry_reuses_completed_proposals_and_never_confirms(self):
         self.batch()
@@ -188,7 +188,7 @@ class InboxTests(TransactionTestCase):
         worker = Worker.objects.create(organization=self.org, given_name="SYNTHETIC",
             family_name="EXAMPLE", birth_date="1990-01-01", activity_profile="employee")
         document, _, _, _ = intake(self.user, self.org, worker, "synthetic.png", "image/png",
-            self.content, processor=processor())
+            self.content, processor=processor(),_sync=True)
         self.batch()
         self.assertEqual(self.run_inbox()[0]["items"][0]["status"], "rejected")
         document.refresh_from_db()
@@ -231,7 +231,7 @@ class InboxTests(TransactionTestCase):
         worker = Worker.objects.create(organization=self.org, given_name="ALFA",
             family_name="TESTOVA", birth_date="1990-03-15", activity_profile="employee")
         _, _, _, run = intake(self.user, self.org, None, "synthetic.png", "image/png",
-            self.content, processor=processor())
+            self.content, processor=processor(),_sync=True)
         region = read_result(self.user, self.org, run.pk)["result"]["documents"][0]
         associate_region(self.user, self.org, run.pk, region["document_id"], worker)
         confirm_field_proposal(self.user, self.org,
@@ -290,7 +290,7 @@ class InboxTests(TransactionTestCase):
         self.confirmed_identifier()
         Membership.objects.create(user=self.user, organization=self.other, role="organization_admin")
         _, _, _, run = intake(self.user, self.other, None, "synthetic.png", "image/png",
-            self.content, processor=processor())
+            self.content, processor=processor(),_sync=True)
         evaluation = evaluate_identity_proposals(self.user, self.other, [run.pk])
         self.assertEqual(evaluation["regions"][0]["candidates"], [])
         self.assertEqual(evaluation["worker_evidence"], [])

@@ -1,7 +1,7 @@
 # Product Requirements Document — Czech-to-Germany Recruitment Operations Platform
 
-**Status:** discovery draft 0.2 — full platform designed, Jan Release 1A first
-**Date:** 2026-08-11
+**Status:** discovery draft 0.3 — Release 1A in progress; Jan private operator core first
+**Date:** 2026-09-14 (scope refresh; original 2026-08-11)
 **Owner:** operator/product owner
 **Scope:** product direction and acceptance boundaries; not authorization to deploy or process production PII
 
@@ -27,8 +27,8 @@ and historical research inputs. Stable current facts are:
 - The active A1 path is reviewed inputs → institution profile →
   `generate_provisional_a1.py` → `finalize_a1.py` → `a1_core.py` → canonical
   background/layout → staged provisional package.
-- The current cohort contract is exactly 11 unique people, 11 three-page PDFs,
-  and 33 hash-bound previews. These artifacts remain operator-review material.
+- A1 cohort counts describe dated operator runs, not portal release requirements.
+  Current artifact authority belongs to PLAN-A1 and its scoped receipts.
 - The sanitized repository checkpoint is published and accepted. PLAN-INFRA owns the
   documentation checkpoint; PLAN-A1's destructive local-retention follow-up remains
   separately gated. Volatile worktree counts are evidence, not requirements.
@@ -77,8 +77,16 @@ to identity documents.
 - Protected document upload, local OCR proposals, and human confirmation.
 - Workplaces, effective-dated assignments, current/upcoming/history views, and
   overlap warnings.
-- A1 case preparation, deterministic generation/QA, approval, and separate
-  recording of official authority responses.
+- Normal browser login/TOTP, correction/retry, protected source-document downloads,
+  Czech guidance and exact persistence across restart on the intended PostgreSQL target.
+- Incomplete optional worker fields may remain null. Missing required facts block
+  only the affected operation; OCR remains a proposal until explicit review.
+
+Official A1 PDF generation and issuance are outside v1. Existing draft PDFs are
+optional recommendations, not acceptance prerequisites. Preserve their source
+revisions, protected storage and honest draft/issued distinction when used.
+Weekly-budget inclusion is unresolved; the existing mockup does not prove delivery.
+See the [current batch](plans/2026-09-14-delivery-reliability-and-jan-v1.md).
 
 Release 1A implementation readiness is the M1A scaffolding gate. Broader PLAN-WORKERS (N/O) work,
 PLAN-INVOICE (formerly Plan P), ADR-003, and later-module design continue in M1B and do not delay 1A.
@@ -94,7 +102,7 @@ requires Czech/German accounting-specialist sign-off (specialist-gate) before
 implementation, and its Slauf CSV columns are frozen only from an official import
 specification or a sanitized synthetic example approved by the accountant.
 
-Before scaffolding, the Release 1A catalog must freeze the bounded roles,
+Historical scaffolding prerequisite: the Release 1A catalog had to freeze the bounded roles,
 permissions, fields, reports, field necessity, authoritative sources, data states,
 state transitions, audit events, and acceptance mappings needed by Jan's workflow.
 
@@ -141,7 +149,9 @@ state transitions, audit events, and acceptance mappings needed by Jan's workflo
 
 ## 5. Explicitly outside Release 1A
 
-- Automatic legal eligibility decisions or automatic issuance of A1 certificates.
+- Official A1 PDF generation/issuance and mandatory draft-PDF completion. Existing
+  provisional drafts remain optional; independent operator A1 work is preserved.
+- Automatic legal eligibility decisions.
 - Copying issuance data between employees or treating placeholders as official.
 - Unreviewed OCR writes to authoritative identity data.
 - Scraping sources whose terms or permission are unclear.
@@ -152,7 +162,12 @@ state transitions, audit events, and acceptance mappings needed by Jan's workflo
   finance remains an operational subledger integrated with formal accounting.
 - Paid AI APIs, paid fallbacks, or changes to the host LiteLLM gateway.
 
-## 6. Core workflow and state model
+## 6. Workflows and state model
+
+Release 1A core: login/TOTP → worker → document/OCR review → assignment/correction
+→ protected source-document download → durable persistence.
+
+The following diagram describes the later full-platform workflow:
 
 ```mermaid
 flowchart LR
@@ -177,6 +192,12 @@ never overwrites a confirmed value; conflicts require an attributable human
 resolution and superseded values retain provenance.
 
 ## 7. Conceptual data model
+
+This is the full-platform inventory, not a request to add every entity for v1.
+Release 1A uses existing organization/membership, worker, document/proposal/review,
+assignment and audit services/models. Candidate/partner/job/budget/payment/messaging
+expansion belongs to later scope unless an explicit Jan requirement changes it.
+Inspect existing implementations before adding fields or new models.
 
 - `User`, `Role`, `Organization`, `Membership`
 - `Candidate`, `CandidateContact`, `Availability`, `Preference`
@@ -213,6 +234,12 @@ not settled by this draft.
 
 ## 9. Non-functional requirements
 
+Applicability: shared access, privacy, correctness and durability requirements apply
+to the core workflow. The broader target below retains future localization and
+automation direction: German UI and richer queue/dead-letter behavior are not
+core-v1 prerequisites. Czech guidance and an explicit manual recovery procedure are
+required now; existing architecture need not be rebuilt to meet later capabilities.
+
 - Czech and German localization from the data model onward; no text embedded only
   in templates.
 - Responsive WCAG-oriented UI, keyboard operability and clear error recovery.
@@ -238,22 +265,29 @@ not settled by this draft.
 - Every release defines incident response, deployment rollback, data-migration
   rollback limits, responsible owner, and evidence needed to resume safely.
 
-## 10. MVP success measures
+## 10. Release 1A success measures
 
-- A candidate can find and submit/reserve a suitable job from mobile without
-  operator re-entry of basic data.
-- An operator can trace every job from partner submission through assignment and
-  planned/actual financial closeout.
-- A partner can manage only its own jobs and authorized fulfillment records.
-- Every sensitive document access and material status change is attributable.
-- No authoritative employee/A1 value is changed solely by OCR or an external model.
-- Feed and social runs are idempotent, attributable, and recoverable.
-- Acceptance scenarios trace to roles, requirements, audit events, and automated or
-  human tests; no Release 1A requirement is orphaned.
-- A permission test matrix, retention/deletion test, incident procedure, and the
-  durability evidence required for that release stage pass before launch.
+- Jan completes normal login/TOTP and the worker/document/OCR/assignment workflow
+  without cookie injection, a Django shell or filesystem manipulation.
+- A sparse worker can be saved; missing facts are visible and only relevant
+  operations are blocked. Corrections persist and retries avoid duplicate effects.
+- Only authorized roles within the organization can view/change records or download
+  protected documents; OCR cannot silently overwrite confirmed values.
+- The intended PostgreSQL database retains exact records and protected document
+  bytes across restart. SQLite results do not establish PostgreSQL acceptance.
+- Czech instructions, actionable errors and a known-limitations note support use.
+- Implementation, synthetic validation, publication, deployment and Jan acceptance
+  are reported separately. No invented business approval or official-A1 requirement.
+
+Candidate/partner/feed and financial-closeout measures belong to later releases.
+Numerical throughput/usability targets require observed baseline data; none is
+invented here. Weekly-budget scope is an open business decision.
 
 ## 11. Open product decisions
+
+Immediate: whether weekly-budget editing/persistence is required for Jan v1, and
+which original Jan workflow requirements need further operational clarification.
+The following broader-platform decisions do not block core-v1 engineering.
 
 1. Commercial model after the confirmed private Jan-first increment.
 2. Whether MVP consumes BA/EURES/direct feeds, publishes to external portals, or
@@ -270,6 +304,11 @@ not settled by this draft.
     jurisdiction activation order.
 
 ## 12. Definition of ready for implementation
+
+The existing synthetic scaffold is already implemented. Current work follows the
+2026-09-14 roadmap and bounded batch. Historical M1A prerequisites below record
+scaffolding governance, not instructions to repeat completed discovery. JAN-03
+reconciles A1-only requirements in machine checks/UI; it does not approve gates.
 
 Release 1A implementation starts when roadmap M1A passes: PLAN-INFRA's operating model
 and minimal planning shell (formerly Plans L/M), the PLAN-INFRA/PLAN-LEGAL (E/F)/PLAN-WORKERS (H)

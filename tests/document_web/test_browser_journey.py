@@ -9,6 +9,7 @@ import logging
 import re
 import secrets
 import time
+import threading
 from unittest import skipUnless
 from datetime import date
 from urllib.parse import urlsplit
@@ -49,8 +50,39 @@ class BrowserJourneyTests(StaticLiveServerTestCase):
         self.foreign_document = Document.objects.create(organization=beta, opaque_key="documents/" + secrets.token_hex(16) + ".source", sha256="b" * 64, content_type="image/png")
         self.other = Worker.objects.create(organization=beta, given_name="Synthetic", family_name="OtherBrowserWorker", birth_date=date(1990, 1, 2), activity_profile="employee")
 
+    def start_ocr_worker(self):
+        # Test-owned sequential consumer; HTTP still persists the actual job.
+        # The rehearsal suite separately exercises the worker subprocess.
+        from django.db import close_old_connections, connections
+        from portal.release1a.document_intake import process_pending
+        stop = threading.Event()
+        errors = []
+        actor_pk, org_pk = self.user.pk, self.own.organization_id
+        def consume():
+            try:
+                while not stop.is_set():
+                    close_old_connections()
+                    actor = get_user_model().objects.get(pk=actor_pk)
+                    org = Organization.objects.get(pk=org_pk)
+                    process_pending(actor, org)
+                    stop.wait(0.2)
+            except Exception:
+                errors.append("OCR_TEST_WORKER_FAILED")
+            finally:
+                connections.close_all()
+        worker = threading.Thread(target=consume, name="synthetic-test-ocr")
+        worker.start()
+        def cleanup():
+            stop.set()
+            worker.join(timeout=90)
+            self.assertFalse(worker.is_alive(), "OCR_TEST_WORKER_STOP_TIMEOUT")
+            self.assertFalse(errors, "OCR_TEST_WORKER_FAILED")
+        self.addCleanup(cleanup)
+        return errors
+
     def test_desktop_mobile_totp_org_isolation_logout(self):
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, expect
+        worker_errors = self.start_ocr_worker()
         from unittest import mock
         from pathlib import Path
         self.assertTrue(all(item["status"] == "PASS" for item in run_checks(self.live_server_url).values()), "HTTP_AUTHORIZATION_CONTRACT")
@@ -81,7 +113,11 @@ class BrowserJourneyTests(StaticLiveServerTestCase):
                 from django.core.signals import got_request_exception
                 def server_exception(sender, **kwargs):
                     import sys
-                    kind, _, trace = sys.exc_info()
+                    kind, error, trace = sys.exc_info()
+                    cause = getattr(error, "__cause__", None)
+                    sqlite_code = getattr(cause, "sqlite_errorname", "")
+                    if sqlite_code in {"SQLITE_BUSY", "SQLITE_LOCKED", "SQLITE_BUSY_SNAPSHOT"}:
+                        errors.append(sqlite_code)
                     while trace and trace.tb_next:
                         trace = trace.tb_next
                     errors.append('SERVER_' + (kind.__name__ if kind else 'unknown') + '_' + (trace.tb_frame.f_code.co_name if trace else 'unknown'))
@@ -136,29 +172,42 @@ class BrowserJourneyTests(StaticLiveServerTestCase):
                     page.locator('input[name="file1"]').set_input_files({"name": "synthetic.png", "mimeType": "image/png", "buffer": source})
                     page.get_by_role("button", name="Nahrát a rozpoznat").click()
                     stage = "UPLOAD_REDIRECT"
-                    page.wait_for_load_state("networkidle")
                     if urlsplit(page.url).path == "/documents/intake/":
                         raise AssertionError("UPLOAD_NOT_REDIRECTED_ALERTS_" + str(page.locator('[role="alert"]').count()) + "_FORM_ERRORS_" + str(page.locator('.errorlist').count()))
                     page.wait_for_url(re.compile(r"/documents/\d+/$"))
                     document_id = int(urlsplit(page.url).path.strip("/").split("/")[1])
+                    stage = "OCR_COMPLETION"
+                    deadline = time.monotonic() + 90
+                    while True:
+                        status = page.locator("[data-ocr-state]").get_attribute("data-ocr-state")
+                        if status == "completed":
+                            break
+                        self.assertNotEqual(status, "failed", "OCR_PROCESSING_FAILED")
+                        self.assertFalse(worker_errors, "OCR_WORKER_FAILED")
+                        if time.monotonic() >= deadline:
+                            raise AssertionError("OCR_PROCESSING_TIMEOUT_" + str(status))
+                        time.sleep(0.25)  # Bounded observation interval, not a completion assumption.
+                        page.get_by_role("link", name="Obnovit stav").click(timeout=5000)
                     review_url = reverse("ocr_field_review", kwargs={"document_pk": document_id})
                     self.assertEqual(page.goto(self.live_server_url + review_url).status, 200, "OCR_REVIEW_ROUTE")
                     stage = "ASSOCIATION"
-                    page.locator('select[name="worker_id"]').select_option(str(self.own.pk))
-                    page.get_by_role("button", name="Přiřadit tento dokument").click()
-                    page.wait_for_load_state("networkidle")
+                    page.locator('input[name="reason"]').fill("Synthetic test association")
+                    option_value = page.locator(f'select[name="worker_choice"] option[data-worker-pk="{self.own.pk}"]').get_attribute("value")
+                    page.locator('select[name="worker_choice"]').select_option(option_value)
+                    with page.expect_navigation(wait_until="load"):
+                        page.get_by_role("button", name="Přiřadit tento dokument").click()
                     # Confirm one explicit synthetic field through the real UI;
                     # other OCR proposals remain unaccepted.
                     stage = "FIELD"
                     given = page.locator('input[name^="value_given_name_"]')
-                    self.assertEqual(given.count(), 1, "OCR_GIVEN_NAME_PROPOSAL")
+                    expect(given).to_have_count(1)
                     self.assertEqual(given.input_value(), "ALFA", "OCR_EXACT_SYNTHETIC_FIELD")
                     field_id = given.get_attribute("name").rsplit("_", 1)[1]
                     page.locator(f'input[name="confirm_{field_id}"]').check()
                     stage = "CONFIRM"
-                    page.get_by_role("button", name="Potvrdit vybrané údaje").click()
-                    page.wait_for_load_state("networkidle")
-                    self.assertEqual(page.locator('input[name^="value_given_name_"]').count(), 0)
+                    with page.expect_navigation(wait_until="load"):
+                        page.get_by_role("button", name="Potvrdit vybrané údaje").click()
+                    expect(page.locator('input[name^="value_given_name_"]')).to_have_count(0)
                     source_response = context.request.get(self.live_server_url + f"/documents/{document_id}/download/")
                     stage = "DOWNLOAD_HTTP_" + str(source_response.status)
                     self.assertEqual(source_response.status, 200)

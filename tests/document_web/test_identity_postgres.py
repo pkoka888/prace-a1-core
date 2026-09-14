@@ -46,7 +46,7 @@ class PostgresIdentityConcurrencyTests(TransactionTestCase):
         Authenticator.objects.create(user=self.user, type=Authenticator.Type.TOTP, data={})
         _, _, _, self.run = intake(
             self.user, self.org, None, "synthetic.png", "image/png", png(card(OP)),
-            processor=DocumentProcessor(lambda: ScriptedEngine([OP, OP])),
+            processor=DocumentProcessor(lambda: ScriptedEngine([OP, OP])),_sync=True
         )
         self.region = read_result(self.user, self.org, self.run.pk)["result"]["documents"][0]["document_id"]
 
@@ -90,7 +90,7 @@ class PostgresIdentityConcurrencyTests(TransactionTestCase):
 
         _, _, _, run = intake(
             self.user, self.org, None, "synthetic-retry.png", "image/png",
-            png(card(OP, border=True)), processor=BrokenProcessor(),
+            png(card(OP, border=True)), processor=BrokenProcessor(),_sync=True
         )
         self.assertEqual(run.state, "failed")
         run_locked, org_locked = Event(), Event()
@@ -126,7 +126,7 @@ class PostgresIdentityConcurrencyTests(TransactionTestCase):
                 ThreadPoolExecutor(max_workers=2) as executor:
             ocr = executor.submit(invoke, lambda user, org: execute_run(
                 user, org, run.pk,
-                processor=DocumentProcessor(lambda: ScriptedEngine([OP, OP])),
+                processor=DocumentProcessor(lambda: ScriptedEngine([OP, OP])),_sync=True
             ).state)
             self.assertTrue(run_locked.wait(timeout=10), "OCR did not acquire its run lock")
             evaluation = executor.submit(invoke, lambda user, org: persist_identity_evaluation(

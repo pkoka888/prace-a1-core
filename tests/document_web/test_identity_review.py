@@ -114,7 +114,7 @@ class IdentityReviewTests(TransactionTestCase):
 
     def test_token_for_other_document_cannot_be_posted_here(self):
         _, _, _, other_run = fixtures.intake(self.user, self.org, None, 'synthetic-other.png',
-            'image/png', fixtures.png(fixtures.card(fixtures.ZP)), processor=fixtures.processor(fixtures.ZP))
+            'image/png', fixtures.png(fixtures.card(fixtures.ZP)), processor=fixtures.processor(fixtures.ZP),_sync=True)
         contexts = association_review_context(self.user, self.org, [other_run.pk])
         token = next(iter(contexts.values()))['worker_options'][0]['token']
         response = self.client.post(self.url, {'action':'associate',
@@ -131,7 +131,7 @@ class IdentityReviewTests(TransactionTestCase):
                 raise RuntimeError('Synthetic OCR failure')
         _, _, _, failed_run = fixtures.intake(self.user, self.org, None,
             'synthetic-failed.png', 'image/png', fixtures.png(fixtures.card(fixtures.ZP)),
-            session, processor=Broken())
+            session, processor=Broken(),_sync=True)
         self.assertEqual(failed_run.state, 'failed')
         response = self.client.get(self.url)
         self.assertContains(response, 'name="worker_choice"')

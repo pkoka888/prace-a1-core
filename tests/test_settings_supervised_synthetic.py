@@ -37,6 +37,8 @@ IMPORT_CODE = (
     "sys.stdout.write('SYNTHETIC=' + str(getattr(settings, 'M2_SYNTHETIC_ONLY', False)) + ';')\n"
     "sys.stdout.write('RUNTIME_ROOT=' + str(getattr(settings, 'PRACE_RUNTIME_ROOT', None)) + ';')\n"
     "sys.stdout.write('ALLOWED=' + ','.join(getattr(settings, 'ALLOWED_HOSTS', [])) + ';')\n"
+    "sys.stdout.write('COOKIES=' + str(settings.SESSION_COOKIE_SECURE) + ',' + str(settings.CSRF_COOKIE_SECURE) + ';')\n"
+    "sys.stdout.write('EMAIL=' + settings.EMAIL_BACKEND + ';')\n"
     "sys.stdout.write('ENGINE=' + settings.DATABASES['default']['ENGINE'] + '\\n')\n"
 ).format(module=SETTINGS_MODULE)
 
@@ -445,3 +447,15 @@ def test_optional_inbox_defaults_use_existing_ids_and_private_root():
 def test_inbox_configuration_requires_positive_id_pair(org, actor):
     result = _import_with(_valid_env(PRACE_INBOX_ORGANIZATION_ID=org, PRACE_INBOX_ACTOR_ID=actor))
     _assert_failure(result, "Inbox organization and actor IDs")
+
+
+@pytest.mark.parametrize("override, expected", [(None, "True,True"), ("false", "False,False"), ("unexpected", "True,True")])
+def test_synthetic_cookie_override_is_explicit_and_email_stays_local(monkeypatch, override, expected):
+    monkeypatch.delenv("PRACE_COOKIE_SECURE", raising=False)
+    env = _valid_env()
+    if override is not None:
+        env["PRACE_COOKIE_SECURE"] = override
+    proc = _import_with(env)
+    assert proc.returncode == 0, proc.stderr
+    assert "COOKIES=" + expected in proc.stdout
+    assert "EMAIL=django.core.mail.backends.locmem.EmailBackend" in proc.stdout

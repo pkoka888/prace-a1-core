@@ -2,7 +2,7 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse
 from .models import Document, OcrRun, Worker, FieldProposal, DocumentRegionAssociation, IntakeSession
-from .document_intake import (authorize, intake, read_result, execute_run,
+from .document_intake import (authorize, intake, read_result, queue_run,
                               download_original, audit, read_session)
 from .services import Forbidden, StaleWrite
 from .field_review import (review_context, confirm_review_batch, address_review_context,
@@ -36,7 +36,7 @@ def detail(request, pk):
     if request.method == "POST":
         try:
             if request.POST.get("action") == "retry" and run:
-                execute_run(request.user, request.organization, run.pk)
+                queue_run(request.user, request.organization, run.pk)
             elif request.POST.get("action") == "associate" and run:
                 tokens = request.POST.getlist("worker_choice")
                 if len(tokens) != 1:
@@ -201,7 +201,7 @@ def upload_unassigned(request, worker=None):
             file = form.cleaned_data.get(f"file{i}")
             if file:
                 try:
-                    doc, _, _, _ = intake(request.user, request.organization, worker, file.name, file.content_type, file.read(), session)
+                    doc, _, _, _ = intake(request.user, request.organization, worker, file.name, file.content_type, file.read(), session, _sync=False)
                     documents.append(doc)
                 except Forbidden:
                     return HttpResponse(status=403)

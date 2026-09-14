@@ -3,10 +3,19 @@
 <h1>Kontrola dokumentů</h1>
 <p>Rozpoznané údaje jsou návrhy. Přiřaďte dokument pracovníkovi a potvrďte pouze ověřené údaje.</p>
 {% if error %}<p role="alert">{{ error }}</p>{% endif %}
-{% if ocr_run %}<p>Stav zpracování: {{ ocr_run.get_state_display }}</p>{% endif %}
-{% if ocr_run.state == 'failed' or ocr_run.state == 'running' or ocr_run.state == 'pending' %}
-<p>Zpracování lze opakovat. Probíhající úloha se nespustí podruhé.</p>
+{% if ocr_run %}
+<p role="status" data-ocr-state="{{ ocr_run.state }}">Stav zpracování: {{ ocr_run.get_state_display }}</p>
+{% if ocr_run.state == 'pending' or ocr_run.state == 'running' %}
+<p>Dokument je uložen. Rozpoznávání probíhá na pozadí; můžete pokračovat v práci. Pro zobrazení výsledku obnovte stav. Pokud se stav delší dobu nemění, požádejte správce o kontrolu zpracování.</p>
+{% elif ocr_run.state == 'completed' %}
+<p>Rozpoznávání je dokončeno. Návrhy níže zkontrolujte; dosud nejsou potvrzenými údaji.</p>
+{% elif ocr_run.state == 'failed' %}
+<p role="alert">Rozpoznávání se nepodařilo. Původní dokument zůstává uložený a dostupný ke stažení.</p>
+{% if ocr_run.retry_count < 3 %}
 <form method="post">{% csrf_token %}<button name="action" value="retry">Opakovat zpracování</button></form>
+{% else %}<p>Byl dosažen limit tří pokusů. Požádejte správce o kontrolu pracovní úlohy.</p>{% endif %}
+{% endif %}
+<p><a href="{% url 'ocr_field_review' document.pk %}">Obnovit stav</a></p>
 {% endif %}
 <a href="{% url 'document_download' document.pk %}">Stáhnout původní soubor</a>
 {% for region in regions %}

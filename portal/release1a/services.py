@@ -84,6 +84,8 @@ def require_membership(user, organization, role=None):
 @transaction.atomic
 def create_worker(user, organization, **fields):
     require_capability(user, organization, "worker:create")
+    if fields.get("state") == Worker.State.ARCHIVED:
+        require_capability(user, organization, "worker:archive")
     Organization.objects.select_for_update(no_key=True).get(pk=organization.pk)
     worker = Worker.objects.create(organization=organization, **fields)
     AuditEvent.objects.create(organization=organization, actor_ref=f"user:{user.pk}", event_type="worker.created", object_ref=f"worker:{worker.pk}", outcome="success")
@@ -92,11 +94,11 @@ def create_worker(user, organization, **fields):
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 
-def upload_document(user, organization, worker, filename, content_type, content, limit=MAX_UPLOAD_BYTES):
+def upload_document(user, organization, worker, filename, content_type, content, limit=MAX_UPLOAD_BYTES, *, _sync=True):
     from .document_intake import intake
     if len(content) > limit:
         raise ValueError("INPUT_SIZE_INVALID")
-    return intake(user, organization, worker, filename, content_type, content)[0]
+    return intake(user, organization, worker, filename, content_type, content, _sync=_sync)[0]
 
 @transaction.atomic
 def create_assignment(user, organization, worker, *, start, end, workplace_label, activity_label):

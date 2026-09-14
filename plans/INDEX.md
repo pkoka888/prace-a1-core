@@ -17,8 +17,8 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 
 | Plan | Status | Milestone | Owner | Lane | Current Blocker | Expected Result | Acceptance Command |
 |---|---|---|---|---|---|---|---|
-| [Plan PLAN-INFRA — architecture, operating model, cockpit, prototype, and infrastructure](PLAN-INFRA.md) | active | M0–M2 | product engineering + primary agent + server sysadmin | Critical Release 1A | ADR-001 validated; server62/GitLab-CI activation evidence incomplete and separately gated | Coherent foundation: validated ADR-001, operating model, planning cockpit, functional prototype, and infrastructure evidence | `venv/bin/python scripts/validate_planning.py`; ADR-001 hash-bound checks; separate approvals for infra/CI mutations |
-| [Plan PLAN-WORKERS — worker role, data, UX, and OCR workflows](PLAN-WORKERS.md) | active | M1A–M3 | product owner + product design + product engineering | Critical Release 1A | `ENG-001` blocked: shared local/web intake, protected OCR storage, PostgreSQL concurrency and J4 artifacts have committed synthetic evidence; remaining runtime/J1–J4 journey acceptance and Jan open questions pending | Moves to `awaiting-review` when ENG-001 opens and Jan's open questions are resolved | `ENG-001` implementation_gate: open; `REV-002` human_decision: approved; all checks passed |
+| [Plan PLAN-INFRA — architecture, operating model and infrastructure](PLAN-INFRA.md) | active | M0–M2 | engineering + primary + sysadmin | Critical Release 1A | REL-01–06 open; routed-site/PG acceptance needs current evidence; CI/host activation separate | Truthful evidence, proportional validation, usable testing site | Child reliability plan REL-01–06/JAN-04; targeted checks and one candidate acceptance |
+| [Plan PLAN-WORKERS — worker, document/OCR and assignment workflows](PLAN-WORKERS.md) | active | M1A–M3 | product owner + engineering | Critical Release 1A | JAN-01–03 open; current normal login/role/core workflow acceptance incomplete | Jan core workflow; optional A1 excluded from required acceptance | Core browser + role/tenant + missing-data/correction checks; observed acceptance separate |
 | [2026-09-06-OCR-SHARED-CORE-LOCAL](2026-09-06-ocr-shared-core-local-web.md) | active | M3 | product engineering | Critical Release 1A (subordinate to PLAN-WORKERS) | None | Task OCR-CORE-1 through OCR-CORE-14 acceptance tests pass | Offline real OCR + document semantics; CLI/web parity; protected OcrRun derivatives; PostgreSQL concurrency and historical migration tests; broader M3 acceptance pending |
 | [Plan PLAN-INVOICE — accounting research and invoice ingestion foundation](PLAN-INVOICE.md) | active | M1B+ | product engineering + Czech/German accounting specialists | Parallel non-blocking | DEC-015 specialist sign-off pending; live capture gated by Integrity 1.3 | Provisional evidence corpus; synthetic in-memory ingestion/review/CSV boundary; no accounting behavior | `venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q`; DEC-015 before any persistence/adapters |
 | [Plan PLAN-LEGAL — data protection, market, and business validation](PLAN-LEGAL.md) | active | M1A–M6 | product owner + legal | Parallel non-blocking | None | Verified market/legal evidence; activation gate and operational procedures | Manual review of legal compliance checklist against real-data-rules |
@@ -26,35 +26,23 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | 2026-09-06-A1-EVIDENCE-STATUS-REPAIR (unpublished local material: `plans/2026-09-06-a1-evidence-status-repair.md`) | active | A1 operations | primary A1 production agent | Separate A1 operations (subordinate to PLAN-A1) | Bounded stabilization synthetic-accepted; authoritative reconciliation and promotion pending | A1-REPAIR-1 through A1-REPAIR-7 acceptance criteria met after repair and evidence reconciliation | Placeholder profiles rejected; canonical provisional restrictions enforced including validated_by_user; application vs certificate readiness distinct; cohort provenance uses opaque references; final artifact dependency-bound manifest |
 | [Plan PLAN-FREE-MODEL — bounded free-model evaluation, trace repair, and capsule isolation](PLAN-FREE-MODEL.md) | active | M0–M1A | primary agent; Codex integrates and accepts | Parallel tooling evidence | No live run until offline harness, fixtures, containment, and zero-cost preflight are green | Three repeated synthetic receipts per candidate; no model promoted, no skill activated | `venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py -q` |
 | 2026-09-06-FREE-VISION-PROVIDER-SAFETY (unpublished local material: `plans/2026-09-06-free-vision-provider-safety.md`) | planned | M1A–M2 | primary agent; Codex integrates and accepts | Parallel tooling evidence (subordinate to PLAN-FREE-MODEL) | None | FREE-VISION-1 through FREE-VISION-8 acceptance tests pass; zero-cost verified; AF2 lane separate | No paid endpoints; exact endpoint/model required; unknown pricing prohibits dispatch; AF2 and vision share quota where upstream limits shared; independent pool attempts within budget |
-| [Plan PLAN-WORKERS-MIGRATE-TO-DB — worker data from JSON/CSV to database](PLAN-WORKERS-MIGRATE-TO-DB.md) | planned | M2–M5 | product engineering + primary agent | Critical Release 1A (subordinate to PLAN-WORKERS) | Accepted cutover waits ENG-001, observed Release 1A acceptance and reconciled freeze evidence; synthetic seed/reproducer and fresh supervised bootstrap verified; synthetic input snapshots/exports implemented; synthetic J4 drafts and generation revisions implemented; BO access/visual confirmation implemented; field confirmation and identity resolution implemented; synthetic legacy-key reconciliation implemented; cohort/identity input bundles implemented; profile-bound publication/CLI implemented; case-level BO bundle access implemented; selected-cohort BO publication implemented; complete-input workflow checked; structured address entry in BO implemented; assignment/institution fact entry implemented; cold-start readiness checked; missing identity-fact entry implemented; sparse-input draft acceptance next | Shared service write path; reconciled legacy masters frozen after cutover; revision-bound compatibility exports remain allowed | DB-MIG-1 through DB-MIG-7 acceptance contracts; mapped-input round-trip and pinned synthetic PDF equivalence |
-| [Plan PLAN-REAL-DATA — real-data activation after Sprint 4 gates](PLAN-REAL-DATA.md) | active | M5 | product engineering + product owner + legal + sysadmin | Critical Release 1A | Sprint 1–3 → `ENG-001` → `REV-002` → Sprint 4 → `OPS-001`/`LEG-001`/`INF-001` → `REV-003`; Sprint 4 follows REV-002, not ENG-001 | Prerequisites and evidence defined; explicit operator/legal/sysadmin activation decision deferred | All Sprint 1–4 acceptance criteria green; `REV-003` approved in `planning/approvals.json` |
+| [Plan PLAN-WORKERS-MIGRATE-TO-DB — worker data from JSON/CSV to database](PLAN-WORKERS-MIGRATE-TO-DB.md) | planned | M2–M5 | engineering + primary | Core persistence now; legacy/A1 cutover separate | JAN-04 current PostgreSQL acceptance open; accepted legacy cutover separately gated | Durable core records; DB-MIG IDs retained without making PDF equivalence a core-v1 prerequisite | JAN-04 for core; scoped DB-MIG-1–7 for legacy/A1 cutover |
+| [Plan PLAN-REAL-DATA — scoped real-data activation](PLAN-REAL-DATA.md) | active | M5 | engineering + product owner + legal + sysadmin | Restricted pilot | JAN-03 scope reconciliation; OPS-001/LEG-001/INF-001 and REV-003 evidence/decisions remain scoped and unapproved by this checkpoint | Authorized protected core workflow, no official-PDF prerequisite | Existing §14 activation evidence plus scoped core acceptance |
 
-## Local automation design
+## Current bounded batch — 2026-09-14
 
-Local automation contract (consolidated 2026-09-08):
-[scan intake to worker database and A1 drafts](2026-09-08-local-a1-automation.md),
-with the [complete field mapping](../docs/architecture/release-1a-field-mapping.md).
-One editable source tree, fixed development/release paths, explicit data owners,
-fresh `runtime/portal/supervised-development/` DB, seed `--verify` and
-release reproduction precede remaining J2/J4 automation and DB-MIG-1 through
-DB-MIG-7 implementation. Shared intake, protected OCR derivatives, PostgreSQL
-concurrency and J4 stored artifacts already have committed synthetic evidence in
-the [delivery record](../docs/operations/git-delivery.md); current runtime and
-observed journey acceptance remain separate. Synthetic preparation is authorized;
-accepted cutover still follows ENG-001 and observed Release 1A acceptance. One-command processing keeps machine
-proposals separate from BO confirmation. AGENTS.md defines proportional checks and
-one delivery record. The 2026-09-09 evidence/priorities correction changes documentation only; parent statuses,
-the 34 top-level entries and registered approval/activation gates remain unchanged.
+[Delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md)
+is active under PLAN-INFRA and PLAN-WORKERS. REL-01–06 repair consolidation,
+evidence binding, selection/CI ownership and recurring workflow gaps; JAN-01–04
+deliver normal login, core worker/document/OCR/assignment use and PostgreSQL
+persistence. PILOT-01 is separately gated. Parallel file ownership and acceptance
+commands are in the child plan; these are child tasks, not new top-level catalog IDs.
 
-Implementation checkpoint, 2026-09-09: seed/reproducer repairs and bounded
-synthetic J2 inbox intake are implemented. Intake reuses shared services and saves
-durable identity evaluations and conditional unconfirmed worker drafts. Explicit
-resolution checks current sources and worker revisions; synthetic unverified A1
-generation and BO form integration are implemented. Validation and migration/publication state belong in
-the delivery record. Revision-bound 44-field input exports and assignment facts (0015) are implemented.
-Synthetic J4 generation now includes stable reservations and protected retry recovery.
-Generation revisions preserve numbers/packages across dependency changes. BO generation access and visual confirmation are implemented; field confirmation and identity association/conflict resolution are revision-checked; explicit synthetic legacy-key reconciliation is implemented; selected-cohort input bundles are implemented; profile-bound publication/CLI is implemented; case-level BO bundle access is implemented; selected-cohort BO publication is implemented; complete-input workflow checks pass; structured address entry in BO is implemented; assignment/institution fact entry is implemented; cold-start readiness is checked; missing identity-fact entry is implemented; sparse-input draft acceptance is next;
-existing catalog IDs, plan headers and cutover/activation approvals are unchanged.
+[Local automation](2026-09-08-local-a1-automation.md) remains a retained
+implementation/optional-A1 contract. Official A1 generation/issuance is outside v1;
+drafts are optional. Weekly budget remains unresolved. Current host acceptance is
+unverified at this checkpoint. JAN-03 reconciles machine/UI gate scope; historical
+human approvals and the shared §14 activation controls are not rewritten.
 
 ## Historical
 
