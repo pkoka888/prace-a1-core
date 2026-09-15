@@ -160,12 +160,18 @@ Chromium through the shipped frontend end-to-end:
   country_code)
 - assignment creation (facts filled incl. the verifiable `decin`
   institution profile)
-- A1 case preparation
-- `a1_draft_generate` form submission / prepared-auto path
-- protected PDF download (verified against the `%PDF-` magic)
+- protected PDF download (verified through the browser page fetch
+  against status, content type, exact size and exact SHA-256 against
+  the uploaded PNG; the `%PDF-` magic check and the assignment
+  correction stage apply to the `optional-a1` profile)
+
+The `optional-a1` profile (`--profile optional-a1`, exercised only by
+the separately scoped A1 regression) additionally drives:
+- A1 case preparation and `a1_draft_generate` form submission /
+  prepared-auto path
+- protected A1 PDF download (verified against the `%PDF-` magic)
 - correction: one assignment input fact edited through the shipped
-  form and verified to persist; the regenerated PDF is extracted
-  with pymupdf and must contain the corrected text
+  a1-inputs form and verified to persist
 - regeneration: a NEW A1 case prepared from the corrected snapshot;
   its PDF must differ from the first (new sha256) and the canonical
   generation input (`A1DraftGeneration.snapshot["row"]`) is queried
@@ -178,27 +184,34 @@ widening. HTMX is allowed to run; the templates provide `method="post"`
 and `action="."` so the browser's native submit path succeeds
 whether or not HTMX intercepts.
 
-The current extended rehearsal still includes A1 stages in its required set.
-This is an optional-A1 regression profile, not the core-v1 release definition.
-The core/optional-A1 profile separation is **partially implemented** (JAN-03):
-the working-tree persistence verifier accepts `--profile core|optional-a1`, but
-that separation is not yet validated or committed, and no proposed flag is
-advertised as working. A failing required stage still exits nonzero; do not
-relabel a failure as a skip.
+The journey defaults to the `core` profile (the Release 1A core-v1
+definition): A1 stages are intentionally skipped and a single explicit
+`a1_skipped` stage is recorded with `case_pk`/`regenerated_case_pk`
+null in the evidence. The `optional-a1` profile is the separately
+scoped A1 regression, not the core-v1 acceptance definition. The
+core/optional-A1 profile separation (JAN-03) is implemented and
+validated on the delivered working tree; the canonical persistence
+verifier (`scripts/rehearse_verify_persistence.py`) accepts
+`--profile core|optional-a1` and defaults to `core`. A failing
+required stage still exits nonzero; do not relabel a failure as a skip.
 `tests/document_web/test_browser_journey.py` independently exercises normal
 login/TOTP, protected upload, condition-based OCR refresh, native selection,
 confirmation, original download, tenant denial and logout. Its test-owned consumer
 uses the same processing primitive; the extended rehearsal exercises the separate
 worker command through Gunicorn. Neither SQLite run proves PostgreSQL acceptance.
 
-Known open defects from the 2026-09-15 review checkpoint (child plan): the OCR
-HTTP 500 and the protected-download mismatch (JAN-01/JAN-02, investigated
-separately, distinguishing authentication redirects from file corruption), and
-JAN-04 repairs — target forwarding, verified disposable cleanup, migration
-credential scope, effective statement timeout and restart verification of
-actual file bytes and exact records. Treat skill instructions here as the
-reconciliation reference against executable configuration, not as evidence
-that those defects are closed.
+Defect status from the 2026-09-15 review checkpoint and the delivered
+JAN work: the OCR HTTP 500 (JAN-01) has a working-tree SQLite mitigation
+(`journal_mode=WAL`, `transaction_mode=IMMEDIATE`, busy timeout) that
+removed 500s from three consecutive journeys, but a bounded run set is
+not a statistical fix claim. The protected-download byte mismatch
+(JAN-02) was an authentication-redirect artifact in the journey helper
+and is fixed by fetching through the real browser page. JAN-04 repairs
+remain open — target forwarding, verified disposable cleanup, migration
+credential scope, effective statement timeout and restart verification
+of actual file bytes and exact records. Treat skill instructions here as
+the reconciliation reference against executable configuration, not as
+evidence that PostgreSQL acceptance is closed.
 
 ## Sparse-input evidence path
 
@@ -321,7 +334,8 @@ recovery steps) and hands it to the operator. Local synthetic
 implementation does not require a running cluster.
 
 After the documented `prepare → provision → start → workflow`
-journey, run the canonical acceptance script:
+journey, run the canonical acceptance script (core profile by default,
+matching the default `workflow` journey):
 
 ```bash
 venv/bin/python scripts/rehearse_verify_persistence.py
@@ -334,7 +348,9 @@ assignment and document-bytes checks; `--profile optional-a1` additionally
 verifies A1 case rows and artifact bytes on disk. When the PostgreSQL target
 is unavailable it exits 2
 (`PERSISTENCE_ACCEPTANCE_BLOCKED`) so the operator can distinguish a
-transport failure from a data mismatch.
+transport failure from a data mismatch. A verified core run does not
+prove PostgreSQL acceptance (JAN-04 remains open) and does not skip the
+restart byte/record checks.
 
 ## Avoid
 
