@@ -228,7 +228,97 @@ if _budget_raw:
             f"PRACE_READINESS_BUDGET_MS={PRACE_READINESS_BUDGET_MS} outside 100-60000"
         )
 
+# Optional operator URL for routed acceptance. When set, the application
+# treats this as the canonical operator-facing URL independently of the
+# local gunicorn bind. This allows the operator to exercise the actual
+# proxy, cookies and login path without cookie injection.
+_operator_url_raw = os.environ.get("PRACE_OPERATOR_URL", "").strip()
+if _operator_url_raw:
+    if not _operator_url_raw.startswith("https://") and not _operator_url_raw.startswith("http://"):
+        raise ImproperlyConfigured(
+            f"PRACE_OPERATOR_URL must be an absolute URL (got {_operator_url_raw!r})"
+        )
+    PRACE_OPERATOR_URL = _operator_url_raw
+
+# Configurable migration statement timeout. Runtime uses a separate
+# shorter timeout; migrations use this longer command-scoped value.
+# The value must be a positive integer; cluster-wide defaults are never changed.
+_migration_timeout_raw = os.environ.get("PRACE_MIGRATION_STATEMENT_TIMEOUT_MS", "").strip()
+if _migration_timeout_raw:
+    try:
+        _migration_timeout = int(_migration_timeout_raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(
+            f"PRACE_MIGRATION_STATEMENT_TIMEOUT_MS={_migration_timeout_raw!r} must be a positive integer"
+        ) from exc
+    if _migration_timeout <= 0:
+        raise ImproperlyConfigured(
+            f"PRACE_MIGRATION_STATEMENT_TIMEOUT_MS={_migration_timeout} must be positive"
+        )
+    PRACE_MIGRATION_STATEMENT_TIMEOUT_MS = _migration_timeout
+else:
+    PRACE_MIGRATION_STATEMENT_TIMEOUT_MS = 60000
+
+# Runtime statement timeout (default 500 ms). This is the per-session
+# timeout for normal web/worker requests. It is distinct from the
+# migration timeout above.
+_runtime_timeout_raw = os.environ.get("PRACE_RUNTIME_STATEMENT_TIMEOUT_MS", "").strip()
+if _runtime_timeout_raw:
+    try:
+        _runtime_timeout = int(_runtime_timeout_raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(
+            f"PRACE_RUNTIME_STATEMENT_TIMEOUT_MS={_runtime_timeout_raw!r} must be a positive integer"
+        ) from exc
+    if _runtime_timeout <= 0:
+        raise ImproperlyConfigured(
+            f"PRACE_RUNTIME_STATEMENT_TIMEOUT_MS={_runtime_timeout} must be positive"
+        )
+    PRACE_RUNTIME_STATEMENT_TIMEOUT_MS = _runtime_timeout
+else:
+    PRACE_RUNTIME_STATEMENT_TIMEOUT_MS = 500
+
+# Test isolation: the deprecated PRACE_TEST_DB_* mechanism is no longer
+# accepted. Use DOCUMENT_TEST_PG_* (set in
+# portal/settings_document_tests.py) for isolated test targets instead.
+# The application settings module must never build a test database
+# configuration that could be mistaken for the operator database.
+_deprecated_test_present = [
+    _n for _n, _v in (
+        ("PRACE_TEST_DB_NAME", os.environ.get("PRACE_TEST_DB_NAME", "").strip()),
+        ("PRACE_TEST_DB_USER", os.environ.get("PRACE_TEST_DB_USER", "").strip()),
+        ("PRACE_TEST_DB_HOST", os.environ.get("PRACE_TEST_DB_HOST", "").strip()),
+        ("PRACE_TEST_DB_PORT", os.environ.get("PRACE_TEST_DB_PORT", "").strip()),
+    ) if _v
+]
+if _deprecated_test_present:
+    raise ImproperlyConfigured(
+        "PRACE_TEST_DB_* is deprecated; use DOCUMENT_TEST_PG_* for isolated test "
+        "targets. Set DOCUMENT_TEST_PG_SOCKET or DOCUMENT_TEST_PG_NAME instead."
+    )
+PRACE_TEST_DATABASES = None
+
 PRACE_RELEASE_MANIFEST_SHA256 = _manifest_sha256_raw
+
+# Command-scoped migration credentials. When set, these replace only the
+# database user and password used during ``manage.py migrate`` sessions.
+# The host, database name and schema remain those of the selected
+# PRACE_DB_* application target. When omitted, migration uses the same
+# PRACE_DB_USER/PRACE_DB_PASSWORD as the runtime. These are not used for
+# the runtime DATABASES config consumed by the web application, OCR worker
+# or readiness checks.
+_migration_user = os.environ.get("PRACE_MIGRATION_DB_USER", "").strip()
+_migration_password = os.environ.get("PRACE_MIGRATION_DB_PASSWORD", "")
+if _migration_user:
+    if not _migration_password:
+        raise ImproperlyConfigured(
+            "PRACE_MIGRATION_DB_PASSWORD is required when PRACE_MIGRATION_DB_USER is set"
+        )
+    MIGRATION_DATABASE_USER = _migration_user
+    MIGRATION_DATABASE_PASSWORD = _migration_password
+else:
+    MIGRATION_DATABASE_USER = None
+    MIGRATION_DATABASE_PASSWORD = None
 
 # Security posture
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -274,16 +364,19 @@ if _inbox_org or _inbox_actor:
 
 # Database: confined SQLite by default; PostgreSQL when all four DB_* are set
 if _db_present:
+    # The migration path uses MIGRATION_DATABASE_USER/PASSWORD when set;
+    # the runtime path always uses the PRACE_DB_* credentials.
+    _using_migration_credentials = bool(MIGRATION_DATABASE_USER)
     _db_conf = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": _db_name,
-        "USER": _db_user,
-        "PASSWORD": _db_password,
+        "USER": MIGRATION_DATABASE_USER if _using_migration_credentials else _db_user,
+        "PASSWORD": MIGRATION_DATABASE_PASSWORD if _using_migration_credentials else _db_password,
         "HOST": _db_host,
         "PORT": str(_db_port),
         "CONN_MAX_AGE": 60,
     }
-    _db_opts = {"connect_timeout": 1, "options": "-c statement_timeout=500"}
+    _db_opts = {"connect_timeout": 1, "options": f"-c statement_timeout={PRACE_RUNTIME_STATEMENT_TIMEOUT_MS}"}
     if _db_sslmode:
         _db_opts["sslmode"] = _db_sslmode
     if _db_sslrootcert:
@@ -296,7 +389,17 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": str(_runtime_root / "db.sqlite3"),
-            "OPTIONS": {"timeout": 0.5},
+            # The OCR worker writes to the same database while gunicorn
+            # serves requests; a short busy timeout turns that write race
+            # into spurious "database is locked" 500s. Per Django's
+            # documented SQLite concurrency guidance, raise the busy
+            # timeout, take write transactions IMMEDIATEly and use WAL
+            # journaling so readers do not block on the OCR writer.
+            "OPTIONS": {
+                "timeout": 20,
+                "transaction_mode": "IMMEDIATE",
+                "init_command": "PRAGMA journal_mode=WAL;",
+            },
         }
     }
 
@@ -327,6 +430,10 @@ LOGGING = {
     "root": {"handlers": ["file"], "level": "INFO"},
     "loggers": {
         "django.db.backends": {"level": "WARNING", "handlers": ["file"], "propagate": False},
+        # With DEBUG=False Django handles unhandled view exceptions itself,
+        # so gunicorn never sees the traceback; it is emitted only through
+        # the django.request logger. Capture it so 500s are diagnosable.
+        "django.request": {"level": "ERROR", "handlers": ["file"], "propagate": False},
     },
 }
 

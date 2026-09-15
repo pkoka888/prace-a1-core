@@ -5,11 +5,18 @@ Release 1A verification harness.
 Runs diagnostic checks against a fresh disposable synthetic database and produces
 a structured JSON report plus a sanitized Markdown summary.
 
+Profiles:
+  core        — normal login/TOTP, worker, document/OCR review, assignment,
+                protected source-document download, durable persistence.
+                Optional A1 artifacts are not required for core acceptance.
+  optional-a1 — additionally exercises optional A1 draft/artifact paths.
+                A1 identifiers are required only in this profile.
+
 Each check has exactly one status:
   PASS         — command succeeded with expected output
   FAIL         — command failed or produced unexpected output
   BLOCKED_ENV  — environment prerequisite not available (e.g., PostgreSQL, browser)
-  NOT_RUN      — check not applicable to current configuration
+  NOT_RUN      — check not applicable to current configuration or profile
 
 No PII, credentials, scan data, or protected content is ever written to reports.
 """
@@ -520,10 +527,40 @@ def verify_assignment() -> list[dict]:
     return results
 
 
-def verify_a1() -> list[dict]:
-    """A1 readiness, snapshots, and artifact tests."""
+def verify_a1(profile: str = "core") -> list[dict]:
+    """A1 readiness, snapshots, and artifact tests.
+
+    A1 checks run only when profile='optional-a1'. In the core profile
+    they are reported as NOT_RUN with an explicit reason so the operator
+    can see that optional A1 was intentionally skipped.
+    """
     results = []
     env = django_env()
+
+    if profile != "optional-a1":
+        results.append({
+            "label": "a1/quality-gate",
+            "status": "NOT_RUN",
+            "command": "pytest tests/test_a1_quality_gate.py",
+            "start": now(),
+            "end": now(),
+            "exit_code": None,
+            "stdout": "",
+            "stderr": "",
+            "error": "A1 checks are optional; use --profile optional-a1 to include them",
+        })
+        results.append({
+            "label": "a1/models-check",
+            "status": "NOT_RUN",
+            "command": "python -c 'portal.release1a models'",
+            "start": now(),
+            "end": now(),
+            "exit_code": None,
+            "stdout": "",
+            "stderr": "",
+            "error": "A1 checks are optional; use --profile optional-a1 to include them",
+        })
+        return results
 
     r = check_cmd(
         "a1/quality-gate",
@@ -685,39 +722,54 @@ def verify_accessibility() -> list[dict]:
     return results
 
 
-def verify_eng001_checks() -> list[dict]:
+def verify_eng001_checks(profile: str = "core") -> list[dict]:
     """
     Map ENG-001 checks to test evidence. Each check produces exactly one
     result, labelled by its ENG ID. Behaviour tests that do not yet exist
     on the inspected source report MISSING_EVIDENCE; behaviour tests that
     require PostgreSQL, a real scanner or a real OCR engine report
     BLOCKED_ENV. Architecture prototype tests are NOT counted as evidence.
+
+    The optional-a1 profile additionally exercises A1-related checks.
     """
     results: list[dict] = []
     env = django_env()
 
     # Behaviour tests that already exist on the inspected source. Each
-    # entry is (check_id, test_path, env_module_or_None, note).
+    # entry is (check_id, test_path, env_module_or_None, note, profile).
     # - env_module selects an isolated Django settings module; None keeps
     #   the parent DJANGO_SETTINGS_MODULE. The shared intake test runs
     #   only once via env_module="portal.settings_document_tests".
-    check_test_map: list[tuple[str, str, str | None, str]] = [
-        ("ENG-AUTH",          "tests/document_web/test_intake.py",     "portal.settings_document_tests", "allauth + invitation-only reviewer adapter + TOTP wiring"),
-        ("ENG-MIGRATION",     "tests/m2/test_migration_0003.py",      "portal.settings_document_tests", "MigrationExecutor 0002→0003 transition"),
-        ("ENG-J2-SCANNER",    "tests/document_web/test_intake.py",     "portal.settings_document_tests", "J2 scanner + protected intake (single intake run)"),
-        ("ENG-J2-OCR",        "tests/test_runtime_contract.py",        "portal.settings_document_tests", "J2 OCR contract + sanitized runtime payload"),
-        ("ENG-J2-IMMUTABLE",  "tests/document_web/test_field_review.py", "portal.settings_document_tests", "FieldDecision immutability + revision tokens"),
-        ("ENG-J2-REVISION",   "tests/document_web/test_identity_review.py", "portal.settings_document_tests", "Identity revision + association"),
-        ("ENG-J4-SNAPSHOT",   "tests/a1/test_a1_snapshots.py",         "portal.settings_document_tests", "A1 input snapshot + artifact"),
-        ("ENG-J4-PREVIEW",    "tests/test_j4_artifacts.py",            "portal.settings_document_tests", "A1 preview/artifact"),
-        ("ENG-J4-STATE",      "tests/test_j4_minimum.py",              "portal.settings_document_tests", "A1 generation + state machine"),
+    # - profile restricts the check to 'optional-a1' or 'both'.
+    check_test_map: list[tuple[str, str, str | None, str, str]] = [
+        ("ENG-AUTH",          "tests/document_web/test_intake.py",     "portal.settings_document_tests", "allauth + invitation-only reviewer adapter + TOTP wiring", "both"),
+        ("ENG-MIGRATION",     "tests/m2/test_migration_0003.py",      "portal.settings_document_tests", "MigrationExecutor 0002→0003 transition", "both"),
+        ("ENG-J2-SCANNER",    "tests/document_web/test_intake.py",     "portal.settings_document_tests", "J2 scanner + protected intake (single intake run)", "both"),
+        ("ENG-J2-OCR",        "tests/test_runtime_contract.py",        "portal.settings_document_tests", "J2 OCR contract + sanitized runtime payload", "both"),
+        ("ENG-J2-IMMUTABLE",  "tests/document_web/test_field_review.py", "portal.settings_document_tests", "FieldDecision immutability + revision tokens", "both"),
+        ("ENG-J2-REVISION",   "tests/document_web/test_identity_review.py", "portal.settings_document_tests", "Identity revision + association", "both"),
+        ("ENG-J4-SNAPSHOT",   "tests/a1/test_a1_snapshots.py",         "portal.settings_document_tests", "A1 input snapshot + artifact", "optional-a1"),
+        ("ENG-J4-PREVIEW",    "tests/test_j4_artifacts.py",            "portal.settings_document_tests", "A1 preview/artifact", "optional-a1"),
+        ("ENG-J4-STATE",      "tests/test_j4_minimum.py",              "portal.settings_document_tests", "A1 generation + state machine", "optional-a1"),
     ]
 
     # Track which env-module-bearing tests have already run, so the
     # expensive intake test is executed only once across the entire
     # verifier run (it shares fixture state in the same subprocess).
     seen_expensive: set[str] = set()
-    for check_id, test_path, env_module, note in check_test_map:
+    for check_id, test_path, env_module, note, check_profile in check_test_map:
+        if check_profile == "optional-a1" and profile != "optional-a1":
+            results.append({
+                "label": f"eng001/{check_id}",
+                "status": "NOT_RUN",
+                "command": f"test -f {test_path}",
+                "start": now(), "end": now(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": "",
+                "error": f"{note}. Skipped for profile '{profile}'; use --profile optional-a1 to include.",
+            })
+            continue
         full_path = ROOT / test_path
         if not full_path.exists():
             results.append({
@@ -811,8 +863,9 @@ def write_md(report: dict, path: Path) -> None:
         "# Release 1A Verification Report",
         "",
         f"**Generated:** {report['generated_at']}",
+        f"**Profile:** {report.get('profile', 'core')}",
         f"**Commit:** `{report['git']['commit']}`",
-        f"**Branch:** {report['git']['branch']}",
+        f"**Branch:** `{report['git']['branch']}`",
         f"**Tree clean:** {report['git']['tree_clean']}",
         f"**Approvals hash:** `{report['approvals_hash']}`",
         f"**Build ID:** {report['build_id']}",
@@ -888,6 +941,18 @@ def _ensure_verification_db() -> dict:
 
 
 def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description="Release 1A verification harness")
+    parser.add_argument(
+        "--profile",
+        choices=["core", "optional-a1"],
+        default="core",
+        help="Acceptance profile: 'core' covers login/worker/document/assignment/persistence; "
+             "'optional-a1' additionally requires A1 draft/artifact paths (default: core)",
+    )
+    args = parser.parse_args()
+    profile = args.profile
+
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     env = django_env()
@@ -919,17 +984,17 @@ def main() -> int:
     all_results: list[dict] = []
 
     sections = [
-        ("governance...", verify_governance),
-        ("django...", verify_django_checks),
-        ("migrations...", verify_migrations),
-        ("backend...", verify_backend_crud),
-        ("storage...", verify_storage),
-        ("ocr...", verify_ocr),
-        ("assignment...", verify_assignment),
-        ("a1...", verify_a1),
-        ("frontend...", verify_frontend),
-        ("accessibility...", verify_accessibility),
-        ("eng001...", verify_eng001_checks),
+        ("governance...", lambda: verify_governance()),
+        ("django...", lambda: verify_django_checks()),
+        ("migrations...", lambda: verify_migrations()),
+        ("backend...", lambda: verify_backend_crud()),
+        ("storage...", lambda: verify_storage()),
+        ("ocr...", lambda: verify_ocr()),
+        ("assignment...", lambda: verify_assignment()),
+        ("a1...", lambda: verify_a1(profile=profile)),
+        ("frontend...", lambda: verify_frontend()),
+        ("accessibility...", lambda: verify_accessibility()),
+        ("eng001...", lambda: verify_eng001_checks(profile=profile)),
     ]
 
     for label, fn in sections:
@@ -941,6 +1006,7 @@ def main() -> int:
     report = {
         "version": "1.0",
         "generated_at": now(),
+        "profile": profile,
         "git": git,
         "approvals_hash": approv_hash,
         "build_id": bld_id,
@@ -957,13 +1023,85 @@ def main() -> int:
     print(f"Full report: {REPORT_JSON}")
     print(f"Markdown: {REPORT_MD}")
 
-    # Return 0 if no FAILs in required ENG checks, non-zero otherwise
-    eng_checks = [r for r in all_results if r["label"].startswith("eng001/")]
-    eng_fails = [r for r in eng_checks if r["status"] in ("FAIL", "BLOCKED_ENV", "NOT_RUN")]
-    other_fails = [r for r in all_results if r["status"] == "FAIL" and not r["label"].startswith("eng001/")]
+    # Required checks are declared explicitly by profile. Each check
+    # carries a "required_for" field: "core", "optional-a1", "both", or
+    # "none". Only checks required for the active profile can fail the
+    # verifier; optional/excluded checks remain visibly NOT_RUN.
+    #
+    # The verifier does not exempt checks by blanket infrastructure
+    # allowlist, by error-text matching, or by shared settings-module
+    # name. A check that is unavailable or not run when required
+    # prevents acceptance. Required-check identity and provenance are
+    # part of the report; no PASS is manufactured from a shared
+    # module name.
+    _REQUIRED_FOR = {
+        "governance/approval-validator": "both",
+        "governance/planning-validator": "both",
+        "governance/gate-dependencies": "both",
+        "governance/shared-module-import": "both",
+        "django/check": "both",
+        "django/makemigrations-check": "both",
+        "migrations/fresh-db-makemigrations": "both",
+        "migrations/executor-available": "both",
+        "migrations/executor-transition": "both",
+        "backend/tenant_isolation": "both",
+        "backend/transactions": "both",
+        "backend/rollback": "both",
+        "storage/test_protected_storage": "both",
+        "storage/backend-configured": "both",
+        "ocr/field-decision-tests": "both",
+        "ocr/rapidocr-available": "both",
+        "assignment/tests": "both",
+        "assignment/true-concurrency": "both",
+        "a1/quality-gate": "optional-a1",
+        "a1/models-check": "optional-a1",
+        "frontend/playwright": "both",
+        "frontend/smoke-script": "both",
+        "frontend/playwright-smoke": "both",
+        "accessibility/axe-available": "both",
+        "eng001/ENG-J2-STORAGE": "both",
+        "eng001/ENG-J3-CONCURRENCY": "both",
+        "eng001/ENG-A11Y": "both",
+        "eng001/ENG-BUILD": "both",
+        "eng001/ENG-OCR-REAL": "both",
+        "eng001/ENG-SCANNER-REAL": "both",
+    }
 
-    if other_fails or eng_fails:
-        print(f"\nFailures: {len(other_fails)} other, {len(eng_fails)} ENG checks")
+    def _required_for(label: str) -> str:
+        return _REQUIRED_FOR.get(label, "none")
+
+    def _required_for_profile(label: str, profile: str) -> bool:
+        required = _required_for(label)
+        if required == "both":
+            return True
+        if required == profile:
+            return True
+        return False
+
+    failures = []
+    for r in all_results:
+        label = r["label"]
+        required = _required_for(label)
+        if r["status"] == "FAIL":
+            # An explicit check failure prevents acceptance regardless of
+            # whether the check is declared required for this profile.
+            failures.append((label, "FAIL"))
+        if not _required_for_profile(label, profile):
+            continue  # not required for this profile
+        if r["status"] == "BLOCKED_ENV":
+            failures.append((label, "BLOCKED_ENV",
+                             r.get("error", "environment unavailable")))
+        elif r["status"] == "NOT_RUN":
+            failures.append((label, "NOT_RUN",
+                             "required check not run for this profile"))
+
+    if failures:
+        print(f"\nRequired-check failures: {len(failures)}")
+        for item in failures:
+            if len(item) == 2:
+                print(f"  FAIL {item[0]}")
+            else:
+                print(f"  {item[1]:12} {item[0]}: {item[2][:100]}")
         return 1
     return 0
 

@@ -31,6 +31,27 @@ failed; the Gunicorn systemd unit was failed while separate Gunicorn processes
 carried no PostgreSQL target variables. Application-side defects and
 infrastructure reconciliation are both open; neither subsumes the other.
 
+Status after the 2026-09-16 investigations (see
+[git-delivery.md](../docs/operations/git-delivery.md)):
+
+- **JAN-01** — the OCR `OCR_STATUS_HTTP_500` is a genuine server 500 (write
+  contention under gunicorn + SQLite), not an authentication redirect. The
+  supervised-settings mitigation (`WAL`, `IMMEDIATE` writes, busy timeout 20)
+  is in effect and three consecutive full journeys produced zero 500s; the
+  historical reproduction was flaky, so this stays an investigation/mitigation
+  record, not a statistical fix claim.
+- **JAN-02** — the protected-download "bytes differ" failure was an
+  authentication-redirect artifact, not file corruption. Page-context fetch
+  served the exact uploaded PNG bytes (200, `image/png`, 36462 B, matching
+  `Document.sha256`, `document.downloaded` audited), while Playwright's
+  `APIRequestContext` drops the `Secure` session cookie over plain loopback
+  HTTP and silently followed the login redirect (200 HTML). Stage 9c now
+  fetches through the real browser session and asserts status, non-HTML type,
+  exact size and SHA-256; the canonical workflow test passes (core profile).
+- **JAN-03** — core/optional-A1 profile separation verified end-to-end at
+  runtime: core requires only its non-A1 stage set and records `a1_skipped`;
+  optional-A1 exercises the full A1 stages.
+
 Execution order: application repairs (JAN-01–JAN-04) and sysadmin
 reconciliation (INFRA-PG-01) proceed independently; then one committed-source
 core acceptance run; then Jan's observed use. Nothing in this checkpoint

@@ -219,18 +219,77 @@ class TestVerifierExitCode:
         monkeypatch.setattr(verifier, "_ensure_verification_db", lambda: {"status": "PASS"})
         for name in ("verify_governance", "verify_django_checks", "verify_migrations",
                      "verify_backend_crud", "verify_storage", "verify_ocr", "verify_assignment",
-                     "verify_a1", "verify_frontend"):
+                     "verify_frontend"):
             monkeypatch.setattr(verifier, name, lambda: [])
+        monkeypatch.setattr(verifier, "verify_a1", lambda profile="core": [])
         monkeypatch.setattr(verifier, "verify_accessibility", lambda: [
             {"label": "accessibility/axe", "status": "FAIL", "error": "stale synthetic receipt"}])
-        monkeypatch.setattr(verifier, "verify_eng001_checks", lambda: [
+        monkeypatch.setattr(verifier, "verify_eng001_checks", lambda profile="core": [
             {"label": "eng001/synthetic", "status": "PASS"}])
         # Guard against accidental future subprocess re-entry.
         monkeypatch.setattr(subprocess, "run", lambda *a, **kw: pytest.fail("no subprocess in verifier unit test"))
+        monkeypatch.setattr(sys, "argv", ["release_verifier.py"])
         assert verifier.main() == 1
         report = json.loads((tmp_path / "report.json").read_text())
         assert report["summary"]["FAIL"] == 1
         assert report["checks"][0]["label"] == "accessibility/axe"
+
+    def test_verifier_fails_when_required_check_blocked_env(self, tmp_path, monkeypatch):
+        """BLOCKED_ENV on a profile-required check prevents acceptance."""
+        from scripts import release_verifier as verifier
+        monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "portal.settings_document_tests")
+        monkeypatch.setattr(verifier, "django_env", lambda: {})
+        monkeypatch.setattr(verifier, "REPORT_DIR", tmp_path)
+        monkeypatch.setattr(verifier, "REPORT_JSON", tmp_path / "report.json")
+        monkeypatch.setattr(verifier, "REPORT_MD", tmp_path / "report.md")
+        monkeypatch.setattr(verifier, "git_info", lambda: {"commit": "synthetic", "branch": "synthetic", "tree_clean": True})
+        monkeypatch.setattr(verifier, "approvals_hash", lambda: "a" * 64)
+        monkeypatch.setattr(verifier, "build_id", lambda: "synthetic")
+        monkeypatch.setattr(verifier, "_ensure_verification_db", lambda: {"status": "PASS"})
+        for name in ("verify_governance", "verify_django_checks", "verify_migrations",
+                     "verify_backend_crud", "verify_storage", "verify_ocr", "verify_assignment",
+                     "verify_frontend", "verify_accessibility"):
+            monkeypatch.setattr(verifier, name, lambda: [])
+        monkeypatch.setattr(verifier, "verify_a1", lambda profile="core": [])
+        monkeypatch.setattr(verifier, "verify_eng001_checks", lambda profile="core": [
+            {"label": "eng001/ENG-J2-STORAGE", "status": "BLOCKED_ENV",
+             "error": "PostgreSQL-only evidence"},
+        ])
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: pytest.fail("no subprocess in verifier unit test"))
+        monkeypatch.setattr(sys, "argv", ["release_verifier.py"])
+        # Required check unavailable: must exit 1 even though it is a
+        # known infrastructure gap, not a test failure.
+        assert verifier.main() == 1
+
+    def test_verifier_tolerates_blocked_env_for_non_required_check(self, tmp_path, monkeypatch):
+        """BLOCKED_ENV on a check not required for the profile stays visible but exits 0."""
+        from scripts import release_verifier as verifier
+        monkeypatch.setenv("DJANGO_SETTINGS_MODULE", "portal.settings_document_tests")
+        monkeypatch.setattr(verifier, "django_env", lambda: {})
+        monkeypatch.setattr(verifier, "REPORT_DIR", tmp_path)
+        monkeypatch.setattr(verifier, "REPORT_JSON", tmp_path / "report.json")
+        monkeypatch.setattr(verifier, "REPORT_MD", tmp_path / "report.md")
+        monkeypatch.setattr(verifier, "git_info", lambda: {"commit": "synthetic", "branch": "synthetic", "tree_clean": True})
+        monkeypatch.setattr(verifier, "approvals_hash", lambda: "a" * 64)
+        monkeypatch.setattr(verifier, "build_id", lambda: "synthetic")
+        monkeypatch.setattr(verifier, "_ensure_verification_db", lambda: {"status": "PASS"})
+        for name in ("verify_governance", "verify_django_checks", "verify_migrations",
+                     "verify_backend_crud", "verify_storage", "verify_ocr", "verify_assignment",
+                     "verify_frontend", "verify_accessibility"):
+            monkeypatch.setattr(verifier, name, lambda: [])
+        monkeypatch.setattr(verifier, "verify_a1", lambda profile="core": [])
+        monkeypatch.setattr(verifier, "verify_eng001_checks", lambda profile="core": [
+            {"label": "eng001/synthetic", "status": "BLOCKED_ENV",
+             "error": "Requires real Chromium"},
+        ])
+        monkeypatch.setattr(subprocess, "run", lambda *a, **kw: pytest.fail("no subprocess in verifier unit test"))
+        monkeypatch.setattr(sys, "argv", ["release_verifier.py"])
+        # Optional blocked check remains visibly BLOCKED_ENV in the report
+        # without blocking the profile.
+        assert verifier.main() == 0
+        report = json.loads((tmp_path / "report.json").read_text())
+        blocked = [c for c in report["checks"] if c["label"] == "eng001/synthetic"]
+        assert blocked and blocked[0]["status"] == "BLOCKED_ENV"
 
 
 class TestApprovalValidators:

@@ -301,7 +301,8 @@
         "tests/test_rehearse_synthetic_site_lifecycle.py",
         "tests/test_rehearse_workflow.py",
         "tests/_rehearse_workflow_browser.py",
-        "tests/_rehearse_workflow_data_path.py"
+        "tests/_rehearse_workflow_data_path.py",
+        "tests/test_persistence_verifier.py"
       ],
       "checks": [
         "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_ocr_worker_lifecycle.py -q"

@@ -21,6 +21,9 @@
 #   PRACE_REHEARSE_TIMEOUT    — start/stop wait seconds (default 30)
 #   PRACE_RUNTIME_ROOT        — override the runtime root
 #   PRACE_READINESS_BUDGET_MS — readiness subprocess budget (default 10000)
+#   PRACE_MIGRATION_STATEMENT_TIMEOUT_MS — migrate statement timeout (default 60000)
+#   PRACE_OPERATOR_URL        — canonical operator-facing URL (optional)
+#   PRACE_TEST_DB_*           — isolated test database target (optional)
 #
 # Exit codes:
 #   0  success
@@ -324,12 +327,14 @@ cmd_migrate() {
         echo "FAIL: $MANIFEST_SHA_FILE missing or empty. Run 'prepare' first." >&2
         exit 1
     fi
+    local migration_timeout="${PRACE_MIGRATION_STATEMENT_TIMEOUT_MS:-60000}"
     PRACE_RELEASE_MANIFEST_SHA256="$sha" \
     DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
     PRACE_RUNTIME_ROOT="$RUNTIME_ROOT" \
     PRACE_SECRET_KEY="$PRACE_SECRET_KEY" \
     PRACE_RELEASE_MANIFEST="$MANIFEST_PATH" \
     PRACE_ALLOWED_HOSTS="$PRACE_ALLOWED_HOSTS" \
+    PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="$migration_timeout" \
     "$PYTHON_BIN" manage.py migrate --noinput
     # Re-assert private mode on the database after Django's create.
     chmod 0600 "$RUNTIME_DB_PATH" 2>/dev/null || true
@@ -768,6 +773,12 @@ cmd_workflow() {
     fi
     cd "$REPO_ROOT"
     local hostport="$BIND"
+    local base_url
+    if [ -n "${PRACE_OPERATOR_URL:-}" ]; then
+        base_url="$PRACE_OPERATOR_URL"
+    else
+        base_url="http://$hostport"
+    fi
     if ! verify_pid_ownership "$(cat "$PIDFILE")"; then
         echo "FAIL: workflow requires the owned rehearsal server" >&2
         exit 7
@@ -776,12 +787,30 @@ cmd_workflow() {
     local journey_tmp="$RUNTIME_ROOT/tmp/workflow-$$"
     mkdir -p "$journey_tmp"
     chmod 700 "$journey_tmp"
+    local profile="core"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --profile)
+                profile="$2"
+                shift 2
+                ;;
+            *)
+                echo "FAIL: unknown workflow option $1" >&2
+                exit 7
+                ;;
+        esac
+    done
+    if [ "$profile" != "core" ] && [ "$profile" != "optional-a1" ]; then
+        echo "FAIL: --profile must be 'core' or 'optional-a1' (got $profile)" >&2
+        exit 7
+    fi
     local rc=0
     PYTHONPATH="$REPO_ROOT:$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
     "$PYTHON_BIN" "$REPO_ROOT/tests/_rehearse_workflow_browser.py" \
-        --base-url "http://$hostport" \
+        --base-url "$base_url" \
         --runtime-root "$RUNTIME_ROOT" \
-        --tmpdir "$journey_tmp" || rc=$?
+        --tmpdir "$journey_tmp" \
+        --profile "$profile" || rc=$?
     if [ "$rc" != "0" ]; then
         echo "FAIL: workflow journey exited with $rc" >&2
         exit 7
@@ -842,7 +871,7 @@ Commands:
   logs                   Tail the gunicorn log
   smoke                  Strict HTTP smoke via scripts/smoke_probe.py
   provision              Create a synthetic operator + organization + MFA
-  workflow               Run an end-to-end authenticated session (uses provision)
+  workflow [--profile core|optional-a1]  Run an end-to-end authenticated session (uses provision)
   rollback               Stop the server; the operator removes the runtime root manually
 EOF
 }

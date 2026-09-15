@@ -459,3 +459,215 @@ def test_synthetic_cookie_override_is_explicit_and_email_stays_local(monkeypatch
     assert proc.returncode == 0, proc.stderr
     assert "COOKIES=" + expected in proc.stdout
     assert "EMAIL=django.core.mail.backends.locmem.EmailBackend" in proc.stdout
+
+
+class TestMigrationTimeout:
+    def test_default_is_60000(self):
+        env = _valid_env()
+        proc = _import_with(env)
+        assert proc.returncode == 0, proc.stderr
+        assert "ENGINE=django.db.backends.postgresql" not in proc.stdout  # no DB by default
+        # Verify the setting exists with the default when no DB is configured
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('MIGRATION_TIMEOUT=' + str(getattr(s, 'PRACE_MIGRATION_STATEMENT_TIMEOUT_MS', 'missing')))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "MIGRATION_TIMEOUT=60000" in result.stdout
+
+    def test_positive_integer_accepted(self):
+        env = _valid_env(PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="120000")
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('MIGRATION_TIMEOUT=' + str(s.PRACE_MIGRATION_STATEMENT_TIMEOUT_MS))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "MIGRATION_TIMEOUT=120000" in result.stdout
+
+    def test_zero_rejected(self):
+        _assert_failure(
+            _import_with(_valid_env(PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="0")),
+            "positive",
+        )
+
+    def test_negative_rejected(self):
+        _assert_failure(
+            _import_with(_valid_env(PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="-1")),
+            "positive",
+        )
+
+    def test_non_integer_rejected(self):
+        _assert_failure(
+            _import_with(_valid_env(PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="abc")),
+            "integer",
+        )
+
+
+class TestOperatorUrl:
+    def test_unset_ok(self):
+        env = _valid_env()
+        proc = _import_with(env)
+        assert proc.returncode == 0
+
+    def test_valid_https_sets_attribute(self):
+        env = _valid_env(PRACE_OPERATOR_URL="https://portal.example.com")
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('OPERATOR_URL=' + getattr(s, 'PRACE_OPERATOR_URL', 'missing'))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "OPERATOR_URL=https://portal.example.com" in result.stdout
+
+    def test_http_accepted(self):
+        env = _valid_env(PRACE_OPERATOR_URL="http://insecure.example")
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('OPERATOR_URL=' + getattr(s, 'PRACE_OPERATOR_URL', 'missing'))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "OPERATOR_URL=http://insecure.example" in result.stdout
+
+    def test_relative_rejected(self):
+        _assert_failure(
+            _import_with(_valid_env(PRACE_OPERATOR_URL="/relative/path")),
+            "absolute URL",
+        )
+
+
+class TestTestIsolation:
+    def test_unset_has_no_test_databases(self):
+        env = _valid_env()
+        proc = _import_with(env)
+        assert proc.returncode == 0, proc.stderr
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('TEST_DB=' + str(getattr(s, 'PRACE_TEST_DATABASES', None)))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "TEST_DB=None" in result.stdout
+
+    def test_partial_rejected(self):
+        _assert_failure(
+            _import_with(_valid_env(
+                PRACE_TEST_DB_NAME="testdb",
+                PRACE_TEST_DB_USER="tester",
+                PRACE_TEST_DB_HOST="/tmp",
+            )),
+            "PRACE_TEST_DB_*",
+        )
+
+    def test_full_sets_test_databases_rejected(self):
+        # The PRACE_TEST_DB_* mechanism is deprecated. Any presence of those
+        # variables must now be rejected with an actionable message pointing
+        # to DOCUMENT_TEST_PG_* as the replacement.
+        _assert_failure(
+            _import_with(_valid_env(
+                PRACE_TEST_DB_NAME="testdb",
+                PRACE_TEST_DB_USER="tester",
+                PRACE_TEST_DB_HOST="/tmp",
+                PRACE_TEST_DB_PORT="5433",
+            )),
+            "deprecated",
+        )
+
+    def test_deprecated_prace_test_db_rejected(self):
+        # Any subset of PRACE_TEST_DB_* is rejected with the same message.
+        _assert_failure(
+            _import_with(_valid_env(
+                PRACE_TEST_DB_NAME="testdb",
+            )),
+            "deprecated",
+        )
+
+
+class TestRuntimeStatementTimeout:
+    """Regression: runtime and migration timeouts are independent."""
+
+    def test_runtime_default_is_500ms(self):
+        env = _valid_env()
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('RUNTIME_TIMEOUT=' + str(getattr(s, 'PRACE_RUNTIME_STATEMENT_TIMEOUT_MS', 'missing'))); "
+            "print('MIGRATION_TIMEOUT=' + str(getattr(s, 'PRACE_MIGRATION_STATEMENT_TIMEOUT_MS', 'missing')))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "RUNTIME_TIMEOUT=500" in result.stdout
+        assert "MIGRATION_TIMEOUT=60000" in result.stdout
+
+    def test_runtime_timeout_independent_of_migration_timeout(self):
+        env = _valid_env(
+            PRACE_RUNTIME_STATEMENT_TIMEOUT_MS="1000",
+            PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="120000",
+        )
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "print('RUNTIME_TIMEOUT=' + str(s.PRACE_RUNTIME_STATEMENT_TIMEOUT_MS)); "
+            "print('MIGRATION_TIMEOUT=' + str(s.PRACE_MIGRATION_STATEMENT_TIMEOUT_MS))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "RUNTIME_TIMEOUT=1000" in result.stdout
+        assert "MIGRATION_TIMEOUT=120000" in result.stdout
+
+    def test_runtime_timeout_in_database_options(self):
+        env = _valid_env(
+            PRACE_DB_NAME="synthetic",
+            PRACE_DB_USER="synthetic",
+            PRACE_DB_HOST="/tmp",
+            PRACE_DB_PORT="5432",
+            PRACE_DB_SSLMODE="verify-full",
+            PRACE_RUNTIME_STATEMENT_TIMEOUT_MS="2000",
+        )
+        sslrootcert = Path(env["PRACE_RELEASE_MANIFEST"]).parent / "ca.pem"
+        sslrootcert.write_text("dummy ca", encoding="utf-8")
+        env["PRACE_DB_SSLROOTCERT"] = str(sslrootcert)
+        proc = _import_with(env)
+        assert proc.returncode == 0, proc.stderr
+        assert "ENGINE=django.db.backends.postgresql" in proc.stdout
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "opts = s.DATABASES['default'].get('OPTIONS', {}); "
+            "print('OPTIONS=' + str(opts))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "statement_timeout=2000" in result.stdout
+
+
+class TestReadinessRunnerTimeout:
+    """Regression: readiness_runner uses the configured runtime timeout."""
+
+    def test_readiness_uses_runtime_timeout(self):
+        env = _valid_env(PRACE_RUNTIME_STATEMENT_TIMEOUT_MS="300")
+        code = (
+            "import os, sys, inspect\n"
+            "sys.path.insert(0, " + repr(str(REPO_ROOT)) + ")\n"
+            "os.environ['DJANGO_SETTINGS_MODULE'] = 'portal.settings_supervised_synthetic'\n"
+            "import django\n"
+            "django.setup()\n"
+            "from portal.release1a import readiness_runner\n"
+            "src = inspect.getsource(readiness_runner.collect_checks)\n"
+            "has_runtime_timeout = 'PRACE_RUNTIME_STATEMENT_TIMEOUT_MS' in src\n"
+            "has_hardcoded_500 = \"'500ms'\" in src\n"
+            "print('uses_runtime_timeout=' + str(has_runtime_timeout))\n"
+            "print('has_hardcoded_500=' + str(has_hardcoded_500))\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "uses_runtime_timeout=True" in result.stdout
+        assert "has_hardcoded_500=False" in result.stdout

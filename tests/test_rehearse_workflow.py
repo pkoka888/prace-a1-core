@@ -153,10 +153,23 @@ def workflow_root():
     shutil.rmtree(str(root), ignore_errors=True)
 
 
+def _postgres_env(base: dict) -> dict:
+    """If PRACE_WORKFLOW_PG=1 is set, add PostgreSQL target env vars."""
+    if os.environ.get("PRACE_WORKFLOW_PG", "").strip() != "1":
+        return base
+    env = dict(base)
+    env.setdefault("PRACE_DB_NAME", "prace_synthetic_test")
+    env.setdefault("PRACE_DB_USER", "prace_synth_app")
+    env.setdefault("PRACE_DB_PASSWORD", "prace_synth_app")
+    env.setdefault("PRACE_DB_HOST", "127.0.0.1")
+    env.setdefault("PRACE_DB_PORT", "5432")
+    return env
+
+
 @pytest.fixture
 def workflow_env(workflow_root):
     port = _free_port()
-    return {
+    base = {
         "PATH": os.environ["PATH"],
         "HOME": os.environ.get("HOME", "/tmp"),
         "PRACE_RUNTIME_ROOT": str(workflow_root),
@@ -168,6 +181,7 @@ def workflow_env(workflow_root):
         "PRACE_REHEARSE_TIMEOUT": "60",
         "PRACE_READINESS_BUDGET_MS": "10000",
     }
+    return _postgres_env(base)
 
 
 def test_workflow_prepare_provision_browser_workflow_restart_persistence(
@@ -228,24 +242,33 @@ def test_workflow_prepare_provision_browser_workflow_restart_persistence(
                 f"required stage {stage!r} did not pass:\n"
                 f"{json.dumps(journey['stages'][stage], indent=2)}")
         worker_pk = journey["worker_pk"]
-        case_pk = journey["case_pk"]
         document_pk = journey["document_pk"]
         assignment_pk = journey["assignment_pk"]
-        regenerated_case_pk = journey["regenerated_case_pk"]
-        first_sha256 = journey["stages"]["a1_pdf_downloaded"]["sha256"]
-        regen_sha256 = journey["stages"]["regeneration_differs"][
-            "regenerated_sha256"]
+        # Protected source-document bytes must be verified, not just a hash.
+        assert journey["stages"]["source_document_downloaded"]["ok"] is True
+        assert journey["source_document_sha256"], (
+            "journey evidence must carry the source-document SHA-256")
+        if journey.get("profile") == "optional-a1":
+            case_pk = journey["case_pk"]
+            regenerated_case_pk = journey["regenerated_case_pk"]
+            first_sha256 = journey["stages"]["a1_pdf_downloaded"]["sha256"]
+            regen_sha256 = journey["stages"]["regeneration_differs"][
+                "regenerated_sha256"]
+            # Correction/regeneration evidence must be present and truthful.
+            assert first_sha256 != regen_sha256, (
+                "regeneration must produce different PDF bytes; observed "
+                f"same sha256 {first_sha256}")
+            assert regenerated_case_pk != case_pk, (
+                "regeneration must create a new A1Case row")
+        else:
+            # Core profile: A1 stages are intentionally skipped.
+            assert journey["case_pk"] is None
+            assert journey["regenerated_case_pk"] is None
         # The TOTP code never appears in evidence.
         assert "totp_code_used" not in journey, (
             "TOTP code leaked into journey evidence")
         assert "password" not in journey, (
             "operator password leaked into journey evidence")
-        # Correction/regeneration evidence must be present and truthful.
-        assert first_sha256 != regen_sha256, (
-            "regeneration must produce different PDF bytes; observed "
-            f"same sha256 {first_sha256}")
-        assert regenerated_case_pk != case_pk, (
-            "regeneration must create a new A1Case row")
 
         # 5. stop gunicorn.
         r = _run_script(["stop"], workflow_env, timeout=60)
@@ -311,12 +334,15 @@ def test_workflow_prepare_provision_browser_workflow_restart_persistence(
             (workflow_root / ".release_manifest.sha256").read_text().strip())
         query_env["WORKER_PK"] = str(worker_pk)
         query_env["DOCUMENT_PK"] = str(document_pk)
-        query_env["CASE_PK"] = str(case_pk)
-        query_env["REGENERATED_CASE_PK"] = str(regenerated_case_pk)
         query_env["ASSIGNMENT_PK"] = str(assignment_pk)
         query_env["ORG_PK"] = str(operator["organization_id"])
-        query_env["PDF_SHA256"] = first_sha256
-        query_env["REGEN_SHA256"] = regen_sha256
+        query_env["DOCUMENT_SHA256"] = journey["source_document_sha256"]
+        query_env["PROFILE"] = journey.get("profile", "core")
+        if journey.get("profile") == "optional-a1":
+            query_env["CASE_PK"] = str(case_pk)
+            query_env["REGENERATED_CASE_PK"] = str(regenerated_case_pk)
+            query_env["PDF_SHA256"] = first_sha256
+            query_env["REGEN_SHA256"] = regen_sha256
         proc = subprocess.run(
             [str(PYTHON_BIN), "-c", """
 import os, json, hashlib
@@ -324,11 +350,12 @@ from pathlib import Path
 import django; django.setup()
 from django.conf import settings
 from portal.release1a.models import Worker, A1Case, Document, Assignment
+from portal.release1a.document_storage import document_storage
 
 
-def case_artifact(pk, expect_sha256):
+def case_artifact(pk, expect_sha256, org_pk):
     case = A1Case.objects.filter(
-        pk=int(pk), organization_id=int(os.environ['ORG_PK'])).first()
+        pk=int(pk), organization_id=int(org_pk)).first()
     if case is None:
         return {'found': False}
     ref = case.artifact_reference or {}
@@ -345,22 +372,47 @@ def case_artifact(pk, expect_sha256):
             'sha256_matches': sha256_matches}
 
 
+def stored_source_bytes(document_pk, org_pk, journey_sha):
+    document = Document.objects.filter(
+        pk=int(document_pk), organization_id=int(org_pk)).first()
+    if document is None:
+        return {'found': False}
+    version = document.documentversion_set.order_by(
+        '-version_number').first()
+    if version is None:
+        return {'found': True, 'version_found': False}
+    with document_storage().open(version.opaque_key, 'rb') as stream:
+        data = stream.read()
+    stored_sha = hashlib.sha256(data).hexdigest()
+    return {'found': True, 'version_found': True,
+            'stored_matches_recorded': stored_sha == version.sha256,
+            'stored_matches_journey': stored_sha == journey_sha,
+            'size': len(data)}
+
+
+profile = os.environ.get('PROFILE', 'core')
 result = {
     'worker_found': Worker.objects.filter(
         pk=int(os.environ['WORKER_PK'])).exists(),
-    'case_found': A1Case.objects.filter(
-        pk=int(os.environ['CASE_PK'])).exists(),
-    'regenerated_case_found': A1Case.objects.filter(
-        pk=int(os.environ['REGENERATED_CASE_PK'])).exists(),
     'document_found': Document.objects.filter(
         pk=int(os.environ['DOCUMENT_PK'])).exists(),
     'assignment_found': Assignment.objects.filter(
         pk=int(os.environ['ASSIGNMENT_PK'])).exists(),
+    'source_document': stored_source_bytes(
+        os.environ['DOCUMENT_PK'], os.environ['ORG_PK'],
+        os.environ['DOCUMENT_SHA256']),
 }
-result['original_artifact'] = case_artifact(
-    os.environ['CASE_PK'], os.environ['PDF_SHA256'])
-result['regenerated_artifact'] = case_artifact(
-    os.environ['REGENERATED_CASE_PK'], os.environ['REGEN_SHA256'])
+if profile == 'optional-a1':
+    result['case_found'] = A1Case.objects.filter(
+        pk=int(os.environ['CASE_PK'])).exists()
+    result['regenerated_case_found'] = A1Case.objects.filter(
+        pk=int(os.environ['REGENERATED_CASE_PK'])).exists()
+    result['original_artifact'] = case_artifact(
+        os.environ['CASE_PK'], os.environ['PDF_SHA256'],
+        os.environ['ORG_PK'])
+    result['regenerated_artifact'] = case_artifact(
+        os.environ['REGENERATED_CASE_PK'], os.environ['REGEN_SHA256'],
+        os.environ['ORG_PK'])
 print(json.dumps(result))
 """],
             env=query_env,
@@ -372,26 +424,38 @@ print(json.dumps(result))
         query = json.loads(proc.stdout.strip().splitlines()[-1])
         assert query.get("worker_found") is True, (
             f"worker {worker_pk} not found after restart: {query}")
-        assert query.get("case_found") is True, (
-            f"case {case_pk} not found after restart: {query}")
-        assert query.get("regenerated_case_found") is True, (
-            f"regenerated case {regenerated_case_pk} not found after "
-            f"restart: {query}")
         assert query.get("document_found") is True, (
             f"document {document_pk} not found after restart: {query}")
         assert query.get("assignment_found") is True, (
             f"assignment {assignment_pk} not found after restart: {query}")
-        original_artifact = query.get("original_artifact") or {}
-        assert original_artifact.get("file_exists") is True, (
-            f"original artifact file missing after restart: "
-            f"{original_artifact}")
-        assert original_artifact.get("sha256_matches") is True, (
-            f"original artifact bytes changed after restart: "
-            f"{original_artifact}")
-        regenerated_artifact = query.get("regenerated_artifact") or {}
-        assert regenerated_artifact.get("sha256_matches") is True, (
-            f"regenerated artifact bytes missing or changed after restart: "
-            f"{regenerated_artifact}")
+        source_document = query.get("source_document") or {}
+        assert source_document.get("found") is True, (
+            f"document {document_pk} missing after restart: {query}")
+        assert source_document.get("stored_matches_recorded") is True, (
+            f"stored source bytes no longer match the recorded version "
+            f"hash after restart: {source_document}")
+        assert source_document.get("stored_matches_journey") is True, (
+            f"stored source bytes differ from the journey-downloaded "
+            f"bytes after restart: {source_document}")
+        if journey.get("profile") == "optional-a1":
+            case_pk = journey["case_pk"]
+            regenerated_case_pk = journey["regenerated_case_pk"]
+            assert query.get("case_found") is True, (
+                f"case {case_pk} not found after restart: {query}")
+            assert query.get("regenerated_case_found") is True, (
+                f"regenerated case {regenerated_case_pk} not found after "
+                f"restart: {query}")
+            original_artifact = query.get("original_artifact") or {}
+            assert original_artifact.get("file_exists") is True, (
+                f"original artifact file missing after restart: "
+                f"{original_artifact}")
+            assert original_artifact.get("sha256_matches") is True, (
+                f"original artifact bytes changed after restart: "
+                f"{original_artifact}")
+            regenerated_artifact = query.get("regenerated_artifact") or {}
+            assert regenerated_artifact.get("sha256_matches") is True, (
+                f"regenerated artifact bytes missing or changed after "
+                f"restart: {regenerated_artifact}")
     finally:
         # Always stop the test-owned gunicorn before the runtime
         # directory is removed by the workflow_root fixture.
@@ -400,3 +464,45 @@ print(json.dumps(result))
             assert rc == 0, (
                 f"final stop returned {rc}; runtime root may contain "
                 f"a stale gunicorn process")
+        # PostgreSQL-backed runs share the target database across
+        # runtime roots. Remove the test operator so the next
+        # invocation can provision a fresh one.
+        if workflow_env.get("PRACE_DB_NAME"):
+            _cleanup_pg_operator(workflow_env)
+
+
+def _cleanup_pg_operator(env: dict) -> None:
+    """Remove the workflow test operator from the configured test target.
+
+    Uses the explicit PRACE_DB_* target tuple from the environment and
+    runs scoped DELETEs as the configured test role. Never touches a
+    hardcoded database name, never uses `sudo … TRUNCATE` as the
+    cluster superuser, and never runs against the operator database.
+    """
+    pg_env = dict(env)
+    pg_env["PGPASSWORD"] = env["PRACE_DB_PASSWORD"]
+    sql = (
+        "DELETE FROM release1a_fielddecision;"
+        " DELETE FROM release1a_reviewtask;"
+        " DELETE FROM release1a_a1generationconfirmation;"
+        " DELETE FROM release1a_a1case;"
+        " DELETE FROM release1a_documentregionassociation;"
+        " DELETE FROM release1a_workeridentityrevision;"
+        " DELETE FROM release1a_release1aacceptance;"
+        " DELETE FROM release1a_release1areviewsession;"
+        " DELETE FROM release1a_membership;"
+        " DELETE FROM release1a_organization;"
+        " DELETE FROM account_emailaddress;"
+        " DELETE FROM mfa_authenticator;"
+        " DELETE FROM socialaccount_socialaccount;"
+        " DELETE FROM auth_user_user_permissions;"
+        " DELETE FROM auth_user_groups;"
+        " DELETE FROM auth_user;"
+    )
+    subprocess.run(
+        ["psql", "-h", env.get("PRACE_DB_HOST", "127.0.0.1"),
+         "-p", env.get("PRACE_DB_PORT", "5432"),
+         "-U", env["PRACE_DB_USER"], "-d", env["PRACE_DB_NAME"],
+         "-v", "ON_ERROR_STOP=1", "-c", sql],
+        env=pg_env, capture_output=True, timeout=30, check=False,
+    )

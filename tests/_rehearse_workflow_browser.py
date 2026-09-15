@@ -69,6 +69,7 @@ REQUIRED_STAGES = (
     "missing_identity_confirmed",
     "address_confirmed",
     "assignment_created",
+    "source_document_downloaded",
     "a1_prepared",
     "a1_draft_generated",
     "a1_pdf_downloaded",
@@ -76,6 +77,17 @@ REQUIRED_STAGES = (
     "a1_regenerated",
     "regeneration_differs",
 )
+
+# A1 stages are exercised only by the optional-a1 profile. Core profile
+# records a single explicit "a1_skipped" stage instead.
+OPTIONAL_A1_STAGES = frozenset({
+    "a1_prepared",
+    "a1_draft_generated",
+    "a1_pdf_downloaded",
+    "a1_corrected_facts",
+    "a1_regenerated",
+    "regeneration_differs",
+})
 
 
 # Stages whose outcome documents an expected operation-specific block
@@ -233,8 +245,17 @@ def _synthesize_op_card(tmpdir: Path) -> Path:
     return path
 
 
-def run_journey(base_url: str, runtime_root: Path, tmpdir: Path) -> dict:
-    """Execute the full Delivery-1 acceptance journey in a real browser."""
+def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
+                profile: str = "core") -> dict:
+    """Execute the full Delivery-1 acceptance journey in a real browser.
+
+    Profile ``core`` exercises login/TOTP, worker, document/OCR review,
+    assignment, protected source-document download and correction without
+    requiring complete A1 fields or generated PDFs. Profile
+    ``optional-a1`` additionally exercises A1 case preparation, PDF
+    generation, download, correction and regeneration; required A1-stage
+    failure still propagates as a non-zero exit.
+    """
     operator = _load_operator(runtime_root)
     password = operator["password"]
     secret_b32 = operator["mfa"]["secret"]
@@ -581,223 +602,301 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path) -> dict:
                 "assignment_facts_saved",
                 url=page.url, institution_profile=chosen_profile)
 
-            # Stage 10: prepare A1 case. The /a1/prepare form posts
-            # back to /a1/<pk>/ with confirm_prepare=on. The case is
-            # ready (not blocked) only when identity, residence and
-            # assignment are complete.
-            page.goto(base_url + f"/workers/{worker_pk}/a1/prepare/",
-                      wait_until="domcontentloaded")
-            _set_field(page, name="confirm_prepare", value="on")
-            _submit_form(page)
-            _wait_for_url(page, re.compile(r"/a1/\d+/$"))
-            case_pk = int(re.search(r"/a1/(\d+)/", page.url).group(1))
-            body_text = page.evaluate(
-                "() => document.body && document.body.innerText")
-            if "blocked" in body_text.lower():
-                raise SystemExit(
-                    f"FAIL: A1 case detail shows blocked status; "
-                    f"identity/residence/assignment facts are incomplete "
-                    f"(url={page.url!r})")
-            evidence["stages"]["a1_prepared"] = _stage_ok(
-                "a1_prepared", case_pk=case_pk, url=page.url)
-
-            # Stage 11: unverified A1 draft PDF. When the case is
-            # prepared, ``prepare_a1`` already runs the canonical
-            # ``prepare_application_draft`` path, so the detail page
-            # usually exposes the protected PDF links immediately and
-            # hides the "Vygenerovat PDF" form. If the auto render did
-            # not complete, the form is shown instead and the operator
-            # (here the journey) triggers the POST explicitly. Record
-            # which path actually produced the artifact.
-            generate_form = page.locator(
-                'form[action$="/draft/generate/"]')
-            generate_status = 200
-            generate_mode = "prepared_auto"
-            if generate_form.count():
-                generate_mode = "operator_post"
-                try:
-                    with page.expect_response(
-                            lambda r: r.url.endswith("/draft/generate/")
-                            and r.request.method == "POST",
-                            timeout=30000) as resp_info:
-                        page.locator(
-                            'form[action$="/draft/generate/"] '
-                            'button[type="submit"]'
-                        ).click()
-                    generate_response = resp_info.value
-                    generate_status = generate_response.status
-                    generate_body = generate_response.body()[:300]
-                except PWTimeout:
-                    generate_status = 0
-                    generate_body = b"(no response captured before timeout)"
-                if generate_status != 200:
-                    raise SystemExit(
-                        f"FAIL: draft generate returned HTTP "
-                        f"{generate_status}; body={generate_body!r} "
-                        f"(url={page.url!r})")
-            page.wait_for_load_state("networkidle")
-            download_link = page.locator('a[href*="/artifact/"]').first
-            if download_link.count() == 0:
-                raise SystemExit(
-                    f"FAIL: a1 artifact download link not visible after "
-                    f"draft generation (url={page.url!r}, "
-                    f"status={generate_status})")
-            evidence["stages"]["a1_draft_generated"] = _stage_ok(
-                "a1_draft_generated",
-                url=page.url, http_status=generate_status,
-                generation_mode=generate_mode)
-
-            # Stage 12: download the protected PDF and verify it
-            # begins with the %PDF- magic.
-            with page.expect_download(timeout=20000) as event:
-                download_link.click()
-            download = event.value
-            pdf_path = tmpdir / f"a1-{case_pk}-{secrets.token_hex(6)}.pdf"
-            download.save_as(str(pdf_path))
-            pdf_bytes = pdf_path.read_bytes()
-            if pdf_bytes[:5] != b"%PDF-":
-                raise SystemExit(
-                    f"FAIL: downloaded artifact does not begin with %PDF- "
-                    f"magic (size={len(pdf_bytes)}, path={pdf_path})")
-            evidence["stages"]["a1_pdf_downloaded"] = _stage_ok(
-                "a1_pdf_downloaded",
-                path=str(pdf_path), size=len(pdf_bytes),
-                sha256=_sha256(pdf_bytes))
-
-            # Stage 13: correction. The operator edits one assignment
-            # input fact through the shipped a1-inputs form, then the
-            # case is regenerated (stage 14). This exercises the
-            # assignment_j4_inputs path from view to service, and it
-            # is the input drift that the regeneration must reflect in
-            # the PDF bytes.
-            page.goto(base_url
-                      + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
-                      wait_until="networkidle")
-            corrected_street = "Pracovni 22"
-            _set_field(page, name="employment__street", value=corrected_street)
-            _submit_form(page)
-            page.wait_for_load_state("networkidle")
-            page.reload(wait_until="networkidle")
-            street_after = page.evaluate('''() => {
-                const el = document.querySelector('[name="employment__street"]');
-                return el ? el.value : null;
-            }''')
-            if street_after != corrected_street:
-                raise SystemExit(
-                    f"FAIL: assignment street edit did not persist "
-                    f"(expected {corrected_street!r}, got {street_after!r}, "
-                    f"url={page.url!r})")
-            evidence["stages"]["a1_corrected_facts"] = _stage_ok(
-                "a1_corrected_facts", assignment_pk=assignment_pk,
-                corrected_street=corrected_street, url=page.url)
-
-            # Stage 14: regeneration. prepare_a1 creates a NEW A1Case
-            # each POST, so the corrected snapshot produces a new case
-            # pk; the protected PDF must be regenerated for it. The
-            # detail page auto-renders the draft when the case is
-            # ready (same as the first case).
-            page.goto(base_url + f"/workers/{worker_pk}/a1/prepare/",
-                      wait_until="domcontentloaded")
-            _set_field(page, name="confirm_prepare", value="on")
-            _submit_form(page)
-            _wait_for_url(page, re.compile(r"/a1/\d+/$"))
-            regenerated_case_pk = int(
-                re.search(r"/a1/(\d+)/", page.url).group(1))
-            if regenerated_case_pk == case_pk:
-                raise SystemExit(
-                    f"FAIL: regeneration reused the same case pk "
-                    f"({regenerated_case_pk}); prepare_a1 must create a "
-                    f"new A1Case row for the corrected snapshot")
-            body_text = page.evaluate(
-                "() => document.body && document.body.innerText")
-            if "blocked" in body_text.lower():
-                raise SystemExit(
-                    f"FAIL: regenerated A1 case shows blocked status "
-                    f"after correction (url={page.url!r})")
-            page.wait_for_load_state("networkidle")
-            regen_link = page.locator('a[href*="/artifact/"]').first
-            if regen_link.count() == 0:
-                raise SystemExit(
-                    f"FAIL: regenerated A1 artifact link not visible "
-                    f"(url={page.url!r}, case_pk={regenerated_case_pk})")
-            with page.expect_download(timeout=20000) as event2:
-                regen_link.click()
-            regen_download = event2.value
-            regen_path = tmpdir / (
-                f"a1-{regenerated_case_pk}-{secrets.token_hex(6)}.pdf")
-            regen_download.save_as(str(regen_path))
-            regen_bytes = regen_path.read_bytes()
-            if regen_bytes[:5] != b"%PDF-":
-                raise SystemExit(
-                    f"FAIL: regenerated artifact does not begin with "
-                    f"%PDF- magic (size={len(regen_bytes)})")
-
-            # The corrected assignment fact must reach both the canonical
-            # generation input (the row dict stored in A1DraftGeneration)
-            # and the downloaded PDF bytes.
-            regen_text = " ".join(
-                page.get_text() for page in pymupdf.open(stream=regen_bytes, filetype="pdf")
-            )
-            if corrected_street not in regen_text:
-                raise SystemExit(
-                    f"FAIL: regenerated PDF text does not contain "
-                    f"corrected street {corrected_street!r} "
-                    f"(extracted prefix: {regen_text[:200]!r})")
-            generation_street = subprocess.run(
-                [sys.executable, "-c", """
-import os, django; django.setup()
-from portal.release1a.models import A1DraftGeneration
-gen = A1DraftGeneration.objects.filter(
-    reservation__case_id=int(os.environ['REGENERATED_CASE_PK'])
-).order_by('-revision').first()
-if gen is None:
-    raise SystemExit('NO_GENERATION')
-print((gen.snapshot or {}).get('row', {}).get('employment_street', ''))
-"""],
-                env={
-                    **os.environ,
-                    "DJANGO_SETTINGS_MODULE": "portal.settings_supervised_synthetic",
-                    "PRACE_RUNTIME_ROOT": str(runtime_root),
-                    "PRACE_SECRET_KEY": os.environ.get("PRACE_SECRET_KEY", ""),
-                    "PRACE_RELEASE_MANIFEST": str(runtime_root / "release_manifest.json"),
-                    "PRACE_RELEASE_MANIFEST_SHA256": (runtime_root / ".release_manifest.sha256").read_text().strip(),
-                    "REGENERATED_CASE_PK": str(regenerated_case_pk),
-                },
-                cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
-            )
-            if generation_street.returncode != 0:
-                raise SystemExit(
-                    f"FAIL: generation input query failed "
-                    f"(rc={generation_street.returncode}): "
-                    f"{generation_street.stderr}")
-            if generation_street.stdout.strip() != corrected_street:
-                raise SystemExit(
-                    f"FAIL: generation input street mismatch: "
-                    f"expected {corrected_street!r}, got "
-                    f"{generation_street.stdout.strip()!r}")
-
-            evidence["stages"]["a1_regenerated"] = _stage_ok(
-                "a1_regenerated", regenerated_case_pk=regenerated_case_pk,
-                size=len(regen_bytes), corrected_street=corrected_street)
-
-            # Stage 15: the corrected snapshot must change the
-            # artifact bytes. Identical sha256 would mean the
-            # regeneration did not bind the edited fact.
-            if _sha256(regen_bytes) == _sha256(pdf_bytes):
-                raise SystemExit(
-                    f"FAIL: regenerated PDF sha256 equals the first case "
-                    f"PDF; the corrected assignment fact was not bound "
-                    f"to the artifact (url={page.url!r})")
-            evidence["stages"]["regeneration_differs"] = _stage_ok(
-                "regeneration_differs",
-                first_sha256=_sha256(pdf_bytes),
-                regenerated_sha256=_sha256(regen_bytes))
-
+            # Exact identifiers used by downstream persistence/verifier
+            # tooling. Recorded for both profiles; case identifiers stay
+            # None in core because no A1 case is prepared.
             evidence["worker_pk"] = worker_pk
-            evidence["case_pk"] = case_pk
             evidence["document_pk"] = document_pk
             evidence["assignment_pk"] = assignment_pk
-            evidence["regenerated_case_pk"] = regenerated_case_pk
+
+            # Stage 9c: protected source-document download (both
+            # profiles). The bytes served through the protected
+            # download endpoint must equal the uploaded synthetic OP
+            # card bytes exactly; a hash-only claim is not accepted.
+            #
+            # Fetch through the real browser page, not
+            # ``context.request``: the session and CSRF cookies are
+            # ``Secure`` and Playwright's APIRequestContext drops
+            # Secure cookies over plain loopback HTTP, so a
+            # ``context.request.get`` here follows the login redirect
+            # and would compare the login HTML bytes instead of the
+            # PNG (silently passing the HTTP-200 check). The page fetch
+            # uses the operator's browser cookie jar and the browser's
+            # own redirect/auth semantics, so a non-200, an HTML body
+            # or a byte mismatch below is a genuine download defect.
+            download_meta = page.evaluate(
+                """async (u) => {
+                    const r = await fetch(u, {redirect: 'follow',
+                                              credentials: 'same-origin'});
+                    const b = new Uint8Array(await r.arrayBuffer());
+                    let bin = "";
+                    const chunk = 0x8000;
+                    for (let i = 0; i < b.length; i += chunk) {
+                        bin += String.fromCharCode.apply(
+                            null, b.subarray(i, i + chunk));
+                    }
+                    return {status: r.status,
+                            type: r.headers.get('content-type') || "",
+                            size: b.length,
+                            b64: btoa(bin)};
+                }""",
+                base_url + f"/documents/{document_pk}/download/")
+            if download_meta["status"] != 200:
+                raise SystemExit(
+                    f"FAIL: protected source-document download returned "
+                    f"HTTP {download_meta['status']} "
+                    f"(document_pk={document_pk})")
+            if download_meta.get("type", "").startswith("text/html"):
+                raise SystemExit(
+                    f"FAIL: protected source-document download served "
+                    f"HTML (login redirect), not the document "
+                    f"(document_pk={document_pk})")
+            downloaded_bytes = base64.b64decode(download_meta["b64"])
+            if download_meta["size"] != len(downloaded_bytes):
+                raise SystemExit(
+                    f"FAIL: protected download size mismatch "
+                    f"(document_pk={document_pk})")
+            source_sha256 = _sha256(png_path.read_bytes())
+            if _sha256(downloaded_bytes) != source_sha256:
+                raise SystemExit(
+                    f"FAIL: protected download bytes differ from the "
+                    f"uploaded source document (document_pk={document_pk})")
+            evidence["source_document_sha256"] = source_sha256
+            evidence["stages"]["source_document_downloaded"] = _stage_ok(
+                "source_document_downloaded", document_pk=document_pk,
+                sha256=source_sha256, size=len(downloaded_bytes))
+
+            # Stage 10: prepare A1 case (optional-a1 only). The core
+            # profile stops after assignment correction and protected
+            # download; it does not require complete A1 fields or
+            # generated PDFs. Record the skip explicitly so the
+            # persistence verifier and release verifier can see that A1
+            # was intentionally not exercised.
+            if profile == "optional-a1":
+                # Stage 10: prepare A1 case. The /a1/prepare form posts
+                # back to /a1/<pk>/ with confirm_prepare=on. The case is
+                # ready (not blocked) only when identity, residence and
+                # assignment are complete.
+                page.goto(base_url + f"/workers/{worker_pk}/a1/prepare/",
+                      wait_until="domcontentloaded")
+                _set_field(page, name="confirm_prepare", value="on")
+                _submit_form(page)
+                _wait_for_url(page, re.compile(r"/a1/\d+/$"))
+                case_pk = int(re.search(r"/a1/(\d+)/", page.url).group(1))
+                body_text = page.evaluate(
+                    "() => document.body && document.body.innerText")
+                if "blocked" in body_text.lower():
+                    raise SystemExit(
+                        f"FAIL: A1 case detail shows blocked status; "
+                        f"identity/residence/assignment facts are incomplete "
+                        f"(url={page.url!r})")
+                evidence["stages"]["a1_prepared"] = _stage_ok(
+                    "a1_prepared", case_pk=case_pk, url=page.url)
+
+                # Stage 11: unverified A1 draft PDF. When the case is
+                # prepared, ``prepare_a1`` already runs the canonical
+                # ``prepare_application_draft`` path, so the detail page
+                # usually exposes the protected PDF links immediately and
+                # hides the "Vygenerovat PDF" form. If the auto render did
+                # not complete, the form is shown instead and the operator
+                # (here the journey) triggers the POST explicitly. Record
+                # which path actually produced the artifact.
+                generate_form = page.locator(
+                    'form[action$="/draft/generate/"]')
+                generate_status = 200
+                generate_mode = "prepared_auto"
+                if generate_form.count():
+                    generate_mode = "operator_post"
+                    try:
+                        with page.expect_response(
+                                lambda r: r.url.endswith("/draft/generate/")
+                                and r.request.method == "POST",
+                                timeout=30000) as resp_info:
+                            page.locator(
+                                'form[action$="/draft/generate/"] '
+                                'button[type="submit"]'
+                            ).click()
+                        generate_response = resp_info.value
+                        generate_status = generate_response.status
+                        generate_body = generate_response.body()[:300]
+                    except PWTimeout:
+                        generate_status = 0
+                        generate_body = b"(no response captured before timeout)"
+                    if generate_status != 200:
+                        raise SystemExit(
+                            f"FAIL: draft generate returned HTTP "
+                            f"{generate_status}; body={generate_body!r} "
+                            f"(url={page.url!r})")
+                page.wait_for_load_state("networkidle")
+                download_link = page.locator('a[href*="/artifact/"]').first
+                if download_link.count() == 0:
+                    raise SystemExit(
+                        f"FAIL: a1 artifact download link not visible after "
+                        f"draft generation (url={page.url!r}, "
+                        f"status={generate_status})")
+                evidence["stages"]["a1_draft_generated"] = _stage_ok(
+                    "a1_draft_generated",
+                    url=page.url, http_status=generate_status,
+                    generation_mode=generate_mode)
+
+                # Stage 12: download the protected PDF and verify it
+                # begins with the %PDF- magic.
+                with page.expect_download(timeout=20000) as event:
+                    download_link.click()
+                download = event.value
+                pdf_path = tmpdir / f"a1-{case_pk}-{secrets.token_hex(6)}.pdf"
+                download.save_as(str(pdf_path))
+                pdf_bytes = pdf_path.read_bytes()
+                if pdf_bytes[:5] != b"%PDF-":
+                    raise SystemExit(
+                        f"FAIL: downloaded artifact does not begin with %PDF- "
+                        f"magic (size={len(pdf_bytes)}, path={pdf_path})")
+                evidence["stages"]["a1_pdf_downloaded"] = _stage_ok(
+                    "a1_pdf_downloaded",
+                    path=str(pdf_path), size=len(pdf_bytes),
+                    sha256=_sha256(pdf_bytes))
+
+                # Stage 13: correction. The operator edits one assignment
+                # input fact through the shipped a1-inputs form, then the
+                # case is regenerated (stage 14). This exercises the
+                # assignment_j4_inputs path from view to service, and it
+                # is the input drift that the regeneration must reflect in
+                # the PDF bytes.
+                page.goto(base_url
+                          + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
+                          wait_until="networkidle")
+                corrected_street = "Pracovni 22"
+                _set_field(page, name="employment__street", value=corrected_street)
+                _submit_form(page)
+                page.wait_for_load_state("networkidle")
+                page.reload(wait_until="networkidle")
+                street_after = page.evaluate('''() => {
+                    const el = document.querySelector('[name="employment__street"]');
+                    return el ? el.value : null;
+                }''')
+                if street_after != corrected_street:
+                    raise SystemExit(
+                        f"FAIL: assignment street edit did not persist "
+                        f"(expected {corrected_street!r}, got {street_after!r}, "
+                        f"url={page.url!r})")
+                evidence["stages"]["a1_corrected_facts"] = _stage_ok(
+                    "a1_corrected_facts", assignment_pk=assignment_pk,
+                    corrected_street=corrected_street, url=page.url)
+
+                # Stage 14: regeneration. prepare_a1 creates a NEW A1Case
+                # each POST, so the corrected snapshot produces a new case
+                # pk; the protected PDF must be regenerated for it. The
+                # detail page auto-renders the draft when the case is
+                # ready (same as the first case).
+                page.goto(base_url + f"/workers/{worker_pk}/a1/prepare/",
+                          wait_until="domcontentloaded")
+                _set_field(page, name="confirm_prepare", value="on")
+                _submit_form(page)
+                _wait_for_url(page, re.compile(r"/a1/\d+/$"))
+                regenerated_case_pk = int(
+                    re.search(r"/a1/(\d+)/", page.url).group(1))
+                if regenerated_case_pk == case_pk:
+                    raise SystemExit(
+                        f"FAIL: regeneration reused the same case pk "
+                        f"({regenerated_case_pk}); prepare_a1 must create a "
+                        f"new A1Case row for the corrected snapshot")
+                body_text = page.evaluate(
+                    "() => document.body && document.body.innerText")
+                if "blocked" in body_text.lower():
+                    raise SystemExit(
+                        f"FAIL: regenerated A1 case shows blocked status "
+                        f"after correction (url={page.url!r})")
+                page.wait_for_load_state("networkidle")
+                regen_link = page.locator('a[href*="/artifact/"]').first
+                if regen_link.count() == 0:
+                    raise SystemExit(
+                        f"FAIL: regenerated A1 artifact link not visible "
+                        f"(url={page.url!r}, case_pk={regenerated_case_pk})")
+                with page.expect_download(timeout=20000) as event2:
+                    regen_link.click()
+                regen_download = event2.value
+                regen_path = tmpdir / (
+                    f"a1-{regenerated_case_pk}-{secrets.token_hex(6)}.pdf")
+                regen_download.save_as(str(regen_path))
+                regen_bytes = regen_path.read_bytes()
+                if regen_bytes[:5] != b"%PDF-":
+                    raise SystemExit(
+                        f"FAIL: regenerated artifact does not begin with "
+                        f"%PDF- magic (size={len(regen_bytes)})")
+
+                # The corrected assignment fact must reach both the canonical
+                # generation input (the row dict stored in A1DraftGeneration)
+                # and the downloaded PDF bytes.
+                regen_text = " ".join(
+                    page.get_text() for page in pymupdf.open(stream=regen_bytes, filetype="pdf")
+                )
+                if corrected_street not in regen_text:
+                    raise SystemExit(
+                        f"FAIL: regenerated PDF text does not contain "
+                        f"corrected street {corrected_street!r} "
+                        f"(extracted prefix: {regen_text[:200]!r})")
+                generation_street = subprocess.run(
+                    [sys.executable, "-c", """
+    import os, django; django.setup()
+    from portal.release1a.models import A1DraftGeneration
+    gen = A1DraftGeneration.objects.filter(
+        reservation__case_id=int(os.environ['REGENERATED_CASE_PK'])
+    ).order_by('-revision').first()
+    if gen is None:
+        raise SystemExit('NO_GENERATION')
+    print((gen.snapshot or {}).get('row', {}).get('employment_street', ''))
+    """],
+                    env={
+                        **os.environ,
+                        "DJANGO_SETTINGS_MODULE": "portal.settings_supervised_synthetic",
+                        "PRACE_RUNTIME_ROOT": str(runtime_root),
+                        "PRACE_SECRET_KEY": os.environ.get("PRACE_SECRET_KEY", ""),
+                        "PRACE_RELEASE_MANIFEST": str(runtime_root / "release_manifest.json"),
+                        "PRACE_RELEASE_MANIFEST_SHA256": (runtime_root / ".release_manifest.sha256").read_text().strip(),
+                        "REGENERATED_CASE_PK": str(regenerated_case_pk),
+                    },
+                    cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=30,
+                )
+                if generation_street.returncode != 0:
+                    raise SystemExit(
+                        f"FAIL: generation input query failed "
+                        f"(rc={generation_street.returncode}): "
+                        f"{generation_street.stderr}")
+                if generation_street.stdout.strip() != corrected_street:
+                    raise SystemExit(
+                        f"FAIL: generation input street mismatch: "
+                        f"expected {corrected_street!r}, got "
+                        f"{generation_street.stdout.strip()!r}")
+
+                evidence["stages"]["a1_regenerated"] = _stage_ok(
+                    "a1_regenerated", regenerated_case_pk=regenerated_case_pk,
+                    size=len(regen_bytes), corrected_street=corrected_street)
+
+                # Stage 15: the corrected snapshot must change the
+                # artifact bytes. Identical sha256 would mean the
+                # regeneration did not bind the edited fact.
+                if _sha256(regen_bytes) == _sha256(pdf_bytes):
+                    raise SystemExit(
+                        f"FAIL: regenerated PDF sha256 equals the first case "
+                        f"PDF; the corrected assignment fact was not bound "
+                        f"to the artifact (url={page.url!r})")
+                evidence["stages"]["regeneration_differs"] = _stage_ok(
+                    "regeneration_differs",
+                    first_sha256=_sha256(pdf_bytes),
+                    regenerated_sha256=_sha256(regen_bytes))
+
+                evidence["worker_pk"] = worker_pk
+                evidence["case_pk"] = case_pk
+                evidence["document_pk"] = document_pk
+                evidence["assignment_pk"] = assignment_pk
+                evidence["regenerated_case_pk"] = regenerated_case_pk
+            else:
+                # Core profile: record the A1 skip explicitly so downstream
+                # verifiers see that optional A1 was intentionally not run.
+                evidence["stages"]["a1_skipped"] = _stage_ok(
+                    "a1_skipped", reason="core profile does not exercise A1 stages")
+                evidence["case_pk"] = None
+                evidence["regenerated_case_pk"] = None
         except SystemExit:
             raise
         except Exception as exc:
@@ -809,11 +908,15 @@ print((gen.snapshot or {}).get('row', {}).get('employment_street', ''))
             context.close()
             browser.close()
 
-    required_failed = [
+    required_stages = tuple(
         name for name in REQUIRED_STAGES
+        if profile == "optional-a1" or name not in OPTIONAL_A1_STAGES)
+    required_failed = [
+        name for name in required_stages
         if not evidence["stages"].get(name, {}).get("ok")
     ]
-    evidence["required_stages"] = list(REQUIRED_STAGES)
+    evidence["profile"] = profile
+    evidence["required_stages"] = list(required_stages)
     evidence["ok"] = not required_failed
     if required_failed:
         evidence["failed_stages"] = required_failed
@@ -829,10 +932,18 @@ def main() -> int:
     parser.add_argument("--tmpdir", type=Path, required=True,
                         help="Private disposable directory for uploaded and "
                              "downloaded bytes; created if missing")
+    parser.add_argument("--profile", choices=["core", "optional-a1"],
+                        default="core",
+                        help="Acceptance profile: 'core' exercises worker/document/"
+                             "assignment/download/correction without A1 PDF stages; "
+                             "'optional-a1' runs the full journey including A1 case "
+                             "preparation, PDF generation, download, correction and "
+                             "regeneration (default: core)")
     args = parser.parse_args()
     args.tmpdir.mkdir(parents=True, exist_ok=True, mode=0o700)
     try:
-        evidence = run_journey(args.base_url, args.runtime_root, args.tmpdir)
+        evidence = run_journey(args.base_url, args.runtime_root, args.tmpdir,
+                               args.profile)
     except SystemExit as exc:
         print(json.dumps({"ok": False, "error": str(exc)}))
         return 1

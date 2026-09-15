@@ -216,6 +216,7 @@ APPROVED_STAGED_TEST_PATHS = frozenset({
     "tests/test_rehearse_workflow.py",
     "tests/_rehearse_workflow_browser.py",
     "tests/_rehearse_workflow_data_path.py",
+    "tests/test_persistence_verifier.py",
 })
 # Tracked synthetic fixture files. Synthetic personal identifiers under
 # tests/fixtures/release_1a/orgonik_zivot_* are conspicuously fictional and

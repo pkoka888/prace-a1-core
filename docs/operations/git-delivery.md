@@ -3,6 +3,23 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## JAN-01/JAN-02 separate investigations — 2026-09-16
+
+Reproduced both defects as separate issues on a persistent
+`runtime/portal/supervised-jan-investigation` runtime (SQLite, gunicorn 2
+workers, owned OCR worker, `127.0.0.1:8099`) using the canonical
+`rehearse_dev_local.sh` lifecycle.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | JAN-01 (OCR `OCR_STATUS_HTTP_500`): genuine server HTTP 500 historically flaky under gunicorn + SQLite write contention, not an authentication redirect; the uncommitted supervised-settings mitigation (`journal_mode=WAL`, `transaction_mode=IMMEDIATE`, `busy timeout=20`) is in effect — verified `PRAGMA journal_mode=wal` on the rehearsal DB. Three consecutive full journeys in this tree produced zero HTTP 500s and OCR races no longer blocked progress; a single reproduction remains flaky-class evidence, not a full-fix claim. JAN-02 (protected download bytes mismatch): NOT file corruption — the application serves the exact uploaded bytes (browser fetch returned `200 image/png`, 36462 bytes, sha `e4d084…a440b` matching the stored source and `Document.sha256`; `document.downloaded` audit recorded). The mismatch was an authentication-redirect artifact: Playwright's `APIRequestContext` drops `Secure` session/CSRF cookies over plain loopback HTTP, so `context.request.get('/documents/<pk>/download/')` followed the login redirect and returned the 5044-byte login HTML (HTTP 200 after redirect) while the pages's own requests carried the cookie. Fixed `tests/_rehearse_workflow_browser.py` stage 9c to fetch through the real browser page (`fetch(..., credentials:'same-origin')`, base64 body) and now asserts HTTP 200, non-HTML content type, exact size and exact SHA-256 against the uploaded PNG |
+| Validation | Journey passes end-to-end on the persistent runtime (core profile, `ok:true`, 13 stages, document sha captured); canonical `tests/test_rehearse_workflow.py` passed once (103.98 s); `tests/test_rehearse_synthetic_site.py` + `tests/test_rehearse_synthetic_site_lifecycle.py` → 30 passed (61.96 s). JAN-03 core/optional-A1 profile separation verified at runtime: core journey requires only the non-A1 stage set (`a1_skipped` recorded; `case_pk`/`regenerated_case_pk` null) |
+| Publication | Uncommitted; working-tree additions to `tests/_rehearse_workflow_browser.py` and this record. No protected paths staged; no secrets/PII |
+| Deployment | None. Journeys ran against the disposable persistent runtime only; no operator-owned service or host change |
+| Activation | Synthetic-only posture unchanged (`M2_SYNTHETIC_ONLY`, §14 gate untouched) |
+| Limitations | OCR-500 status: WAL/IMMEDIATE mitigations present and no 500 reproduced in three runs, but the historical reproduction was flaky and a bounded set of runs is not a statistical fix claim; the plan keeps the investigation record, not a release acceptance. PostgreSQL acceptance (JAN-04, INFRA-PG-01) remains separately open and is not subsumed by this SQLite demonstration |
+| Next owner | After the committed-source core acceptance run: one reproducible committed-source acceptance; PostgreSQL acceptance follows the infrastructure response contract |
+
 ## Documentation/review checkpoint — 2026-09-15
 
 Documentation-only increment. No code repair, credential rotation, service

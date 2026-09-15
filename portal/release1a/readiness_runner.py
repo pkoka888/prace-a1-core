@@ -91,9 +91,10 @@ def collect_checks():
         # SET LOCAL needs an actual transaction. Startup connection options also
         # bound the BEGIN/connect preceding set_config on supervised PostgreSQL.
         if connection.vendor == 'postgresql':
+            runtime_timeout = getattr(settings, 'PRACE_RUNTIME_STATEMENT_TIMEOUT_MS', 500)
             with transaction.atomic():
                 with connection.cursor() as cursor:
-                    cursor.execute("SELECT set_config('statement_timeout', %s, true)", ['500ms'])
+                    cursor.execute("SELECT set_config('statement_timeout', %s, true)", [f'{runtime_timeout}ms'])
                 if check('db_reachable', lambda: rc.check_db_reachable(connection)):
                     check('migrations_current', lambda: rc.check_migrations_current(connection))
         elif check('db_reachable', lambda: rc.check_db_reachable(connection)):

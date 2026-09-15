@@ -67,8 +67,6 @@ def run_checks(base_url: str = BASE_URL) -> dict:
 
 def main() -> int:
     env = dict(os.environ)
-    env.pop("DOCUMENT_TEST_PG_SOCKET", None)
-    env.pop("DOCUMENT_TEST_PG_USER", None)
     env["DJANGO_SETTINGS_MODULE"] = "portal.settings_browser_tests"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     return subprocess.call([
