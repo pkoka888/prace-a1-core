@@ -2,8 +2,18 @@
 
 **Status:** Authoritative
 **Original date:** 2026-08-19
-**Last status update:** 2026-09-14
-**Current stage:** Release 1A in progress. Repository implementation and historical synthetic evidence exist; current private-site usability, PostgreSQL acceptance and Jan acceptance remain separately verifiable.
+**Last status update:** 2026-09-15
+**Current stage:** Release 1A in progress. Repository implementation and historical synthetic evidence exist; current private-site usability, PostgreSQL acceptance and Jan acceptance remain separately verifiable. A separate infrastructure request for the PostgreSQL target is issued and awaiting response.
+
+2026-09-15 observations: PostgreSQL was observed running, but configured
+application authentication failed. The Gunicorn systemd unit was failed, while
+separate Gunicorn processes lacked PostgreSQL target variables. Application-side
+defects and infrastructure reconciliation are both open. **Delivery 1 is not
+accepted.** Fresh synthetic records remain the first-delivery scope;
+existing-data migration, real-data activation and official A1 issuance remain
+separate. See the
+[sysadmin reconciliation report](docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md)
+and the active child plan.
 
 This is the execution roadmap. The [PRD](prd.md) defines product scope and the
 [plan index](plans/INDEX.md) assigns owners. The bounded next batch is
@@ -33,7 +43,7 @@ business-scope question; a static mockup is not a delivered budgeting feature.
 
 | Delivery | Jan's outcome | Required evidence | Current state |
 |---|---|---|---|
-| 1. Integrated testing site | Stable private URL, individual normal login, frontend/backend/scripts, intended persistent PostgreSQL target | Real browser core journey; protected source-document download; exact worker/document/assignment identifiers survive restart; expected build and DB engine/target checked | In progress; historical synthetic rehearsal exists. Current routed-site/PG/operator acceptance unverified in this checkpoint |
+| 1. Integrated testing site | Stable private URL, individual normal login, frontend/backend/scripts, intended persistent PostgreSQL target | Real browser core journey; protected source-document download; exact worker/document/assignment identifiers survive restart; expected build and DB engine/target checked | **Not accepted.** Historical synthetic rehearsal exists. 2026-09-15: PostgreSQL reachable but configured application authentication failed; Gunicorn supervision mismatch. Fresh synthetic records are the first-delivery scope |
 | 2. Usable v1 workflow | Czech instructions, visible missing facts, retry/correction, reliable downloads; one incomplete worker does not stop another | Core success path plus incomplete-input, denied-access and recovery paths; Jan/operator observed use and known-limitations note | In progress; audit leads require focused reproduction, then fixes |
 | 3. Restricted production pilot | Same core workflow for the authorized organization and real records | Scoped configuration, access/storage, applicable retention/deletion, backup/restore, operational ownership and §14 activation evidence | Separately gated; no activation approved by this roadmap |
 | 4. Later releases | Optional A1 expansion, richer queues, budget if requested, reporting, partner/worker access | New bounded outcomes justified by observed use | Deferred; no new Release 2A/3A names |
@@ -53,17 +63,24 @@ deployed”; neither is established by this repository-only checkpoint.
    checks, correct document ownership, map effective hooks/CI/configuration,
    and keep concise instructions. Work can run alongside product fixes with
    exclusive file ownership; tooling is not a prerequisite for every UI fix.
-3. **JAN-01–JAN-03: deliver normal access and the core workflow.** Reproduce
-   authorization/login/recovery/persistence leads; repair confirmed defects and
-   split optional A1 stages from core acceptance while retaining shared safeguards.
-   Bounded JAN-01/JAN-02 repair now provides durable sequential OCR, synchronous
-   inbox receipts, visible refresh/retry and archive-state authorization. Broader
-   task acceptance stays partial; JAN-03 profile separation and JAN-04 target
-   acceptance remain open. See the child plan and delivery record for evidence.
+3. **JAN-01–JAN-03: deliver normal access and the core workflow.** Investigate
+   the OCR HTTP 500 and the download mismatch separately, distinguishing
+   authentication redirects from file corruption; repair confirmed defects and
+   split optional A1 stages from core acceptance while retaining shared
+   safeguards. Bounded JAN-01/JAN-02 repair now provides durable sequential OCR,
+   synchronous inbox receipts, visible refresh/retry and archive-state
+   authorization. Broader task acceptance stays partial; the core/optional-A1
+   profile separation is partially implemented; JAN-04 target acceptance remains
+   open. See the child plan and delivery record for evidence.
 4. **JAN-04: one candidate acceptance.** Run the committed-source core workflow on
    the scoped PostgreSQL testing target when available, through the intended route;
-   record exact restart persistence and usable Czech instructions. Prepare scripts
-   and synthetic fixtures before host authorization where possible.
+   record exact restart persistence (actual file bytes and exact records) and
+   usable Czech instructions. Repair target forwarding, verified disposable
+   cleanup, migration credential scope and the effective statement timeout
+   before or alongside acceptance. Prepare scripts and synthetic fixtures before
+   host authorization where possible. Application repairs and sysadmin
+   reconciliation proceed independently; then one committed-source core
+   acceptance run, followed by Jan's observed use.
 5. **PILOT-01: restricted real-data pilot.** Consolidate outstanding operational
    facts and activation decisions. A1-only requirements do not become core-v1
    requirements; shared privacy/access/durability requirements remain.

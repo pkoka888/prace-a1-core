@@ -180,13 +180,25 @@ whether or not HTMX intercepts.
 
 The current extended rehearsal still includes A1 stages in its required set.
 This is an optional-A1 regression profile, not the core-v1 release definition.
-JAN-03 must implement separate core/optional profiles; no proposed flag exists yet.
-A failing required stage still exits nonzero; do not relabel a failure as a skip.
+The core/optional-A1 profile separation is **partially implemented** (JAN-03):
+the working-tree persistence verifier accepts `--profile core|optional-a1`, but
+that separation is not yet validated or committed, and no proposed flag is
+advertised as working. A failing required stage still exits nonzero; do not
+relabel a failure as a skip.
 `tests/document_web/test_browser_journey.py` independently exercises normal
 login/TOTP, protected upload, condition-based OCR refresh, native selection,
 confirmation, original download, tenant denial and logout. Its test-owned consumer
 uses the same processing primitive; the extended rehearsal exercises the separate
 worker command through Gunicorn. Neither SQLite run proves PostgreSQL acceptance.
+
+Known open defects from the 2026-09-15 review checkpoint (child plan): the OCR
+HTTP 500 and the protected-download mismatch (JAN-01/JAN-02, investigated
+separately, distinguishing authentication redirects from file corruption), and
+JAN-04 repairs — target forwarding, verified disposable cleanup, migration
+credential scope, effective statement timeout and restart verification of
+actual file bytes and exact records. Treat skill instructions here as the
+reconciliation reference against executable configuration, not as evidence
+that those defects are closed.
 
 ## Sparse-input evidence path
 
@@ -315,10 +327,12 @@ journey, run the canonical acceptance script:
 venv/bin/python scripts/rehearse_verify_persistence.py
 ```
 
-It reuses the workflow test's restart-verification logic (exact
-worker, assignment, both A1 cases, both PDF sha256s) and exits
+It reuses the workflow test's restart-verification logic and exits
 non-zero with an actionable message on mismatch or missing
-configuration. When the PostgreSQL target is unavailable it exits 2
+configuration. The `--profile core` acceptance covers worker, document,
+assignment and document-bytes checks; `--profile optional-a1` additionally
+verifies A1 case rows and artifact bytes on disk. When the PostgreSQL target
+is unavailable it exits 2
 (`PERSISTENCE_ACCEPTANCE_BLOCKED`) so the operator can distinguish a
 transport failure from a data mismatch.
 

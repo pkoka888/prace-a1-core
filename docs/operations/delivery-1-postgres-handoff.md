@@ -1,56 +1,142 @@
-# Delivery-1 PostgreSQL/private-site handoff (DRAFT) — sysadmin recipe
+# Delivery-1 PostgreSQL/private-site handoff — application integration recipe
 
-**STATUS: DRAFT — recipe complete, operator execution pending.** The
-recipe now contains an explicit bind acceptance, a single consistent
-environment contract, a canonical persistence-acceptance script, and a
-persistence acceptance that verifies the exact pre-restart identifiers
-and artifact bytes (no replacement rows). No host service,
-configuration or database change in this repository activates this
-draft. See
-`plans/2026-09-08-local-a1-automation.md` § Delivery alignment for the
-engineering-side evidence and § PostgreSQL handoff for the open gap.
+**STATUS: recipe — pending application repair and validation (JAN-04). The
+infrastructure request is issued and awaiting the returned contract.**
+
+## Application-side status: pending repair and validation
+
+The recipe below describes the intended integration path, not a validated one.
+A 2026-09-15 review checkpoint confirmed application-side defects that must be
+repaired and revalidated before PostgreSQL acceptance (JAN-04):
+
+- **Target forwarding** from the rehearsal lifecycle to the configured
+  `PRACE_DB_*` target is not yet verified end to end.
+- **Disposable-test-target cleanup** is not yet verified against an exclusively
+  owned target; cleanup behavior must be demonstrated, not presumed.
+- **Migration credential scoping** (`PRACE_MIGRATION_DB_USER` /
+  `PRACE_MIGRATION_DB_PASSWORD`) and the **effective statement timeout**
+  (`PRACE_RUNTIME_STATEMENT_TIMEOUT_MS` /
+  `PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`) exist in the current working tree but
+  are pending validation.
+- **Restart persistence** must verify actual file bytes and exact records, and
+  has not passed against the intended PostgreSQL target.
+
+The PostgreSQL target acceptance that completes JAN-04 is **blocked on both
+application repair and the infrastructure response** from
+`servers-infra-core`. The application team has issued
+[the infrastructure request](servers-infra-core-postgresql-request.md)
+(v1.0) and is awaiting the returned contract with verified database, roles,
+credentials, TLS, backup/restore and operational ownership.
+**An infrastructure response alone cannot close JAN-04**: the defects above
+must be repaired and revalidated against the returned target, and one
+committed-source core acceptance run must pass, before any acceptance claim.
+
+**This repository does not provision host services, databases, roles or
+credentials.** The `servers-infra-core` task runs on a separate host under
+its own authorization; its owner chooses hosts, versions, ports, transport,
+schemas and service arrangements. The application team only forwards the
+request and consumes the returned nonsecret contract values plus secret
+references.
+
+Until the infrastructure response arrives:
+- Local synthetic implementation continues against the default SQLite target.
+- The `PRACE_DB_*` contract, migration credential scoping and test isolation
+  repairs in `portal/settings_supervised_synthetic.py` exist in the current
+  working tree and are **pending repair and validation** before they are
+  treated as ready to consume the returned target.
+- The `--profile core|optional-a1` separation, the canonical persistence
+  verifier and the release verifier's required-check declaration are partially
+  implemented in the working tree; validation is pending (JAN-03/JAN-04).
+- Required regressions (ignored/partial target configuration, wrong-target
+  cleanup refusal, simultaneous-run refusal, cleanup failure, actual
+  migration timeout, historical migration transitions, PostgreSQL concurrency,
+  core success without A1, required-check failure propagation, missing/
+  corrupted files, unavailable PostgreSQL) remain defined; they execute
+  against the returned target when it is available.
+
+**Local synthetic implementation does not require a running PostgreSQL
+cluster.** A missing or unavailable target is reported as unverified or
+blocked environment, never downgraded to a SQLite PASS.
+The recipe describes an explicit bind acceptance, a single consistent
+environment contract, a canonical persistence-acceptance script and a
+persistence acceptance that verifies exact pre-restart identifiers
+and actual file bytes (no replacement rows) — as the intended target,
+with the defects listed above still pending repair and validation. No host
+service, configuration or database change in this repository activates this
+recipe. See the [infrastructure request](servers-infra-core-postgresql-request.md)
+for the values the infrastructure team must provide, and
+[`plans/2026-09-14-delivery-reliability-and-jan-v1.md`](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md)
+for the bounded JAN-01–04 task ownership and the 2026-09-15 review checkpoint.
 
 ## Scope
 
-Scoped database/user, environment variable contract, lifecycle
-invocation, acceptance commands and recovery steps. The supervised
-synthetic settings module `portal.settings_supervised_synthetic` is
-synthetic-only by design. Switching to PostgreSQL does not enable
-real-data operations; the intake service still refuses non-synthetic
-configuration until REV-003.
+Application-side recipe: environment variable contract, lifecycle
+invocation, acceptance commands, recovery steps and PostgreSQL-target
+configuration. The supervised synthetic settings module
+`portal.settings_supervised_synthetic` is synthetic-only by design.
+Switching to PostgreSQL does not enable real-data operations; the
+intake service still refuses non-synthetic configuration until a
+separately approved activation gate.
 
-## Required credentials (operator-supplied)
+Official A1 PDF generation and issuance are outside v1 by explicit
+direction on 2026-09-14. Existing draft PDFs are optional. Missing A1
+fields must not block worker saving or acceptance of the core workflow.
+This recipe no longer treats optional A1 artifacts as mandatory for
+persistence or workflow acceptance.
 
-| Variable | Purpose | Example shape |
+## Infrastructure request (prerequisite)
+
+Before executing this recipe, the infrastructure team must complete and
+return the contract in
+[`docs/operations/servers-infra-core-postgresql-request.md`](servers-infra-core-postgresql-request.md).
+Application-side preparation does not authorize host changes or
+credential delivery. The recipe below consumes the returned values;
+unknown or missing values block PostgreSQL acceptance with an explicit
+message, never a silent fallback to SQLite during PostgreSQL acceptance.
+
+## Required credentials (operator-supplied via infrastructure secret management)
+
+| Variable | Purpose | Source |
 |---|---|---|
-| `PRACE_DB_NAME` | database name | `prace_synthetic` |
-| `PRACE_DB_USER` | database role | `prace_synth_app` |
-| `PRACE_DB_HOST` | bind host | `127.0.0.1` |
-| `PRACE_DB_PORT` | bind port | `5432` |
-| `PRACE_DB_PASSWORD` | role password | `<set by operator>` |
-| `PRACE_DB_SSLMODE` | TLS posture | `verify-full` for remote; omit for loopback |
-| `PRACE_DB_SSLROOTCERT` | CA bundle path | `/etc/prace/db-ca.pem` |
+| `PRACE_DB_NAME` | database name | infrastructure contract |
+| `PRACE_DB_USER` | database role | infrastructure contract |
+| `PRACE_DB_HOST` | bind host or socket path | infrastructure contract |
+| `PRACE_DB_PORT` | bind port | infrastructure contract |
+| `PRACE_DB_PASSWORD` | role password | secret reference from infrastructure |
+| `PRACE_DB_SSLMODE` | TLS posture | infrastructure contract (omit for loopback/socket) |
+| `PRACE_DB_SSLROOTCERT` | CA bundle path | infrastructure contract (required for remote verify-ca/verify-full) |
 
-The supervised synthetic settings module refuses to start unless
-all four `PRACE_DB_NAME`, `PRACE_DB_USER`, `PRACE_DB_HOST`,
-`PRACE_DB_PORT` are set; remote TCP additionally requires
-`PRACE_DB_SSLMODE=verify-full` and a populated
+Return references, never secret values. The supervised synthetic
+settings module refuses to start unless all four `PRACE_DB_NAME`,
+`PRACE_DB_USER`, `PRACE_DB_HOST`, `PRACE_DB_PORT` are set; remote TCP
+additionally requires `PRACE_DB_SSLMODE=verify-full` and a populated
 `PRACE_DB_SSLROOTCERT`. Omitting all four PostgreSQL variables permits
-the default SQLite target; a partial set (some but not all four)
-is rejected with `ImproperlyConfigured`.
+the default SQLite target; a partial set (some but not all four) is
+rejected with `ImproperlyConfigured`. During PostgreSQL acceptance a
+missing or partial set blocks acceptance; it never silently substitutes
+SQLite and reports PASS.
 
 ## PostgreSQL cluster target
 
-- PostgreSQL 18 (matching the existing binaries on the host).
+The values below are historical observations from the September 12
+document; they require fresh verification and may differ from the
+infrastructure team's selected target.
+
+- PostgreSQL version: as selected by infrastructure and returned in the
+  contract. Django 5.2 supports PostgreSQL 14+; infrastructure selects
+  a currently supported fleet version.
 - A dedicated database role with login and schema-owning rights on
   the application schema; no `SUPERUSER`, no `CREATEROLE`, no
   `CREATEDB`. The supervised synthetic settings module does not need
   to create databases or roles at runtime.
 - Default `search_path` is acceptable; the application uses
   unqualified table names.
-- The application session pins `statement_timeout=500` (ms) itself
-  (see `settings_supervised_synthetic.py`), so the cluster default
-  does not matter for the rehearsal. Leave cluster settings alone.
+- The application runtime uses a per-session `statement_timeout` of
+  500 ms by default (configurable via `PRACE_RUNTIME_STATEMENT_TIMEOUT_MS`).
+  Migrations use a separate command-scoped longer timeout
+  (`PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`, default 60000 ms). The
+  readiness probe reads the configured runtime timeout from settings,
+  not a hardcoded value. Leave cluster-wide defaults alone.
 
 ## Database and role creation (operator-owned)
 
@@ -172,9 +258,12 @@ bash scripts/rehearse_synthetic_site.sh workflow \
   > /var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json
 
 # 2. Copy the exact identifiers from that evidence (do not guess).
+export ORG_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['organization_id'])")"
 export WORKER_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['worker_pk'])")"
 export DOCUMENT_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['document_pk'])")"
+export DOCUMENT_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['document_sha256'])")"
 export ASSIGNMENT_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['assignment_pk'])")"
+# Optional A1 identifiers (only for optional-a1 profile):
 export CASE_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['case_pk'])")"
 export REGENERATED_CASE_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['regenerated_case_pk'])")"
 export PDF_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['stages']['a1_pdf_downloaded']['sha256'])")"
@@ -185,27 +274,39 @@ bash scripts/rehearse_synthetic_site.sh stop
 bash scripts/rehearse_synthetic_site.sh start
 
 # 4. Verify the exact rows and the artifact bytes with the canonical
-#    acceptance script. Exit 0 means every row and every byte matches
-#    the pre-restart evidence; any other exit blocks publication.
+#    acceptance script. Use --profile core for worker/document/assignment
+#    only; use --profile optional-a1 to additionally verify A1 identifiers.
+#    Exit 0 means every check passed; any other exit blocks publication.
 cd "$A1_PRIVATE_DIR"
-venv/bin/python scripts/rehearse_verify_persistence.py
+# Core profile (no A1 identifiers required):
+venv/bin/python scripts/rehearse_verify_persistence.py \
+  --profile core
+# Optional A1 profile (requires CASE_PK, REGENERATED_CASE_PK, PDF_SHA256, REGEN_SHA256):
+# venv/bin/python scripts/rehearse_verify_persistence.py \
+#   --profile optional-a1
 ```
 
 The script reuses the same post-restart query logic exercised by
 `tests/test_rehearse_workflow.py`: it queries the supervised database
-for the worker, document, assignment and both A1 cases captured during
-the browser journey, and verifies the published artifact bytes on disk
-still match the PDF the operator downloaded. It exits non-zero with an
-actionable message on mismatch or missing configuration. When the
-PostgreSQL target is unavailable the script exits 2
+for the worker, document, assignment and their relationships captured
+during the browser journey. The `core` profile verifies document
+existence, the worker→document and worker→assignment links, and the
+document's stored SHA-256 hash against `DOCUMENT_SHA256`. The
+`optional-a1` profile additionally verifies A1 case rows and the
+artifact bytes on disk. It exits non-zero with an actionable message
+on mismatch or missing configuration. When the PostgreSQL target is
+unavailable the script exits 2
 (`PERSISTENCE_ACCEPTANCE_BLOCKED`) so the operator can distinguish a
 transport failure from a data mismatch.
 
-Each `Worker`/`Assignment`/`A1Case` check must print exactly `1
-row(s)`, both artifacts must print `exists=True`, and both sha256
-values must equal the values printed by the journey's
-`a1_pdf_downloaded` / `regeneration_differs` stages. None of these
-checks creates or updates rows.
+For `core` profile, the required environment variables are:
+`ORG_PK`, `WORKER_PK`, `DOCUMENT_PK`, `DOCUMENT_SHA256`,
+`ASSIGNMENT_PK`. A1 identifiers (`CASE_PK`, `REGENERATED_CASE_PK`,
+`PDF_SHA256`, `REGEN_SHA256`) are required only for the
+`optional-a1` profile.
+
+Each row check must print `ok`; the document hash check must print
+`sha256=matched`. None of these checks creates or updates rows.
 
 ## Recovery steps
 
@@ -230,13 +331,19 @@ checks creates or updates rows.
 
 - It does not flip `M2_SYNTHETIC_ONLY`; real-data operations remain
   refused by the intake service.
-- It does not approve `REV-003`; the supervised-synthetic settings
-  module continues to fail closed against real-data intent.
+- It does not approve any activation gate; the supervised-synthetic
+  settings module continues to fail closed against real-data intent.
 - It does not change GitHub remotes, CI configuration or
   protected-path policies.
-- It does not modify cluster defaults. The application session pins
-  `statement_timeout=500` (ms) itself via the connection options in
-  `settings_supervised_synthetic.py`; leave cluster settings alone.
+- It does not modify cluster defaults. The application runtime uses
+  `PRACE_RUNTIME_STATEMENT_TIMEOUT_MS` (default 500 ms) via the
+  connection options in `settings_supervised_synthetic.py`; migrations
+  use the separately passed `PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`
+  (default 60000 ms). The readiness probe reads the configured runtime
+  timeout from settings. Leave cluster settings alone.
+- It does not require official A1 PDF generation/issuance for
+  PostgreSQL acceptance or workflow success; optional A1 artifacts are
+  independently reportable via the `--profile optional-a1` flag.
 
 ## Authorization reminder
 

@@ -28,6 +28,7 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | 2026-09-06-FREE-VISION-PROVIDER-SAFETY (unpublished local material: `plans/2026-09-06-free-vision-provider-safety.md`) | planned | M1A–M2 | primary agent; Codex integrates and accepts | Parallel tooling evidence (subordinate to PLAN-FREE-MODEL) | None | FREE-VISION-1 through FREE-VISION-8 acceptance tests pass; zero-cost verified; AF2 lane separate | No paid endpoints; exact endpoint/model required; unknown pricing prohibits dispatch; AF2 and vision share quota where upstream limits shared; independent pool attempts within budget |
 | [Plan PLAN-WORKERS-MIGRATE-TO-DB — worker data from JSON/CSV to database](PLAN-WORKERS-MIGRATE-TO-DB.md) | planned | M2–M5 | engineering + primary | Core persistence now; legacy/A1 cutover separate | JAN-04 current PostgreSQL acceptance open; accepted legacy cutover separately gated | Durable core records; DB-MIG IDs retained without making PDF equivalence a core-v1 prerequisite | JAN-04 for core; scoped DB-MIG-1–7 for legacy/A1 cutover |
 | [Plan PLAN-REAL-DATA — scoped real-data activation](PLAN-REAL-DATA.md) | active | M5 | engineering + product owner + legal + sysadmin | Restricted pilot | JAN-03 scope reconciliation; OPS-001/LEG-001/INF-001 and REV-003 evidence/decisions remain scoped and unapproved by this checkpoint | Authorized protected core workflow, no official-PDF prerequisite | Existing §14 activation evidence plus scoped core acceptance |
+| [PostgreSQL infrastructure request](../docs/operations/servers-infra-core-postgresql-request.md) | request — awaiting infrastructure response | M0–M2 | servers-infra-core | Critical Release 1A | Application team has issued v1.0 request; awaiting infrastructure response with contract values. 2026-09-15: next action is inspection/reconciliation of existing infrastructure, not new provisioning; see the [sysadmin reconciliation report](../docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md) | Private PostgreSQL target with credentials, backup/restore and documented owner; response alone does not close JAN-04 | Infrastructure response YAML; application validates compatibility, repairs pending defects and runs acceptance |
 
 ## Current bounded batch — 2026-09-14
 
@@ -37,6 +38,14 @@ evidence binding, selection/CI ownership and recurring workflow gaps; JAN-01–0
 deliver normal login, core worker/document/OCR/assignment use and PostgreSQL
 persistence. PILOT-01 is separately gated. Parallel file ownership and acceptance
 commands are in the child plan; these are child tasks, not new top-level catalog IDs.
+
+**2026-09-15 review checkpoint:** a dated review checkpoint was added to the
+child plan mapping the confirmed findings (separate OCR HTTP 500 / download
+mismatch investigation, partial profile separation, JAN-04 repair list,
+evidence binding, skill reconciliation and INFRA-PG-01 reconciliation-first
+next action) onto the existing task IDs. No new plan or catalog entry; the
+[sysadmin reconciliation report](../docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md)
+records the observed host state.
 
 [Local automation](2026-09-08-local-a1-automation.md) remains a retained
 implementation/optional-A1 contract. Official A1 generation/issuance is outside v1;
@@ -79,7 +88,10 @@ Session review and ordered next work: 2026-09-06 architect review (unpublished l
 ## Stabilization acceptance checkpoint — 2026-09-07
 
 Historical checkpoint; current implemented components and next acceptance work
-are described above and in the delivery record.
+are described above and in the [delivery record](../docs/operations/git-delivery.md).
+The current batch's PostgreSQL target acceptance is gated on the infrastructure
+response; see the [infrastructure request](../docs/operations/servers-infra-core-postgresql-request.md)
+and the active child plan.
 
 PLAN-A1 and PLAN-INFRA remain active. Initial focused acceptance failed (5 failed,
 33 passed); bounded repairs now pass 157 tests/19 subtests, document core 75.

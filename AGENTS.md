@@ -214,6 +214,19 @@ export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
 - Current evidence lives in PLAN-A1 and the delivery record, not hardcoded cohort counts
   here. Renderer internals live in source and the [pipeline guide](docs/architecture/readme-a1-forms.md).
 
+## PostgreSQL test cleanup
+
+PostgreSQL test isolation, disposable-target verification and cleanup procedures
+live in [`.agents/skills/postgres-ops/SKILL.md`](.agents/skills/postgres-ops/SKILL.md).
+Test cleanup must verify an exclusively owned disposable target before any
+migration or teardown; it must never point database creation, truncation or
+cleanup at the operator database. The supervised-synthetic settings module
+rejects partial PostgreSQL targets and deprecated test-variable forms at import
+time; see `portal/settings_supervised_synthetic.py` for the current contract.
+Known application-side defects in PostgreSQL target forwarding, disposable
+cleanup verification, migration credential scope and the effective statement
+timeout are tracked in the active child plan and are not closed by prose here.
+
 ## Providers, skills and conventions
 
 - Prefer deterministic/local processing. Only verified-free endpoints are authorized;
