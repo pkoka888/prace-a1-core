@@ -31,6 +31,17 @@ target or confined SQLite. Set all four `PRACE_DB_NAME`, `PRACE_DB_USER`,
 `PRACE_DB_HOST`, `PRACE_DB_PORT`; omit all four for SQLite. A partial set
 is rejected at import time with `ImproperlyConfigured`.
 
+> **Infra-owned environment (2026-09-16):** On server62 the live service reads its
+> variables from the Ansible-managed `/etc/prace/env` via
+> `EnvironmentFile=/etc/prace/env` in `prace-v-nemecku-gunicorn.service`. That file
+> (0640 root:prace-synthetic) is the environment's source; it is separate from the
+> checkout `.env` (tool credentials) and is **not** to be merged, copied into Git, or
+> printed. Known unresolved state (see
+> [layout review](../../../docs/operations/2026-09-16-layout-review/REPORT-prace-application-s62.md)):
+> the file's DB password still fails authentication (INFRA-PG-01), its release pin
+> lags the approved manifest, and its Django secret equals its DB password. Do not
+> repin, rotate or repair `/etc/prace/env` from this project; flag operator ownership.
+
 Local Unix socket:
 ```bash
 export PRACE_DB_NAME="prace_synthetic"
@@ -177,6 +188,15 @@ For local synthetic PostgreSQL targets:
   from a test runner without explicit test-target configuration.
 - Do not commit protected paths (`a1/`, `scans/`, `data/`,
   `runtime/portal/`, `secrets/`, `.env`).
+- Do not print, copy, hash-into-reports or store the value of
+  `/etc/prace/env` variables when the configuration is disputed
+  (shared-secret equality 2026-09-16 is reported as a boolean only).
+- Do not blindly move the Práce md5 `pg_hba` record above the `local all
+  all peer` catch-all; reconcile only if transport/principal tests justify
+  it, and treat `peer` shadowing as a plausible rather than proved cause of
+  the socket-path failure.
+- Do not repin or rotate `/etc/prace/env` from this project; flag operator
+  ownership and record the last-known result.
 
 ## Related references
 

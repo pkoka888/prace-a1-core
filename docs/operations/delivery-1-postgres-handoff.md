@@ -166,8 +166,8 @@ does not invent a parallel one.
 ```bash
 export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
 export PRACE_RUNTIME_ROOT="/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development"
-export PRACE_SECRET_KEY="$(cat /etc/prace/secret.key)"
-export PRACE_ALLOWED_HOSTS=prace-v-nemecku.tvoje.info,127.0.0.1
+export PRACE_SECRET_KEY="$(grep -E '^PRACE_SECRET_KEY=' /etc/prace/env | cut -d= -f2-)"
+export PRACE_ALLOWED_HOSTS=prace-v-nemecku.expc.cz,127.0.0.1
 # PostgreSQL target (all four set together; omit all four to use SQLite).
 export PRACE_DB_NAME=prace_synthetic
 export PRACE_DB_USER=prace_synth_app
@@ -179,6 +179,21 @@ export PRACE_RELEASE_MANIFEST="$PRACE_RUNTIME_ROOT/release_manifest.json"
 export PRACE_RELEASE_MANIFEST_SHA256="$(cat "$PRACE_RUNTIME_ROOT/.release_manifest.sha256")"
 cd "$A1_PRIVATE_DIR"
 bash scripts/rehearse_synthetic_site.sh prepare
+```
+
+> **Environment contract (2026-09-16, reconciled):** `PRACE_SECRET_KEY` is read from
+> the infra-owned `/etc/prace/env` (Ansible-managed, 0640 root:prace-synthetic);
+> there is **no** `/etc/prace/secret.key`, so the earlier `cat` example was removed.
+> The **manifest pin** already pointed at the manifest-bound fingerprint
+> `$PRACE_RUNTIME_ROOT/.release_manifest.sha256` (matches the on-disk manifest) and
+> is unchanged; it is **not** the same as the stale `PRACE_RELEASE_MANIFEST_SHA256`
+> in `/etc/prace/env`, which still lags the approved release and must be repinned by
+> the operator before service adoption. When `prace-v-nemecku-gunicorn.service`
+> runs, systemd loads `/etc/prace/env` itself via `EnvironmentFile=`; the one-liners
+> above are only for manual rehearsal shell steps that predate the unit. Temporary
+> public hostname is `prace-v-nemecku.expc.cz` (operator decision 2026-09-16);
+> checkout path stays `/var/www/prace-v-nemecku.tvoje.info` (see the
+> [layout review](2026-09-16-layout-review/REPORT-prace-application-s62.md)).
 bash scripts/rehearse_synthetic_site.sh provision
 bash scripts/rehearse_synthetic_site.sh start
 bash scripts/rehearse_synthetic_site.sh smoke

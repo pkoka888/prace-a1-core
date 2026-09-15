@@ -3,6 +3,22 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Layout review and temporary public hostname — 2026-09-16 (server62)
+
+Servers-infra-core (server61) layout-and-safe-merge review received, archived
+and reconciled on the application side. Docs-only increment; no live host
+configuration, service, credential or database change.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Received servers-infra-core audit + agent work order (server61, `f8280118`), archived verbatim under `docs/operations/2026-09-16-layout-review/ORIGINAL-servers-infra-core-review-s61.md`; two host-labeled reports written (`REPORT-servers-infra-core-s61.md`, `REPORT-prace-application-s62.md`) so the two project contexts are never mixed. Operator decision on 2026-09-16: proceed temporarily with public hostname `prace-v-nemecku.expc.cz` (matches nginx vhost and `/etc/prace/env` `PRACE_ALLOWED_HOSTS`); checkout path stays `/var/www/prace-v-nemecku.tvoje.info`. Corrected phantom `/etc/prace/secret.key` + `/etc/prace/manifest.sha256` reads in `wsgi-deployment-recipe.md` (kept `PRACE_RELEASE_MANIFEST_SHA256` bound to `$PRACE_RUNTIME_ROOT/.release_manifest.sha256` which matches the on-disk manifest; env's pin is separate and stale) and `delivery-1-postgres-handoff.md` (secret key read now sourced from `/etc/prace/env`); aligned `technical-needs-sysadmin-2026-09-12.md` (0640 vs 0600 framed as explicit identity/access policy; dated correction block for the 2026-09-12 "not live" table) — that alignment edit lives in the working-tree copy of an inherited untracked file and is preserved, not committed; both skills documented the infra-owned EnvironmentFile contract and unresolved credential/provenance state |
+| Validation | Planning validator and staged-link/whitespace checks over the touched documents; relative-link depth verified for skill-to-docs references. Documentation/review validation only — no application or live-services suite run or claimed. Shared-secret equality (`PRACE_SECRET_KEY` == `PRACE_DB_PASSWORD`) re-verified on server62 as a sha-256 boolean-only comparison; values never printed or stored |
+| Publication | Pending commit on `feat/prace-readiness-plan-2026-08-13` after mandatory hook green |
+| Deployment | None changed |
+| Activation | Unchanged; synthetic-only posture; §14 gate untouched |
+| Limitations | Credential rotation, release repin, adoption of the running gunicorn by systemd, HBA reconciliation and orphan-process disposition remain operator-owned (INFRA-PG-01); the s61 320-test/14-validator results validate the servers-infra-core repository, not this checkout |
+| Next owner | Operator: rotation + release repin + supervision adoption + hostname DNS/proxy reconciliation. Engineering: JAN-03/JAN-04 toward one committed-source core acceptance run |
+
 ## Manual PostgreSQL verification and export-script audit — 2026-09-16 (s62)
 
 Manual operator-host verification and tooling audit on `server62` (user

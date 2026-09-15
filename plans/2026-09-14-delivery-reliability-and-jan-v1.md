@@ -61,6 +61,21 @@ Status after the 2026-09-16 investigations (see
   `prace-synthetic`, bind 127.0.0.1:8001) continues to run with no
   `PRACE_DB_*` variables and a SQLite `db.sqlite3` in
   `runtime/portal/supervised-synthetic`; both remain sysadmin-owned.
+- **servers-infra-core review received (2026-09-16)** — servers-infra-core
+  (server61) returned its layout-and-safe-merge audit and application-agent
+  work order. Received copy and host-labeled reports are under
+  `docs/operations/2026-09-16-layout-review/`. Findings confirmed on server62:
+  `/etc/prace/` contains only `env` (no `secret.key`/`manifest.sha256`
+  siblings); the live Django secret equals the DB password (boolean-only
+  sha-256 comparison, values never printed); the configured release pin lags
+  the approved manifest; `PRACE_ALLOWED_HOSTS` names `prace-v-nemecku.expc.cz`.
+  **Operator decision:** proceed temporarily with the `prace-v-nemecku.expc.cz`
+  hostname while the checkout path stays `/var/www/prace-v-nemecku.tvoje.info`.
+  Recipes and the handoff doc were corrected to read the actual `/etc/prace/env`
+  contract (no phantom secret-key reads); skills now carry the live-run
+  separation note. Credential rotation, release repin, adoption of the running
+  gunicorn by systemd, and HBA reconciliation remain operator-owned; the md5
+  record must not be blindly moved above the peer catch-all.
 - **Tooling audit (2026-09-16, with committed fixes)** — engineered defaults
   that could silently invent or guess DB targets were replaced by fail-closed
   contracts: test PG target `_postgres_env` (no invented password/defaults),
@@ -243,6 +258,7 @@ with JAN-03 implementation; do not advertise a proposed flag as working.
 | .opencode/agents/free-eval-* and experimental research skill | Separate evaluation lane; not generic delivery agents or v1 prerequisites |
 | docs/operations/servers-infra-core-postgresql-request.md | Infrastructure request v1.0; application team forwards, does not send automatically; response feeds JAN-04 |
 | docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md | Sysadmin reconciliation report (2026-09-15 observations); user forwards, does not send automatically; response feeds INFRA-PG-01 and JAN-04 |
+| docs/operations/2026-09-16-layout-review/ | servers-infra-core received audits + host-labeled reports (ORIGINAL/review s61; application s62); temporary public hostname `prace-v-nemecku.expc.cz` documented, checkout path unchanged; feeds INFRA-PG-01/JAN-04 and the hostname reconciliation |
 | Inherited session helpers/reports, institution edits, OCR benchmark test | Preserve; sanitize/classify/reproduce before adoption, no blind stage or deletion |
 
 Update AGENTS only for stable project-wide policy or recurring failure prevention.

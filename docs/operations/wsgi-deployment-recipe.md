@@ -50,12 +50,23 @@ under uvicorn/daphne. Both default to `portal.settings` if
 ```bash
 DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
     PRACE_RUNTIME_ROOT=/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development \
-    PRACE_SECRET_KEY=$(cat /etc/prace/secret.key) \
+    PRACE_SECRET_KEY=<from /etc/prace/env, not a cat of a secrets file> \
     PRACE_RELEASE_MANIFEST=/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development/release_manifest.json \
-    PRACE_RELEASE_MANIFEST_SHA256=$(cat /etc/prace/manifest.sha256) \
-    PRACE_ALLOWED_HOSTS=prace-v-nemecku.tvoje.info,127.0.0.1 \
+    PRACE_RELEASE_MANIFEST_SHA256=<from /etc/prace/env, not a cat of a fingerprints file> \
+    PRACE_ALLOWED_HOSTS=prace-v-nemecku.expc.cz,127.0.0.1 \
     gunicorn portal.wsgi:application --bind 127.0.0.1:8001
 ```
+
+> **Environment contract (2026-09-16, reconciled):** `PRACE_SECRET_KEY` and
+> `PRACE_RELEASE_MANIFEST_SHA256` come from the infra-owned `/etc/prace/env` file
+> (Ansible-managed, 0640 root:prace-synthetic), loaded via
+> `EnvironmentFile=/etc/prace/env` in `prace-v-nemecku-gunicorn.service`. There are
+> **no** `/etc/prace/secret.key` or `/etc/prace/manifest.sha256` siblings; the older
+> `cat`-based examples were removed. On a real host the unit loads the values itself;
+> use `$(cat ...)` only against a shell you control, never the file names listed
+> here. The current temporary public hostname is `prace-v-nemecku.expc.cz` (operator
+> decision 2026-09-16); the checkout path stays `/var/www/prace-v-nemecku.tvoje.info`
+> (see the [layout review](2026-09-16-layout-review/REPORT-prace-application-s62.md)).
 
 The supervised synthetic settings module fails closed on missing env vars;
 the gunicorn command above is the minimum viable contract. Reverse-proxying

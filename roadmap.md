@@ -91,6 +91,20 @@ No invented approval or automatic gate opening follows from this scope correctio
 Registered gate definitions and the review UI still need scope reconciliation
 under JAN-03; preserve historical approval receipts and the 34 top-level catalog IDs.
 
+### Public hostname and environment (2026-09-16 review decision)
+
+The canonical **checkout** is `/var/www/prace-v-nemecku.tvoje.info` (operator-declared).
+A checkout directory does not choose a public hostname. Operator decision on
+2026-09-16: proceed **temporarily** with the public hostname
+`prace-v-nemecku.expc.cz`, matching the provisioned nginx vhost and the
+`PRACE_ALLOWED_HOSTS` value in `/etc/prace/env` (systemd `EnvironmentFile`, 0640
+root:prace-synthetic). Recipes and the PostgreSQL handoff now reference that
+hostname; the checkout path is unchanged. Live environment facts stay
+operator-owned and are documented in the
+[layout review](docs/operations/2026-09-16-layout-review/REPORT-prace-application-s62.md);
+the shared-secret equality with the DB password is a boolean-only finding pending
+credential rotation.
+
 ## Validation and review cadence
 
 | Change/risk | Evidence before completion |

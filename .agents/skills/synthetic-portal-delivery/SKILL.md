@@ -11,6 +11,20 @@ new test harness or a separate settings module. Real-data activation remains
 gated by `docs/security/real-data-rules.md §14`; the supervised synthetic
 settings module is synthetic-only by design.
 
+> **Live-run separation (2026-09-16):** The provisioned live surface on server62 is
+> operator-owned: `prace-v-nemecku-gunicorn.service` reads `/etc/prace/env` via
+> `EnvironmentFile=` (Ansible-managed, 0640 root:prace-synthetic), binds
+> `127.0.0.1:8001`, and the private nginx vhost `prace-v-nemecku.expc.cz.conf` routes
+> `prace-v-nemecku.expc.cz`. This skill's rehearsal lifecycle is the **disposable
+> synthetic** path under `<repo>/runtime/portal/supervised-<name>/`; it is separate
+> from the live listener and must not be conflated with service adoption. The
+> `/etc/prace/env` release pin currently lags the approved manifest and its DB
+> password fails authentication; do not repin, rotate, restart or kill the live
+> service from rehearsal work — flag operator ownership. The temporary public
+> hostname is `prace-v-nemecku.expc.cz` (operator decision 2026-09-16); the checkout
+> path stays `/var/www/prace-v-nemecku.tvoje.info`. See the
+> [layout review](../../../docs/operations/2026-09-16-layout-review/REPORT-prace-application-s62.md).
+
 ## Ground the run
 
 1. Read `AGENTS.md` first; the four-delivery sequence, the proportional
