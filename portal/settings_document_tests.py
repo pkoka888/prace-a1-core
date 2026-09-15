@@ -10,6 +10,7 @@ _test_name = os.environ.get("DOCUMENT_TEST_PG_NAME")  # noqa: F405
 _test_user = os.environ.get("DOCUMENT_TEST_PG_USER")  # noqa: F405
 _test_host = os.environ.get("DOCUMENT_TEST_PG_HOST")  # noqa: F405
 _test_port = os.environ.get("DOCUMENT_TEST_PG_PORT")  # noqa: F405
+_test_password = os.environ.get("DOCUMENT_TEST_PG_PASSWORD")  # noqa: F405
 
 if _test_socket or _test_name:
     if not _test_name:
@@ -25,6 +26,8 @@ if _test_socket or _test_name:
         "NAME": _test_name,
         "USER": _test_user,
     }
+    if _test_password:
+        _test_db_config["PASSWORD"] = _test_password
     if _test_socket:
         _path = Path(_test_socket).resolve()  # noqa: F405
         if not _path.is_relative_to(BASE_DIR / "runtime"):  # noqa: F405
@@ -34,6 +37,12 @@ if _test_socket or _test_name:
     elif _test_host:
         _test_db_config["HOST"] = _test_host
         _test_db_config["PORT"] = _test_port or "5432"
+        if not _test_password:
+            raise RuntimeError(
+                "DOCUMENT_TEST_PG_PASSWORD is required for a TCP test PostgreSQL "
+                "target (DOCUMENT_TEST_PG_HOST set); peer/trust sockets use "
+                "DOCUMENT_TEST_PG_SOCKET without a password"
+            )
     DATABASES = {"default": _test_db_config}
 else:
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}

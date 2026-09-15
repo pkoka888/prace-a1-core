@@ -174,6 +174,20 @@ def reproduce(repo, revision, *, commands=None):
            "TMPDIR": str(state / "tmp"), "PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1",
            "DJANGO_SETTINGS_MODULE": "portal.settings_document_tests",
            "GIT_CEILING_DIRECTORIES": str(work.parent), "LC_ALL": "C.UTF-8"}
+    # Forward the caller's real database/test variables into the exported
+    # acceptance run. The reproducer never invents a host, port or password;
+    # without any caller context the checks keep their documented SQLite
+    # fallback. The isolated export therefore inherits only what the operator
+    # explicitly exported for it.
+    for name in os.environ:
+        if name.startswith(("PRACE_DB_", "DOCUMENT_TEST_PG_", "PRACE_TEST_DB_")):
+            env[name] = os.environ[name]
+    for name in ("PGPASSWORD", "JOURNEY_EVIDENCE_PATH",
+                 "PRACE_SECRET_KEY", "PRACE_RUNTIME_ROOT",
+                 "PRACE_RUNTIME_STATEMENT_TIMEOUT_MS",
+                 "PRACE_MIGRATION_STATEMENT_TIMEOUT_MS"):
+        if name in os.environ:
+            env[name] = os.environ[name]
     commands = commands if commands is not None else acceptance_commands(sys.executable, state)
     receipt = {"schema_version": "2.0", "commit_sha": sha, "git_tree": git(repo, "rev-parse", sha + "^{tree}").decode().strip(),
                "started_at": started_at,

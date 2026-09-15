@@ -64,6 +64,26 @@ WORKERS="${PRACE_WORKERS:-2}"
 START_TIMEOUT="${PRACE_REHEARSE_TIMEOUT:-30}"
 APPROVED_RUNTIME_PARENT="$REPO_ROOT/runtime/portal"
 
+# PostgreSQL target contract: all four PRACE_DB_* vars or none. A partial
+# set never starts a server that might silently fall back to SQLite.
+postgres_present=0
+for db_var in PRACE_DB_NAME PRACE_DB_USER PRACE_DB_HOST PRACE_DB_PORT; do
+    if [ -n "${!db_var:-}" ]; then
+        postgres_present=$((postgres_present + 1))
+    fi
+done
+if [ "$postgres_present" != "0" ] && [ "$postgres_present" != "4" ]; then
+    echo "FAIL: partial PostgreSQL target ($postgres_present of 4 PRACE_DB_* vars set); set all four or none" >&2
+    exit 1
+fi
+db_target_line() {
+    if [ "$postgres_present" = "4" ]; then
+        echo "DB target: PostgreSQL host=${PRACE_DB_HOST}:${PRACE_DB_PORT} db=${PRACE_DB_NAME} user=${PRACE_DB_USER}"
+    else
+        echo "DB target: SQLite (local rehearsal default)"
+    fi
+}
+
 step() { printf '\n=== %s ===\n' "$*" >&2; }
 
 require() {
@@ -320,6 +340,7 @@ cmd_prepare_manifest_only() {
 
 cmd_migrate() {
     step "Migrate: apply migrations against the supervised database"
+    echo "$(db_target_line)" >&2
     cd "$REPO_ROOT"
     local sha
     sha="$(cat "$MANIFEST_SHA_FILE" 2>/dev/null || true)"
@@ -377,6 +398,7 @@ cmd_ocr_worker() {
 cmd_start() {
     validate_runtime_root_layout
     step "Start: gunicorn $BIND workers=$WORKERS"
+    echo "$(db_target_line)" >&2
     ensure_runtime_root
     ensure_env
     if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then

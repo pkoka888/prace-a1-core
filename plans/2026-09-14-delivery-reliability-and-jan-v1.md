@@ -51,6 +51,26 @@ Status after the 2026-09-16 investigations (see
 - **JAN-03** — core/optional-A1 profile separation verified end-to-end at
   runtime: core requires only its non-A1 stage set and records `a1_skipped`;
   optional-A1 exercises the full A1 stages.
+- **INFRA-PG-01 (manual re-verification, 2026-09-16 on `server62`)** — the
+  cluster is online (`postgresql@18-main`, `pg_isready` 127.0.0.1:5432
+  accepting), roles include `prace_synth_app`, and databases
+  `prace_synthetic` + `prace_synthetic_test` exist. TCP `scram-sha-256`
+  authentication with the configured `/etc/prace/env` password still fails
+  (`password authentication failed`) — the credential mismatch is confirmed
+  directly, not inferred. The orphan gunicorn (PID 2681143, user
+  `prace-synthetic`, bind 127.0.0.1:8001) continues to run with no
+  `PRACE_DB_*` variables and a SQLite `db.sqlite3` in
+  `runtime/portal/supervised-synthetic`; both remain sysadmin-owned.
+- **Tooling audit (2026-09-16, with committed fixes)** — engineered defaults
+  that could silently invent or guess DB targets were replaced by fail-closed
+  contracts: test PG target `_postgres_env` (no invented password/defaults),
+  `DOCUMENT_TEST_PG_PASSWORD` support with a required password for TCP test
+  targets, producer forwarding of the caller's real `PRACE_DB_*`/
+  `DOCUMENT_TEST_PG_*`/`PGPASSWORD` into the exported acceptance run, and an
+  all-or-none `PRACE_DB_*` guard plus effective-target banner in
+  `scripts/rehearse_synthetic_site.sh`. These harden JAN-04 target
+  forwarding; they do not close JAN-04 (the credential reset and supervision
+  reconciliation remain INFRA-PG-01).
 
 Execution order: application repairs (JAN-01–JAN-04) and sysadmin
 reconciliation (INFRA-PG-01) proceed independently; then one committed-source

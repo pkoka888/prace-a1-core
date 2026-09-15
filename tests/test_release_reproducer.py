@@ -144,3 +144,21 @@ def test_unstartable_command_still_gets_receipt(repo):
     assert path.exists()
     assert receipt["checks"][0]["exit_code"] == 127
     assert not receipt["passed"]
+
+
+def test_caller_postgres_target_env_is_forwarded(repo, monkeypatch):
+    """The exported acceptance run inherits the operator's real PRACE_DB_*
+    target and never a fabricated one."""
+    sha = commit(repo, "fixture")
+    monkeypatch.setenv("PRACE_DB_NAME", "synthetic_caller_db")
+    monkeypatch.setenv("PRACE_DB_HOST", "127.0.0.1")
+    monkeypatch.setenv("PRACE_DB_PORT", "5432")
+    code = (
+        "import os;"
+        "assert os.environ['PRACE_DB_NAME'] == 'synthetic_caller_db';"
+        "assert os.environ['PRACE_DB_HOST'] == '127.0.0.1';"
+        "assert os.environ['PRACE_DB_PORT'] == '5432';"
+    )
+    _, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
+    assert receipt["passed"]
+    assert receipt["environment"]["PRACE_DB_NAME"] == "synthetic_caller_db"

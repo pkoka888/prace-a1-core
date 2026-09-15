@@ -3,6 +3,21 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Manual PostgreSQL verification and export-script audit — 2026-09-16 (s62)
+
+Manual operator-host verification and tooling audit on `server62` (user
+`pavel`). Read-only diagnostics plus scoped app-side fixes; no host change.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Manual DB test: `postgresql@18-main` online (`pg_isready` 127.0.0.1:5432 accepting); roles include `prace_synth_app`; databases `prace_synthetic` and `prace_synthetic_test` exist; configured `/etc/prace/env` password (read via sudo, never displayed) returns `FATAL: password authentication failed for user "prace_synth_app"` over TCP — INFRA-PG-01 credential mismatch confirmed manually, no app code involved. Audit fixes (app-side, committed separately): F1 `tests/test_rehearse_workflow.py::_postgres_env` no longer invents `PRACE_DB_*` defaults (removed the fabricated `prace_synth_app` password); `PRACE_WORKFLOW_PG=1` now requires the explicit full target and fails closed. F2 `portal/settings_document_tests.py` honors `DOCUMENT_TEST_PG_PASSWORD` and requires it for a TCP (`DOCUMENT_TEST_PG_HOST`) test target; socket mode unchanged. F3 `scripts/run_release_reproducer.py` forwards the caller's real `PRACE_DB_*`, `DOCUMENT_TEST_PG_*`, `PRACE_TEST_DB_*`, `PGPASSWORD`, `JOURNEY_EVIDENCE_PATH`, `PRACE_SECRET_KEY`, `PRACE_RUNTIME_ROOT` and statement-timeout vars into the exported acceptance environment instead of a clean-slate guess. F4 `scripts/rehearse_synthetic_site.sh` rejects partial `PRACE_DB_*` sets and prints the effective database target (`DB target: PostgreSQL host=… db=… user=…` / `DB target: SQLite (local rehearsal default)`) at `migrate` and `start`, so a silent SQLite downgrade on the operator runtime becomes visible |
+| Validation | Repro rounds: `tests/test_release_reproducer.py` + `test_postgres_env_fails_closed_without_explicit_target` → 15 passed (2.23 s); settings/readiness → 96 passed, 1 skipped; site/lifecycle/OCR/change-packages → 90 passed (75.88 s); canonical `tests/test_rehearse_workflow.py` → 2 passed (106.93 s). Settings probe: `DOCUMENT_TEST_PG_HOST` without `DOCUMENT_TEST_PG_PASSWORD` raises `RuntimeError`; with password sets `ENGINE=postgresql` and `PASSWORD`. `bash -n` clean on the lifecycle script. The orphan `gunicorn` (PID 2681143, user `prace-synthetic`, bind 127.0.0.1:8001, since Sep 14) still runs with no `PRACE_DB_*` in `/proc/.../environ` and a `db.sqlite3` in `runtime/portal/supervised-synthetic` — the documented supervision/transport mismatch; operator-owned, not touched |
+| Publication | Pending commit+push on `feat/prace-readiness-plan-2026-08-13` for this audit batch (4 source/test files + this record + plan) |
+| Deployment | None. No database, credential or service change |
+| Activation | Unchanged. Synthetic-only posture; §14 gate untouched |
+| Limitations | PostgreSQL data-plane acceptance (JAN-04) still requires the infrastructure credential response; these fixes make credal/transport mistakes fail loudly instead of silently, they do not substitute for the missing password reset. The orphan gunicorn and systemd unit reconciliation remain sysadmin-owned (INFRA-PG-01 items 2-3) |
+| Next owner | Operator: infra response contract (credential reset, supervision reconciliation). Engineering: after the response, `rehearse_dev_local.sh start` with the full `/etc/prace/env` `PRACE_DB_*` set, then the committed-source PostgreSQL acceptance |
+
 ## JAN-01/JAN-02 separate investigations — 2026-09-16
 
 Reproduced both defects as separate issues on a persistent

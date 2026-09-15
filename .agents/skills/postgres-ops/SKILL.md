@@ -66,7 +66,13 @@ export DOCUMENT_TEST_PG_SOCKET="/var/www/.../runtime/portal/supervised-<name>/pg
 export DOCUMENT_TEST_PG_NAME="prace_synthetic_test"
 export DOCUMENT_TEST_PG_USER="prace_synth_app"
 # DOCUMENT_TEST_PG_PORT defaults to 55439 when socket is set
+# DOCUMENT_TEST_PG_PASSWORD is optional for the socket/peer path and required
+# for a TCP target (DOCUMENT_TEST_PG_HOST). The TCP branch fails closed without it.
 ```
+
+For a TCP test target use `DOCUMENT_TEST_PG_HOST` (+ optional
+`DOCUMENT_TEST_PG_PORT`, default 5432) and set `DOCUMENT_TEST_PG_PASSWORD`; the
+settings module refuses a TCP target without a password.
 
 `settings_supervised_synthetic` no longer accepts `PRACE_TEST_DB_NAME`,
 `PRACE_TEST_DB_USER`, `PRACE_TEST_DB_HOST` or `PRACE_TEST_DB_PORT`. That
@@ -76,8 +82,10 @@ rejected at import time with `ImproperlyConfigured`. Use `DOCUMENT_TEST_PG_*`
 
 The rehearsal lifecycle test (`tests/test_rehearse_workflow.py`) does not
 use `pytest.mark.django_db`. Its subprocesses inherit `DJANGO_SETTINGS_MODULE`
-and database env vars from the parent. Set `PRACE_DB_*` in the test's
-`workflow_env` fixture to run the lifecycle against PostgreSQL.
+and database env vars from the parent. Set the full `PRACE_DB_*` set
+(Name/User/Password/Host/Port) in the caller's environment and
+`PRACE_WORKFLOW_PG=1`; with that flag the test fails closed if any variable
+(or `PRACE_DB_PASSWORD`) is missing — it never defaults a host or credential.
 
 ## Migration and prepare
 

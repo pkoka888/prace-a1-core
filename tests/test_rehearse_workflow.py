@@ -56,6 +56,23 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+def test_postgres_env_fails_closed_without_explicit_target(monkeypatch):
+    monkeypatch.setenv("PRACE_WORKFLOW_PG", "1")
+    for name in POSTGRES_TARGET_ENV:
+        monkeypatch.delenv(name, raising=False)
+    base = {"PATH": "/usr/bin:/bin"}
+    with pytest.raises(RuntimeError, match=r"missing: PRACE_DB_NAME"):
+        _postgres_env(base)
+    monkeypatch.setenv("PRACE_DB_NAME", "prace_synthetic_test")
+    monkeypatch.setenv("PRACE_DB_USER", "prace_synth_app")
+    monkeypatch.setenv("PRACE_DB_PASSWORD", "synthetic-test-password")
+    monkeypatch.setenv("PRACE_DB_HOST", "127.0.0.1")
+    monkeypatch.setenv("PRACE_DB_PORT", "5432")
+    env = _postgres_env(base)
+    assert env["PRACE_DB_PASSWORD"] == "synthetic-test-password"
+    assert env["PRACE_DB_NAME"] == "prace_synthetic_test"
+
+
 def _run_script(args, env, *, timeout=600):
     return subprocess.run(
         ["bash", str(SCRIPT), *args],
@@ -153,16 +170,37 @@ def workflow_root():
     shutil.rmtree(str(root), ignore_errors=True)
 
 
+POSTGRES_TARGET_ENV = (
+    "PRACE_DB_NAME",
+    "PRACE_DB_USER",
+    "PRACE_DB_PASSWORD",
+    "PRACE_DB_HOST",
+    "PRACE_DB_PORT",
+)
+
+
 def _postgres_env(base: dict) -> dict:
-    """If PRACE_WORKFLOW_PG=1 is set, add PostgreSQL target env vars."""
+    """If PRACE_WORKFLOW_PG=1 is set, require an explicit PostgreSQL
+    target from the caller's environment.
+
+    Mirrors the settings-module all-or-none contract: a partial or
+    defaulted target (including an invented password) is never used
+    silently. This makes a wrong credential or host fail closed with an
+    actionable message instead of a cryptic auth error from a guessed
+    value.
+    """
     if os.environ.get("PRACE_WORKFLOW_PG", "").strip() != "1":
         return base
+    missing = [name for name in POSTGRES_TARGET_ENV if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError(
+            "PRACE_WORKFLOW_PG=1 requires an explicit PostgreSQL target "
+            f"(missing: {', '.join(missing)}). Export the full PRACE_DB_* set, "
+            "including PRACE_DB_PASSWORD; no defaults are applied."
+        )
     env = dict(base)
-    env.setdefault("PRACE_DB_NAME", "prace_synthetic_test")
-    env.setdefault("PRACE_DB_USER", "prace_synth_app")
-    env.setdefault("PRACE_DB_PASSWORD", "prace_synth_app")
-    env.setdefault("PRACE_DB_HOST", "127.0.0.1")
-    env.setdefault("PRACE_DB_PORT", "5432")
+    for name in POSTGRES_TARGET_ENV:
+        env[name] = os.environ[name]
     return env
 
 
