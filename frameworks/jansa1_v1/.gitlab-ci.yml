@@ -1,0 +1,110 @@
+# JanSA1 Framework - GitLab CI/CD
+stages:
+  - generate
+  - verify
+  - test
+  - deploy
+
+# =============================================================================
+# Variables
+# =============================================================================
+variables:
+  A1_PRIVATE_DIR: ${CI_PROJECT_DIR}
+  PYTHON_VERSION: "3.13"
+  VENV_DIR: ${CI_PROJECT_DIR}/venv
+
+# =============================================================================
+# Generate PDFs
+# =============================================================================
+.generate: &generate
+  stage: generate
+  image: python:${PYTHON_VERSION}
+  before_script:
+    - python -m venv ${VENV_DIR}
+    - ${VENV_DIR}/bin/pip install -r requirements.txt
+  script:
+    - export A1_PRIVATE_DIR=${CI_PROJECT_DIR}
+    - ${VENV_DIR}/bin/python frameworks/jansa1_v1/v0.2-incremental/lib/gen_incremental.py
+  artifacts:
+    paths:
+      - output/provisional/
+    expire_in: 1 week
+
+# =============================================================================
+# Verification jobs
+# =============================================================================
+verify-schema:
+  <<: *generate
+  stage: verify
+  script:
+    - |
+      for pdf in output/provisional/**/*.pdf; do
+        ${VENV_DIR}/bin/python frameworks/jansa1_v1/v0.3-verification/lib/chk_schema.py --file "$pdf"
+      done
+
+verify-hardcode:
+  <<: *generate
+  stage: verify
+  script:
+    - |
+      for pdf in output/provisional/**/*.pdf; do
+        worker=$(basename "$pdf" .pdf | sed 's/A1_//')
+        ${VENV_DIR}/bin/python frameworks/jansa1_v1/v0.3-verification/lib/chk_hardcode.py --worker "$worker" --pdf "$pdf"
+      done
+
+verify-dual-framework:
+  <<: *generate
+  stage: verify
+  script:
+    - echo "Dual framework comparison"
+    - echo "Requires two independent implementations"
+
+# =============================================================================
+# Unit tests
+# =============================================================================
+test-a1-core:
+  <<: *generate
+  stage: test
+  script:
+    - ${VENV_DIR}/bin/python -m pytest tests/test_a1_core.py -q --tb=short
+
+test-finalize-a1:
+  <<: *generate
+  stage: test
+  script:
+    - ${VENV_DIR}/bin/python -m pytest tests/test_finalize_a1.py -q --tb=short
+
+test-verification:
+  <<: *generate
+  stage: test
+  script:
+    - ${VENV_DIR}/bin/python -m pytest verification/ -q --tb=short
+
+# =============================================================================
+# Deploy to staging
+# =============================================================================
+deploy-staging:
+  stage: deploy
+  extends: .generate
+  only:
+    - develop
+  environment:
+    name: staging
+  script:
+    - echo "Deploy to staging"
+    # rsync or deployment command here
+
+# =============================================================================
+# Deploy to production
+# =============================================================================
+deploy-production:
+  stage: deploy
+  extends: .generate
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+  script:
+    - echo "Deploy to production"
+    # rsync or deployment command here

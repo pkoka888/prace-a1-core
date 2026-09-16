@@ -1,8 +1,48 @@
 # JanSA1 Framework - Version History
 
-## v0.3 - Verification Framework (Current)
+## Historical Versions (i prefix)
+
+These versions were extracted from existing project structure.
+
+### i0.1 - Workflow A1
+**Source:** `workflows/a1/`
+**Date:** 2026-08
+
+Original semi-manual workflow:
+- Scan Upload → OCR → Transcription → PDF Generation → Visual QA
+- See: `i0.1-workflow/README.md`
+
+### i0.2 - Agent Skill A1
+**Source:** `.agents/skills/a1-pdf-production/`
+**Date:** 2026-08
+
+Agent-facing skill documentation:
+- Template cleaning, field placement, cohort generation
+- See: `i0.2-skill/README.md`
+
+### i0.3 - Core Scripts
+**Source:** `scripts/`
+**Date:** 2026-08 to 2026-09
+
+Core Python scripts evolved:
+- a1_core.py, finalize_a1.py, a1_quality_gate.py
+- See: `i0.3-scripts/README.md`
+
+### i0.4 - Portal Core
+**Source:** `portal/release1a/`
+**Date:** 2026-08 to 2026-09
+
+Portal integration:
+- a1_drafts.py, a1_exports.py, a1_prepare_draft.py
+- See: `i0.4-core/README.md`
+
+---
+
+## Versioned Releases (v prefix)
+
+### v0.3 - Verification Framework
 **Date:** 2026-09-16
-**Status:** Active
+**Status:** Active (Recommended)
 
 ### Files
 ```

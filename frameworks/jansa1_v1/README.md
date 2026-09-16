@@ -4,69 +4,197 @@
 **Purpose:** Czech A1 Certificate PDF Generation with Verification
 **Status:** Active
 
-## Overview
+## Quick Start
+
+```bash
+# Generate missing PDFs
+python frameworks/jansa1_v1/v0.2-incremental/lib/gen_incremental.py
+
+# Verify generation
+python frameworks/jansa1_v1/v0.3-verification/lib/chk_schema.py --file output.pdf
+python frameworks/jansa1_v1/v0.3-verification/lib/chk_hardcode.py --worker ID --pdf output.pdf
+```
+
+## Directory Structure
 
 ```
 frameworks/jansa1_v1/
 ├── README.md                    # This file
-├── FRAMEWORK_STRUCTURE.md       # Architecture definition
-├── VERSIONS.md                 # Version history
+├── VERSIONS.md                # Version history
+├── FRAMEWORK_STRUCTURE.md     # Structure definition
+├── RESEARCH.md                # Research notes
 │
-├── v0.1-base/                 # Base generation (original)
-│   ├── gen_provisional.py     # Original batch generator
-│   ├── fin_a1.py              # Finalization logic
-│   └── a1_core.py             # Core rendering
+├── .github/workflows/         # GitHub Actions
+│   └── jansa1.yml            # CI/CD pipeline
 │
-├── v0.2-incremental/          # Incremental generation
-│   ├── gen_incremental.py     # Incremental generator
-│   └── a1_generation.yaml     # YAML config
+├── .gitlab-ci.yml            # GitLab CI/CD
 │
-├── v0.3-verification/         # Verification framework
-│   ├── dual_framework.py      # Hash comparison
-│   ├── hardcode_check.py      # No hardcodes check
-│   ├── schema_valid.py        # Schema validation
-│   └── web_search.py         # External verification
+├── .agents/skills/           # Agent skills
+│   ├── jansa1-generation/   # Generation skill
+│   └── jansa1-verification/ # Verification skill
 │
-└── current/                   # Symlink to latest stable
-    └── -> ../v0.3-verification
+├── i0.1-workflow/           # Historical: Original workflow
+├── i0.2-skill/             # Historical: Agent skill
+├── i0.3-scripts/           # Historical: Core scripts
+├── i0.4-core/              # Historical: Portal core
+│
+├── v0.1-base/             # Version 0.1: Batch generation
+├── v0.2-incremental/        # Version 0.2: Incremental generation
+│   └── lib/
+│       └── gen_incremental.py
+│
+├── v0.3-verification/        # Version 0.3: Verification
+│   └── lib/
+│       ├── chk_schema.py
+│       ├── chk_hardcode.py
+│       └── chk_dual_framework.py
+│
+└── v0.4-current/           # Version 0.4: Current (development)
 ```
-
-## File Naming Convention
-
-All files use prefixes to prevent duplicates:
-
-| Prefix | Purpose | Example |
-|--------|---------|---------|
-| `gen_` | Generator scripts | `gen_provisional.py`, `gen_incremental.py` |
-| `chk_` | Checker/validator | `chk_hardcode.py`, `chk_schema.py` |
-| `val_` | Validator scripts | `val_dual_framework.py` |
-| `cfg_` | Configuration | `cfg_generation.yaml`, `cfg_provisional.json` |
-| `doc_` | Documentation | `doc_architecture.md` |
 
 ## Version History
 
-| Version | Description | Date |
-|---------|-------------|------|
-| v0.1 | Base generation - original batch processing | 2026-08 |
-| v0.2 | Incremental generation - only missing PDFs | 2026-09 |
-| v0.3 | Verification framework - dual checks | 2026-09 |
+| Prefix | Version | Description | Date |
+|--------|---------|-------------|------|
+| i | i0.1 | Historical: Workflow | 2026-08 |
+| i | i0.2 | Historical: Agent Skill | 2026-08 |
+| i | i0.3 | Historical: Scripts | 2026-08 |
+| i | i0.4 | Historical: Portal | 2026-08 |
+| v | v0.1 | Base batch generation | 2026-08 |
+| v | v0.2 | Incremental generation | 2026-09 |
+| v | v0.3 | Verification framework | 2026-09 |
+| v | v0.4 | Current development | Current |
 
-## Usage
+## File Naming Convention
 
-```bash
-# Generate all missing PDFs
-python frameworks/jansa1_v1/current/gen_incremental.py
+| Prefix | Type | Example |
+|--------|------|---------|
+| `gen_` | Generator | `gen_incremental.py` |
+| `chk_` | Checker | `chk_schema.py` |
+| `cfg_` | Config | `cfg_generation.yaml` |
+| `lib_` | Library | `lib_processing.py` |
 
-# Verify last generation
-python frameworks/jansa1_v1/current/chk_schema.py --file output.pdf
-python frameworks/jansa1_v1/current/chk_hardcode.py --worker id --pdf output.pdf
+## CI/CD Pipelines
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/jansa1.yml
+name: JanSA1 Framework
+on: [push, pull_request]
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate PDFs
+        run: python frameworks/jansa1_v1/v0.2-incremental/lib/gen_incremental.py
+  verify:
+    needs: generate
+    steps:
+      - name: Verify schema
+        run: python frameworks/jansa1_v1/v0.3-verification/lib/chk_schema.py --file output.pdf
 ```
 
-## Research Sources
+### GitLab CI
 
-This framework is based on:
-- CSSZ (Czech Social Security Administration) official guidelines
-- EU A1 certificate regulations
-- Czech form standards
+```yaml
+# .gitlab-ci.yml
+stages:
+  - generate
+  - verify
+  - test
+  - deploy
 
-See `docs/architecture/ARCHITECTURE.md` for full architecture.
+generate-pdfs:
+  stage: generate
+  script:
+    - python frameworks/jansa1_v1/v0.2-incremental/lib/gen_incremental.py
+
+verify-schema:
+  stage: verify
+  script:
+    - python frameworks/jansa1_v1/v0.3-verification/lib/chk_schema.py --file output.pdf
+```
+
+## Agent Skills
+
+### Generation Skill
+
+```markdown
+# .agents/skills/jansa1-generation/SKILL.md
+---
+name: jansa1-generation
+description: Generate Czech A1 certificate PDFs
+---
+
+Use `gen_incremental.py` to generate PDFs.
+Output goes to `output/provisional/`.
+```
+
+### Verification Skill
+
+```markdown
+# .agents/skills/jansa1-verification/SKILL.md
+---
+name: jansa1-verification
+description: Verify A1 PDFs
+---
+
+Run schema and hardcode checks after generation.
+```
+
+## Best Practices
+
+1. **Use Incremental Generation** - Only generates missing PDFs
+2. **Verify After Generation** - Run all verification checks
+3. **Use CI/CD** - Automated pipelines ensure quality
+4. **Follow Naming Convention** - Consistent file naming
+5. **Document Changes** - Update version history
+
+## When to Use This Structure
+
+### ✓ Optimal For
+
+- Multi-version frameworks with clear evolution
+- Projects needing CI/CD integration
+- Agent-accessible skills
+- Verification-heavy workflows
+- Documented historical versions
+
+### ✗ Not Optimal For
+
+- Simple single-file scripts
+- One-off experiments
+- Very small projects
+- Projects without version history
+
+## Integration with Main Project
+
+The framework references main project files:
+
+```python
+# References to scripts/
+ROOT = Path(__file__).resolve().parents[4]
+from scripts.a1_core import build_form_data
+from scripts.finalize_a1 import display_row
+```
+
+This keeps the framework portable while using shared core logic.
+
+## Git Branch Naming
+
+For framework development:
+- `feat/jansa1-v1` - New features
+- `fix/jansa1-verification` - Bug fixes
+- `docs/jansa1-framework` - Documentation
+
+## Related Documentation
+
+- [Architecture Docs](../../docs/architecture/ARCHITECTURE.md)
+- [Verification Framework](../../docs/architecture/verification-framework.md)
+- [LangGraph Integration](../../docs/architecture/langgraph-integration.md)
+
+## License
+
+Private - Internal use only
