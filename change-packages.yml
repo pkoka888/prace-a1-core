@@ -212,6 +212,7 @@
       "docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md",
       "docs/operations/2026-09-16-layout-review/",
       "docs/operations/s62-live-state-triage-2026-09-16.md",
+      "docs/operations/s62-comprehensive-triage-and-fix-playbook-2026-09-16.md",
       "docs/operations/synthetic-reviewer-user-guide.md", "docs/operations/opencode-work-orders/", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md", "docs/operations/operator-action-plan-2026-08-29.md", "docs/operations/project-migration-audit-2026-08-30.md", "docs/operations/infra-review-20260907T0230Z/", "CHANGELOG.md", "PROJECT_AUDIT_REPORT.md", ".opencode/skills/market-research-evidence/SKILL.md"],
       "prefixes": ["plans/2026-"],
       "checks": ["venv/bin/python scripts/validate_planning.py"],
