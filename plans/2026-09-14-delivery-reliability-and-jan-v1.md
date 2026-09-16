@@ -226,23 +226,47 @@ Six focused regression suites run against the committed source at `c1fced1`:
 | `tests/test_persistence_verifier.py` | 10 passed, 0 failed | Source-byte verification, db-hash vs source-byte failure classification, exit-2 blocked |
 | `tests/test_rehearse_workflow.py` | 4 passed, 0 failed | Core journey with `assignment_corrected` stage, `optional-a1` profile separation |
 
-**Total: 70 passed, 0 failed.** No false positives, no silent skips, no unexpected passes. The two files that differ from the published base `c24a293` are exactly `scripts/run_release_reproducer.py` (+1 line forwarding `PRACE_WORKFLOW_PG`) and `portal/test_pg_contract.py` (+9/-2 lines adding blank-target rejection). The other changed files match `c24a293` exactly.
+**Previously reported total: 70 passed, 0 failed.** These historical counts do not establish absence of false positives or current committed-source acceptance. The source-comparison statement in that report concerned its selected files, not the entire dirty checkout. The subsequent independent review below records current coverage and a newly reproduced export-boundary defect.
 
 ### Live-state verification (server62, 2026-09-16)
 
-PostgreSQL 18.3 is running. Role `prace_synth_app` exists with `rolcanlogin=true` and a non-null password hash. The `PRACE_DB_PASSWORD` stored in `.runtime-config/gunicorn.env` (length 44) does **not** authenticate against the live role over `scram-sha-256` TCP or `md5` local socket — 9 `FATAL: password authentication failed` entries in `/var/log/postgresql/postgresql-18-main.log` across ~90 minutes on Sep 16. The systemd gunicorn unit is `failed (Result: signal)` since Sep 14; a divergent manual instance (PID 2681143, user `prace-s+`, workers 2) serves on `127.0.0.1:8001`. Static files are uncollected (`static/` empty, Sep 11 log shows 404s for `htmx-1.9.10.min.js` and `tailwind-2.2.19.min.css`). `journalctl -u prace-v-nemecku-gunicorn` is empty — `ProtectSystem=strict` + `--capture-output` blocks journald. The unit file's filesystem `Birth` (Sep 16 02:02) is after the first failure (Sep 14 03:41) — most probable cause: operator repair attempt without addressing root cause.
+The earlier server62 report describes PostgreSQL running and authentication failures; this independent review did not read the live EnvironmentFile or retest its credentials. Fresh read-only checks confirm the selected Gunicorn unit is failed/MainPID 0, while loopback and internal nginx serve an older build `00786f7` with health/readiness/login HTTP 200. A truncated `prace-s+` display does not identify a different account. Historical static-file errors need current asset probes. An empty unit journal does not establish a cause: `ProtectSystem=strict` and `--capture-output` alone do not prove journald is blocked. A file birth timestamp does not establish who replaced it or why. Reconcile source, supervisor, logs and credential authority separately; do not restart or rotate from these inferences.
 
 ### Residual open items
 
 | ID | Item | Status | Owner | Evidence |
 |---|---|---|---|---|
-| G-1 | `prace_synth_app` password desync | **Open (active)** | Operator | 9 FATAL entries in PG log; `psql` test fails with env password |
+| G-1 | `prace_synth_app` password desync | **Approved by Jan — operator action pending** | Operator | 9 FATAL entries in PG log; `psql` test fails with env password; `.runtime-config/gunicorn.env` value does not authenticate over scram-sha-256 or md5; Jan approved credential sync on 2026-09-16 |
 | G-2 | systemd unit failed; manual gunicorn diverges | **Open** | Operator (after G-1) | `systemctl status`; `ps` shows `prace-s+` and `--workers 2` |
-| G-3 | static files 404 / empty static dir | **Open** | Engineering | `ls static/` empty; `/tmp/gunicorn.log` 404s |
-| G-4 | journalctl empty for unit | **Open** | Operator | `journalctl` empty; unit has `ProtectSystem=strict` + `--capture-output` |
-| D-1 | networkidle flake under hook load | **Open** | Engineering | 19 `networkidle` references remain in `_rehearse_workflow_browser.py`; `_wait_networkidle` still uses 20 000 ms |
+| G-3 | static files 404 / nginx alias mismatch | **Open (refined)** | Operator | Files present at `STATIC_ROOT` (`runtime/portal/supervised-synthetic/static/portal/`); nginx alias points to `portal/release1a/static/`; operator vhost edit required |
+| G-4 | Reported empty unit journal; cause unknown | **Open** | Operator | Verify current output routing, invocation, permissions and journal retention; do not attribute this to sandbox flags without reproduction |
+| D-1 | Browser document-detail wait timeout | **Closed** | Engineering | All 16 `networkidle` references replaced with `load` + `page.wait_for_selector("main", state="visible")`; `_wait_networkidle` renamed `_wait_page_ready`; workflow journey 4/4 green in 107.26 s; full focused regression 61 passed in 214.85 s; commit `e7d3758` pushed |
 | JAN-01 | OCR HTTP 500 flake | Mitigation in effect | Engineering | WAL/IMMEDIATE/busy-timeout in supervised settings; bounded-set evidence |
 | JAN-03 | Default-exported core journey | **Partial** | Engineering | `run_release_reproducer.py` acceptance commands still A1-heavy |
-| SMTP | Python 3.13 `smtpd` removal | **Broken** | Engineering | `/tmp/smtp.log`: `No module named smtpd`; `/tmp/smtp_server.log`: port 25 bind `PermissionError` |
+| SMTP | Python 3.13 `smtpd` removal | Not in project source | Engineering | `/tmp/smtp.log`/`/tmp/smtp_server.log` are disposable test artifacts; no `smtpd` usage found in `scripts/`, `tests/`, `portal/` |
 
 Full verification report: `docs/operations/s62-verification-report-2026-09-16.md`. Full triage with Ansible playbook and meta-pattern library: `docs/operations/s62-comprehensive-triage-and-fix-playbook-2026-09-16.md`.
+
+## Independent agent/fleet review and TODOs — 2026-09-16
+
+[Current review](../docs/operations/2026-09-16-agent-ops-review.md) supersedes
+unsupported causal and blanket-success statements above, preserving historical
+receipts. Four managed hosts answered; this is not all-service acceptance.
+The optional [workflow experiment](../docs/architecture/agent-operations-workflow.md)
+uses synthetic local effects only and does not become a JAN delivery prerequisite.
+
+| Existing task | Next bounded action | Owner | Completion evidence / state |
+|---|---|---|---|
+| REL-02/03 | Integrate protected-export preflight and synthetic negative cases | Application engineering | Implemented; scoped tests pass; publication and hook evidence in delivery record |
+| REL-03/06 | Require actual command exits, nonempty coverage and source-bound artifacts in agent handoffs | Application + infrastructure tooling owners | Fix false-green legacy helpers/probes in their owning repos; negative controls for denied access, empty input and zero matched hosts |
+| REL-05/06 | Reconcile fleet roles, target coverage and deployment-test boundaries | Infrastructure | Offline Ansible report first; then reviewed disposable converge/idempotence/rollback matrix. No broad live apply from check-mode claims |
+| PLAN-INFRA / G-2 | Diagnose server61 disk at 90%, failed backups/services, and server62 listener ownership | Infrastructure operator | Current desired-state reconciliation, bounded recovery and fresh protocol/backup receipts; no guessed-PID kill or automatic cleanup |
+| JAN-01/03/04 | Demonstrate current approved build and PostgreSQL core workflow through intended route | Application + infrastructure, then Jan | Authenticated browser, exact target/role, protected download, correction and restart persistence; old-build HTTP 200 does not close this |
+| REL-06 / optional OCR-EXP-LG | Compare synthetic LangGraph recovery with existing receipts | Application engineering | Actual local checkpoint restart and stale/duplicate/rejected authorization cases; live authentication/effect adapter stays unimplemented |
+| PLAN-INFRA | Add missing custom-log rotation and exercise alert validity/delivery | Infrastructure operator | Reviewed role/config change, scheduled rotation evidence, synthetic rule/receiver tests; no notification sent by this review |
+| JAN-04 / PG5 | Verify recovery separately from liveness | Infrastructure + application | Owned isolated restore of DB and protected files, reviewed RPO/RTO/retention; no live restore or pilot activation here |
+
+All 34 top-level catalog IDs and prior actor approvals remain unchanged.
+Infrastructure owner selects the concrete canary revision/targets/rollback before
+the workflow can consume any deployment authorization. Research recommendations
+and synthetic approval fixtures are not operator approvals.
