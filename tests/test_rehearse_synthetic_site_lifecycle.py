@@ -51,6 +51,7 @@ def _run(args, env, cwd=None, timeout=180):
     )
 
 
+@pytest.mark.serial
 def test_real_lifecycle_prepare_start_smoke_restart_stop(lifecycle_root):
     """End-to-end: prepare, start, smoke (strict), restart, stop.
 
@@ -135,6 +136,7 @@ def test_real_lifecycle_prepare_start_smoke_restart_stop(lifecycle_root):
         assert not (lifecycle_root / ".ocr-worker.json").exists()
 
 
+@pytest.mark.serial
 def test_real_lifecycle_smoke_fails_when_server_returns_500(lifecycle_root):
     """A non-gunicorn HTTP server on the bind port must make smoke FAIL.
 
@@ -182,6 +184,7 @@ def test_real_lifecycle_smoke_fails_when_server_returns_500(lifecycle_root):
         server.server_close()
 
 
+@pytest.mark.serial
 def test_real_lifecycle_smoke_fails_when_no_server(lifecycle_root):
     """With the server stopped, smoke must FAIL — not report success.
 

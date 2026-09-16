@@ -14,6 +14,7 @@ from unittest import skipUnless
 from datetime import date
 from urllib.parse import urlsplit
 
+import pytest
 from django.urls import reverse
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -24,6 +25,7 @@ from portal.release1a.models import Organization, Membership, Worker, Document
 from scripts.playwright_smoke import run_checks
 
 
+@pytest.mark.serial
 @skipUnless(os.environ.get("DJANGO_SETTINGS_MODULE") == "portal.settings_browser_tests", "Run scripts/playwright_smoke.py with isolated browser settings")
 class BrowserJourneyTests(StaticLiveServerTestCase):
     host = "127.0.0.1"
