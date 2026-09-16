@@ -14,6 +14,32 @@ BO generation access and generation-bound visual confirmation are implemented. B
 [local automation contract](2026-09-08-local-a1-automation.md) and delivery record.
 Existing environments remain unchanged; selected supervised release needs 0014–0019.
 
+## Disputed institution evidence checkpoint — 2026-09-16
+
+The [independent follow-up](../docs/operations/2026-09-16-agent-ops-review.md#follow-up-seven-disputed-institution-associations)
+verified retained generation/QA completion while identifying seven artifacts
+associated with three currently non-VERIFIED profiles. Their acceptance is on
+hold; the other seventeen are not accepted by subtraction. Historical profile
+status/write attribution remains unproven without the exact historical bytes and
+an attributable operation record. No profile, cohort or original PDF was changed.
+
+Next bounded work, owned by A1 engineering and the authorized source reviewer:
+
+- Reconcile institution facts and exact profile revision with primary sources;
+  keep office contacts distinct from authoritative certificate/signatory evidence.
+- Add a separately reported institution-provenance acceptance gate with synthetic
+  negatives for profile drift, unconfirmed facts and misleading VERIFIED labels.
+  Deterministic artifact QA must not silently assert those facts were reviewed.
+- Bind any corrected generation to explicitly reconciled scoped inputs; do not
+  silently drop the seven people or promote the other seventeen as accepted.
+- Require artifact-specific QA and all-page visual review after corrected
+  generation. The historical checkbox receipt and original package remain intact.
+
+Scoped measurements were added to the inherited local candidate receipt; its
+uncommitted source context is separate from this published documentation update.
+Private detailed evidence has a 2026-12-15 retention review. A1 limitations remain
+local and do not block the separate JAN core-v1 workflow.
+
 ## Local A1 consolidation — 2026-09-08
 
 The [local automation contract](2026-09-08-local-a1-automation.md) and

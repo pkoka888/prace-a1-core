@@ -3,6 +3,22 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## A1 disputed-evidence follow-up — 2026-09-16
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Documentation reconciles the supplied interrupted-run report with completed QA and seven current non-VERIFIED profile associations. PLAN-A1 records a separate provenance-gate follow-up. The inherited local candidate receipt received scoped measurements, separately from this documentation commit |
+| Validation | Fresh audited private inspection exited 0; generation completion, 24 PDF identities, QA completion and unchanged profiles verified. Current primary contact pages compared; historical profile-write attribution remains unproven. Two preliminary inspection failures retained with their distinct causes. Mandatory documentation-hook results and final publication identity are in the private follow-up delivery receipt |
+| Publication | Sanitized report/plan/delivery documentation only, from the isolated checkout. Exact final commit/remote outcome: `runtime/portal/temporary/a1-dispute-review-f544017bf15f/delivery.json`. The untracked candidate receipt and inherited source/tests are excluded |
+| Deployment / activation / acceptance | None. No original PDF/profile/cohort change, generation, human review, issuance or promotion |
+| Limitations | Seven outputs logically excluded from acceptance; no downstream quarantine enforcement claimed. Remaining seventeen not approved. Current profile status/digest cannot prove generation-time status or identify the person/agent who edited it |
+| Next owner | A1 engineering and source reviewer reconcile authoritative institution facts and historical provenance, then implement separate acceptance checks and regenerate only explicitly reconciled scoped inputs |
+
+[Evidence explanation](2026-09-16-agent-ops-review.md#follow-up-seven-disputed-institution-associations).
+Private report: `runtime/portal/temporary/a1-dispute-review-f544017bf15f/FEEDBACK.md`.
+The mandatory hook may repeat its unchanged tooling suite because the existing
+delivery-record package selects it; this is not a new application acceptance run.
+
 ## Independent agent/fleet review and bounded repairs — 2026-09-16
 
 This checkpoint supersedes broad health/acceptance statements only within its

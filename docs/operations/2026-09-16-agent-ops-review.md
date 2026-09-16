@@ -59,6 +59,52 @@ Separate tool wait intervals from process deadlines; retain PID/start identity,
 phase progress, terminal exit and receipts before retrying. A timeout means an
 unknown/incomplete outcome until process and artifact reconciliation establish it.
 
+### Follow-up: seven disputed institution associations
+
+The subsequent user-supplied report described the earlier interrupted destination.
+Completed recovery finished **2026-09-16 17:24:26 UTC / 19:24:26 CEST** in the
+separate recovery destination. A fresh audited inspection verified the generation
+completion, PDF identity and QA completion again; it did not rerender unchanged
+artifacts. The prior QA PASS remains a technical result with narrower meaning
+than institution-fact acceptance.
+
+Seven PDFs map to today's non-VERIFIED institution profiles: Ústí nad Labem three,
+Louny three, Kladno one. Current profile hashes differ from their recorded
+generation-input hashes. The affected artifacts are logically excluded from
+acceptance evidence in a private disposition receipt; originals remain preserved.
+The other seventeen are **not approved by subtraction**. This metadata does not
+claim to enforce a downstream quarantine or promotion gate.
+
+The exact historical profile bytes/status, author of profile edits, modifying
+command/exit, and alleged warning removal are not established by these hashes.
+The generation audit records a shared OS UID, which does not distinguish agents
+from people. Matching current files to Git plus modification times is consistent
+with restoration, but does not prove the restoring actor or previous contents.
+An attributable before/after write record is still required for that accusation.
+
+Current source explains the QA result: `require_completed_generation()` binds
+manifest, completion audit and actual PDF hashes; `validate_pdf()` does not reload
+institution profiles or establish their factual provenance. Generation's
+`VERIFIED_PROFILE` table value is a literal label, not a profile-change event.
+A profile's URL/date/status strings alone do not establish human verification.
+
+Current official contact pages provide contrary Kladno address/director evidence:
+[ČSSZ Kladno](https://www.cssz.gov.cz/web/cz/kontakty/region/ossz/stredocesky-kraj/kladno).
+The [Ústí](https://www.cssz.gov.cz/web/cz/kontakty/region/ossz/ustecky-kraj/usti-nad-labem)
+and [Louny](https://www.cssz.gov.cz/web/cz/kontakty/region/ossz/ustecky-kraj/louny)
+pages provide contact addresses. These observations, retrieved 2026-09-16, do not
+establish institution identifier codes, historical facts or an authorized A1
+signatory. No profile was edited or upgraded to VERIFIED from this web research.
+
+Private evidence and answers to all five questions:
+`runtime/portal/temporary/a1-dispute-review-f544017bf15f/FEEDBACK.md`, with exact
+commands/exits, profile/input/output hashes and opaque per-PDF references in the
+adjacent receipts. Retention review is 2026-12-15. Two initial diagnostic failures
+(path-boundary rejection and wrong JSON-type assumption) are retained alongside
+the corrected inspection's exit 0. The inherited local candidate receipt was
+updated separately; its uncommitted candidate source/tests were not adopted.
+The historical checkbox receipt and all original PDFs/profiles remain unchanged.
+
 ## Findings in Cline's proposed verification
 
 The [source review](../research/2026-09-16-cline-claims-review.md) contains
