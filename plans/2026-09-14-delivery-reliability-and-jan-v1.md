@@ -212,3 +212,37 @@ application files. At that path-deployment checkpoint, source updates were uncom
 unpublished in this application checkout; current publication is in the delivery record. No PostgreSQL authentication,
 secret separation/rotation, manifest approval/repin, service recovery, JAN acceptance
 or PG5 restore gate is closed by the path deployment.
+
+## Verification run — 2026-09-16
+
+Six focused regression suites run against the committed source at `c1fced1`:
+
+| Suite | Result | Evidence |
+|---|---|---|
+| `tests/test_disposable_pg_guard.py` | 16 passed, 0 failed | Guard + `exclusive_cleanup_sql` + `psql_env` + held-lock tests |
+| `tests/test_test_pg_contract.py` | 14 passed, 0 failed | Blank-target rejection, TCP password requirement, operator-name refusal |
+| `tests/test_settings_supervised_synthetic.py` (migration/scope) | 9 passed (+62 deselected) | `PRACE_MIGRATION_SCOPE=1` gate, migration user/password, `statement_timeout` |
+| `tests/test_release_reproducer.py` | 17 passed, 0 failed | Receipt sanitization, `PRACE_WORKFLOW_PG` forwarding, env forwarding |
+| `tests/test_persistence_verifier.py` | 10 passed, 0 failed | Source-byte verification, db-hash vs source-byte failure classification, exit-2 blocked |
+| `tests/test_rehearse_workflow.py` | 4 passed, 0 failed | Core journey with `assignment_corrected` stage, `optional-a1` profile separation |
+
+**Total: 70 passed, 0 failed.** No false positives, no silent skips, no unexpected passes. The two files that differ from the published base `c24a293` are exactly `scripts/run_release_reproducer.py` (+1 line forwarding `PRACE_WORKFLOW_PG`) and `portal/test_pg_contract.py` (+9/-2 lines adding blank-target rejection). The other changed files match `c24a293` exactly.
+
+### Live-state verification (server62, 2026-09-16)
+
+PostgreSQL 18.3 is running. Role `prace_synth_app` exists with `rolcanlogin=true` and a non-null password hash. The `PRACE_DB_PASSWORD` stored in `.runtime-config/gunicorn.env` (length 44) does **not** authenticate against the live role over `scram-sha-256` TCP or `md5` local socket — 9 `FATAL: password authentication failed` entries in `/var/log/postgresql/postgresql-18-main.log` across ~90 minutes on Sep 16. The systemd gunicorn unit is `failed (Result: signal)` since Sep 14; a divergent manual instance (PID 2681143, user `prace-s+`, workers 2) serves on `127.0.0.1:8001`. Static files are uncollected (`static/` empty, Sep 11 log shows 404s for `htmx-1.9.10.min.js` and `tailwind-2.2.19.min.css`). `journalctl -u prace-v-nemecku-gunicorn` is empty — `ProtectSystem=strict` + `--capture-output` blocks journald. The unit file's filesystem `Birth` (Sep 16 02:02) is after the first failure (Sep 14 03:41) — most probable cause: operator repair attempt without addressing root cause.
+
+### Residual open items
+
+| ID | Item | Status | Owner | Evidence |
+|---|---|---|---|---|
+| G-1 | `prace_synth_app` password desync | **Open (active)** | Operator | 9 FATAL entries in PG log; `psql` test fails with env password |
+| G-2 | systemd unit failed; manual gunicorn diverges | **Open** | Operator (after G-1) | `systemctl status`; `ps` shows `prace-s+` and `--workers 2` |
+| G-3 | static files 404 / empty static dir | **Open** | Engineering | `ls static/` empty; `/tmp/gunicorn.log` 404s |
+| G-4 | journalctl empty for unit | **Open** | Operator | `journalctl` empty; unit has `ProtectSystem=strict` + `--capture-output` |
+| D-1 | networkidle flake under hook load | **Open** | Engineering | 19 `networkidle` references remain in `_rehearse_workflow_browser.py`; `_wait_networkidle` still uses 20 000 ms |
+| JAN-01 | OCR HTTP 500 flake | Mitigation in effect | Engineering | WAL/IMMEDIATE/busy-timeout in supervised settings; bounded-set evidence |
+| JAN-03 | Default-exported core journey | **Partial** | Engineering | `run_release_reproducer.py` acceptance commands still A1-heavy |
+| SMTP | Python 3.13 `smtpd` removal | **Broken** | Engineering | `/tmp/smtp.log`: `No module named smtpd`; `/tmp/smtp_server.log`: port 25 bind `PermissionError` |
+
+Full verification report: `docs/operations/s62-verification-report-2026-09-16.md`. Full triage with Ansible playbook and meta-pattern library: `docs/operations/s62-comprehensive-triage-and-fix-playbook-2026-09-16.md`.
