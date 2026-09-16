@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate non-final A1 client-confirmation copies from accepted evidence."""
+"""Generate A1 forms. Output goes to output/provisional/."""
 
 from __future__ import annotations
 

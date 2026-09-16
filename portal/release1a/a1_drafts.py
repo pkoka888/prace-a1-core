@@ -1,4 +1,4 @@
-"""Synthetic unverified application drafts through the canonical A1 publisher."""
+"""Application drafts. Output goes to output/provisional/."""
 import copy
 import hashlib
 import importlib.metadata

@@ -5,6 +5,8 @@ description: Generate, recover, inspect, and visually validate Czech A1 provisio
 
 # A1 PDF production
 
+Output goes to output/provisional/.
+
 ## Ground the run
 
 1. Read the repository `AGENTS.md` and [field-policy.md](references/field-policy.md).

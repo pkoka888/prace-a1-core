@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single source of truth for validated A1 data and PDF rendering."""
+"""A1 PDF rendering core. Output goes to output/provisional/."""
 
 from __future__ import annotations
 

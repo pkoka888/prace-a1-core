@@ -1,4 +1,4 @@
-"""Generate or reuse one protected, explicitly unverified synthetic A1 draft."""
+"""Generate application draft. Output goes to output/provisional/."""
 import json
 from pathlib import Path
 from django.conf import settings
