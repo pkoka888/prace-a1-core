@@ -156,12 +156,14 @@ def _wait_for_url(page, pattern, *, timeout_ms: int = 20000) -> None:
             f"url={page.url!r}, title={page.title()!r}") from exc
 
 
-def _wait_networkidle(page, *, timeout_ms: int = 20000) -> None:
+def _wait_page_ready(page, *, timeout_ms: int = 20000) -> None:
     try:
-        page.wait_for_load_state("networkidle", timeout=timeout_ms)
+        page.wait_for_load_state("load", timeout=timeout_ms)
+        page.wait_for_selector("main, h1, body", state="visible",
+                               timeout=timeout_ms)
     except PWTimeout as exc:
         raise SystemExit(
-            f"FAIL: networkidle timeout; current url={page.url!r}, "
+            f"FAIL: page readiness timeout; current url={page.url!r}, "
             f"title={page.title()!r}") from exc
 
 
@@ -386,12 +388,14 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     reason_input.fill(
                         "synthetic rehearsal: worker bound to upload")
                 _submit_form(page, action="associate")
-                page.wait_for_load_state("networkidle")
+                page.wait_for_load_state("load")
+                page.wait_for_selector("main", state="visible")
             # The association submit redirects back; verify the worker
             # name now appears in the page body so a 500 or wrong
             # submit cannot pass.
             page.goto(base_url + f"/documents/{document_pk}/",
-                      wait_until="networkidle")
+                      wait_until="load")
+            page.wait_for_selector("main", state="visible")
             body_text = page.evaluate(
                 "() => document.body && document.body.innerText")
             if not body_text or "Testerova" not in body_text \
@@ -425,7 +429,7 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                 page.locator(
                     f'input[type="checkbox"][name="{name}"]').check()
             _submit_form(page, action="confirm")
-            _wait_networkidle(page)
+            _wait_page_ready(page)
             page.reload(wait_until="domcontentloaded")
             remaining = page.locator(
                 'input[type="checkbox"][name^="confirm_"]').count()
@@ -460,7 +464,7 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             ):
                 _set_field(page, name=field, value=value)
             _submit_form(page, action="confirm_missing_identity")
-            _wait_networkidle(page)
+            _wait_page_ready(page)
             page.reload(wait_until="domcontentloaded")
             if page.locator(
                     'input[name^="identity_"]:not([name="identity_source"])'
@@ -486,7 +490,7 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             for field, value in expected_address.items():
                 _set_field(page, name=field, value=value)
             _submit_form(page, action="confirm_address")
-            _wait_networkidle(page)
+            _wait_page_ready(page)
             page.reload(wait_until="domcontentloaded")
             actual_address = page.evaluate('''() => {
                 const inputs = ['address_street', 'address_house_number',
@@ -535,7 +539,8 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             # the pk to correct the assignment (stage 9c) through the
             # shipped assignment edit form.
             page.goto(base_url + f"/workers/{worker_pk}/?tab=assignments",
-                      wait_until="networkidle")
+                      wait_until="load")
+            page.wait_for_selector("main", state="visible")
             detail_links = page.evaluate(
                 """() => Array.from(
                     document.querySelectorAll(
@@ -564,13 +569,16 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             corrected_activity = "Montážní práce — upraveno"
             page.goto(base_url
                       + f"/workers/{worker_pk}/assignments/{assignment_pk}/edit/",
-                      wait_until="networkidle")
+                      wait_until="load")
+            page.wait_for_selector("main", state="visible")
             _set_field(page, name="activity_label", value=corrected_activity)
             _submit_form(page)
-            page.wait_for_load_state("networkidle")
+            page.wait_for_load_state("load")
+            page.wait_for_selector("main", state="visible")
             page.goto(base_url
                       + f"/workers/{worker_pk}/assignments/{assignment_pk}/edit/",
-                      wait_until="networkidle")
+                      wait_until="load")
+            page.wait_for_selector("main", state="visible")
             activity_after = page.evaluate("""() => {
                 const el = document.querySelector('[name="activity_label"]');
                 return el ? el.value : null;
@@ -597,7 +605,8 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             if profile == "optional-a1":
                 page.goto(base_url
                           + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
-                          wait_until="networkidle")
+                          wait_until="load")
+                page.wait_for_selector("main", state="visible")
                 assignment_facts_values = {
                     "status_profile": "employee_multi_state",
                     "employment__employer_id": "12345678",
@@ -622,7 +631,8 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                 for field, value in assignment_facts_values.items():
                     _set_field(page, name=field, value=value)
                 _submit_form(page)
-                page.wait_for_load_state("networkidle")
+                page.wait_for_load_state("load")
+                page.wait_for_selector("main", state="visible")
                 chosen_profile = page.evaluate(
                     """() => {
                         const sel = document.querySelector(
@@ -763,7 +773,8 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                             f"FAIL: draft generate returned HTTP "
                             f"{generate_status}; body={generate_body!r} "
                             f"(url={page.url!r})")
-                page.wait_for_load_state("networkidle")
+                page.wait_for_load_state("load")
+                page.wait_for_selector("main", state="visible")
                 download_link = page.locator('a[href*="/artifact/"]').first
                 if download_link.count() == 0:
                     raise SystemExit(
@@ -800,12 +811,15 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                 # the PDF bytes.
                 page.goto(base_url
                           + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
-                          wait_until="networkidle")
+                          wait_until="load")
+                page.wait_for_selector("main", state="visible")
                 corrected_street = "Pracovni 22"
                 _set_field(page, name="employment__street", value=corrected_street)
                 _submit_form(page)
-                page.wait_for_load_state("networkidle")
-                page.reload(wait_until="networkidle")
+                page.wait_for_load_state("load")
+                page.wait_for_selector("main", state="visible")
+                page.reload(wait_until="load")
+                page.wait_for_selector("main", state="visible")
                 street_after = page.evaluate('''() => {
                     const el = document.querySelector('[name="employment__street"]');
                     return el ? el.value : null;
@@ -842,7 +856,8 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     raise SystemExit(
                         f"FAIL: regenerated A1 case shows blocked status "
                         f"after correction (url={page.url!r})")
-                page.wait_for_load_state("networkidle")
+                page.wait_for_load_state("load")
+                page.wait_for_selector("main", state="visible")
                 regen_link = page.locator('a[href*="/artifact/"]').first
                 if regen_link.count() == 0:
                     raise SystemExit(
