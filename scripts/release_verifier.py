@@ -722,6 +722,25 @@ def verify_accessibility() -> list[dict]:
     return results
 
 
+# Behaviour tests that already exist on the inspected source. Each
+# entry is (check_id, test_path, env_module_or_None, note, profile).
+# - env_module selects an isolated Django settings module; None keeps
+#   the parent DJANGO_SETTINGS_MODULE. The shared intake test runs
+#   only once via env_module="portal.settings_document_tests".
+# - profile restricts the check to 'optional-a1' or 'both'.
+ENG001_CHECK_TEST_MAP: list[tuple[str, str, str | None, str, str]] = [
+    ("ENG-AUTH",          "tests/document_web/test_intake.py",     "portal.settings_document_tests", "allauth + invitation-only reviewer adapter + TOTP wiring", "both"),
+    ("ENG-MIGRATION",     "tests/m2/test_migration_0003.py",      "portal.settings_document_tests", "MigrationExecutor 0002→0003 transition", "both"),
+    ("ENG-J2-SCANNER",    "tests/document_web/test_intake.py",     "portal.settings_document_tests", "J2 scanner + protected intake (single intake run)", "both"),
+    ("ENG-J2-OCR",        "tests/test_runtime_contract.py",        "portal.settings_document_tests", "J2 OCR contract + sanitized runtime payload", "both"),
+    ("ENG-J2-IMMUTABLE",  "tests/document_web/test_field_review.py", "portal.settings_document_tests", "FieldDecision immutability + revision tokens", "both"),
+    ("ENG-J2-REVISION",   "tests/document_web/test_identity_review.py", "portal.settings_document_tests", "Identity revision + association", "both"),
+    ("ENG-J4-SNAPSHOT",   "tests/a1/test_a1_snapshots.py",         "portal.settings_document_tests", "A1 input snapshot + artifact", "optional-a1"),
+    ("ENG-J4-PREVIEW",    "tests/test_j4_artifacts.py",            "portal.settings_document_tests", "A1 preview/artifact", "optional-a1"),
+    ("ENG-J4-STATE",      "tests/test_j4_minimum.py",              "portal.settings_document_tests", "A1 generation + state machine", "optional-a1"),
+]
+
+
 def verify_eng001_checks(profile: str = "core") -> list[dict]:
     """
     Map ENG-001 checks to test evidence. Each check produces exactly one
@@ -735,28 +754,15 @@ def verify_eng001_checks(profile: str = "core") -> list[dict]:
     results: list[dict] = []
     env = django_env()
 
-    # Behaviour tests that already exist on the inspected source. Each
-    # entry is (check_id, test_path, env_module_or_None, note, profile).
-    # - env_module selects an isolated Django settings module; None keeps
-    #   the parent DJANGO_SETTINGS_MODULE. The shared intake test runs
-    #   only once via env_module="portal.settings_document_tests".
-    # - profile restricts the check to 'optional-a1' or 'both'.
-    check_test_map: list[tuple[str, str, str | None, str, str]] = [
-        ("ENG-AUTH",          "tests/document_web/test_intake.py",     "portal.settings_document_tests", "allauth + invitation-only reviewer adapter + TOTP wiring", "both"),
-        ("ENG-MIGRATION",     "tests/m2/test_migration_0003.py",      "portal.settings_document_tests", "MigrationExecutor 0002→0003 transition", "both"),
-        ("ENG-J2-SCANNER",    "tests/document_web/test_intake.py",     "portal.settings_document_tests", "J2 scanner + protected intake (single intake run)", "both"),
-        ("ENG-J2-OCR",        "tests/test_runtime_contract.py",        "portal.settings_document_tests", "J2 OCR contract + sanitized runtime payload", "both"),
-        ("ENG-J2-IMMUTABLE",  "tests/document_web/test_field_review.py", "portal.settings_document_tests", "FieldDecision immutability + revision tokens", "both"),
-        ("ENG-J2-REVISION",   "tests/document_web/test_identity_review.py", "portal.settings_document_tests", "Identity revision + association", "both"),
-        ("ENG-J4-SNAPSHOT",   "tests/a1/test_a1_snapshots.py",         "portal.settings_document_tests", "A1 input snapshot + artifact", "optional-a1"),
-        ("ENG-J4-PREVIEW",    "tests/test_j4_artifacts.py",            "portal.settings_document_tests", "A1 preview/artifact", "optional-a1"),
-        ("ENG-J4-STATE",      "tests/test_j4_minimum.py",              "portal.settings_document_tests", "A1 generation + state machine", "optional-a1"),
-    ]
+    check_test_map = ENG001_CHECK_TEST_MAP
 
-    # Track which env-module-bearing tests have already run, so the
-    # expensive intake test is executed only once across the entire
-    # verifier run (it shares fixture state in the same subprocess).
-    seen_expensive: set[str] = set()
+    # Track which identical (test file, env module) checks have already
+    # run, so the expensive intake test is executed only once across the
+    # entire verifier run (it shares fixture state in the same
+    # subprocess). The key is BOTH the test path and the module: reusing
+    # a result merely because the settings module matches could
+    # manufacture a PASS for a different test file that never ran.
+    seen_expensive: dict[tuple[str, str], dict] = {}
     for check_id, test_path, env_module, note, check_profile in check_test_map:
         if check_profile == "optional-a1" and profile != "optional-a1":
             results.append({
@@ -786,19 +792,22 @@ def verify_eng001_checks(profile: str = "core") -> list[dict]:
         run_env = dict(env)
         if env_module:
             run_env["DJANGO_SETTINGS_MODULE"] = env_module
-        if env_module and env_module in seen_expensive:
-            # Reuse the prior result — the test already ran for an
-            # earlier ENG ID. Emit a synthetic PASS that links to the
-            # shared run; this prevents duplicate intake runs.
+        shared_key = (test_path, env_module or "")
+        prior = seen_expensive.get(shared_key)
+        if prior is not None:
+            # The identical check already ran for an earlier ENG ID.
+            # Reuse the ACTUAL prior outcome (exit code and stdout) —
+            # never a synthetic PASS — and link to the shared run. A
+            # different test file under the same module never reuses.
             results.append({
                 "label": f"eng001/{check_id}",
-                "status": "PASS",
+                "status": prior.get("status", "FAIL"),
                 "command": f"(shared) pytest {test_path}",
                 "start": now(), "end": now(),
-                "exit_code": 0,
-                "stdout": f"reused PASS from earlier {env_module} run",
-                "stderr": "",
-                "error": None,
+                "exit_code": prior.get("exit_code"),
+                "stdout": f"reused {prior.get('status', 'FAIL')} from earlier identical run of {test_path}. \n{prior.get('stdout', '')}",
+                "stderr": prior.get("stderr", ""),
+                "error": prior.get("error"),
             })
             continue
         r = check_cmd(
@@ -808,7 +817,8 @@ def verify_eng001_checks(profile: str = "core") -> list[dict]:
             timeout=180,
         )
         if env_module:
-            seen_expensive.add(env_module)
+            seen_expensive[shared_key] = {**r, "label": f"eng001/{check_id}",
+                                          "status": "PASS" if r["exit_code"] == 0 else "FAIL"}
         results.append({**r, "label": f"eng001/{check_id}",
                         "status": "PASS" if r["exit_code"] == 0 else "FAIL"})
 

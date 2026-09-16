@@ -177,17 +177,41 @@ def _worker_assignment_relationship(worker_pk: int, assignment_pk: int, org_pk: 
 
 
 def _document_worker_sha256(document_pk: int, org_pk: int, expected_sha256: str | None = None) -> dict:
+    from django.conf import settings
+    from django.core.files.storage import default_storage
     from portal.release1a.models import Document
 
     document = Document.objects.filter(pk=document_pk, organization_id=org_pk).first()
     if document is None:
         return {"ok": False, "reason": "document not found in org"}
     actual = document.sha256
-    if expected_sha256 is not None:
-        matches = actual == expected_sha256
-        return {"ok": matches, "actual_sha256": actual, "expected_sha256": expected_sha256,
-                "matches": matches}
-    return {"ok": True, "actual_sha256": actual}
+    if expected_sha256 is None:
+        return {"ok": True, "actual_sha256": actual}
+    # The stored hash column proves only that the database row recorded a
+    # digest; it does not prove the source-file bytes still match the
+    # expected artifact. Read the actual stored source bytes and compare
+    # them as well, so a stale or wrongly-written opaque key can never
+    # pass a persistence acceptance that claimed source-file integrity.
+    db_matches = actual == expected_sha256
+    source_matches = False
+    source_reason = None
+    try:
+        with default_storage.open(document.opaque_key, "rb") as stream:
+            source_matches = (
+                hashlib.sha256(stream.read()).hexdigest() == expected_sha256
+            )
+    except Exception as exc:
+        source_reason = f"source bytes unreadable: {exc}"
+    matches = db_matches and source_matches
+    return {
+        "ok": matches,
+        "actual_sha256": actual,
+        "expected_sha256": expected_sha256,
+        "matches": matches,
+        "db_matches": db_matches,
+        "source_matches": source_matches,
+        "source_reason": source_reason,
+    }
 
 
 def main() -> int:
@@ -203,36 +227,44 @@ def main() -> int:
     profile = args.profile
 
     _setup(profile=profile)
-    from portal.release1a.models import Worker, Document, Assignment, A1Case
 
-    org_pk = int(os.environ["ORG_PK"])
-    worker_pk = int(os.environ["WORKER_PK"])
-    document_pk = int(os.environ["DOCUMENT_PK"])
-    assignment_pk = int(os.environ["ASSIGNMENT_PK"])
-    document_sha256 = os.environ["DOCUMENT_SHA256"]
+    # A blocked or unreachable database must produce the documented
+    # PERSISTENCE_ACCEPTANCE_BLOCKED exit code (2), not an unhandled
+    # traceback; every query below runs inside this boundary.
+    try:
+        from portal.release1a.models import Worker, Document, Assignment, A1Case
 
-    case_pk = os.environ.get("CASE_PK")
-    regen_pk = os.environ.get("REGENERATED_CASE_PK")
-    pdf_sha256 = os.environ.get("PDF_SHA256")
-    regen_sha256 = os.environ.get("REGEN_SHA256")
+        org_pk = int(os.environ["ORG_PK"])
+        worker_pk = int(os.environ["WORKER_PK"])
+        document_pk = int(os.environ["DOCUMENT_PK"])
+        assignment_pk = int(os.environ["ASSIGNMENT_PK"])
+        document_sha256 = os.environ["DOCUMENT_SHA256"]
 
-    checks = {
-        "worker_found": Worker.objects.filter(pk=worker_pk, organization_id=org_pk).exists(),
-        "document_found": Document.objects.filter(pk=document_pk, organization_id=org_pk).exists(),
-        "assignment_found": Assignment.objects.filter(pk=assignment_pk, organization_id=org_pk).exists(),
-        "worker_document_relationship": _worker_document_relationship(worker_pk, document_pk, org_pk),
-        "worker_assignment_relationship": _worker_assignment_relationship(worker_pk, assignment_pk, org_pk),
-        "document_sha256": _document_worker_sha256(document_pk, org_pk, document_sha256),
-    }
+        case_pk = os.environ.get("CASE_PK")
+        regen_pk = os.environ.get("REGENERATED_CASE_PK")
+        pdf_sha256 = os.environ.get("PDF_SHA256")
+        regen_sha256 = os.environ.get("REGEN_SHA256")
 
-    if profile == "optional-a1":
-        if not case_pk or not regen_pk or not pdf_sha256 or not regen_sha256:
-            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
-                 "optional-a1 profile requires CASE_PK, REGENERATED_CASE_PK, PDF_SHA256, REGEN_SHA256")
-        checks["case_found"] = A1Case.objects.filter(pk=int(case_pk), organization_id=org_pk).exists()
-        checks["regenerated_case_found"] = A1Case.objects.filter(pk=int(regen_pk), organization_id=org_pk).exists()
-        checks["original_artifact"] = _case_artifact(case_pk, pdf_sha256, org_pk)
-        checks["regenerated_artifact"] = _case_artifact(regen_pk, regen_sha256, org_pk)
+        checks = {
+            "worker_found": Worker.objects.filter(pk=worker_pk, organization_id=org_pk).exists(),
+            "document_found": Document.objects.filter(pk=document_pk, organization_id=org_pk).exists(),
+            "assignment_found": Assignment.objects.filter(pk=assignment_pk, organization_id=org_pk).exists(),
+            "worker_document_relationship": _worker_document_relationship(worker_pk, document_pk, org_pk),
+            "worker_assignment_relationship": _worker_assignment_relationship(worker_pk, assignment_pk, org_pk),
+            "document_sha256": _document_worker_sha256(document_pk, org_pk, document_sha256),
+        }
+
+        if profile == "optional-a1":
+            if not case_pk or not regen_pk or not pdf_sha256 or not regen_sha256:
+                _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                     "optional-a1 profile requires CASE_PK, REGENERATED_CASE_PK, PDF_SHA256, REGEN_SHA256")
+            checks["case_found"] = A1Case.objects.filter(pk=int(case_pk), organization_id=org_pk).exists()
+            checks["regenerated_case_found"] = A1Case.objects.filter(pk=int(regen_pk), organization_id=org_pk).exists()
+            checks["original_artifact"] = _case_artifact(case_pk, pdf_sha256, org_pk)
+            checks["regenerated_artifact"] = _case_artifact(regen_pk, regen_sha256, org_pk)
+    except Exception as exc:
+        _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+             f"database query failed before verification: {exc}")
 
     failed = False
     for key, value in checks.items():
@@ -255,22 +287,32 @@ def main() -> int:
         elif key in ("worker_document_relationship", "worker_assignment_relationship",
                      "document_sha256"):
             rel = value if isinstance(value, dict) else {}
-            if not rel.get("ok"):
+            if key == "document_sha256":
+                # The document hash check carries two independent proofs:
+                # the stored column and the source-file bytes. Report the
+                # exact failing proof, never a generic "check failed".
+                if rel.get("matches") is False:
+                    reasons = []
+                    if rel.get("db_matches") is False:
+                        reasons.append(
+                            f"db hash mismatch (db={rel.get('actual_sha256')}, "
+                            f"expected={rel.get('expected_sha256')})")
+                    if rel.get("source_matches") is False:
+                        detail = rel.get("source_reason") or "source bytes mismatch"
+                        reasons.append(f"source bytes: {detail}")
+                    print(f"FAIL {key}: " + "; ".join(reasons or ["check failed"]),
+                          file=sys.stderr)
+                    failed = True
+                else:
+                    print(f"ok  {key}: sha256={rel.get('actual_sha256')} "
+                          "db+source matched")
+            elif not rel.get("ok"):
                 print(f"FAIL {key}: {rel.get('reason', 'check failed')}",
                       file=sys.stderr)
                 failed = True
             else:
-                if key == "document_sha256":
-                    matches = rel.get("matches")
-                    if matches is False:
-                        print(f"FAIL {key}: sha256 mismatch (actual={rel.get('actual_sha256')}, expected={rel.get('expected_sha256')})",
-                              file=sys.stderr)
-                        failed = True
-                    else:
-                        print(f"ok  {key}: sha256={rel.get('actual_sha256')} matched")
-                else:
-                    detail = " ".join(f"{k}={v}" for k, v in rel.items() if k != "ok")
-                    print(f"ok  {key}: {detail}")
+                detail = " ".join(f"{k}={v}" for k, v in rel.items() if k != "ok")
+                print(f"ok  {key}: {detail}")
         else:
             if not value:
                 print(f"FAIL {key}: row missing in org", file=sys.stderr)

@@ -69,6 +69,7 @@ REQUIRED_STAGES = (
     "missing_identity_confirmed",
     "address_confirmed",
     "assignment_created",
+    "assignment_corrected",
     "source_document_downloaded",
     "a1_prepared",
     "a1_draft_generated",
@@ -528,19 +529,11 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             evidence["stages"]["assignment_created"] = _stage_ok(
                 "assignment_created", url=page.url)
 
-            # Stage 9b: fill the assignment's pending A1 facts
-            # (employment, activity, institution). The canonical
-            # ``prepare_application_draft`` validator requires these
-            # fields when ``status_profile != self_employed_multi_state``,
-            # so a synthetic minimum keeps the worker-employee path
-            # within policy. Without this step the A1 row stays
-            # blocked on missing institution / employment facts and
-            # the downstream render fails.
-            # assignment_create redirects to /workers/<pk>/ so the URL
-            # no longer carries the assignment pk. Discover the most
-            # recent assignment for this worker from the
-            # ``?tab=assignments`` listing — it shows an
-            # ``assignment_edit`` link per row.
+            # Stage 9b: discover the newly created assignment's primary
+            # key from the worker ``?tab=assignments`` listing — the
+            # create redirect no longer carries it. Every profile needs
+            # the pk to correct the assignment (stage 9c) through the
+            # shipped assignment edit form.
             page.goto(base_url + f"/workers/{worker_pk}/?tab=assignments",
                       wait_until="networkidle")
             detail_links = page.evaluate(
@@ -559,48 +552,91 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     f"FAIL: could not discover the new assignment pk "
                     f"from worker detail links (url={page.url!r})")
             assignment_pk = int(apk_match)
+
+            # Stage 9c: correct one NON-A1 assignment fact. Both profiles
+            # exercise the assignment correction workflow through the
+            # shipped assignment edit form; the core profile deliberately
+            # edits a plain assignment field (activity label), so the
+            # correction stage has NO A1 dependency. The optimistic-lock
+            # ``version`` field is part of the rendered form and is
+            # submitted unchanged, keeping the real concurrency check
+            # active.
+            corrected_activity = "Montážní práce — upraveno"
             page.goto(base_url
-                      + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
+                      + f"/workers/{worker_pk}/assignments/{assignment_pk}/edit/",
                       wait_until="networkidle")
-            assignment_facts_values = {
-                "status_profile": "employee_multi_state",
-                "employment__employer_id": "12345678",
-                "employment__employer_name": "Acme GmbH",
-                "employment__street": "Pracovní",
-                "employment__house_number": "1",
-                "employment__city": "Mnichov",
-                "employment__postal_code": "12345",
-                "employment__country_code": "DE",
-                "activity__name": "Montážní práce",
-                "activity__address": "DE, CZ",
-                "institution__resolved_ossz": "OSSZ Děčín",
-            }
-            # Pick the verifiable institution profile that matches the
-            # resolved OSSZ above. ``validate_application_draft_row``
-            # requires ``expected_ossz`` to equal ``resolved_ossz`` and
-            # ``resolved_ossz`` to appear in the institution name, so
-            # decin (OSSZ Děčín) satisfies both checks.
-            page.locator(
-                'select[name="institution__profile_key"]'
-            ).select_option("decin")
-            for field, value in assignment_facts_values.items():
-                _set_field(page, name=field, value=value)
+            _set_field(page, name="activity_label", value=corrected_activity)
             _submit_form(page)
             page.wait_for_load_state("networkidle")
-            chosen_profile = page.evaluate(
-                """() => {
-                    const sel = document.querySelector(
-                        'select[name="institution__profile_key"]');
-                    if (!sel || sel.selectedIndex < 0) return null;
-                    return sel.options[sel.selectedIndex].value || null;
-                }""")
-            if chosen_profile != "decin":
+            page.goto(base_url
+                      + f"/workers/{worker_pk}/assignments/{assignment_pk}/edit/",
+                      wait_until="networkidle")
+            activity_after = page.evaluate("""() => {
+                const el = document.querySelector('[name="activity_label"]');
+                return el ? el.value : null;
+            }""")
+            if activity_after != corrected_activity:
                 raise SystemExit(
-                    f"FAIL: assignment facts did not keep the decin "
-                    f"institution_profile (url={page.url!r})")
-            evidence["stages"]["assignment_facts_saved"] = _stage_ok(
-                "assignment_facts_saved",
-                url=page.url, institution_profile=chosen_profile)
+                    f"FAIL: assignment correction did not persist "
+                    f"(expected {corrected_activity!r}, got "
+                    f"{activity_after!r}, url={page.url!r})")
+            evidence["stages"]["assignment_corrected"] = _stage_ok(
+                "assignment_corrected", assignment_pk=assignment_pk,
+                corrected_activity=corrected_activity, url=page.url)
+
+            # Stage 9d: fill the assignment's pending A1 facts
+            # (employment, activity, institution) — optional-a1 only. The
+            # canonical ``prepare_application_draft`` validator requires
+            # these fields when ``status_profile !=
+            # self_employed_multi_state``, so a synthetic minimum keeps the
+            # worker-employee path within policy. Without this step the A1
+            # row stays blocked on missing institution / employment facts
+            # and the downstream render fails. The core profile never
+            # touches this page: core acceptance must not depend on A1
+            # inputs.
+            if profile == "optional-a1":
+                page.goto(base_url
+                          + f"/workers/{worker_pk}/assignments/{assignment_pk}/a1-inputs/",
+                          wait_until="networkidle")
+                assignment_facts_values = {
+                    "status_profile": "employee_multi_state",
+                    "employment__employer_id": "12345678",
+                    "employment__employer_name": "Acme GmbH",
+                    "employment__street": "Pracovní",
+                    "employment__house_number": "1",
+                    "employment__city": "Mnichov",
+                    "employment__postal_code": "12345",
+                    "employment__country_code": "DE",
+                    "activity__name": "Montážní práce",
+                    "activity__address": "DE, CZ",
+                    "institution__resolved_ossz": "OSSZ Děčín",
+                }
+                # Pick the verifiable institution profile that matches the
+                # resolved OSSZ above. ``validate_application_draft_row``
+                # requires ``expected_ossz`` to equal ``resolved_ossz`` and
+                # ``resolved_ossz`` to appear in the institution name, so
+                # decin (OSSZ Děčín) satisfies both checks.
+                page.locator(
+                    'select[name="institution__profile_key"]'
+                ).select_option("decin")
+                for field, value in assignment_facts_values.items():
+                    _set_field(page, name=field, value=value)
+                _submit_form(page)
+                page.wait_for_load_state("networkidle")
+                chosen_profile = page.evaluate(
+                    """() => {
+                        const sel = document.querySelector(
+                            'select[name="institution__profile_key"]');
+                        if (!sel || sel.selectedIndex < 0) return null;
+                        return sel.options[sel.selectedIndex].value || null;
+                    }""")
+                if chosen_profile != "decin":
+                    raise SystemExit(
+                        f"FAIL: assignment facts did not keep the decin "
+                        f"institution_profile (url={page.url!r})")
+                evidence["stages"]["assignment_facts_saved"] = _stage_ok(
+                    "assignment_facts_saved",
+                    url=page.url, institution_profile=chosen_profile)
 
             # Exact identifiers used by downstream persistence/verifier
             # tooling. Recorded for both profiles; case identifiers stay

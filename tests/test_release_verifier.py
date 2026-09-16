@@ -323,6 +323,71 @@ class TestApprovalValidators:
         assert result["result"] == "pass", f"Schema errors: {result['errors']}"
 
 
+class TestEng001Dedup:
+    """verify_eng001_checks runs each unique (test file, env module) once and
+    reuses only the ACTUAL outcome of an identical earlier run — it never
+    manufactures a PASS from a settings-module name alone."""
+
+    def _run(self, monkeypatch, tmp_path, entries, exit_code=1):
+        from scripts import release_verifier as verifier
+        calls = []
+        payload = {"exit_code": exit_code, "stdout": f"real run rc={exit_code}",
+                   "stderr": "", "start": "t0", "end": "t1"}
+        def fake_check_cmd(label, argv, env, timeout):
+            calls.append((label, argv, env, timeout))
+            return dict(payload)
+        # Point ROOT at a minimal tree holding exactly the referenced tests.
+        for _, test_path, _, _, _ in entries:
+            f = tmp_path / test_path
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("def test_probe():\n    assert True\n")
+        monkeypatch.setattr(verifier, "ROOT", tmp_path)
+        monkeypatch.setattr(verifier, "django_env", lambda: {})
+        monkeypatch.setattr(verifier, "ENG001_CHECK_TEST_MAP", entries)
+        monkeypatch.setattr(verifier, "check_cmd", fake_check_cmd)
+        return calls, verifier.verify_eng001_checks()
+
+    def test_identical_path_reuses_real_failure_not_synthetic_pass(self, monkeypatch, tmp_path):
+        """Two ENG IDs on the SAME file+module run once; the second result
+        carries the real FAIL (rc=1), not an invented PASS."""
+        entries = [
+            ("ENG-AUTH", "tests/document_web/test_intake.py", "portal.settings_document_tests", "n1", "both"),
+            ("ENG-J2-SCANNER", "tests/document_web/test_intake.py", "portal.settings_document_tests", "n2", "both"),
+        ]
+        calls, results = self._run(monkeypatch, tmp_path, entries, exit_code=1)
+        by_id = {r["label"]: r for r in results}
+        r_auth, r_scanner = by_id["eng001/ENG-AUTH"], by_id["eng001/ENG-J2-SCANNER"]
+        assert len(calls) == 1
+        assert (r_auth["status"], r_scanner["status"]) == ("FAIL", "FAIL")
+        assert (r_auth["exit_code"], r_scanner["exit_code"]) == (1, 1)
+        assert "reused" in r_scanner["stdout"]
+        assert r_scanner["error"] is None
+
+    def test_identical_path_reuses_real_success(self, monkeypatch, tmp_path):
+        entries = [
+            ("ENG-AUTH", "tests/document_web/test_intake.py", "portal.settings_document_tests", "n1", "both"),
+            ("ENG-J2-SCANNER", "tests/document_web/test_intake.py", "portal.settings_document_tests", "n2", "both"),
+        ]
+        calls, results = self._run(monkeypatch, tmp_path, entries, exit_code=0)
+        by_id = {r["label"]: r for r in results}
+        assert len(calls) == 1
+        assert (by_id["eng001/ENG-AUTH"]["status"],
+                by_id["eng001/ENG-J2-SCANNER"]["status"]) == ("PASS", "PASS")
+
+    def test_different_path_under_same_module_still_runs(self, monkeypatch, tmp_path):
+        """A DIFFERENT test file under the same settings module must run —
+        module name alone is never a reuse key."""
+        entries = [
+            ("ENG-AUTH", "tests/document_web/test_intake.py", "portal.settings_document_tests", "n1", "both"),
+            ("ENG-MIGRATION", "tests/m2/test_migration_0003.py", "portal.settings_document_tests", "n2", "both"),
+        ]
+        calls, results = self._run(monkeypatch, tmp_path, entries, exit_code=0)
+        by_id = {r["label"]: r for r in results}
+        assert len(calls) == 2
+        assert (by_id["eng001/ENG-AUTH"]["status"],
+                by_id["eng001/ENG-MIGRATION"]["status"]) == ("PASS", "PASS")
+
+
 class TestVerificationDB:
     def test_verification_seed_adapter_is_isolated(self, monkeypatch):
         """Inspect the seeder adapter contract without touching any database."""
