@@ -76,6 +76,15 @@ if [ "$postgres_present" != "0" ] && [ "$postgres_present" != "4" ]; then
     echo "FAIL: partial PostgreSQL target ($postgres_present of 4 PRACE_DB_* vars set); set all four or none" >&2
     exit 1
 fi
+# Exact-match operator database names are never valid migration/cleanup
+# targets. Ownership of these names is infra/operator authorization, so
+# the script refuses them before any schema or data mutation.
+operator_db_names="prace_synthetic"
+if [ "$postgres_present" = "4" ] \
+    && [ "${PRACE_DB_NAME:-}" = "$operator_db_names" ]; then
+    echo "FAIL: refused PostgreSQL target '$operator_db_names' (operator database name)" >&2
+    exit 1
+fi
 db_target_line() {
     if [ "$postgres_present" = "4" ]; then
         echo "DB target: PostgreSQL host=${PRACE_DB_HOST}:${PRACE_DB_PORT} db=${PRACE_DB_NAME} user=${PRACE_DB_USER}"
@@ -355,6 +364,7 @@ cmd_migrate() {
     PRACE_SECRET_KEY="$PRACE_SECRET_KEY" \
     PRACE_RELEASE_MANIFEST="$MANIFEST_PATH" \
     PRACE_ALLOWED_HOSTS="$PRACE_ALLOWED_HOSTS" \
+    PRACE_MIGRATION_SCOPE=1 \
     PRACE_MIGRATION_STATEMENT_TIMEOUT_MS="$migration_timeout" \
     "$PYTHON_BIN" manage.py migrate --noinput
     # Re-assert private mode on the database after Django's create.
