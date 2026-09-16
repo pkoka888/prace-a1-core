@@ -648,6 +648,89 @@ class TestRuntimeStatementTimeout:
         assert "statement_timeout=2000" in result.stdout
 
 
+class TestMigrationScopeGating:
+    """Migration credentials and the migration statement timeout apply
+    only inside an explicit PRACE_MIGRATION_SCOPE=1 session. A plain
+    settings import must never adopt the schema-owner role or the
+    migration timeout."""
+
+    def _pg_env(self, env, *, statement_timeouts):
+        env.update({
+            "PRACE_DB_NAME": "prace_runtime_test",
+            "PRACE_DB_USER": "prace_runtime_role",
+            "PRACE_DB_HOST": "/tmp",
+            "PRACE_DB_PORT": "5432",
+            "PRACE_DB_SSLMODE": "verify-full",
+        })
+        if "PRACE_DB_PASSWORD" not in env:
+            env["PRACE_DB_PASSWORD"] = "runtime-password"
+        sslrootcert = Path(env["PRACE_RELEASE_MANIFEST"]).parent / "ca.pem"
+        sslrootcert.write_text("dummy ca", encoding="utf-8")
+        env["PRACE_DB_SSLROOTCERT"] = str(sslrootcert)
+        env["PRACE_RUNTIME_STATEMENT_TIMEOUT_MS"] = str(statement_timeouts["runtime"])
+        env["PRACE_MIGRATION_STATEMENT_TIMEOUT_MS"] = str(statement_timeouts["migration"])
+
+    def test_runtime_import_never_adopts_migration_role(self):
+        env = _valid_env(
+            PRACE_MIGRATION_DB_USER="prace_migrator",
+            PRACE_MIGRATION_DB_PASSWORD="migrator-password",
+        )
+        self._pg_env(env, statement_timeouts={"runtime": 2000, "migration": 120000})
+        proc = _import_with(env)
+        assert proc.returncode == 0, proc.stderr
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "db = s.DATABASES['default']; "
+            "print('USER=' + db['USER']); "
+            "print('OPTIONS=' + str(db.get('OPTIONS', {})))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "USER=prace_runtime_role" in result.stdout
+        assert "prace_migrator" not in result.stdout
+        assert "statement_timeout=2000" in result.stdout
+        assert "statement_timeout=120000" not in result.stdout
+
+    def test_migrate_scope_adopts_migration_role_and_timeout(self):
+        env = _valid_env(
+            PRACE_MIGRATION_DB_USER="prace_migrator",
+            PRACE_MIGRATION_DB_PASSWORD="migrator-password",
+            PRACE_MIGRATION_SCOPE="1",
+        )
+        self._pg_env(env, statement_timeouts={"runtime": 2000, "migration": 120000})
+        proc = _import_with(env)
+        assert proc.returncode == 0, proc.stderr
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "db = s.DATABASES['default']; "
+            "print('USER=' + db['USER']); "
+            "print('OPTIONS=' + str(db.get('OPTIONS', {})))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "USER=prace_migrator" in result.stdout
+        assert "statement_timeout=120000" in result.stdout
+
+    def test_migrate_scope_without_migration_credentials_keeps_runtime_role(self):
+        env = _valid_env(PRACE_MIGRATION_SCOPE="1")
+        self._pg_env(env, statement_timeouts={"runtime": 2000, "migration": 120000})
+        proc = _import_with(env)
+        assert proc.returncode == 0, proc.stderr
+        code = (
+            "from portal import settings_supervised_synthetic as s; "
+            "db = s.DATABASES['default']; "
+            "print('USER=' + db['USER']); "
+            "print('OPTIONS=' + str(db.get('OPTIONS', {})))"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=REPO_ROOT,
+                                env={**os.environ, **env}, capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+        assert "USER=prace_runtime_role" in result.stdout
+        assert "statement_timeout=120000" in result.stdout
+
+
 class TestReadinessRunnerTimeout:
     """Regression: readiness_runner uses the configured runtime timeout."""
 

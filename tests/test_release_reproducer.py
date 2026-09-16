@@ -1,4 +1,5 @@
 """Behavioral reproduction checks use disposable, wholly synthetic Git trees."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -162,3 +163,57 @@ def test_caller_postgres_target_env_is_forwarded(repo, monkeypatch):
     _, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
     assert receipt["passed"]
     assert receipt["environment"]["PRACE_DB_NAME"] == "synthetic_caller_db"
+
+
+def test_caller_migration_credential_pair_is_forwarded(repo, monkeypatch):
+    """The migration credential pair and its scope signal must survive the
+    export so a migrate step inside the acceptance run uses the schema-owner
+    role and the migration statement timeout, exactly like the rehearsal
+    command does. Forwarding the pair is a secret-carrying operation, so the
+    receipt must still only record it as a presence marker."""
+    sha = commit(repo, "fixture")
+    monkeypatch.setenv("PRACE_MIGRATION_DB_USER", "prace_migrator")
+    secret = "migrator-secret-9f2"
+    monkeypatch.setenv("PRACE_MIGRATION_DB_PASSWORD", secret)
+    monkeypatch.setenv("PRACE_MIGRATION_SCOPE", "1")
+    monkeypatch.setenv("PRACE_MIGRATION_STATEMENT_TIMEOUT_MS", "120000")
+    digest = hashlib.sha256(secret.encode()).hexdigest()
+    code = (
+        "import os, hashlib;"
+        "v = os.environ['PRACE_MIGRATION_DB_PASSWORD'];"
+        f"assert hashlib.sha256(v.encode()).hexdigest() == '{digest}';"
+        "assert os.environ['PRACE_MIGRATION_DB_USER'] == 'prace_migrator';"
+        "assert os.environ['PRACE_MIGRATION_SCOPE'] == '1';"
+        "assert os.environ['PRACE_MIGRATION_STATEMENT_TIMEOUT_MS'] == '120000';"
+    )
+    _, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
+    assert receipt["passed"]
+    body = json.dumps(receipt)
+    assert secret not in body, (
+        "migration credential value leaked into the receipt")
+    assert receipt["environment"]["PRACE_MIGRATION_DB_PASSWORD"] == "set"
+    assert receipt["environment"]["PRACE_MIGRATION_SCOPE"] == "1"
+
+
+def test_receipt_never_records_secret_values(repo, monkeypatch):
+    """The receipt serializes an allowlisted sanitized environment; credential
+    names appear as presence markers only, never with their values."""
+    secret_value = "super-secret-value-1902f3a"
+    sha = commit(repo, "fixture")
+    for name in ("PRACE_DB_PASSWORD", "PGPASSWORD", "PRACE_SECRET_KEY",
+                 "JOURNEY_EVIDENCE_PATH"):
+        monkeypatch.setenv(name, "x")
+    monkeypatch.setenv("PRACE_DB_PASSWORD", secret_value)
+    monkeypatch.setenv("PGPASSWORD", secret_value)
+    monkeypatch.setenv("PRACE_SECRET_KEY", secret_value)
+    _, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", "pass"]])
+    body = json.dumps(receipt)
+    assert secret_value not in body, (
+        "a driver credential was serialized into the receipt; the receipt "
+        "must keep execution variables out of the evidence store")
+    for name in ("PRACE_DB_PASSWORD", "PGPASSWORD", "PRACE_SECRET_KEY"):
+        assert receipt["environment"][name] == "set", (
+            f"{name} must be recorded as a set marker, got "
+            f"{receipt['environment'].get(name)!r}")
+    assert "JOURNEY_EVIDENCE_PATH" in receipt["environment"]
+    assert receipt["passed"]

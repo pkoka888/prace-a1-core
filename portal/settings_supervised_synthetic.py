@@ -307,6 +307,14 @@ PRACE_RELEASE_MANIFEST_SHA256 = _manifest_sha256_raw
 # PRACE_DB_USER/PRACE_DB_PASSWORD as the runtime. These are not used for
 # the runtime DATABASES config consumed by the web application, OCR worker
 # or readiness checks.
+#
+# Scope enforcement: the credentials and the migration statement timeout
+# apply ONLY inside an explicit migrate-scoped session signalled by
+# ``PRACE_MIGRATION_SCOPE=1``. A plain settings import (gunicorn, OCR
+# worker, readiness checks, tests) always resolves the runtime role and
+# the runtime statement timeout, so a schema-owner credential is never
+# adopted by a runtime path just because it was exported for migrations.
+_migration_scope = os.environ.get("PRACE_MIGRATION_SCOPE", "").strip() == "1"
 _migration_user = os.environ.get("PRACE_MIGRATION_DB_USER", "").strip()
 _migration_password = os.environ.get("PRACE_MIGRATION_DB_PASSWORD", "")
 if _migration_user:
@@ -364,9 +372,14 @@ if _inbox_org or _inbox_actor:
 
 # Database: confined SQLite by default; PostgreSQL when all four DB_* are set
 if _db_present:
-    # The migration path uses MIGRATION_DATABASE_USER/PASSWORD when set;
-    # the runtime path always uses the PRACE_DB_* credentials.
-    _using_migration_credentials = bool(MIGRATION_DATABASE_USER)
+    # Migration credentials and the migration statement timeout apply ONLY
+    # inside an explicit migrate-scoped session (PRACE_MIGRATION_SCOPE=1);
+    # every runtime path uses the PRACE_DB_* role and the runtime timeout.
+    _using_migration_credentials = _migration_scope and bool(MIGRATION_DATABASE_USER)
+    _effective_statement_timeout = (
+        PRACE_MIGRATION_STATEMENT_TIMEOUT_MS if _migration_scope
+        else PRACE_RUNTIME_STATEMENT_TIMEOUT_MS
+    )
     _db_conf = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": _db_name,
@@ -376,7 +389,8 @@ if _db_present:
         "PORT": str(_db_port),
         "CONN_MAX_AGE": 60,
     }
-    _db_opts = {"connect_timeout": 1, "options": f"-c statement_timeout={PRACE_RUNTIME_STATEMENT_TIMEOUT_MS}"}
+    _db_opts = {"connect_timeout": 1,
+                "options": f"-c statement_timeout={_effective_statement_timeout}"}
     if _db_sslmode:
         _db_opts["sslmode"] = _db_sslmode
     if _db_sslrootcert:

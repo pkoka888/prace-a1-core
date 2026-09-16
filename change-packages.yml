@@ -29,6 +29,7 @@
         "portal/settings_supervised_synthetic.py",
         "portal/settings_browser_tests.py",
         "portal/settings_verification.py",
+        "portal/test_pg_contract.py",
         "portal/wsgi.py",
         "portal/asgi.py",
         "scripts/seed_release1a_dev.py",
@@ -39,10 +40,11 @@
         "tests/test_readiness_checks.py",
         "tests/test_runtime_hardening.py",
         "tests/test_settings_supervised_synthetic.py",
-        "tests/test_wsgi_asgi.py"
+        "tests/test_wsgi_asgi.py",
+        "tests/test_test_pg_contract.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py tests/test_wsgi_asgi.py -q"
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py tests/test_wsgi_asgi.py tests/test_test_pg_contract.py -q"
       ],
       "dependencies": [
         "Existing synthetic portal models; no host service or database writes"
@@ -295,6 +297,7 @@
         "tests/test_ocr_worker_lifecycle.py",
         "scripts/rehearse_dev_local.sh",
         "scripts/rehearse_verify_persistence.py",
+        "scripts/disposable_pg_guard.py",
         "scripts/build_release_manifest.py",
         "scripts/provision_synthetic_operator.py",
         "scripts/smoke_probe.py",
@@ -303,10 +306,11 @@
         "tests/test_rehearse_workflow.py",
         "tests/_rehearse_workflow_browser.py",
         "tests/_rehearse_workflow_data_path.py",
-        "tests/test_persistence_verifier.py"
+        "tests/test_persistence_verifier.py",
+        "tests/test_disposable_pg_guard.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_ocr_worker_lifecycle.py -q"
+        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_ocr_worker_lifecycle.py tests/test_disposable_pg_guard.py -q"
       ],
       "dependencies": [
         "Existing supervised settings module and wsgi/asgi entrypoints",

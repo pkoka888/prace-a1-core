@@ -43,6 +43,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts.disposable_pg_guard import exclusive_cleanup_sql, verify_target
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "rehearse_synthetic_site.sh"
@@ -178,8 +180,17 @@ POSTGRES_TARGET_ENV = (
     "PRACE_DB_PORT",
 )
 
+# Optional target attributes forwarded verbatim when present so the
+# workflow run and settings module observe the same connection contract
+# (TLS mode and CA root are silently dropped today, which makes an
+# encrypted target look plaintext to the subprocess).
+POSTGRES_OPTIONAL_ENV = (
+    "PRACE_DB_SSLMODE",
+    "PRACE_DB_SSLROOTCERT",
+)
 
-def _postgres_env(base: dict) -> dict:
+
+def _postgres_env(base: dict, runtime_root: Path | None = None) -> dict:
     """If PRACE_WORKFLOW_PG=1 is set, require an explicit PostgreSQL
     target from the caller's environment.
 
@@ -188,6 +199,11 @@ def _postgres_env(base: dict) -> dict:
     silently. This makes a wrong credential or host fail closed with an
     actionable message instead of a cryptic auth error from a guessed
     value.
+
+    When a runtime root is supplied, the assembled environment also
+    carries the disposable-target ownership record and marker that the
+    cleanup guard requires: the record proves this test-owned run claims
+    the target as disposable, so an arbitrary database can never be swept.
     """
     if os.environ.get("PRACE_WORKFLOW_PG", "").strip() != "1":
         return base
@@ -201,7 +217,32 @@ def _postgres_env(base: dict) -> dict:
     env = dict(base)
     for name in POSTGRES_TARGET_ENV:
         env[name] = os.environ[name]
+    for name in POSTGRES_OPTIONAL_ENV:
+        if os.environ.get(name):
+            env[name] = os.environ[name]
+    if runtime_root is not None:
+        _write_disposable_ownership(runtime_root, env)
+        env["PRACE_DISPOSABLE_TARGET"] = "1"
     return env
+
+
+def _write_disposable_ownership(runtime_root: Path, env: dict) -> None:
+    """Record the ownership of the explicitly configured target as a
+    disposable, test-owned database. The record is written as private
+    project files (0600) next to the runtime root so the cleanup guard
+    can prove the target was provisioned for this run and is not an
+    arbitrary database."""
+    import json as _json
+    record = {
+        "database": env["PRACE_DB_NAME"],
+        "host": env.get("PRACE_DB_HOST", ""),
+        "port": env.get("PRACE_DB_PORT", ""),
+        "disposable": True,
+    }
+    record_path = runtime_root / "disposable-pg.ownership.json"
+    record_path.write_text(_json.dumps(record))
+    record_path.chmod(0o600)
+    env["PRACE_DISPOSABLE_OWNERSHIP"] = str(record_path)
 
 
 @pytest.fixture
@@ -219,7 +260,7 @@ def workflow_env(workflow_root):
         "PRACE_REHEARSE_TIMEOUT": "60",
         "PRACE_READINESS_BUDGET_MS": "10000",
     }
-    return _postgres_env(base)
+    return _postgres_env(base, runtime_root=workflow_root)
 
 
 def test_workflow_prepare_provision_browser_workflow_restart_persistence(
@@ -516,10 +557,23 @@ def _cleanup_pg_operator(env: dict) -> None:
     runs scoped DELETEs as the configured test role. Never touches a
     hardcoded database name, never uses `sudo … TRUNCATE` as the
     cluster superuser, and never runs against the operator database.
+
+    A table-wide DELETE is a destructive operation, so this never
+    runs before the disposable-target guard has positively verified an
+    exclusively-owned disposable target: the guard demands
+    ``PRACE_DISPOSABLE_TARGET=1`` plus a provisioning ownership record
+    naming this exact database, refuses an operator database by exact
+    name, and blocks when the cluster is not reachable or the lock is
+    already held. The advisory lock is then held by the SAME session that
+    performs the DELETEs (``exclusive_cleanup_sql``), so a concurrent run
+    cannot interleave between the verification and the teardown.
     """
     pg_env = dict(env)
     pg_env["PGPASSWORD"] = env["PRACE_DB_PASSWORD"]
-    sql = (
+    verdict = verify_target(pg_env)
+    assert verdict.get("ok"), (
+        f"refusing PostgreSQL cleanup: {verdict.get('reason')}")
+    delete_sql = (
         "DELETE FROM release1a_fielddecision;"
         " DELETE FROM release1a_reviewtask;"
         " DELETE FROM release1a_a1generationconfirmation;"
@@ -537,10 +591,11 @@ def _cleanup_pg_operator(env: dict) -> None:
         " DELETE FROM auth_user_groups;"
         " DELETE FROM auth_user;"
     )
+    sql = exclusive_cleanup_sql(delete_sql, lock_key_value=verdict["lock_key"])
     subprocess.run(
         ["psql", "-h", env.get("PRACE_DB_HOST", "127.0.0.1"),
          "-p", env.get("PRACE_DB_PORT", "5432"),
          "-U", env["PRACE_DB_USER"], "-d", env["PRACE_DB_NAME"],
          "-v", "ON_ERROR_STOP=1", "-c", sql],
-        env=pg_env, capture_output=True, timeout=30, check=False,
+        env=pg_env, capture_output=True, timeout=30, check=True,
     )

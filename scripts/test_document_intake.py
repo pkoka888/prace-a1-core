@@ -22,7 +22,9 @@ def main():
         root = Path(temporary)
         data = root / "db"
         env = {**os.environ, "DJANGO_SETTINGS_MODULE": "portal.settings_document_tests",
-               "DOCUMENT_TEST_PG_SOCKET": str(root), "DOCUMENT_TEST_PG_USER": pwd.getpwuid(os.getuid()).pw_name}
+               "DOCUMENT_TEST_PG_SOCKET": str(root), "DOCUMENT_TEST_PG_USER": pwd.getpwuid(os.getuid()).pw_name,
+               "DOCUMENT_TEST_PG_NAME": "prace_document_tests",
+               "DOCUMENT_TEST_PG_PORT": "55439"}
         subprocess.run([str(BIN/"initdb"), "-D", str(data), "--auth=trust", "--no-locale", "--encoding=UTF8"],
                        check=True, stdout=subprocess.DEVNULL, cwd=ROOT)
         started = False

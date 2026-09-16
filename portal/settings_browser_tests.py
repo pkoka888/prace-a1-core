@@ -19,35 +19,15 @@ MEDIA_ROOT = Path(_browser_root.name) / "media"  # noqa: F405
 # browser test settings use the isolated PostgreSQL target instead of
 # SQLite. This prevents browser test runs from accidentally using the
 # operator database.
-_test_socket = os.environ.get("DOCUMENT_TEST_PG_SOCKET")  # noqa: F405
-_test_name = os.environ.get("DOCUMENT_TEST_PG_NAME")  # noqa: F405
-_test_user = os.environ.get("DOCUMENT_TEST_PG_USER")  # noqa: F405
-_test_host = os.environ.get("DOCUMENT_TEST_PG_HOST")  # noqa: F405
-_test_port = os.environ.get("DOCUMENT_TEST_PG_PORT", "5432")  # noqa: F405
+#
+# Shared fail-closed contract: ANY DOCUMENT_TEST_PG_* variable presence
+# requires a complete, consistent PostgreSQL test target — a lone variable
+# raises instead of silently selecting SQLite, and a TCP target carries
+# DOCUMENT_TEST_PG_PASSWORD.
+from .test_pg_contract import resolve_test_postgres_target  # noqa: E402
 
-if _test_socket or _test_name:
-    if not _test_name:
-        raise RuntimeError(
-            "DOCUMENT_TEST_PG_NAME is required when DOCUMENT_TEST_PG_SOCKET is set"
-        )
-    if not _test_user:
-        raise RuntimeError(
-            "DOCUMENT_TEST_PG_USER is required for test PostgreSQL target"
-        )
-    _test_db_config = {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": _test_name,
-        "USER": _test_user,
-    }
-    if _test_socket:
-        _path = Path(_test_socket).resolve()  # noqa: F405
-        if not _path.is_relative_to(BASE_DIR / "runtime"):  # noqa: F405
-            raise RuntimeError("test PostgreSQL socket must be inside project runtime")
-        _test_db_config["HOST"] = str(_path)
-        _test_db_config["PORT"] = os.environ.get("DOCUMENT_TEST_PG_PORT", "55439")  # noqa: F405
-    elif _test_host:
-        _test_db_config["HOST"] = _test_host
-        _test_db_config["PORT"] = _test_port
+_test_db_config = resolve_test_postgres_target(os.environ, runtime_base=str(_runtime))
+if _test_db_config:
     DATABASES = {"default": _test_db_config}
 else:
     # Separate per-thread connections prevent concurrent crop/audit requests from

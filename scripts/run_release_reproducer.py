@@ -24,6 +24,35 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+# Names whose values are credentials or secret material. The receipt must
+# never become another credential store, so any name matching these markers
+# is recorded as a presence indicator only, never its value. Execution
+# variables keep their real values in the subprocess env; this applies only
+# to the evidence serialization.
+SECRET_NAME_MARKERS = ("PASSWORD", "SECRET", "TOKEN", "APIKEY", "PRIVATE_KEY")
+
+
+def _is_secret_name(name):
+    upper = name.upper()
+    return any(marker in upper for marker in SECRET_NAME_MARKERS)
+
+
+def sanitize_environment(env):
+    """Receipt-safe view of an execution environment.
+
+    Nonsecret names keep their values for diagnostics; secret names are
+    reduced to a set/unset marker. The returned dict is for evidence only
+    and is never used to run a command.
+    """
+    out = {}
+    for name, value in env.items():
+        if _is_secret_name(name):
+            out[name] = "set" if value else "unset"
+        else:
+            out[name] = value
+    return out
+
+
 def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args], stderr=subprocess.PIPE)
 
@@ -185,7 +214,10 @@ def reproduce(repo, revision, *, commands=None):
     for name in ("PGPASSWORD", "JOURNEY_EVIDENCE_PATH",
                  "PRACE_SECRET_KEY", "PRACE_RUNTIME_ROOT",
                  "PRACE_RUNTIME_STATEMENT_TIMEOUT_MS",
-                 "PRACE_MIGRATION_STATEMENT_TIMEOUT_MS"):
+                 "PRACE_MIGRATION_STATEMENT_TIMEOUT_MS",
+                 "PRACE_MIGRATION_SCOPE",
+                 "PRACE_MIGRATION_DB_USER",
+                 "PRACE_MIGRATION_DB_PASSWORD"):
         if name in os.environ:
             env[name] = os.environ[name]
     commands = commands if commands is not None else acceptance_commands(sys.executable, state)
@@ -194,7 +226,7 @@ def reproduce(repo, revision, *, commands=None):
                "export_dir": str(export), "test_cwd": str(work), "runner_sha256": digest(Path(__file__).read_bytes()),
                "python": {"executable": sys.executable, "executable_sha256": digest(Path(sys.executable).read_bytes()), "version": sys.version},
                "dependencies": sorted(f"{d.metadata['Name']}=={d.version}" for d in importlib.metadata.distributions()),
-               "environment": env, "checks": [],
+               "environment": sanitize_environment(env), "checks": [],
                "omitted_checks": {"staged forbidden-path and PII/secret indicators": "Index-only check; plain committed export has no index. Source publication hooks remain required."}}
     for index, argv in enumerate(commands, 1):
         start = time.monotonic()

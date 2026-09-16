@@ -243,6 +243,21 @@ def test_secret_key_default_is_rejected_by_settings(required_env):
         or "improperlyconfigured" in out.lower() or "synthetic-m2" in out
 
 
+def test_operator_database_name_is_refused_before_migrate(required_env):
+    """An exact operator database name is never a migration/cleanup
+    target, even a full PRACE_DB_* set; the script refuses before any
+    connection or schema mutation."""
+    env = dict(required_env)
+    env["PRACE_DB_NAME"] = "prace_synthetic"
+    env["PRACE_DB_USER"] = "prace_synth_app"
+    env["PRACE_DB_HOST"] = "127.0.0.1"
+    env["PRACE_DB_PORT"] = "5432"
+    r = _run(["prepare-manifest-only"], env, timeout=30)
+    assert r.returncode != 0
+    assert "operator database name" in r.stderr
+    assert "prace_synthetic" in r.stderr
+
+
 def test_manifest_mode_is_0o400_under_permissive_umask(required_env, monkeypatch):
     """With umask 022 the manifest file's mode would default to 0o644
     unless the script enforces 0o400 explicitly. The 2026-09-11 review
