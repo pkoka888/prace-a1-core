@@ -3,6 +3,21 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Migration-scope shell dependency integrated — 2026-09-16
+
+Commit `b687abe` completes the P0 REL-03/JAN-04 candidate: the shell setter and
+operator database-name refusal that the committed settings gate and committed
+refusal tests depend on are now part of the committed candidate.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | `scripts/rehearse_synthetic_site.sh` now (1) refuses an exact operator database name (`prace_synthetic`) before any schema or data mutation and (2) forwards `PRACE_MIGRATION_SCOPE=1` plus the migration statement timeout only into the `manage.py migrate` invocation. Settings gating already existed in the committed candidate. Single Unix-executable file, 10 lines |
+| Validation | Mandatory hook selected `delivery_lifecycle_rehearsal` once: 58 passed, 196.79 s (`runtime/portal/temporary/change-checks-3qksie22/`, exit 0). Focused settings scope-gating regression passed (4 tests). `bash -n` and `git diff --cached --check` clean. Tested bytes equal the committed shell (`git diff HEAD -- scripts/rehearse_synthetic_site.sh` empty); import-only settings tests confirm command scope, live `current_user`/`statement_timeout` remain on the P0 JAN-04 real-PG row |
+| Publication | Local commit `b687abe` on `feat/prace-readiness-plan-2026-08-13`; not pushed (branch carries inherited incomplete source increments; push requires review of all outgoing objects per audit) |
+| Deployment / activation | None. No service, credential, deployment or real-data change |
+| Limitations | Script-level refusal and settings gating proven; the invalid psql probe and forward-selection/TLS chain remain open under JAN-04. The runtime-scope path (web/worker) must not inherit `PRACE_MIGRATION_SCOPE`; verified at settings import only |
+| Next owner | Engineering proceeds to the JAN-04 disposable-ownership/probe/forwarding repairs and then the committed-source core/restart acceptance; infrastructure INFRA-PG-01 proceeds independently |
+
 ## Delivery audit and execution-plan reconciliation — 2026-09-16
 
 | Field | Evidence / state |
