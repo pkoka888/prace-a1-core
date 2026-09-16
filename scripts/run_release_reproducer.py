@@ -213,6 +213,7 @@ def reproduce(repo, revision, *, commands=None):
             env[name] = os.environ[name]
     for name in ("PGPASSWORD", "JOURNEY_EVIDENCE_PATH",
                  "PRACE_SECRET_KEY", "PRACE_RUNTIME_ROOT",
+                 "PRACE_WORKFLOW_PG",
                  "PRACE_RUNTIME_STATEMENT_TIMEOUT_MS",
                  "PRACE_MIGRATION_STATEMENT_TIMEOUT_MS",
                  "PRACE_MIGRATION_SCOPE",

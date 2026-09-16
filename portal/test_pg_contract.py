@@ -35,9 +35,14 @@ def resolve_test_postgres_target(environ: dict, *, runtime_base: str) -> dict | 
     error names the exact variable that caused the refusal so a CI
     operator can correct the exported set.
     """
-    if not any(environ.get(name) for name in _VARS):
+    if not any(name in environ for name in _VARS):
         return None
-    present = [name for name in _VARS if environ.get(name)]
+    present = [name for name in _VARS if name in environ]
+    for name in ("DOCUMENT_TEST_PG_NAME", "DOCUMENT_TEST_PG_USER"):
+        if name in present and not (environ.get(name) or "").strip():
+            raise RuntimeError(
+                f"{name} is present but blank; a test target needs a "
+                "non-empty database name and role")
     _require(environ, "DOCUMENT_TEST_PG_NAME", present)
     _require(environ, "DOCUMENT_TEST_PG_USER", present)
     socket_path = (environ.get("DOCUMENT_TEST_PG_SOCKET") or "").strip()
