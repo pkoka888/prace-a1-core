@@ -275,7 +275,8 @@
         "docs/operations/infra-review-20260907T0230Z/",
         "CHANGELOG.md",
         "PROJECT_AUDIT_REPORT.md",
-        ".opencode/skills/market-research-evidence/SKILL.md"
+        ".opencode/skills/market-research-evidence/SKILL.md",
+        "docs/operations/s62-operator-triage-report-2026-09-16.md"
       ],
       "prefixes": [
         "plans/2026-"
