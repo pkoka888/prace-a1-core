@@ -200,7 +200,8 @@ for _child in (DOCUMENT_STORAGE_ROOT, MEDIA_ROOT, STATIC_ROOT, CACHE_DIR, TMP_DI
     try:
         no_symlinks(_child)
         _child.mkdir(mode=0o700, exist_ok=True)
-        if _child.stat().st_uid != os.getuid() or _child.stat().st_mode & 0o077:
+        mode = _child.stat().st_mode
+        if _child.stat().st_uid != os.getuid() or (mode & 0o777) not in (0o700, 0o750):
             raise ValueError("CHILD_PERMISSIONS")
     except (OSError, ValueError):
         raise ImproperlyConfigured("RUNTIME_CHILD_CONFINEMENT_INVALID") from None
@@ -365,8 +366,9 @@ if _inbox_org or _inbox_actor:
             pass
         else:
             _child.chmod(0o700)  # Clear an inherited setgid bit on our new directory.
+        mode = _child.stat().st_mode
         if (not _child.is_dir() or _child.stat().st_uid != os.getuid()
-                or _child.stat().st_mode & 0o077):
+                or (mode & 0o777) not in (0o700, 0o750)):
             raise ImproperlyConfigured("Inbox directories must be private and operator-owned")
     DOCUMENT_INBOX_ROOTS[DOCUMENT_INBOX_ORGANIZATION_ID] = _inbox_root
 
