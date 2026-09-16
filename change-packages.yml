@@ -206,6 +206,12 @@
       "docs/research/2026-09-08-consolidation-plan-feedback.md",
       "docs/research/2026-09-08-local-a1-automation-review.md",
       "docs/research/2026-09-16-document-orchestration-review.md",
+      "docs/research/2026-09-16-agent-messaging-frameworks.md",
+      "docs/research/2026-09-16-devops-workflow-design.md",
+      "docs/research/2026-09-16-cline-claims-review.md",
+      "docs/research/2026-09-16-logging-claims-review.md",
+      "docs/research/2026-09-16-ansible-validation-review.md",
+      "docs/operations/2026-09-16-agent-ops-review.md",
       "docs/operations/runtime-manifest.md",
       "docs/operations/infra-return-work-order-2026-09-07.md",
       "docs/operations/servers-infra-core-postgresql-request.md",
@@ -228,6 +234,13 @@
       "dependencies": ["governance_truth"],
       "rollback": "Revert documentation without changing runtime or private data."
       ,"intended_commit": "docs: add research-stage repository guide"
+    },
+    "agent_operations_experiment": {
+      "purpose": "Optional synthetic LangGraph recovery experiment; no live tool or provider executor.",
+      "paths": ["config/agent_ops_workflow.v1.json", "config/agent_ops_workflow.v1.requirements.txt", "scripts/research_agent_ops_workflow.py", "tests/test_agent_ops_workflow.py", "docs/architecture/agent-operations-workflow.md"],
+      "checks": ["venv/bin/python scripts/research_agent_ops_workflow.py --validate-contract"],
+      "dependencies": ["Graph runtime changes also require the focused test suite in the documented isolated pinned environment; structural hook checks are not runtime evidence. Canonical application dependencies are unchanged."],
+      "rollback": "Revert optional source/config/tests/docs together; retain private experiment receipts. No service or host rollback applies."
     },
     "planning_cockpit": {
       "purpose": "Planning catalog, validator, and derived visual assets.",
@@ -288,8 +301,8 @@
     },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
-      "paths": ["change-packages.yml", "requirements.txt", "requirements-dev.txt", "requirements-lock.txt", "scripts/pre-commit", "scripts/validate_change_packages.py", "scripts/select_shared_document_portal_checks.py", "scripts/select_infrastructure_git_workflow_checks.py", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "docs/operations/git-delivery.md", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json", "scripts/select_infrastructure_git_workflow_checks.py"],
+      "paths": ["change-packages.yml", "requirements.txt", "requirements-dev.txt", "requirements-lock.txt", "scripts/pre-commit", "scripts/validate_change_packages.py", "scripts/select_shared_document_portal_checks.py", "scripts/select_infrastructure_git_workflow_checks.py", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "tests/test_release_export_sensitive_paths.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "docs/operations/git-delivery.md", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
+      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_release_export_sensitive_paths.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json", "scripts/select_infrastructure_git_workflow_checks.py"],
       "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
       "rollback": "Revert local workflow files; this package never changes remotes."
       ,"intended_commit": "test: add fail-closed change-package validation"

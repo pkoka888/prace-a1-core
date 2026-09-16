@@ -3,6 +3,28 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Independent agent/fleet review and bounded repairs — 2026-09-16
+
+This checkpoint supersedes broad health/acceptance statements only within its
+measured scope. In particular, the earlier G-4 causal claim about journald is
+unproven; the active plan now separates that hypothesis from observations.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Protected Git export rejects private paths/environment payloads before reading any blob; a separate optional LangGraph demonstration records synthetic SQLite effects only. Updated existing REL/JAN TODOs, PLAN-INFRA, roadmap/index, framework comparison, host/site/logging findings and Ansible coverage. Canonical application dependencies are unchanged |
+| Validation | Export-specific synthetic regression: 23 passed. Graph: initial 35 passed, then four affected checks after the path-confinement fix, plus a final CLI demo; no claim that all initial cases reran on final bytes. Mandatory isolated-checkout hook results and final object identities belong to the private delivery receipt. Four Ansible syntax/list pairs passed offline; zero-host pve selection and a separate embedded-Python failure remain explicit |
+| Publication | Integrated in an isolated checkout based on a7e73f2 because concurrent Cline publication included linked plan edits ahead of their deliverables. Exact commit, hook outcome and remote verification are recorded in the private delivery receipt; this entry alone does not assert a successful push |
+| Deployment / activation / operator acceptance | None performed or established. Four-host health and 25-site probes are point-in-time observations. The selected Práce unit remains failed while an older build answers internal HTTP. No host apply, restart, credential change, real-data activation or Jan acceptance |
+| Limitations | Legacy helper/probe false greens remain open; s61 disk/service/backup findings need infrastructure triage. No live Ansible convergence, idempotence, rollback or restore; pve is outside the four playbooks' selection. The graph is a synthetic test fixture, with no real approval adapter or live executor. A1 deterministic QA remains valid for the identified unchanged artifacts; all-page visual/human acceptance and historical reproduction remain unproven |
+| Next owner | Infrastructure: desired-state reconciliation, s61 capacity/backup triage, s62 supervision, truthful probes and reviewed disposable role tests. Application engineering: source-bound core PostgreSQL/browser/restart acceptance and bounded CLI receipts. Jan: observe the demonstrated candidate after technical acceptance |
+
+[Operational review](2026-09-16-agent-ops-review.md) links the detailed evidence
+and [workflow runbook](../architecture/agent-operations-workflow.md).
+Private final delivery receipt:
+`runtime/portal/temporary/agent-ops-review-146a5181eec6/delivery.json`.
+Private graph receipts remain under
+`runtime/portal/temporary/agent-ops-langgraph-demo-20260916/`.
+
 ## JanSA1 c24a293 review and scoped A1 request — 2026-09-16
 
 | Field | Evidence / state |

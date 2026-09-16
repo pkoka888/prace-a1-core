@@ -372,3 +372,18 @@ or "documented" is insufficient.
 | Sprint 4: Encrypted backup | INF-001 | Separate operator/sysadmin gate |
 
 Later sprints extend and verify these capabilities rather than introduce prerequisites after approval.
+
+## Independent fleet and automation checkpoint — 2026-09-16
+
+[Operational review](../docs/operations/2026-09-16-agent-ops-review.md) records
+current host/site observations, false-green diagnostic defects, logging limits
+and offline Ansible coverage. The [active child plan](2026-09-14-delivery-reliability-and-jan-v1.md#independent-agentfleet-review-and-todos--2026-09-16)
+owns repair TODOs under existing REL/JAN tasks. Infrastructure source/authority
+stays in servers-infra-core and its legacy operator contract; this repository
+does not duplicate their inventory or authorize general fleet apply.
+
+The [synthetic workflow](../docs/architecture/agent-operations-workflow.md)
+demonstrates approval/recovery boundaries locally. A future live adapter still
+needs independent authentication, approved action/target/revision binding,
+uncertain-effect reconciliation and disposable deployment/rollback evidence.
+No current runtime, recovery or activation gate closes from the experiment.

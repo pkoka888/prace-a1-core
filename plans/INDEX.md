@@ -106,3 +106,12 @@ operator workflow contract (unpublished local material: `docs/architecture/opera
 Infrastructure checkpoint 2026-09-07: application review (unpublished local material: `docs/research/2026-09-07-infra-application-review.md`) and return work order (unpublished local material: `docs/operations/infra-return-work-order-2026-09-07.md`); implementation, acceptance and deployment tracked separately under PLAN-INFRA. No new top-level plan or gate approval.
 
 Runtime/J4 checkpoint: engineering delivery (unpublished local material: `docs/research/2026-09-07-runtime-j4-engineering.md`). New migration0011 and artifact tests are not deployment evidence or ENG-001 approval. Existing task IDs remain authoritative.
+
+## Agent/fleet verification checkpoint — 2026-09-16
+
+The [independent review](../docs/operations/2026-09-16-agent-ops-review.md) and
+[existing child-plan TODOs](2026-09-14-delivery-reliability-and-jan-v1.md#independent-agentfleet-review-and-todos--2026-09-16)
+separate current host/site observations, protected-export repair, offline
+Ansible coverage and an optional local LangGraph demonstration. PLAN-INFRA and
+REL-02–06 retain ownership; JAN-01–04 and PG5 acceptance remain separate.
+No new top-level task, fleet inventory, production authority or v1 prerequisite.

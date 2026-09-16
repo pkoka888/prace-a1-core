@@ -9,7 +9,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import stat
 import subprocess
@@ -57,8 +57,38 @@ def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args], stderr=subprocess.PIPE)
 
 
+PROTECTED_EXPORT_ROOTS = frozenset({
+    "a1", "scans", "evidence", "ocr", "data", "output", "runtime", "secrets",
+    ".runtime-config", ".history-remediation",
+})
+PROTECTED_EXPORT_COMPONENTS = frozenset({
+    ".runtime-config", ".history-remediation", "secrets",
+})
+
+
+def protected_export_path(path):
+    """Reject private locations and environment payloads, not source keywords.
+
+    Explicit .env.example templates remain reviewable source outside private
+    directories. This path boundary supplements publication/content checks; a
+    template name alone cannot establish that its contents are nonsecret.
+    """
+    parts = PurePosixPath(path).parts
+    if (parts[0] in PROTECTED_EXPORT_ROOTS
+            or parts[:2] == ("employees", "scans")
+            or any(part in PROTECTED_EXPORT_COMPONENTS for part in parts)):
+        return True
+    for index, part in enumerate(parts):
+        example = index == len(parts) - 1 and part == ".env.example"
+        if not example and (part == ".env" or part.startswith(".env.")):
+            return True
+        if part.endswith(".env"):
+            return True
+    return False
+
+
 def tree(repo, sha):
-    entries = {}
+    selected = []
     for row in git(repo, "ls-tree", "-rz", sha).split(b"\0"):
         if not row:
             continue
@@ -69,10 +99,13 @@ def tree(repo, sha):
             raise ValueError("Unsupported Git entry (symlinks/submodules are not exported)")
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError("Unsafe Git path")
-        if Path(path).parts[0] in {"a1", "scans", "evidence", "ocr", "data", "output", "runtime", "secrets", ".env", ".history-remediation"} or path.startswith("employees/scans/"):
+        if protected_export_path(path):
             raise ValueError("Protected data path present in requested Git tree; content review required")
-        entries[path] = (mode, git(repo, "cat-file", "blob", oid))
-    return entries
+        selected.append((path, mode, oid))
+    # Inspect every path before reading blobs. A later forbidden path must not
+    # allow any part of an inadmissible source tree to enter an export.
+    return {path: (mode, git(repo, "cat-file", "blob", oid))
+            for path, mode, oid in selected}
 
 
 def verify_export(export, entries, *, test_copy=False):

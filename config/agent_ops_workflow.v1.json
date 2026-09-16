@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "workflow_id": "agent-ops-synthetic-v1",
+  "mode": "synthetic-only",
+  "targets": ["synthetic-app-a", "synthetic-app-b"],
+  "revisions": ["synthetic-revision-a", "synthetic-revision-b"],
+  "action_id": "record-synthetic-effect",
+  "required_checks": ["source_identity", "task_safety", "target_health"],
+  "check_statuses": ["passed", "failed", "blocked", "untested"],
+  "max_transitions": 30,
+  "approval_ttl_seconds": 60,
+  "dependencies": {
+    "langgraph": "1.2.11",
+    "langgraph-checkpoint-sqlite": "3.1.1",
+    "pytest": "9.1.1"
+  },
+  "dependency_sources": {
+    "langgraph": "https://pypi.org/pypi/langgraph/1.2.11/json",
+    "langgraph-checkpoint-sqlite": "https://pypi.org/pypi/langgraph-checkpoint-sqlite/3.1.1/json",
+    "pytest": "https://pypi.org/pypi/pytest/9.1.1/json"
+  }
+}

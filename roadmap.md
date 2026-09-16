@@ -201,3 +201,20 @@ application files. At that path-deployment checkpoint, source updates were uncom
 unpublished in this application checkout; current publication is in the delivery record. No PostgreSQL authentication,
 secret separation/rotation, manifest approval/repin, service recovery, JAN acceptance
 or PG5 restore gate is closed by the path deployment.
+
+## Independent operational review — 2026-09-16
+
+Fresh checks in the [agent/fleet review](docs/operations/2026-09-16-agent-ops-review.md)
+confirm four managed hosts reachable, with failed services/backups on s61/s62
+and s61 root storage at 90%. The Práce loopback/internal route serves an older
+build while its selected systemd unit remains failed. Neither HTTP 200 nor a
+zero-exit diagnostic proves the intended deployment or core acceptance.
+The active [REL/JAN TODOs](plans/2026-09-14-delivery-reliability-and-jan-v1.md#independent-agentfleet-review-and-todos--2026-09-16)
+now distinguish export/probe repairs, offline Ansible evidence, disposable
+deployment tests, operator-owned recovery and observed Jan acceptance.
+
+Protected-export repair and a bounded local LangGraph demonstration are separate
+engineering increments. The graph has synthetic effects only; it introduces no
+live executor, provider call, service or new v1 gate. Fleet apply, rollback,
+backup restore, intended-PostgreSQL browser/restart acceptance and real-data
+activation are not established by this checkpoint.
