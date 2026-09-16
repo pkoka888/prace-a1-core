@@ -45,7 +45,7 @@ The other four files (`tests/_rehearse_workflow_browser.py`, `scripts/rehearse_v
 | Manual gunicorn | PID 2681143/2681150/2681151, user `prace-s+`, workers 2, bind `127.0.0.1:8001` | `ps`, `ss -tlnp` |
 | `.runtime-config/gunicorn.env` | Exists; 12 keys incl. `PRACE_DB_PASSWORD` (length 44); does **not** authenticate | `ls`, `psql` test |
 | nginx | Running; syntax OK; vhost `prace-v-nemecku.expc.cz.conf` present | `nginx -t`, `ss -tlnp` |
-| Static files | `static/` empty; Sep 11 log shows 404s for `htmx-1.9.10.min.js` and `tailwind-2.2.19.min.css` | `ls static/`, `/tmp/gunicorn.log` |
+ | Static files | Sep 11 log 404s for `htmx-1.9.10.min.js` and `tailwind-2.2.19.min.css`; **verified** `runtime/portal/supervised-synthetic/static/portal/` contains those files (collected 2026-09-14); checkout `static/` empty by design under supervised-synthetic; nginx alias points to `portal/release1a/static/` (mismatch with `STATIC_ROOT`) | `ls static/`, `ls runtime/.../static/portal/`, nginx vhost inspection |
 | Tailscale | s62/s61/s60/s64/spaces visible; s60 offline 20d | `tailscale status` |
 
 ---
@@ -116,9 +116,9 @@ The other four files (`tests/_rehearse_workflow_browser.py`, `scripts/rehearse_v
 | F-4 `PRACE_WORKFLOW_PG` forwarding | **Closed** — `test_prace_workflow_pg_forwarded_when_set` passes | 17/17 reproducer tests pass |
 | G-1 password desync | **Open** — 9 FATAL entries in last 90 min; EnvironmentFile value does not authenticate | `/var/log/postgresql/postgresql-18-main.log` |
 | G-2 systemd unit failed + manual gunicorn | **Open** — unit still `failed`; manual instance still running | `systemctl status`, `ps` |
-| G-3 static files 404 | **Open** — `static/` empty; Sep 11 404s not rechecked | `/tmp/gunicorn.log`, `ls static/` |
-| G-4 journalctl empty | **Open** — `ProtectSystem=strict` + `--capture-output` blocks journald | `systemctl show -p ProtectSystem` |
-| D-1 networkidle flake | **Open** — 19 `networkidle` references remain; `_wait_networkidle` helper still uses 20 000 ms timeout | `rg -n networkidle tests/_rehearse_workflow_browser.py` |
+ | G-3 static files 404 | **Open (refined)** — files collected at `STATIC_ROOT` (`runtime/portal/supervised-synthetic/static/portal/`); nginx alias points to `portal/release1a/static/` (mismatch); operator vhost edit required | nginx vhost inspection, `ls runtime/.../static/portal/` |
+ | G-4 journalctl empty | **Open** — `ProtectSystem=strict` + `--capture-output` blocks journald | `systemctl show -p ProtectSystem` |
+ | D-1 networkidle flake | **Closed** — all 16 `networkidle` references replaced with `load` + selector; helper renamed `_wait_page_ready`; workflow journey 4/4 green in 107.26 s; full focused regression 61 passed in 214.85 s | `tests/test_rehearse_workflow.py`, `rg -n networkidle` |
 | JAN-01 OCR HTTP 500 | **Mitigation in effect** — WAL/IMMEDIATE/busy-timeout in supervised settings; 3 consecutive journeys without 500s; bounded-set evidence, not statistical | Plan file, skill doc |
 | JAN-03 default-exported core journey | **Partial** — journey helper supports `--profile core`; `run_release_reproducer.py` acceptance commands still A1-heavy | Skill doc, plan row 57 |
 

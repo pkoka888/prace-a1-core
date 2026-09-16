@@ -239,25 +239,25 @@ The `.runtime-config/gunicorn.env` file is also not in git. Its `Birth` cannot b
 
 | Attribute | Value |
 |---|---|
-| Confirmed | `/tmp/gunicorn.log` shows 404 for `/static/portal/htmx-1.9.10.min.js` and `tailwind-2.2.19.min.css`; `static/` directory empty |
-| Root cause (most probable) | `collectstatic` not run since last deploy; nginx vhost may not proxy `/static/` to the correct root |
+| Confirmed | `/tmp/gunicorn.log` shows 404 for `/static/portal/htmx-1.9.10.min.js` and `tailwind-2.2.19.min.css` on 2026-09-11. Verified 2026-09-16: `runtime/portal/supervised-synthetic/static/portal/` exists with those files (collected 2026-09-14); `static/` checkout directory empty. Nginx vhost `location /static/` uses `alias /var/www/prace-v-nemecku.tvoje.info/portal/release1a/static/` — **does not point to `STATIC_ROOT`** (`runtime/portal/supervised-synthetic/static/`) |
+ | Root cause (most probable) | Nginx alias mismatch: vhost points to `portal/release1a/static/` but `STATIC_ROOT = <runtime_root>/static` per `portal/settings_supervised_synthetic.py:195`. The checkout `static/` is empty because `collectstatic` was never run there |
 | Blocks | UI rendering in production (journeys hit dynamic views first; not a blocker for core acceptance) |
 | Best practice | Django 5.2: `STATIC_ROOT` + `collectstatic` + nginx `location /static/ { alias <STATIC_ROOT>; expires 30d; }` (note `alias`, not `root`) |
 | Fix complexity | `collectstatic` run + nginx verify |
 | Source | https://docs.djangoproject.com/en/5.2/howto/static-files/ |
 
-**Fix sequence:**
+**Fix sequence (operator-owned nginx vhost):**
 ```bash
-sudo -u prace-synthetic \
-  /var/www/prace-v-nemecku.tvoje.info/venv/bin/python manage.py \
-  collectstatic --noinput --verbosity 2
-sudo ls -la /var/www/prace-v-nemecku.tvoje.info/static/
-# then verify nginx vhost has:
+# Verified: runtime/portal/supervised-synthetic/static/portal/ already
+# contains htmx-1.9.10.min.js and tailwind-2.2.19.min.css (collected 2026-09-14).
+# The checkout `static/` directory is intentionally empty under supervised-synthetic.
+# Operator: update /etc/nginx/sites-enabled/prace-v-nemecku.expc.cz.conf:
 #   location /static/ {
-#       alias /var/www/prace-v-nemecku.tvoje.info/static/;
+#       alias /var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-synthetic/static/;
 #       expires 30d;
 #       add_header Cache-Control "public, immutable";
 #   }
+# Then: sudo systemctl reload nginx && curl -I http://127.0.0.1/static/portal/htmx-1.9.10.min.js
 ```
 
 ### G-4 (Low) journalctl empty for failed unit
