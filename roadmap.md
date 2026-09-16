@@ -5,10 +5,12 @@
 **Last status update:** 2026-09-16
 **Current stage:** Release 1A in progress. Repository implementation and historical synthetic evidence exist; current private-site usability, PostgreSQL acceptance and Jan acceptance remain separately verifiable. A separate infrastructure request for the PostgreSQL target is issued and awaiting response.
 
-2026-09-16 audit at `a48a1e8`: core correction, source-byte verification and
-verifier-result reuse are implemented, but candidate completeness, PostgreSQL
-ownership/locking/forwarding, core acceptance coverage and browser timeout diagnosis
-remain open. Fresh read-only observations: PostgreSQL running, application systemd
+2026-09-16 follow-up at `4a38067`: core correction, source-byte verification and
+verifier-result reuse remain implemented; `b687abe` integrates the missing shell
+dependency. Uncommitted dependency/PG updates partly address earlier findings but
+introduce a reproduced cleanup-environment regression. PostgreSQL ownership, effective
+role/timeout/TLS, core acceptance coverage and browser diagnosis remain open.
+Earlier September 16 read-only observations: PostgreSQL running, application systemd
 unit failed, port 8001 listener present; current DB authentication and routed workflow
 not reverified. **Delivery 1 is not accepted.** Source-publication status and receipts
 live in the [delivery record](docs/operations/git-delivery.md). Fresh synthetic
@@ -55,10 +57,11 @@ deployed”; neither is established by this repository-only checkpoint.
 
 ## Current execution order
 
-1. **REL-03 / JAN-04: complete and protect the candidate.** Integrate the missing
-   shell migration-scope dependency; verify independent disposable-target ownership
-   before mutation; repair the reproduced psql lock-probe error and environment/TLS
-   forwarding. Use isolated in-project PostgreSQL for application integration; host
+1. **REL-03 / JAN-04: protect and validate the candidate.** The missing shell
+   dependency is committed. Integrate/review the remaining PG changes, repair the
+   cleanup helper losing explicit target/ownership context, and verify independent
+   disposable-target ownership before mutation plus effective connection/TLS behavior.
+   Use isolated in-project PostgreSQL for application integration; host
    credential recovery is not a prerequisite for these repairs.
 2. **JAN-01–JAN-03: make the core workflow independently demonstrable.** Diagnose
    the document-detail timeout with response/domain-state evidence, replace fragile
@@ -69,6 +72,8 @@ deployed”; neither is established by this repository-only checkpoint.
    actual source/dependencies/settings, fix overlapping selection, and extend the
    existing export entrypoint to run the core browser/restart scenario. Reconcile
    skills, CI proposals and current status without another general-purpose runner.
+   Prove clean environment setup with consistent dependency constraints, browser/native
+   assets and offline OCR models; installed-package checks do not establish reproducibility.
    REL-01/REL-02 refresh reconciliation continues independently, not as a gate on fixes.
 4. **INFRA-PG-01 + JAN-04: intended-target acceptance.** Infrastructure reconciles
    credentials, supervisor/listener ownership, approved build and routing. Engineering
@@ -84,6 +89,17 @@ Tasks, dependencies and ownership live in the
 No invented approval or automatic gate opening follows from this scope correction.
 Registered gate definitions and the review UI still need scope reconciliation
 under JAN-03; preserve historical approval receipts and the 34 top-level catalog IDs.
+
+### OCR orchestration disposition — 2026-09-16
+
+Keep the existing shared local OCR processor, durable OcrRun worker and Django
+review services for v1. Fresh bounded tests cover generated-document offline OCR
+and the isolated worker contract; they do not establish difficult-scan accuracy.
+Measure stage/retry cost and reviewer errors before introducing LangGraph. A bounded
+synthetic comparison of Django stage receipts and LangGraph recovery/fallback is
+optional under OCR-CORE-10/11/13/14, with explicit stop/adoption criteria in the
+[research review](docs/research/2026-09-16-document-orchestration-review.md). No new
+engine, hosted tracing, model service or v1 gate is introduced by the research.
 
 ### Public hostname and environment (2026-09-16 review decision)
 

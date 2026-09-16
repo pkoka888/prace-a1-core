@@ -1,6 +1,6 @@
 # Shared document intake — synthetic implementation
 
-Updated 2026-09-08. This is implementation documentation, not real-data activation
+Updated 2026-09-16. This is implementation documentation, not real-data activation
 or evidence that all ENG-001 checks have passed.
 
 ## Outcome and boundaries
@@ -89,11 +89,16 @@ has a separate `output_key` and `output_sha256`; crops are under a separate
 `generated/<attempt>/<hash>.png` namespace. There is no public storage URL.
 Original and derivative reads require scoped capabilities and verify hashes.
 
-`execute_run` is a durable, callable job boundary. Synthetic requests currently
-execute it inline; no background daemon is deployed. Conditional database claims,
-a 15-minute lease, attempt tokens and a maximum of three total attempts support
-retry/recovery. A stale attempt cannot publish over a newer one. Completed runs
-are reused. Audit references identify the opaque run/attempt, not extracted text.
+`queue_run` persists pending work from the shipped synthetic HTTP intake without
+starting OCR in the request. The scoped `manage.py process_ocr` consumer calls
+`process_pending`/`execute_run`; the shared callable also supports synchronous use.
+`run_ocr_worker_lifecycle.py` owns rehearsal worker processes. This is the code path,
+not a claim that the intended host supervisor is running. django-q2 remains installed
+but does not dispatch this OCR queue. Conditional database claims, a 15-minute lease,
+attempt tokens and a maximum of three total attempts support retry/recovery. A stale
+attempt cannot publish over a newer one. Completed runs are reused. Audit references
+identify the opaque run/attempt, not extracted text. Leases do not kill native OCR
+work; stage-level resume and hard execution deadlines remain follow-up items.
 
 `IntakeSession.ocr_runs` allows multiple uploads and duplicate reuse without
 re-running OCR. The session view recomputes matching from hash-verified immutable
@@ -108,6 +113,17 @@ Migrations 0008–0009 extend the existing schema; they have **not been applied 
 persistent application database**. The historical-state transition test covers
 0007 → 0009 on an isolated database. Earlier migration 0006 and the broader
 ENG-MIGRATION gate retain their existing independent limitations.
+
+## Orchestration review — 2026-09-16
+
+Retain the domain models and revision-bound human review as authority. LangGraph
+is an optional orchestration experiment under existing OCR-CORE-10/11/13/14, not
+an OCR engine replacement or automatic confirmation mechanism. The
+[research review](../research/2026-09-16-document-orchestration-review.md) compares
+stage recovery, bounded fallback and review resumption with minimal Django changes,
+and specifies checkpoint privacy, idempotency and adoption criteria. No integration
+or hosted tracing is enabled. Fresh evidence is limited to generated offline OCR
+and isolated worker tests; intended-host/Jan acceptance stays open.
 
 ## Verification and remaining rollout gates
 

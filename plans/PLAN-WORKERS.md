@@ -23,6 +23,13 @@ shipped UI; preserve failure diagnostics and shared access/revision controls.
 The child plan defines affected checks and separates implementation from intended-
 route PostgreSQL and Jan acceptance.
 
+The [OCR orchestration review](../docs/research/2026-09-16-document-orchestration-review.md)
+confirms the current web path queues durable OcrRun work for `process_ocr`; django-q2
+is not its dispatcher. Three real generated-document cases passed with network
+disabled and 18 isolated worker tests passed. Keep current domain review/authorization
+services; measure quality and recovery before optional LangGraph comparison.
+OCR-CORE-10/11/13/14 own follow-up and decision criteria in the OCR child plan.
+
 ## Retained contracts and dated evidence
 
 The older implementation checkpoints and prototype gap tables below are dated

@@ -100,8 +100,10 @@ accuracy. Conflicts are preserved instead of silently choosing one reading.
 ### OCR-CORE-10: Bounded processing
 
 Implemented: local batch limit four with thread-owned engines and isolated
-failures; one ONNX intra/inter-op thread per engine. Synthetic web execution is
-inline through a durable callable job boundary; no daemon deployment is claimed.
+failures; one ONNX intra/inter-op thread per engine. The current synthetic HTTP
+path queues durable OcrRun work; scoped `process_ocr` consumes it sequentially.
+The shared callable also supports synchronous use. The rehearsal lifecycle owns
+its worker process; intended-host deployment is not established by source inspection.
 
 ### OCR-CORE-11: Provenance
 
@@ -134,6 +136,35 @@ Implemented: real RapidOCR processes generated synthetic images with exact text
 and date assertions, plus full OP/EHIC/passport labelled examples. Execute the
 suite with networking disabled at OS level. Deterministic MRZ/matching edge cases
 also use scripted engine outputs; those are not advertised as real-scan accuracy.
+
+## Recovery, quality and LangGraph follow-up — 2026-09-16
+
+The [dependency/orchestration review](../docs/research/2026-09-16-document-orchestration-review.md)
+is research, not architecture approval. Current baseline `4a38067` plus identified
+unstaged PG/dependency changes passed three real generated-document OCR cases under
+OS network isolation and 18 isolated SQLite worker tests. Neither result establishes
+real-scan accuracy, PostgreSQL concurrency, cold bootstrap or intended-host acceptance.
+Keep the existing RapidOCR processor, OcrRun jobs and revision-bound Django review.
+
+| Existing task / priority | Bounded TODO and owned paths | Acceptance / expected result | Owner |
+|---|---|---|---|
+| OCR-CORE-14 / next | Extend existing synthetic helpers/tests and benchmark contract after reviewing inherited benchmark changes; label document family, field and degradation | Exact critical-field errors, unresolved/false-confident proposals, original/enhanced disagreement, correction count; clean/rotated/blurred/missing-side/unsupported/invalid-MRZ cases. No auto-confirmation or invented dates. Real representative calibration is separately scoped | OCR engineering |
+| OCR-CORE-10/11 / next | Measure queue/stage/retry cost in existing processor/worker; preserve opaque diagnostics. Own `src/document_core/`, `portal/release1a/document_intake.py` and focused tests | Cold/warm latency, peak memory, attempt categories and repeated work identified by source/model/config; no text or image content in logs. Derive a timeout/resource budget from measurements, not package presence | OCR engineering |
+| OCR-CORE-10/13 / after measurement | Fix measured native-call deadline/recovery gaps using existing owned process patterns; review applicability of CLI-only fallback before portal integration | Hung engine bounded and reaped; expired/duplicate/stale attempts cannot publish or confirm; one explicit job owner; current worker retry and source-replacement tests remain green | runtime + OCR engineering |
+| OCR-CORE-10/11/13 / optional experiment | At most two engineering days comparing existing whole-run recovery, minimal Django stage receipts and a thin local LangGraph adapter. Synthetic-only isolated environment; no source/runtime adoption implied | Same engine/model/corpus; fault injection around domain publication and checkpoint commit; duplicate/cross-tenant/stale/revoked resume refused; restart resumes completed stages without repeating OCR; report latency/storage/maintenance tradeoff. No canonical venv change or paid/cloud dependency | OCR engineering; primary reviews result |
+| OCR-CORE-13 / adoption decision | Record adopt/defer against existing ADR-001/002 and the simpler Django alternative; preserve current domain authority | Demonstrated recovery or workflow-maintenance gain justifies dependencies/checkpoint operations. Keep tenant authorization, FieldDecision/AuditEvent, retention, graph-version compatibility and rollback. If benefit is absent, retain current worker and stage receipts | primary + architecture owner |
+
+LangGraph may coordinate stage recovery, bounded local fallback and waiting for a
+human/missing side. It does not improve recognition by itself or replace human
+confirmation. Do not hold the OcrRun lease across human waiting, store scans in
+checkpoint state, or introduce a second scheduler. Resume authorization and source
+revision are rechecked through existing domain services. Proposed graph APIs and
+versions must be validated in the isolated experiment before documentation calls
+them supported. No new top-level catalog ID or Release 1A gate is introduced.
+
+The dependency/bootstrap TODO belongs to REL-03/05 in the delivery plan; the newly
+reproduced PostgreSQL cleanup-env regression belongs to JAN-04. These repairs and
+JAN core acceptance take priority over optional orchestration experimentation.
 
 ## Exit evidence and next gates
 

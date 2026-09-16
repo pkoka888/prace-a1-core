@@ -17,9 +17,12 @@ v1 excludes official A1 generation/issuance; drafts are optional. JAN-03 owns
 scope reconciliation in review UI/machine checks, with shared controls preserved.
 No registered approval is changed by this planning checkpoint.
 
-Current audit: incomplete committed shell dependency, self-declared PG ownership,
-invalid psql lock probe and missing forwarding are application repairs. REL-03/04
-also own working-tree evidence binding, default export coverage and overlapping
+Current follow-up at `4a38067`: `b687abe` closes the missing shell dependency only.
+Unstaged probe/forwarding fixes are partial; the cleanup helper now loses explicit
+target/ownership context. Self-declared PG ownership and effective role/timeout/TLS
+remain application repairs. REL-03/05 also own clean dependency/browser/model bootstrap
+with one documented constraints contract; a package freeze/import is not acceptance.
+REL-03/04 also own working-tree evidence binding, default export coverage and overlapping
 selection. An owned in-project PG cluster can test these independently of live
 credential recovery. Host credential/supervisor/route work remains INFRA-PG-01;
 no candidate or operator acceptance follows from a green hook.

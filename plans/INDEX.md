@@ -17,9 +17,9 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 
 | Plan | Status | Milestone | Owner | Lane | Current Blocker | Expected Result | Acceptance Command |
 |---|---|---|---|---|---|---|---|
-| [Plan PLAN-INFRA — architecture, operating model and infrastructure](PLAN-INFRA.md) | active | M0–M2 | engineering + primary + sysadmin | Critical Release 1A | P0 candidate completeness and PG ownership/probe/forwarding defects; REL evidence/selection open; live acceptance separate | Truthful evidence, proportional validation, usable testing site | Child reliability plan REL-01–06/JAN-04; targeted checks and one candidate acceptance |
+| [Plan PLAN-INFRA — architecture, operating model and infrastructure](PLAN-INFRA.md) | active | M0–M2 | engineering + primary + sysadmin | Critical Release 1A | Shell dependency committed; PG ownership and cleanup-env regression open; clean bootstrap/evidence/selection unproven; live acceptance separate | Truthful evidence, proportional validation, usable testing site | Child reliability plan REL-01–06/JAN-04; targeted checks and one candidate acceptance |
 | [Plan PLAN-WORKERS — worker, document/OCR and assignment workflows](PLAN-WORKERS.md) | active | M1A–M3 | product owner + engineering | Critical Release 1A | Browser wait cause unresolved; core sparse path still requires A1; intended-route/Jan acceptance open | Jan core workflow; optional A1 excluded from required acceptance | Core browser + role/tenant + missing-data/correction checks; observed acceptance separate |
-| [2026-09-06-OCR-SHARED-CORE-LOCAL](2026-09-06-ocr-shared-core-local-web.md) | active | M3 | product engineering | Critical Release 1A (subordinate to PLAN-WORKERS) | None | Task OCR-CORE-1 through OCR-CORE-14 acceptance tests pass | Offline real OCR + document semantics; CLI/web parity; protected OcrRun derivatives; PostgreSQL concurrency and historical migration tests; broader M3 acceptance pending |
+| [2026-09-06-OCR-SHARED-CORE-LOCAL](2026-09-06-ocr-shared-core-local-web.md) | active | M3 | product engineering | Critical Release 1A (subordinate to PLAN-WORKERS) | Calibration, stage recovery and observed web acceptance remain open; LangGraph comparison optional | Preserve local OCR and human review; measure OCR-CORE-10/11/13/14 follow-up before orchestration adoption | Offline real OCR + document semantics; CLI/web parity; protected OcrRun derivatives; PostgreSQL concurrency and historical migration tests; broader M3 acceptance pending |
 | [Plan PLAN-INVOICE — accounting research and invoice ingestion foundation](PLAN-INVOICE.md) | active | M1B+ | product engineering + Czech/German accounting specialists | Parallel non-blocking | DEC-015 specialist sign-off pending; live capture gated by Integrity 1.3 | Provisional evidence corpus; synthetic in-memory ingestion/review/CSV boundary; no accounting behavior | `venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q`; DEC-015 before any persistence/adapters |
 | [Plan PLAN-LEGAL — data protection, market, and business validation](PLAN-LEGAL.md) | active | M1A–M6 | product owner + legal | Parallel non-blocking | None | Verified market/legal evidence; activation gate and operational procedures | Manual review of legal compliance checklist against real-data-rules |
 | [Plan PLAN-A1 — A1 production, repository history, and privacy baseline](PLAN-A1.md) | active | A1 operations | primary A1 production agent | Separate A1 operations | Authoritative-input reconciliation and receipt-bound promotion unresolved; canonical employee support implemented; current scoped input/artifact evidence in PLAN-A1 and the delivery record; historical counts do not define the live cohort | Canonical cohort reproducible from authorized sources; PII never staged | `scripts/a1_quality_gate.py` render+validate; `validated_by_user=1` before final promotion |
@@ -39,12 +39,15 @@ deliver normal login, core worker/document/OCR/assignment use and PostgreSQL
 persistence. PILOT-01 is separately gated. Parallel file ownership and acceptance
 commands are in the child plan; these are child tasks, not new top-level catalog IDs.
 
-**2026-09-16 corrective audit:** the child plan binds current results to
-`a48a1e8`, the failed and successful hook receipts, fresh nonsecret host/package
-observations and an owned-cluster reproduction of the invalid psql probe. Next:
-complete candidate dependencies and repair PG ownership/forwarding, then browser
-readiness/core separation and actual committed-source acceptance. Infrastructure
-reconciliation proceeds independently. Details and validation criteria live in
+**2026-09-16 follow-up:** `b687abe` integrates the missing shell dependency;
+review at `4a38067` identifies partial unstaged PG repairs and a new cleanup-env
+regression. The dependency report establishes installed compatibility, not clean
+bootstrap. Preserve prior failure receipts and repair PG ownership/forwarding, then
+browser readiness/core separation and committed-source acceptance. The
+[document orchestration review](../docs/research/2026-09-16-document-orchestration-review.md)
+records fresh offline OCR/worker tests and optional LangGraph use cases; bounded
+comparison belongs to existing OCR-CORE-10/11/13/14 and is not a v1 dependency.
+Infrastructure reconciliation proceeds independently. Details and validation criteria live in
 that plan; publication lives in the delivery record. No new catalog ID or approval.
 
 [Local automation](2026-09-08-local-a1-automation.md) remains a retained

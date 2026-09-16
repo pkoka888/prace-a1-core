@@ -3,16 +3,31 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Dependency and OCR orchestration follow-up — 2026-09-16
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Reviewed user-supplied dependency report and implementation at `4a38067` plus identified unstaged PG/requirements changes. Updated roadmap, parent/child plans, shared-intake documentation and registered a primary-source LangGraph research review. Kept current Django/RapidOCR/domain-review design; optional experiment has explicit comparison/adoption criteria. No application code or dependency file adopted by this review |
+| Validation | `pip check` clean; three real generated-document OCR tests pass under `unshare -Urn`; 18 isolated SQLite OCR-worker tests pass; 29 focused PG guard/resolver tests pass. Additional synthetic subprocess-mocked probe reproduces cleanup `KeyError: 'lock_key'` despite the green unit modules. Final documentation-hook result and identities belong to the private delivery receipt |
+| Publication | Local documentation/research increment only; no push in this review. Required PG/requirements source changes remain unstaged and the cleanup integration defect remains open; all outgoing objects need coordinated review before publication |
+| Deployment / activation | None. No package/host install, live service/DB change, LangGraph runtime, cloud tracing, paid model or real-data activation |
+| Limitations | No cold bootstrap, representative real-scan calibration, LangGraph benchmark, intended-host authentication/browser/PG acceptance or Jan observation. Source completeness for the shell dependency is narrower than full candidate acceptance |
+| Next owner | Runtime engineering repairs complete cleanup environment/ownership; environment engineering proves one cold-install contract; OCR engineering measures quality/retry cost and optionally compares stage receipts with LangGraph. JAN core acceptance retains priority |
+
+Research: [document orchestration review](../research/2026-09-16-document-orchestration-review.md).
+Private evidence: `runtime/portal/temporary/ocr-orchestration-review-20260916-3iu4h9nx/`.
+Existing task/catalog IDs and human approvals are unchanged.
+
 ## Migration-scope shell dependency integrated — 2026-09-16
 
-Commit `b687abe` completes the P0 REL-03/JAN-04 candidate: the shell setter and
+Commit `b687abe` completes the specific missing shell dependency under REL-03/JAN-04: the shell setter and
 operator database-name refusal that the committed settings gate and committed
 refusal tests depend on are now part of the committed candidate.
 
 | Field | Evidence / state |
 |---|---|
 | Implementation | `scripts/rehearse_synthetic_site.sh` now (1) refuses an exact operator database name (`prace_synthetic`) before any schema or data mutation and (2) forwards `PRACE_MIGRATION_SCOPE=1` plus the migration statement timeout only into the `manage.py migrate` invocation. Settings gating already existed in the committed candidate. Single Unix-executable file, 10 lines |
-| Validation | Mandatory hook selected `delivery_lifecycle_rehearsal` once: 58 passed, 196.79 s (`runtime/portal/temporary/change-checks-3qksie22/`, exit 0). Focused settings scope-gating regression passed (4 tests). `bash -n` and `git diff --cached --check` clean. Tested bytes equal the committed shell (`git diff HEAD -- scripts/rehearse_synthetic_site.sh` empty); import-only settings tests confirm command scope, live `current_user`/`statement_timeout` remain on the P0 JAN-04 real-PG row |
+| Validation | Mandatory hook selected `delivery_lifecycle_rehearsal` once: 58 passed, 196.79 s (`runtime/portal/temporary/change-checks-3qksie22/`, exit 0). Focused settings scope-gating regression passed (4 tests). `bash -n` and `git diff --cached --check` clean. Tested bytes equal the committed shell (`git diff HEAD -- scripts/rehearse_synthetic_site.sh` empty); import-only settings tests confirm settings selection, not effective subprocess/database scope; live `current_user`/`statement_timeout` remain on the P0 JAN-04 real-PG row |
 | Publication | Local commit `b687abe` on `feat/prace-readiness-plan-2026-08-13`; not pushed (branch carries inherited incomplete source increments; push requires review of all outgoing objects per audit) |
 | Deployment / activation | None. No service, credential, deployment or real-data change |
 | Limitations | Script-level refusal and settings gating proven; the invalid psql probe and forward-selection/TLS chain remain open under JAN-04. The runtime-scope path (web/worker) must not inherit `PRACE_MIGRATION_SCOPE`; verified at settings import only |

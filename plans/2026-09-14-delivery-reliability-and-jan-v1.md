@@ -5,7 +5,7 @@
 **Parents**: [PLAN-INFRA](PLAN-INFRA.md), [PLAN-WORKERS](PLAN-WORKERS.md)
 **Owner**: primary agent integrates; engineering owns source repairs; infrastructure owns live operations; Jan owns observed usability acceptance
 **Authority**: user scope; [roadmap](../roadmap.md); existing ADR-001/ADR-002
-**Audit baseline**: `a48a1e843a3b59d783d3710dd414993964296368` plus explicitly identified inherited working-tree changes, 2026-09-16. Remote feature branch observed at `8d125f2ced67fced2206a470e9299d57761549e6`. These are dated observations, not release approval.
+**Audit baseline**: original audit `a48a1e843a3b59d783d3710dd414993964296368`; follow-up `4a38067` plus explicitly identified unstaged dependency/PG changes, 2026-09-16. Remote feature branch observed at `8d125f2ced67fced2206a470e9299d57761549e6`. These are dated observations, not release approval.
 
 ## Outcome, sources and expected results
 
@@ -45,7 +45,7 @@ validation; detailed logs remain private. No host secret payload was read.
 
 | Existing task | Verified result / remaining gap | Evidence and consequence |
 |---|---|---|
-| REL-03 / JAN-04 | **Closed at `b687abe`:** shell setter and operator-target refusal are now committed; candidate is coherent | Committed refusal/scope-gating tests pass; live `current_user`/`statement_timeout` on owned PG remains on the JAN-04 real-PG rows below |
+| REL-03 / JAN-04 | **Specific dependency closed at `b687abe`:** shell setter and operator-target refusal are committed; broader candidate/PG acceptance remains open | Committed refusal/scope-gating tests pass; live `current_user`/`statement_timeout` on owned PG remains on the JAN-04 real-PG rows below |
 | REL-03 | **Open: hook checks working-tree bytes.** Staged paths choose checks, but subprocess `cwd` is the mutable checkout; receipts do not bind the complete tested input set | `scripts/validate_change_packages.py::_run_command/_execute_checks`. Existing hook PASS is working-tree evidence, not committed-export evidence |
 | JAN-04 | **Open: ownership is self-declared.** Workflow fixture writes its own disposable marker/record from the supplied target; guard runs at teardown, after migrations. Table-wide DELETEs remain | `tests/test_rehearse_workflow.py::_postgres_env/_write_disposable_ownership/_cleanup_pg_operator`. A synthetic configuration probe accepts a self-created record when lock success is mocked; this does not prove live exclusivity |
 | JAN-04 | **Reproduced application defect: invalid lock probe.** `psql -Atc` receives both `\set` and SQL. It fails against a reachable isolated cluster and is misreported as transport/credential/lock blockage | `scripts/disposable_pg_guard.py::_try_exclusive_lock`; private `postgres-probe.json`: actual probe refuses, mixed command exit 1, plain-SQL control exit 0 (`t`, `t`). New Unix-socket-only cluster stopped successfully; no operator DB used |
@@ -63,6 +63,36 @@ remain valid for their dated scope. Their successful SQLite runs do not close
 PostgreSQL, routed-site, recovery or human acceptance. The original attempt is
 retained beside successful retries; a pass does not diagnose the earlier failure.
 
+## Implementation/dependency follow-up — 2026-09-16
+
+The [review](../docs/research/2026-09-16-document-orchestration-review.md) checks the
+new install report and source updates at `4a38067`. Earlier table entries about
+probe syntax/forwarding/empty targets describe the initial `a48a1e8` audit; the
+unstaged source now partly repairs them. Distinguish that progress from publication
+and full effective-role/TLS/owned-target integration.
+
+- `b687abe` closes the missing shell-file dependency, not every candidate requirement.
+- Unstaged PG changes remove mixed meta/SQL, forward workflow selection and migration
+  credentials, map TLS variables, and reject explicit empty/blank test targets.
+  Guard/resolver tests pass (29); actual setup/workload/cleanup acceptance remains open.
+- **P0 new regression:** `psql_env` rebuilds from ambient environment and loses the
+  supplied fixture target/ownership. The real cleanup caller reaches
+  `KeyError: 'lock_key'` in an isolated, subprocess-mocked reproduction. Repair and
+  test the complete chain, including conflicting ambient target/TLS values, before
+  committing those source repairs. Consumer-created ownership remains insufficient.
+- Dependency pins match installed packages; `pip check` passes. Freeze/dry-run/imports
+  do not prove a fresh install. Duplicate base/dev pins, open ONNX range, browser/model
+  provisioning and inconsistent existing CI install commands need one tested contract.
+- Three generated-document OCR cases passed with OS networking disabled, and 18
+  isolated worker tests passed. Web intake queues durable OcrRun jobs for `process_ocr`;
+  older inline-execution prose is corrected. Quality calibration/stage recovery remain
+  OCR-CORE-10/11/13/14 follow-up. LangGraph is an optional measured comparison under
+  that plan, not a new v1 prerequisite or a replacement for domain review services.
+
+Native receipts/source identities live in
+`runtime/portal/temporary/ocr-orchestration-review-20260916-3iu4h9nx/`.
+No clean install, LangGraph implementation, live target or new human approval is claimed.
+
 ## Implementation backlog and execution order
 
 All broad task IDs below remain open. This audit repairs planning/instructions;
@@ -73,13 +103,14 @@ INFRA-PG-01, DB-MIG-1–7 and PILOT-01 → JAN-RUNTIME.
 
 | Priority / ID | Next bounded work and owned paths | Validation / expected result | Owner |
 |---|---|---|---|
-| P0 REL-03 + JAN-04 | Integrate missing migration-scope shell dependency with settings/tests; review target refusal at the correct disposable-test boundary. Own `scripts/rehearse_synthetic_site.sh`, affected settings and tests | Candidate contains dependencies; committed-source command-scope test proves migration role/timeout and ordinary runtime role/timeout. Refusal occurs before mutation | primary + runtime engineering |
+| P0 REL-03 + JAN-04 | Retain the shell dependency integrated in `b687abe`; complete effective-role/timeout evidence and review target refusal at the disposable-test boundary. Own `scripts/rehearse_synthetic_site.sh`, affected settings and tests | Candidate contains dependencies; committed-source command-scope test proves migration role/timeout and ordinary runtime role/timeout. Refusal occurs before mutation | primary + runtime engineering |
 | P0 JAN-04 | Repair provisioning-owned target identity, pre-migration verification, run exclusivity, cleanup scope and failure propagation. Own `scripts/disposable_pg_guard.py`, workflow fixture and guard tests | Dedicated disposable target; foreign/unowned target refused before migration; second run denied before writes; same-session cleanup verified with real PG; simulated cleanup failure reported. Consumer cannot mint its own authority | runtime engineering |
-| P0 JAN-04 | Repair psql command and exact connection contract; forward workflow selection, command-scoped migration credentials and TLS through every subprocess. Normalize explicit test targets | Isolated real-PG positive/negative lock tests; empty/whitespace/partial/contradictory targets rejected; `SELECT current_user` / `SHOW statement_timeout` in migrate/runtime; settings and libpq use intended target/TLS. No global migration-scope leakage into web/worker | runtime engineering |
+| P0 JAN-04 | Review/integrate the unstaged psql/forwarding/normalization repairs; fix `psql_env` losing supplied target/ownership and conflicting ambient TLS. Keep a single explicit connection contract through every subprocess | Isolated real-PG positive/negative lock tests; empty/whitespace/partial/contradictory targets rejected; `SELECT current_user` / `SHOW statement_timeout` in migrate/runtime; settings and libpq use intended target/TLS. No global migration-scope leakage into web/worker | runtime engineering |
 | P1 JAN-01/JAN-02 | Replace `networkidle` at affected transitions with response/URL/domain-state assertions; preserve bounded synthetic failure evidence before cleanup. Own browser helper/lifecycle tests | Focused reproduction distinguishes timeout, HTTP failure, auth redirect and OCR state; evidence includes failing stage, elapsed time and relevant request/server categories without cookies/bodies. Controlled repeated runs assess reproducibility, not statistical reliability | workflow engineering |
 | P1 JAN-01/JAN-02 | Complete normal access/recovery and core review behavior using existing services/templates. Preserve the currently matching dependency pin; do not repeat historical drift as current | Real login/TOTP/logout and documented recovery; role/action and cross-org deny cases for worker read/edit/archive/delete and document download; OCR proposal confirmation bound to exact revision/actor; stale edit refusal; duplicate retry one effect; actionable Czech pending/error/retry states. Reuse matching evidence, repair only reproduced gaps | access + workflow engineering |
 | P1 JAN-03 | Separate optional A1 across sparse helper, lifecycle, reproducer, review UI and machine requirements. Extend existing entrypoints, not another runner | Core succeeds with optional A1 disabled/unavailable; required core failure exits nonzero; optional A1 reports its own failures. Sparse save through shipped UI with unknowns intact; denied download returns no bytes; corrected facts survive reload/restart | primary + workflow engineering |
 | P1 REL-03 | Bind receipts to actual source/dependency/config/settings identity; guard related drift and stale reuse; preserve staged privacy checks | Synthetic Git fixture with partially staged helper/config proves unstaged success cannot certify index/candidate. Committed export drives the actual core journey. Persistence mismatch exits 1; unavailable environment exits 2; coding errors do not masquerade as environment blockage | evidence tooling |
+| P1 REL-03/REL-05 | Reconcile `requirements.txt`, dev and snapshot constraints with existing bootstrap/CI callers. Keep tested versions; record browser/native/model assets and source/environment identity | Fresh private Python 3.13 environment from documented constraints passes `pip check`, isolated Django check, real offline OCR and synthetic browser core. Prove required assets available, classify optional tools, compare resolved versions; do not use installed-environment dry-run as clean-build evidence | environment + validation engineering |
 | P1 REL-04 | Define shared compatible test units once; reconcile selector/package commands; preserve changed shared behavior integration | Selection-only regressions for docs/tooling/core/shared/A1/deletions/dependencies, with runner/settings/fixture identity. Record comparable before/after timings; no arbitrary speedup promise or bypassed mandatory hook | validation engineering |
 | Parallel INFRA-PG-01 | Reconcile existing credentials, supervisor/listener ownership, approved build/pin, route and target through returned infrastructure contract | Fresh intended-target authentication and health/build/engine evidence; operator-owned service recovery. Existing path-only deployment does not satisfy these checks. No guessed secrets, repin, restart or HBA reorder | infrastructure owner |
 | Candidate JAN-04 | After repairs and selected-target availability, run one reproducible committed-source core scenario through intended route; normal runtime role, expected build/engine/target | Historical migrations/concurrency on owned PG; login/TOTP, upload/review/correction/download; deny/retry/incomplete cases; authorized restart with identical IDs/relationships/corrected values and source bytes; no reseed. Jan instructions and limitations attached | primary + runtime engineering, then Jan |
