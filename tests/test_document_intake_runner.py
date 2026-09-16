@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import stat
 import subprocess
 
 import pytest
@@ -25,7 +27,7 @@ def harness(monkeypatch, tmp_path):
     for name in ("PRACE_DB_NAME", "PRACE_DB_PASSWORD", "PRACE_DISPOSABLE_TARGET",
                  "PRACE_MIGRATION_SCOPE", "DOCUMENT_TEST_PG_HOST",
                  "DOCUMENT_TEST_PG_PASSWORD", "PGDATA", "PGHOST", "PGSERVICE",
-                 "PGPASSWORD", "PGOPTIONS"):
+                 "PGPASSWORD", "PGPASSFILE", "PGOPTIONS"):
         monkeypatch.setenv(name, "synthetic-unowned")
     calls = []
     exits = {}
@@ -57,7 +59,14 @@ def test_selected_browser_labels_use_only_fresh_socket_for_every_subprocess(harn
     assert [phase for phase, _, _ in calls] == ["initdb", "start", "django", "stop"]
     for phase, argv, env in calls:
         assert not any(name.startswith(("PRACE_", "PG")) for name in env if name != "PGPASSFILE")
-        assert env["PGPASSFILE"] == runner.os.devnull
+        password_file = Path(env["PGPASSFILE"])
+        assert password_file.parent == run_root
+        assert password_file != Path("synthetic-unowned")
+        password_stat = password_file.lstat()
+        assert stat.S_ISREG(password_stat.st_mode)
+        assert stat.S_IMODE(password_stat.st_mode) == 0o600
+        assert password_stat.st_uid == os.getuid()
+        assert password_file.read_bytes() == b""
         assert "DOCUMENT_TEST_PG_HOST" not in env
         assert "DOCUMENT_TEST_PG_PASSWORD" not in env
         assert env["DOCUMENT_TEST_PG_SOCKET"] == str(run_root)

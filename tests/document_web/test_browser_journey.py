@@ -25,6 +25,42 @@ from portal.release1a.models import Organization, Membership, Worker, Document
 from scripts.playwright_smoke import run_checks
 
 
+def _readiness_failure_stage(payload):
+    """Keep only known status codes and bounded timings in failure receipts."""
+    if not isinstance(payload, dict):
+        return "READINESS_invalid_response"
+    reasons = ("deadline_exceeded", "check_failed", "probe_failed",
+               "probe_initialization_failed", "probe_busy")
+    check_names = ("apps_loaded", "csrf_confined", "runtime_paths",
+                   "storage_writable", "release_manifest", "model_assets",
+                   "db_reachable", "migrations_current")
+
+    def timing(value):
+        return str(value) if type(value) is int and 0 <= value <= 3_600_000 else "unknown"
+
+    reason = payload.get("reason")
+    reason = reason if isinstance(reason, str) and reason in reasons else "unknown"
+    parts = ["READINESS", reason,
+             "elapsed_ms", timing(payload.get("elapsed_ms")),
+             "budget_ms", timing(payload.get("budget_ms"))]
+    checks = payload.get("checks")
+    seen = set()
+    if isinstance(checks, list):
+        for check in checks[:16]:
+            if not isinstance(check, dict):
+                continue
+            name = check.get("name")
+            if not isinstance(name, str) or name not in check_names or name in seen:
+                continue
+            seen.add(name)
+            status = check.get("status")
+            status = status if isinstance(status, str) and status in ("ok", "fail") else "unknown"
+            parts.extend((name, status, timing(check.get("elapsed_ms"))))
+    if not seen:
+        parts.append("no_known_checks")
+    return "_".join(parts)
+
+
 @pytest.mark.serial
 @skipUnless(os.environ.get("DJANGO_SETTINGS_MODULE") == "portal.settings_browser_tests", "Run scripts/playwright_smoke.py with isolated browser settings")
 class BrowserJourneyTests(StaticLiveServerTestCase):
@@ -142,7 +178,7 @@ class BrowserJourneyTests(StaticLiveServerTestCase):
                     stage = "READINESS"
                     ready_response = context.request.get(self.live_server_url + "/readiness/")
                     if ready_response.status != 200:
-                        stage = "READINESS_" + "_".join(c["name"] for c in ready_response.json().get("checks", []) if c["status"] != "ok")
+                        stage = _readiness_failure_stage(ready_response.json())
                     self.assertEqual(ready_response.status, 200)
                     stage = "LOGIN"
                     page.goto(self.live_server_url + "/review/")

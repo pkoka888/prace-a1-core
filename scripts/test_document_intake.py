@@ -64,13 +64,18 @@ def run_owned_cluster(args):
         runtime.mkdir(mode=0o700, exist_ok=True)
     root = Path(tempfile.mkdtemp(prefix="pg-", dir=runtime))
     root.chmod(0o700)
+    # libpq requires a regular password file. A private empty file avoids both
+    # device-file warnings and fallback to the operator's ~/.pgpass.
+    password_file = root / "pgpass"
+    password_fd = os.open(password_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(password_fd)
     data = root / "db"
     labels = args.labels or list(DEFAULT_LABELS)
     # Caller target variables never authorize or select a database for this run.
     env = {name: value for name, value in os.environ.items()
            if not name.startswith(("PRACE_", "DOCUMENT_TEST_PG_", "PG"))}
     env.update(DJANGO_SETTINGS_MODULE=args.settings, PYTHONPATH=str(ROOT),
-               PGPASSFILE=os.devnull,
+               PGPASSFILE=str(password_file),
                DOCUMENT_TEST_PG_SOCKET=str(root),
                DOCUMENT_TEST_PG_USER=pwd.getpwuid(os.getuid()).pw_name,
                DOCUMENT_TEST_PG_NAME="prace_document_tests", DOCUMENT_TEST_PG_PORT="55439")
