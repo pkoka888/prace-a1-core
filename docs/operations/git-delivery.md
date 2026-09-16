@@ -3,6 +3,36 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## JanSA1 c24a293 review and scoped A1 request — 2026-09-16
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Reviewed the latest framework fixes and updated the existing research review/Pi handoff. No application or historical-version source edits. Separately inspected authorized local A1 sources for the requested person; no matching source was identified and no real PDF was generated |
+| Validation | Ten bounded synthetic CLI probes confirm help, marker-only rejection, non-PDF rejection and zero-output failure fixes, while reproducing incompatible generation, false-positive identity checks and ignored regeneration selection. Canonical CLI journey: 7 passed, 5 subtests, generation/render/QA across three profiles. These are working-tree results; selected source identities match c24a293. Identical historical core inputs/dependencies reuse the retained 32-pass/1-fail renderer-receipt result |
+| Publication | Local review documentation only; no commit or push. Remote feature branch verified at 8d125f2; local c24a293 is 18 commits ahead |
+| Deployment / activation | None. No CI activation, service change, database operation or human confirmation |
+| Limitations | Requested real-person A1 remains blocked on locating that person's own source record. Passing synthetic CLI tests do not establish visual approval, issued-certificate authority or release acceptance. New framework generation/validation/CI defects remain open |
+| Next owner | Requester identifies the private source path or source-bearing revision for the requested person; A1 operator then uses the canonical publisher and all-page QA. Framework engineering implements the distinct next candidate with explicit historical comparison and catalog ownership |
+
+Review: [JanSA1 follow-up](../research/2026-09-16-jansa1-framework-audit.md#follow-up-fixes-at-c24a293).
+Private evidence: `runtime/portal/temporary/framework-audit-20260916-codex/c24a293/`.
+Personal details remain outside this source record.
+
+## Post-audit incremental repair — 2026-09-16 (s62)
+
+Two-item repair batch on top of the published `c24a293`. Synthetic-only; no
+host, service, credential or database change.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | **F-2 empty/whitespace DB-name and role:** `portal/test_pg_contract.py::resolve_test_postgres_target` now rejects an explicitly exported `DOCUMENT_TEST_PG_NAME` / `DOCUMENT_TEST_PG_USER` whose value is blank or whitespace with an actionable `RuntimeError` naming the variable (previously fell through to an empty PostgreSQL name/role). **F-4 exported acceptance environment chain:** `scripts/run_release_reproducer.py` now forwards `PRACE_WORKFLOW_PG` into the exported acceptance environment alongside the migration pair and runtime keys. The reproducer test `tests/test_release_reproducer.py::test_prace_workflow_pg_forwarded_when_set` asserts the forwarded value equals the caller's `PRACE_WORKFLOW_PG`. |
+| Validation | `venv/bin/python -m pytest tests/test_test_pg_contract.py tests/test_release_reproducer.py tests/test_disposable_pg_guard.py -q` → 47 passed (3.06 s). Settings module `PRACE_MIGRATION_SCOPE` gate, `psql_env` preservation of caller keys (`dict(values)`) and TLS variable translation remain pinned by existing tests. Mandatory hook package checks run once per commit; targeted suites cover the staged paths |
+| Publication | Committed on `feat/prace-readiness-plan-2026-08-13`: code commit TBD-SHA + docs commit TBD-SHA. Pushed to the existing private `origin` feature branch with explicit refspec; remote SHA verified in the follow-up record below |
+| Deployment | None. No database, credential, service or host change |
+| Activation | Unchanged. Synthetic-only posture; `M2_SYNTHETIC_ONLY`, real-data §14 gate untouched |
+| Limitations | F-1 settings `cmd_migrate` shell setter on owned PG, F-4 full lifecycle ownership + real lock/cleanup negative cases + libpq TLS end-to-end, F-5 routed-site recovery, F-6 INFRA-PG-01, JAN-01 OCR flake root cause, JAN-03 default-exported core journey, and live owned-cluster `current_user` / `statement_timeout` evidence are NOT closed by this commit. The first hook attempt in the prior session failed on a load-induced journey flake and a successful retry is the recorded evidence; the new commits did not reproduce the flake during focused unit runs (47 passed in 3.06 s) but the mandatory hook run has not yet executed against them |
+| Next owner | Operator: INFRA-PG-01 credential reset + supervision adoption + release pin + HBA reconciliation. Engineering: live owned-PG acceptance with real `current_user` / `statement_timeout`; deterministic replacement of `networkidle` waits at affected transitions per JAN-01; committed-source core journey per JAN-03/REL-03 |
+
 ## Dependency and OCR orchestration follow-up — 2026-09-16
 
 | Field | Evidence / state |

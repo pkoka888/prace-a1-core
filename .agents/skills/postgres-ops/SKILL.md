@@ -45,10 +45,13 @@ socket defaults to port 55439, TCP to 5432 unless explicit. Use the selected tes
 role, not the live application's identity. `PRACE_TEST_DB_*` is deprecated and
 rejected by supervised settings.
 
-Current boundary defects are tracked under JAN-04: the resolver treats empty
-variables as absent and accepts whitespace name/user after stripping. Refuse these
-inputs operationally and repair/regression-test them; do not describe the current
-implementation as rejecting every explicitly supplied invalid target.
+Boundary defects (resolver treated empty variables as absent and accepted
+whitespace name/user after stripping) are closed at `c24a293` plus the
+incremental repair: `resolve_test_postgres_target` now refuses an explicitly
+exported blank/whitespace `DOCUMENT_TEST_PG_NAME` or `DOCUMENT_TEST_PG_USER`
+with an actionable `RuntimeError`. Empty variables still select SQLite by
+design — that is the no-target rehearsal default. Live owned-cluster
+normalization remains under JAN-04.
 
 For transport diagnostics specify host/socket, port, database and user explicitly;
 `pg_isready` alone proves no application authentication. Avoid command-line passwords.
@@ -90,13 +93,15 @@ single migration command, never a globally exported flag inherited by web/worker
 Ordinary runtime must retain its restricted role even when a migration credential
 pair is available to the launcher.
 
-At audit baseline `a48a1e8`, the shell's scope setter is only in the working tree.
-The workflow fixture drops the migration pair, the export omits `PRACE_WORKFLOW_PG`,
-and psql guard/cleanup do not map `PRACE_DB_SSLMODE/SSLROOTCERT` to libpq options.
-Inspect these paths before claiming forwarding is complete. Repair the existing
-chain: caller → export → fixture → migrate/runtime/psql. Verify actual
-`current_user`, `statement_timeout` and target on owned PostgreSQL; import-only
-settings tests cannot prove command scope. Do not print credential values.
+At audit baseline `a48a1e8` the workflow fixture dropped the migration pair, the
+export omitted `PRACE_WORKFLOW_PG`, and the psql guard/cleanup did not map
+`PRACE_DB_SSLMODE/SSLROOTCERT` to libpq options. `c24a293` (`d0903a8`)
+forwarded the migration pair and mapped the TLS variables (`PGSSLMODE` /
+`PGSSLROOTCERT`); the subsequent incremental repair forwards `PRACE_WORKFLOW_PG`.
+Inspect the caller's export before claiming forwarding is complete. Verify
+actual `current_user`, `statement_timeout` and target on owned PostgreSQL;
+import-only settings tests cannot prove command scope. Do not print credential
+values.
 
 ## Validation and diagnosis
 

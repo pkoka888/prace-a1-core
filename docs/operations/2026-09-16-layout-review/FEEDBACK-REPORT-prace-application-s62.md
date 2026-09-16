@@ -68,3 +68,37 @@ At the audit observation, `fa87ad8` and `a48a1e8` were local commits; direct
 feature branch. Publication must be recorded from a verified remote object, not
 predicted in advance. Current/final status belongs to the delivery record.
 No deployment, real-data activation, backup restore or Jan acceptance is claimed.
+
+## Post-audit incremental repair — 2026-09-16
+
+A bounded follow-up commit closes two audit items the prior table marked as
+partial. Identified files and added tests:
+
+- **F-2 empty/whitespace DB-name and role:** `portal/test_pg_contract.py`
+  `resolve_test_postgres_target` now rejects an explicitly exported
+  `DOCUMENT_TEST_PG_NAME` or `DOCUMENT_TEST_PG_USER` whose value is blank or
+  whitespace (actionable `RuntimeError` naming the variable); previously such an
+  explicit set fell through to an empty PostgreSQL name/role and produced a
+  silent connection error. New unit coverage:
+  `tests/test_test_pg_contract.py::test_blank_variable_is_refused_with_actionable_message`
+  and `test_whitespace_database_name_not_accepted` (47 passed across the
+  contract/guard/reproducer suites in 3.06 s).
+- **F-4 exported acceptance environment chain:** `scripts/run_release_reproducer.py`
+  now forwards `PRACE_WORKFLOW_PG` into the exported acceptance environment
+  alongside `PGPASSWORD` and the migration/secret/runtime keys. The reproducer
+  test `tests/test_release_reproducer.py::test_prace_workflow_pg_forwarded_when_set`
+  asserts the forwarded value equals the caller's `PRACE_WORKFLOW_PG`.
+
+The pre-existing plan-file `P0 new regression: psql_env rebuilds from ambient
+environment and loses the supplied fixture target/ownership` paragraph is also
+closed at `c24a293` (`fix: psql_env preserves caller target/ownership for cleanup
+probe`, `d0903a8`); `psql_env` now reads only the supplied `values` dict
+(`dict(values)`) and the unit test
+`tests/test_disposable_pg_guard.py::test_psql_env_preserves_caller_target_and_ownership_keys`
+pins that contract.
+
+Remaining open items (F-1 settings `cmd_migrate` shell setter on owned PG,
+F-4 full lifecycle ownership + real lock/cleanup negative cases + libpq TLS
+end-to-end, F-5 routed-site recovery, F-6 INFRA-PG-01, JAN-01 OCR flake root
+cause, JAN-03 default-exported core journey) are not closed by this commit and
+remain in the plan and delivery record.

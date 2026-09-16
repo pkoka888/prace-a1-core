@@ -50,8 +50,8 @@ validation; detailed logs remain private. No host secret payload was read.
 | JAN-04 | **Open: ownership is self-declared.** Workflow fixture writes its own disposable marker/record from the supplied target; guard runs at teardown, after migrations. Table-wide DELETEs remain | `tests/test_rehearse_workflow.py::_postgres_env/_write_disposable_ownership/_cleanup_pg_operator`. A synthetic configuration probe accepts a self-created record when lock success is mocked; this does not prove live exclusivity |
 | JAN-04 | **Reproduced application defect: invalid lock probe.** `psql -Atc` receives both `\set` and SQL. It fails against a reachable isolated cluster and is misreported as transport/credential/lock blockage | `scripts/disposable_pg_guard.py::_try_exclusive_lock`; private `postgres-probe.json`: actual probe refuses, mixed command exit 1, plain-SQL control exit 0 (`t`, `t`). New Unix-socket-only cluster stopped successfully; no operator DB used |
 | JAN-04 | **Cleanup regression closed (post-`2f58c65` review).** `psql_env` now preserves every caller key (no `os.environ` rebuild); `_cleanup_pg_operator` asserts `verdict["lock_key"]` is an `int` so a refused verdict fails closed instead of `KeyError`-ing into the destructive DELETEs. Isolated PG 18 `initdb` cluster: positive probe `acquired: True`, holder-transaction negative probe `acquired: False — already held` | Deterministic: `tests/test_disposable_pg_guard.py::test_psql_env_preserves_caller_target_and_ownership_keys` plus the existing guard suite, 129 passed. Broader: 153 passed across `test_rehearse_synthetic_site / test_settings_supervised_synthetic / test_run_collector_proposals / test_collector_execution / test_release_reproducer` |
-| JAN-04 | **Open: incomplete environment chain.** Export omits `PRACE_WORKFLOW_PG`; workflow fixture drops migration credential pair. Probe/cleanup do not translate `PRACE_DB_SSLMODE/SSLROOTCERT` to libpq TLS options | Inspect reproducer → workflow fixture → migration/runtime/psql. Synthetic fixture probe confirms dropped migration pair; remote TLS behavior still needs integration |
-| JAN-04 | **Reproduced configuration boundary gaps.** Empty test-target variable selects SQLite; whitespace database name is accepted as an empty PostgreSQL name | `portal/test_pg_contract.py`; private `configuration-probes.json`. Define presence/normalization rules and reject unusable explicit targets before connection |
+| JAN-04 | **Closed at `c24a293` (`d0903a8`):** Guard psql chain now preserves every caller key in `values`, translates `PRACE_DB_SSLMODE/SSLROOTCERT` to `PGSSLMODE/PGSSLROOTCERT` and assigns `PGPASSWORD`. The post-`2f58c65` `KeyError('lock_key')` regression reproduced in an isolated subprocess-mocked probe is closed | `tests/test_disposable_pg_guard.py::test_psql_env_preserves_caller_target_and_ownership_keys`. Forwarded `PRACE_WORKFLOW_PG` and migration credentials remain to be retested on an owned PG with a live migrate/runtime role check |
+| JAN-04 | **Partially closed at `c24a293` + incremental:** `resolve_test_postgres_target` now rejects explicitly exported blank/whitespace `DOCUMENT_TEST_PG_NAME` / `DOCUMENT_TEST_PG_USER` with an actionable `RuntimeError`. Empty-variable → SQLite fallback remains the documented default for unset partial targets | `tests/test_test_pg_contract.py::test_blank_variable_is_refused_with_actionable_message` and `test_whitespace_database_name_not_accepted`. Live owned-cluster normalization still open |
 | JAN-01/JAN-02 | **Timeout cause unresolved.** First hook fails at document-detail `networkidle`, 20000 ms; captured `SERVER_ERROR_CATEGORIES: []`. Retry passes; runner is sequential | Failure `change-checks-dvp3wac9/check-8.stdout`, lines 52–61. Error names elsewhere in the log are printed test source, not observed server failures. No resource sample or request trace establishes load as cause |
 | JAN-03 | **Partial core separation.** `a48a1e8` adds non-A1 correction and optional A1-fact filling. Core lifecycle still unconditionally requires `_rehearse_workflow_data_path.py` A1 preparation/reservation assertions | Sparse saving currently uses direct ORM creation, not a browser proof. Split the optional assertions while retaining a core incomplete-input scenario and shared controls |
 | JAN-03 / REL-03 | **Open: default exported acceptance omits the core journey.** `run_release_reproducer.py::acceptance_commands` remains A1-heavy and does not execute the browser/restart lifecycle | Extend the existing entrypoint and receipt contract; do not advertise a proposed profile flag as implemented |
@@ -73,14 +73,12 @@ unstaged source now partly repairs them. Distinguish that progress from publicat
 and full effective-role/TLS/owned-target integration.
 
 - `b687abe` closes the missing shell-file dependency, not every candidate requirement.
-- Unstaged PG changes remove mixed meta/SQL, forward workflow selection and migration
-  credentials, map TLS variables, and reject explicit empty/blank test targets.
-  Guard/resolver tests pass (29); actual setup/workload/cleanup acceptance remains open.
-- **P0 new regression:** `psql_env` rebuilds from ambient environment and loses the
-  supplied fixture target/ownership. The real cleanup caller reaches
-  `KeyError: 'lock_key'` in an isolated, subprocess-mocked reproduction. Repair and
-  test the complete chain, including conflicting ambient target/TLS values, before
-  committing those source repairs. Consumer-created ownership remains insufficient.
+- `c24a293` (`d0903a8`) removes mixed meta/SQL, forwards workflow selection and
+  migration credentials, maps TLS variables to `PGSSLMODE`/`PGSSLROOTCERT`, and
+  preserves every caller key in `psql_env`. Subsequent incremental commits close
+  the explicit empty/blank test-target gap and forward `PRACE_WORKFLOW_PG`.
+  Guard/resolver/reproducer tests pass (47); live setup/workload/cleanup
+  acceptance on owned PG remains open.
 - Dependency pins match installed packages; `pip check` passes. Freeze/dry-run/imports
   do not prove a fresh install. Duplicate base/dev pins, open ONNX range, browser/model
   provisioning and inconsistent existing CI install commands need one tested contract.
