@@ -124,6 +124,8 @@ def validate(root: Path, catalog_path: Path, *, staged: bool = False) -> tuple[d
             ):
                 owners.append(package_id)
         denied = [rule for rule in forbidden if matches(path, rule)]
+        if ".runtime-config" in PurePosixPath(path).parts:
+            denied.append("protected-runtime-configuration")
         if staged and any(part in {"a1", "scans", "evidence", "ocr", "data", "output", "runtime", "secrets", ".history-remediation", "private", "reports"} for part in PurePosixPath(path).parts):
             denied.append("protected-path")
         if staged and (PurePosixPath(path).name == ".env" or PurePosixPath(path).name.startswith(".env.") and PurePosixPath(path).name != ".env.example"):

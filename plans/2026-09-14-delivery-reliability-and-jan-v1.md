@@ -270,3 +270,27 @@ All 34 top-level catalog IDs and prior actor approvals remain unchanged.
 Infrastructure owner selects the concrete canary revision/targets/rollback before
 the workflow can consume any deployment authorization. Research recommendations
 and synthetic approval fixtures are not operator approvals.
+
+## Planning-fixture and readiness follow-up — 2026-09-16
+
+At merged source `c593466`, the reported 60 planning tests were independently
+repeated: all passed. The linked operational report was introduced by `bb1e167`
+and extended by `c7fae95`; the merge includes those source dependencies. This
+closes the observed missing-document link condition, not runtime readiness.
+
+REL-02 now also protects `.runtime-config` in Git ignores, staged-content
+selection and planning-fixture traversal/export. Tests use synthetic namespaces;
+actual service configuration content is never copied into fixtures. REL-03/06
+replaces the credential-reading readiness helper with bounded, unprivileged
+diagnostics and negative controls for omitted evidence, command failure, wrong
+release responses and invalid asset responses. Test selection now executes its
+source guard and diagnostics tests in the owning CLI package.
+
+Next: infrastructure reconciles selected unit/listener/build and supplies bounded
+logging-delivery evidence. Engineering compares the independently selected release
+through the intended route, then completes JAN-03/04 PostgreSQL/core/restart
+evidence. No new password synchronization, service restart or host configuration
+change follows from passing planning tests or root-owned file metadata. The
+[runtime diagnostic contract](../docs/operations/runtime-manifest.md#bounded-readiness-diagnostics)
+records the manual fallback and limits; publication and native test results belong
+to the delivery record. Do not shell-source the service EnvironmentFile.

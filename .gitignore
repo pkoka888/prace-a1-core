@@ -38,6 +38,7 @@ ocr/
 runtime/portal/
 runtime/free-model-eval/
 secrets/
+.runtime-config/
 
 # Protected, disposable PLAN-A1 history-rewrite workspace (formerly Plan Q); may temporarily contain
 # sensitive historical Git objects and must never be staged or published.

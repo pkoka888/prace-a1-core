@@ -144,3 +144,49 @@ Temporary public hostname remains `prace-v-nemecku.expc.cz`, independent of chec
 `RETIRED_RUNTIME_CONFIG` and `RETIRED_RUNTIME_CONFIG_DIRECTORY` in dated text are
 historical placeholders, not deployable paths. Historical observations remain
 historical; the new location is never substituted into old measurements.
+
+### Bounded readiness diagnostics
+
+`scripts/check_readiness.sh` now delegates to the unprivileged
+[diagnostic implementation](../../scripts/validate_delivery_readiness.py).
+It does not open the EnvironmentFile, query password verifiers, use sudo, or
+change a service. Correct ownership and modes establish filesystem metadata;
+they do not prove database authentication or permission to shell-source a file.
+`git rev-parse --show-toplevel` and an absolute path do not change that boundary.
+Keep EnvironmentFile parsing with the service manager; do not introduce a
+`sudo bash -c 'source ...'` recipe. Systemd's value parsing differs from a shell,
+which would execute command substitutions. See the
+[upstream EnvironmentFile contract](https://github.com/systemd/systemd/blob/main/man/systemd.exec.xml).
+
+From the repository root, run the independent source guard (the wrapper also
+resolves its source when invoked by absolute path from another directory):
+
+```bash
+bash scripts/check_readiness.sh --source-only --json
+```
+
+Run local loaded-unit diagnostics with `bash scripts/check_readiness.sh --json`.
+It reports missing release identity as blocked and makes no HTTP request in that
+case. To compare the selected release with an explicitly selected route, pass
+`--expected-commit` (full SHA), `--expected-build-id`, a numeric `--base-url`
+(default `http://127.0.0.1:8001`) and `--host-header` (default the selected Práce
+hostname). Obtain expected identities independently from the reviewed release;
+never adopt the endpoint's own claim as the expected value. HTTP checks reuse
+the canonical smoke transport and typed health/readiness contracts. Static
+checks require MIME type and a library marker, not merely a nonempty HTTP 200;
+they do not prove full asset byte identity.
+
+Exit 0 means only the selected checks passed; 1 means an observed failure;
+2 means incomplete evidence or invalid invocation. Native command errors and
+missing source coverage cannot become PASS. Reports record the unit's local
+host separately from the HTTP origin/Host header. A local active unit does not
+prove ownership of a listener at a separately selected origin.
+
+Logging delivery remains explicitly blocked pending an infrastructure-owned,
+bounded delivery test. `ProtectSystem=strict` with `--capture-output` alone
+proves neither a logging fault nor successful delivery. Full diagnostics therefore
+cannot currently return all-pass; this is a documented diagnostic limitation,
+not a new prerequisite for core-v1 acceptance. Infrastructure supplies intended
+unit/listener/build reconciliation and log-delivery evidence. Application
+engineering then performs intended-target core browser/restart acceptance;
+restore and Jan's observation remain separate.

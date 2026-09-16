@@ -38,7 +38,7 @@ IGNORE_DIRS = {
     ".git", "venv", ".venv", "node_modules", "__pycache__", ".pytest_cache",
     ".playwright-mcp", "archive", "build", "dist", "output", "data",
     "employees", "a1", "scans", "ocr", "evidence", ".history-remediation",
-    "public-site", "templates", "runtime", "secrets",
+    "public-site", "templates", "runtime", "secrets", ".runtime-config",
 }
 IGNORE_FILES = {".env", "práce-v-německu.zip", "pytest.ini"}
 
@@ -52,7 +52,18 @@ def load_valid():
     return json.loads(VALID_CATALOG.read_text(encoding="utf-8"))
 
 
+def _planning_directory(rel):
+    # This namespace is never covered by the reviewed synthetic-evidence exception.
+    if ".runtime-config" in rel.parts:
+        return False
+    return (not any(part in IGNORE_DIRS for part in rel.parts)
+            or rel.parts == ("docs", "decisions", "evidence")
+            or rel.parts[:4] == ("docs", "decisions", "evidence", "plan-e"))
+
+
 def _planning_path(rel):
+    if ".runtime-config" in rel.parts:
+        return False
     synthetic_evidence = rel.parts[:4] == ("docs", "decisions", "evidence", "plan-e")
     return (not any(part in IGNORE_DIRS for part in rel.parts) or synthetic_evidence) and (
         rel.name not in IGNORE_FILES and not rel.name.startswith(".env")
@@ -73,17 +84,30 @@ def _planning_fixture():
                                       text=True, stderr=subprocess.DEVNULL).strip()
         if Path(top).resolve() != REPO.resolve():
             raise ValueError("exported snapshot")
-        listing = subprocess.check_output(["git", "-C", str(REPO), "ls-tree", "-rz", "HEAD"],
-                                          stderr=subprocess.DEVNULL)
         paths = []
-        for entry in listing.split(b"\0"):
-            if not entry:
-                continue
-            metadata, raw = entry.split(b"\t", 1)
-            rel = Path(raw.decode())
-            if metadata.split()[0] in {b"100644", b"100755"} and _planning_path(rel):
-                paths.append(str(rel))
-        archive = subprocess.check_output(["git", "-C", str(REPO), "archive", "HEAD", "--", *paths])
+        pending = [Path(".")]
+        while pending:
+            directory = pending.pop()
+            tree = "HEAD" if directory == Path(".") else "HEAD:" + directory.as_posix()
+            # Prune tree names before descent; recursive ls-tree enumerates private
+            # namespace contents even if its returned paths are filtered afterward.
+            listing = subprocess.check_output(["git", "-C", str(REPO), "ls-tree", "-z", tree],
+                                              stderr=subprocess.DEVNULL)
+            for entry in listing.split(b"\0"):
+                if not entry:
+                    continue
+                metadata, raw = entry.split(b"\t", 1)
+                rel = directory / raw.decode()
+                mode = metadata.split()[0]
+                if mode == b"040000" and _planning_directory(rel):
+                    pending.append(rel)
+                elif mode in {b"100644", b"100755"} and _planning_path(rel):
+                    paths.append(str(rel))
+        if not paths:
+            # An empty pathspec would archive the whole tree, including excluded data.
+            return {}
+        archive = subprocess.check_output(["git", "--literal-pathspecs", "-C", str(REPO),
+                                           "archive", "HEAD", "--", *paths])
         with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
             return {member.name: bundle.extractfile(member).read()
                     for member in bundle if member.isfile()}
@@ -91,9 +115,9 @@ def _planning_fixture():
         # Gitless exported acceptance snapshot: prune protected roots before reads.
         result = {}
         for current, dirs, files in os.walk(REPO, followlinks=False):
-            dirs[:] = [name for name in dirs if not (Path(current) / name).is_symlink()
-                       and (name not in IGNORE_DIRS or
-                            Path(current).relative_to(REPO).parts == ("docs", "decisions") and name == "evidence")]
+            dirs[:] = [name for name in dirs
+                       if _planning_directory((Path(current) / name).relative_to(REPO))
+                       and not (Path(current) / name).is_symlink()]
             for name in files:
                 path = Path(current) / name
                 rel = path.relative_to(REPO)
@@ -648,7 +672,9 @@ def test_no_real_names_in_changed_paths():
 
 def test_planning_fixture_excludes_protected_and_unreviewed_paths():
     for name in ("runtime/portal/receipt.json", "secrets/config.json", ".env.local",
-                 "tests/fixtures/release_1a/unreviewed.json", "scans/source.txt"):
+                 "tests/fixtures/release_1a/unreviewed.json", "scans/source.txt",
+                 ".runtime-config/credentials.json", "docs/.runtime-config/runtime.yaml",
+                 "docs/decisions/evidence/plan-e/.runtime-config/payload.txt"):
         assert not _planning_path(Path(name))
     assert _planning_path(Path("docs/decisions/evidence/plan-e/receipt.json"))
     assert _planning_path(Path("plans/INDEX.md"))
@@ -672,5 +698,82 @@ def test_gitless_fixture_never_reads_runtime_or_symlink(tmp_path, monkeypatch):
     _planning_fixture.cache_clear()
     try:
         assert _planning_fixture() == {"plans/INDEX.md": b"synthetic plan"}
+    finally:
+        _planning_fixture.cache_clear()
+
+
+def test_runtime_config_namespaces_are_gitignored(tmp_path):
+    source = tmp_path / "synthetic-ignore"
+    source.mkdir()
+    (source / ".gitignore").write_bytes((REPO / ".gitignore").read_bytes())
+    subprocess.run(["git", "-C", str(source), "init", "-q"], check=True)
+    names = [".runtime-config/credentials.json", "docs/.runtime-config/runtime.yaml"]
+    for name in names:
+        path = source / name
+        path.parent.mkdir(parents=True)
+        path.write_text("synthetic runtime configuration sentinel")
+    result = subprocess.run(["git", "-C", str(source), "check-ignore", "--stdin"],
+                            input="\n".join(names) + "\n", capture_output=True, text=True, check=True)
+    assert result.stdout.splitlines() == names
+
+
+@pytest.mark.parametrize("committed", [False, True], ids=["gitless", "committed"])
+@pytest.mark.parametrize("include_allowed", [False, True], ids=["only-protected", "with-reviewed-evidence"])
+def test_fixture_prunes_runtime_config_before_traversal_and_export(
+        tmp_path, monkeypatch, committed, include_allowed):
+    source = tmp_path / "synthetic-source"
+    source.mkdir()
+    protected = [".runtime-config/credentials.json", "docs/.runtime-config/runtime.yaml",
+                 "docs/decisions/evidence/plan-e/.runtime-config/payload.txt"]
+    for name in protected:
+        path = source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("synthetic runtime configuration sentinel")
+    expected = {}
+    if include_allowed:
+        expected = {"plans/INDEX.md": b"synthetic plan",
+                    "docs/decisions/evidence/plan-e/receipt.json": b'{"synthetic": true}',
+                    # Literal archive pathspecs must not expand this real filename.
+                    "docs/*.txt": b"synthetic literal filename"}
+        for name, content in expected.items():
+            path = source / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+    if committed:
+        # This disposable Git repository contains only these synthetic sentinels.
+        # It models already-tracked private namespace entries, not a live namespace.
+        git_init_commit(source)
+    monkeypatch.setattr(sys.modules[__name__], "REPO", source)
+    real_scandir, real_read = os.scandir, Path.read_bytes
+    real_check_output = subprocess.check_output
+    archive_calls = []
+
+    def guarded_scandir(path):
+        assert ".runtime-config" not in Path(path).parts, "protected directory traversed"
+        return real_scandir(path)
+
+    def guarded_read(path):
+        assert ".runtime-config" not in path.parts, "protected content read"
+        return real_read(path)
+
+    def guarded_git(command, *args, **kwargs):
+        if "ls-tree" in command:
+            assert command[command.index("ls-tree") + 1] == "-z", "recursive tree enumeration"
+            assert ".runtime-config" not in command[-1], "protected Git tree traversed"
+        if "archive" in command:
+            selected = command[command.index("--") + 1:]
+            assert selected, "empty selection exports the whole repository"
+            assert "--literal-pathspecs" in command
+            assert all(".runtime-config" not in Path(name).parts for name in selected)
+            archive_calls.append(selected)
+        return real_check_output(command, *args, **kwargs)
+
+    monkeypatch.setattr(os, "scandir", guarded_scandir)
+    monkeypatch.setattr(Path, "read_bytes", guarded_read)
+    monkeypatch.setattr(subprocess, "check_output", guarded_git)
+    _planning_fixture.cache_clear()
+    try:
+        assert _planning_fixture() == expected
+        assert len(archive_calls) == int(committed and include_allowed)
     finally:
         _planning_fixture.cache_clear()

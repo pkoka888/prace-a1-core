@@ -97,6 +97,26 @@ def test_forbidden_path_fails_even_when_packaged(tmp_path: Path) -> None:
     assert any("dirty forbidden path: private/person.csv" == p for p in report["problems"])
 
 
+@pytest.mark.parametrize("relative", [".runtime-config/probe.json", "docs/.runtime-config/probe.json"])
+def test_runtime_configuration_is_rejected_before_blob_read(tmp_path, monkeypatch, relative):
+    from scripts import validate_change_packages as checker
+    root = repo(tmp_path)
+    private = root / relative
+    private.parent.mkdir(parents=True)
+    private.write_text("synthetic runtime canary")
+    catalog = write_catalog(root, {"misclassified": package([relative, "change-packages.yml"])})
+    run(root, "add", "--", relative, "change-packages.yml")
+    oid = subprocess.check_output(["git", "-C", str(root), "rev-parse", ":" + relative]).strip()
+    original = checker.git
+    def guarded(repo_root, *args, **kwargs):
+        assert args != ("cat-file", "blob", oid.decode()), "private blob was read"
+        return original(repo_root, *args, **kwargs)
+    monkeypatch.setattr(checker, "git", guarded)
+    report, status = checker.validate(root, catalog, staged=True)
+    assert status == 1
+    assert f"dirty forbidden path: {relative}" in report["problems"]
+
+
 def test_publishable_report_with_personal_host_path_fails(tmp_path: Path) -> None:
     root = repo(tmp_path)
     (root / "report.md").write_text("tool: /home/operator/bin/tool\n", encoding="utf-8")

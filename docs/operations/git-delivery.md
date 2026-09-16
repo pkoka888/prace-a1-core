@@ -3,6 +3,27 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Planning fixture and unprivileged readiness repair — 2026-09-16
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Readiness now uses an unprivileged bounded diagnostic helper, explicit failure/blocked outcomes, independently supplied release identity and canonical HTTP contracts. Removed EnvironmentFile/password-verifier reads and speculative journald verdicts. Protected `.runtime-config` in Git/selection/fixture boundaries; repaired the browser-wait guard and registered its actual tests |
+| Validation | Before repair, the claimed planning suite was reproduced at c593466: 60 passed, 39.82s. Owner/mode metadata confirmed directory0750, file0640, root:prace-synthetic; payload was not accessed. Focused synthetic fixture repair: 7 passed. Mandatory final-source hook and diagnostic-demo results are recorded in the private delivery receipt; planning fixture tests additionally need the final committed document/helper closure |
+| Publication | Isolated checkout based on c593466, preserving the shared checkout and its untracked research script. Final commit, hook logs and verified origin SHA: `runtime/portal/temporary/readiness-followup-acb7a7377985/delivery.json` |
+| Deployment / activation | None. No credential sourcing/rotation, database operation, service restart or real-data activation |
+| Limitations | Full diagnostics intentionally retain blocked logging-delivery evidence. Unit activity, HTTP contract, asset MIME/signature, authenticated core workflow, restart persistence and restore are separate claims. No actual credential equality, database role/TLS acceptance or approved deployment follows from metadata/planning tests |
+| Next owner | Infrastructure returns intended service/listener/build and bounded log-delivery evidence; application engineering runs source-bound route/core PostgreSQL/restart acceptance; Jan observes the resulting workflow |
+
+The [runtime contract](runtime-manifest.md#bounded-readiness-diagnostics) describes
+the runnable source-only demonstration, scoped host diagnostics and operator
+fallback. The hook's tooling/planning repetitions are mandatory selected checks;
+they do not establish whole-application or fleet acceptance.
+
+The first hook run retained eight diagnostic-test failures: clearing the child
+PATH hid the operator-installed `rg`. The repair resolves that unprivileged tool
+before sanitizing its child environment and adds a synthetic regression. Original
+and final hook receipts remain separate; the retry does not erase the failure.
+
 ## A1 disputed-evidence follow-up — 2026-09-16
 
 | Field | Evidence / state |
