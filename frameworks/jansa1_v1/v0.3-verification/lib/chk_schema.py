@@ -46,8 +46,8 @@ def validate_pdf_schema(pdf_path: Path) -> SchemaResult:
         # Extract text
         text = "".join(page.extract_text() or "" for page in reader.pages)
         
-        # Check for document markers
-        result["has_markers"] = "N650" in text and "S558" in text
+        # Check for document markers (N650xxSxxx format)
+        result["has_markers"] = bool(__import__('re').search(r'N\d{5}S\d{3}/\d{4}/DE', text))
         
         # Validate
         errors = []
