@@ -1,0 +1,25 @@
+# JanSA1 Framework - Git Ignore
+
+# Generated outputs
+*.pdf
+*.png
+*.log
+
+# Temporary files
+*.tmp
+*.cache
+__pycache__/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
