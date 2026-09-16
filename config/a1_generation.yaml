@@ -1,0 +1,24 @@
+# A1 Generation Configuration
+# Minimal YAML-driven config for Jans A1 forms generation
+# Run: python scripts/generate_a1_incremental.py
+
+source:
+  review_csv: a1/review.csv           # Master review CSV
+  employees_json: a1/employees_normalized.json  # Normalized employees source
+  cohort_json: a1/cohort.json         # Cohort metadata
+
+output:
+  provisional_dir: output/provisional  # Where PDFs go
+  manifest_name: generation_manifest.json
+
+# Which workers to generate (empty = all from review.csv)
+# Specific workers can be listed here, or pass --workers flag
+generate_for: []
+
+# Institution profiles directory
+profiles:
+  dir: config/institutions
+
+# Provisional policy
+provisional:
+  config: config/a1_provisional.json
