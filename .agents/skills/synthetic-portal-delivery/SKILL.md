@@ -1,6 +1,6 @@
 ---
 name: synthetic-portal-delivery
-description: Operate, debug, and extend the Delivery-1 supervised synthetic rehearsal site (prepare -> provision -> start -> real browser core workflow and separately scoped optional A1 regression -> stop -> restart). Use when exercising, troubleshooting or extending the canonical rehearsal lifecycle, the provisioned jan_planner + TOTP operator, the real Chromium authenticated journey, restart-survival, the sparse-input blocked evidence path, the bounded negative fixtures, or the related change-package selectors.
+description: Operate, debug, and extend the Delivery-1 supervised synthetic rehearsal lifecycle, real Chromium core workflow, optional A1 regression, restart persistence and related check selection. Use for provisioned operator login, sparse-input evidence, owned process cleanup and scoped acceptance diagnostics.
 ---
 
 # Synthetic portal delivery (Delivery 1)
@@ -11,19 +11,18 @@ new test harness or a separate settings module. Real-data activation remains
 gated by `docs/security/real-data-rules.md §14`; the supervised synthetic
 settings module is synthetic-only by design.
 
-> **Live-run separation (2026-09-16):** The provisioned live surface on server62 is
-> operator-owned: `prace-v-nemecku-gunicorn.service` reads `/etc/prace/env` via
-> `EnvironmentFile=` (Ansible-managed, 0640 root:prace-synthetic), binds
-> `127.0.0.1:8001`, and the private nginx vhost `prace-v-nemecku.expc.cz.conf` routes
-> `prace-v-nemecku.expc.cz`. This skill's rehearsal lifecycle is the **disposable
-> synthetic** path under `<repo>/runtime/portal/supervised-<name>/`; it is separate
-> from the live listener and must not be conflated with service adoption. The
-> `/etc/prace/env` release pin currently lags the approved manifest and its DB
-> password fails authentication; do not repin, rotate, restart or kill the live
-> service from rehearsal work — flag operator ownership. The temporary public
-> hostname is `prace-v-nemecku.expc.cz` (operator decision 2026-09-16); the checkout
-> path stays `/var/www/prace-v-nemecku.tvoje.info`. See the
-> [layout review](../../../docs/operations/2026-09-16-layout-review/REPORT-prace-application-s62.md).
+> **Selected runtime contract (2026-09-16):** infrastructure owns
+> `/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`, injected by
+> `prace-v-nemecku-gunicorn.service` through `EnvironmentFile=`. See
+> [runtime policy](../../../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16).
+> Keep tool `.env` separate; never print, copy/hash the payload, shell-source it or
+> stage `.runtime-config/`. Path retirement changes no secret values, release pin
+> or process ownership. Require infrastructure cutover receipts before calling it deployed.
+> Existing reports identify equal on-disk secrets and a pin/manifest mismatch;
+> actual DB authentication and approved release remain unverified here. Do not infer
+> the correct pin from the current marker. No automatic password reset or restart.
+> Rehearsals use disposable roots/ports and must not race the selected live8001
+> listener or overwrite its manifest. Temporary hostname remains `prace-v-nemecku.expc.cz`.
 
 ## Ground the run
 
@@ -172,20 +171,25 @@ Chromium through the shipped frontend end-to-end:
   insurance_number)
 - address review form (street, house_number, city, postal_code,
   country_code)
-- assignment creation (facts filled incl. the verifiable `decin`
-  institution profile)
-- protected PDF download (verified through the browser page fetch
-  against status, content type, exact size and exact SHA-256 against
-  the uploaded PNG; the `%PDF-` magic check and the assignment
-  correction stage apply to the `optional-a1` profile)
+- assignment creation (both profiles; the A1 input facts incl. the
+  verifiable `decin` institution profile are filled only by the
+  `optional-a1` profile)
+- non-A1 assignment correction (`assignment_corrected`, both profiles):
+  one plain assignment fact is edited through the shipped assignment
+  edit form — optimistic-lock `version` included — and verified to
+  persist after reload; the core profile exercises correction with NO
+  A1 dependency
+- protected source-document download (both profiles; real browser-session
+  fetch verifies status, non-HTML content type, exact size and SHA-256 against
+  the uploaded synthetic PNG). Optional A1 PDF checks are listed separately below
 
 The `optional-a1` profile (`--profile optional-a1`, exercised only by
 the separately scoped A1 regression) additionally drives:
 - A1 case preparation and `a1_draft_generate` form submission /
   prepared-auto path
 - protected A1 PDF download (verified against the `%PDF-` magic)
-- correction: one assignment input fact edited through the shipped
-  a1-inputs form and verified to persist
+- A1 correction: one assignment input fact edited through the shipped
+  a1-inputs form and verified to persist (`a1_corrected_facts`)
 - regeneration: a NEW A1 case prepared from the corrected snapshot;
   its PDF must differ from the first (new sha256) and the canonical
   generation input (`A1DraftGeneration.snapshot["row"]`) is queried
@@ -199,13 +203,16 @@ and `action="."` so the browser's native submit path succeeds
 whether or not HTMX intercepts.
 
 The journey defaults to the `core` profile (the Release 1A core-v1
-definition): A1 stages are intentionally skipped and a single explicit
-`a1_skipped` stage is recorded with `case_pk`/`regenerated_case_pk`
-null in the evidence. The `optional-a1` profile is the separately
-scoped A1 regression, not the core-v1 acceptance definition. The
-core/optional-A1 profile separation (JAN-03) is implemented and
-validated on the delivered working tree; the canonical persistence
-verifier (`scripts/rehearse_verify_persistence.py`) accepts
+definition): A1 stages are intentionally skipped, the required core
+stage set includes the non-A1 `assignment_corrected` stage, and a single
+explicit `a1_skipped` stage is recorded with `case_pk`/
+`regenerated_case_pk` null in the evidence. The `optional-a1` profile is
+the separately scoped A1 regression, not the core-v1 acceptance
+definition. The core/optional-A1 profile separation (JAN-03) is
+implemented in the browser helper, but not complete across acceptance: the
+lifecycle still unconditionally executes A1 sparse preparation/reservation checks
+and the default committed export omits this journey. JAN-03 remains partial. The canonical
+persistence verifier (`scripts/rehearse_verify_persistence.py`) accepts
 `--profile core|optional-a1` and defaults to `core`. A failing
 required stage still exits nonzero; do not relabel a failure as a skip.
 `tests/document_web/test_browser_journey.py` independently exercises normal
@@ -221,9 +228,10 @@ removed 500s from three consecutive journeys, but a bounded run set is
 not a statistical fix claim. The protected-download byte mismatch
 (JAN-02) was an authentication-redirect artifact in the journey helper
 and is fixed by fetching through the real browser page. JAN-04 repairs
-remain open — target forwarding, verified disposable cleanup, migration
-credential scope, effective statement timeout and restart verification
-of actual file bytes and exact records. Treat skill instructions here as
+remain open; the active plan records the missing committed shell dependency,
+self-declared disposable ownership, reproduced invalid psql probe and incomplete
+forwarding. Actual source-byte verification is implemented; intended-target
+restart acceptance is still unverified. Treat skill instructions here as
 the reconciliation reference against executable configuration, not as
 evidence that PostgreSQL acceptance is closed.
 
@@ -246,41 +254,41 @@ PYTHONPATH="$PWD" venv/bin/python tests/_rehearse_workflow_data_path.py \
 ```
 
 A fully-named sibling worker's A1 case is `READY`, so the script also
-proves that only the missing-facts path blocks.
+checks the missing-facts A1 path. This is currently an unconditional dependency
+of the lifecycle's core profile; it must move to optional-A1 under JAN-03.
+The sparse row is created directly through the ORM, so this does not prove that
+Jan can save the same incomplete input through the frontend. Add that core UI
+scenario without requiring A1 preparation or reserving a draft.
 
 ## Validation policy
 
-The rehearsal selects tests through `change-packages.yml`'s
-`delivery_lifecycle_rehearsal` package; staging any of:
+Inspect `change-packages.yml` and the actual selectors for the owned staged
+paths. `delivery_lifecycle_rehearsal` currently selects site, lifecycle, workflow,
+OCR-worker lifecycle and disposable-guard tests. Skill-only changes use structural
+and planning checks, not a browser rehearsal. Let the mandatory hook run its
+selection once for commit-bound work; do not duplicate it with `--run-checks`.
 
-- `scripts/rehearse_synthetic_site.sh`
-- `scripts/rehearse_dev_local.sh`
-- `scripts/rehearse_verify_persistence.py`
-- `scripts/build_release_manifest.py`
-- `scripts/provision_synthetic_operator.py`
-- `scripts/smoke_probe.py`
-- `tests/test_rehearse_synthetic_site.py`
-- `tests/test_rehearse_synthetic_site_lifecycle.py`
-- `tests/test_rehearse_workflow.py`
-- `tests/_rehearse_workflow_browser.py`
-- `tests/_rehearse_workflow_data_path.py`
+The dependency selector currently emits a shorter three-file lifecycle command;
+the dispatcher only deduplicates identical commands. REL-04 must reconcile this
+overlap; do not claim it is already deduplicated. The hook runs working-tree code,
+so its success is not an index/committed-source proof. Inspect candidate dependencies
+and use the existing export mechanism for release evidence after core coverage is
+implemented. Keep dependency/settings/target identity with the private receipt.
 
-runs:
+### Investigating a browser failure
 
-```bash
-venv/bin/python -m pytest \
-    tests/test_rehearse_synthetic_site.py \
-    tests/test_rehearse_synthetic_site_lifecycle.py \
-    tests/test_rehearse_workflow.py -q
-```
+Read the failing stage and native exit from the private report/log first. Retain
+the initial failure alongside any successful retry. `networkidle` is still used
+at several transitions; replace affected waits with expected response/URL and
+visible domain-state assertions, preserving real HTMX/browser behavior. Do not
+increase timeouts or diagnose load merely because a standalone run passes.
 
-Prose-only edits under `.agents/skills/synthetic-portal-delivery/`
-are routed through a separate package that runs only structural and
-planning checks; the 2½-minute rehearsal suite is not duplicated.
-
-`scripts/select_infrastructure_git_workflow_checks.py` adds the same
-rehearsal suite when a `requirements*.txt` is staged; the dispatcher
-deduplicates identical commands across packages.
+Before fixture cleanup, capture bounded synthetic failing-stage timing, response
+status/redirect classification and server/request error categories. Keep cookies,
+TOTP, credentials and document bodies out of evidence. On early exceptions the
+current helper prints a generic failure JSON and loses its accumulated stage map;
+preserving that map is part of JAN-01/JAN-02. A source literal such as
+`"database is locked"` in a pytest traceback is not an observed server error.
 
 ## Smoke contract
 
@@ -332,7 +340,10 @@ sending SIGTERM/SIGKILL.
 
 ## PostgreSQL acceptance
 
-PostgreSQL is a target-dependent acceptance step. Set all four
+PostgreSQL is a target-dependent acceptance step. Before invoking the PG test
+lifecycle, read [postgres-ops](../postgres-ops/SKILL.md): current disposable ownership
+and lock-probe defects make an arbitrary/shared target unsafe. Engineering-owned
+isolated PostgreSQL integration is possible independently of operator credentials. Set all four
 `PRACE_DB_NAME`, `PRACE_DB_USER`, `PRACE_DB_HOST`, `PRACE_DB_PORT`;
 remote TCP additionally requires `PRACE_DB_SSLMODE=verify-full` and
 `PRACE_DB_SSLROOTCERT`. Omitting all four permits the default SQLite
@@ -355,7 +366,8 @@ matching the default `workflow` journey):
 venv/bin/python scripts/rehearse_verify_persistence.py
 ```
 
-It reuses the workflow test's restart-verification logic and exits
+It checks supplied exact records/source bytes after the target owner performs
+restart; the command itself does not restart any service. It exits
 non-zero with an actionable message on mismatch or missing
 configuration. The `--profile core` acceptance covers worker, document,
 assignment and document-bytes checks; `--profile optional-a1` additionally

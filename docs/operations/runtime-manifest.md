@@ -119,3 +119,28 @@ remain unaccepted operational defaults; document retention review remains separa
 Complete independent review and all remaining registered engineering checks before
 ENG-001; then REV-002, remaining hardening/activation gates and REV-003. J4 bytes or
 passing test counts do not grant visual acceptance, issuance or real-data activation.
+
+## Runtime configuration path decision — 2026-09-16
+
+The operator selected `/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`
+as the infrastructure-owned systemd EnvironmentFile for
+`prace-v-nemecku-gunicorn.service`. The canonical source policy is
+`desired-state/service-runtime-paths.yml`, service `prace-v-nemecku`, in the
+server61 `/workspace/servers-infra-core` project. The application interface is
+this runtime manifest contract. This source change is not
+proof of host cutover: require infrastructure's byte-equivalence, loaded-unit
+path and unchanged-service/process receipts. Path relocation does not rotate
+secrets, approve the current manifest, authenticate the database or restart a service.
+
+Keep checkout `.env` separate. `.runtime-config/` is a private infrastructure
+namespace: exclude it from Git (including force-add), packages, fixtures, broad
+inventory, web serving and ordinary checkout copying. Never print, hash, source
+as shell code or copy its payload into documentation/evidence. Intended owner/modes:
+root:prace-synthetic, directory0750 and file0640. These modes constrain direct
+reads; writable shared checkout ancestors permit path replacement and already
+permit application-code changes. They do not provide the former namespace boundary.
+Temporary public hostname remains `prace-v-nemecku.expc.cz`, independent of checkout.
+
+`RETIRED_RUNTIME_CONFIG` and `RETIRED_RUNTIME_CONFIG_DIRECTORY` in dated text are
+historical placeholders, not deployable paths. Historical observations remain
+historical; the new location is never substituted into old measurements.

@@ -5,210 +5,126 @@ description: Operate, debug, and extend PostgreSQL-backed rehearsal and test run
 
 # PostgreSQL operations
 
-This skill links the canonical PostgreSQL configuration, settings contracts,
-test isolation rules and cleanup procedures for the supervised synthetic
-portal. Use it instead of inventing a second database layer or a separate
-settings module.
+Use the existing settings, lifecycle and PostgreSQL harness. Read `AGENTS.md`,
+the [active plan](../../../plans/2026-09-14-delivery-reliability-and-jan-v1.md)
+and [delivery record](../../../docs/operations/git-delivery.md) for current scope,
+source identity and evidence. Inspect branch/index/worktree before executing;
+a working-tree fix may be absent from the selected commit.
 
-## Ground the run
+## Select the operation and target
 
-1. Read `AGENTS.md` first; real-data rules, the four-delivery sequence and
-   the proportional validation cadence are authoritative.
-2. Read the active `plans/2026-09-14-delivery-reliability-and-jan-v1.md`
-   and `docs/operations/git-delivery.md` for the current PostgreSQL
-   acceptance target and evidence requirements.
-3. Inspect `git status` and `git log --oneline -5`; preserve unrelated work.
-4. Confirm the local cluster is reachable: `psql -U <user> -d <db> -c 'SELECT 1;'`
-   succeeds with the configured password.
-5. Synthetic implementation does not require a running cluster; a missing
-   target is unverified, not a failure. Do not silently downgrade a
-   PostgreSQL-configured run to SQLite.
+Distinguish application-owned disposable integration from operator-owned deployed
+acceptance. Engineering may use the in-project ephemeral PostgreSQL pattern in
+`scripts/test_document_intake.py` (unique private root, Unix socket, no TCP
+listener, owned initdb/pg_ctl lifecycle). It does not use host credentials or prove
+the live target. Do not run its broad suite unless relevant to the change.
 
-## Target contract
+The operator owns host services, cluster configuration, credentials and recovery.
+Consume its explicitly returned target/secret references through the approved
+injection mechanism; never obtain a test credential by reading the live secret file.
+The selected EnvironmentFile is
+`/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`; keep it separate
+from checkout `.env`, do not shell-source/print/copy/hash its payload, and follow
+[the runtime policy](../../../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16).
+Path deployment does not prove authentication, release approval or service recovery.
 
-`portal.settings_supervised_synthetic` uses one all-or-none PostgreSQL
-target or confined SQLite. Set all four `PRACE_DB_NAME`, `PRACE_DB_USER`,
-`PRACE_DB_HOST`, `PRACE_DB_PORT`; omit all four for SQLite. A partial set
-is rejected at import time with `ImproperlyConfigured`.
+## Connection contracts
 
-> **Infra-owned environment (2026-09-16):** On server62 the live service reads its
-> variables from the Ansible-managed `/etc/prace/env` via
-> `EnvironmentFile=/etc/prace/env` in `prace-v-nemecku-gunicorn.service`. That file
-> (0640 root:prace-synthetic) is the environment's source; it is separate from the
-> checkout `.env` (tool credentials) and is **not** to be merged, copied into Git, or
-> printed. Known unresolved state (see
-> [layout review](../../../docs/operations/2026-09-16-layout-review/REPORT-prace-application-s62.md)):
-> the file's DB password still fails authentication (INFRA-PG-01), its release pin
-> lags the approved manifest, and its Django secret equals its DB password. Do not
-> repin, rotate or repair `/etc/prace/env` from this project; flag operator ownership.
+`portal.settings_supervised_synthetic` selects PostgreSQL with all four nonempty
+`PRACE_DB_NAME`, `PRACE_DB_USER`, `PRACE_DB_HOST`, `PRACE_DB_PORT`; no target selects
+confined SQLite, partial target is rejected. Password comes from the selected
+identity's approved mechanism. Remote TCP additionally requires
+`PRACE_DB_SSLMODE=verify-full` and `PRACE_DB_SSLROOTCERT`. Never interpret SQLite
+success as requested PostgreSQL acceptance. The settings remain synthetic-only.
 
-Local Unix socket:
-```bash
-export PRACE_DB_NAME="prace_synthetic"
-export PRACE_DB_USER="prace_synth_app"
-export PRACE_DB_HOST="/var/run/postgresql"
-export PRACE_DB_PORT="5432"
-export PRACE_DB_PASSWORD="<password>"
-```
+`portal.settings_document_tests` and `portal.settings_browser_tests` use
+`portal/test_pg_contract.py::resolve_test_postgres_target`. Configure an explicitly
+owned test name/user plus exactly one of `DOCUMENT_TEST_PG_SOCKET` (resolved within
+project runtime) or `DOCUMENT_TEST_PG_HOST`. TCP requires `DOCUMENT_TEST_PG_PASSWORD`;
+socket defaults to port 55439, TCP to 5432 unless explicit. Use the selected test
+role, not the live application's identity. `PRACE_TEST_DB_*` is deprecated and
+rejected by supervised settings.
 
-Remote TCP (requires explicit operator authorization):
-```bash
-export PRACE_DB_SSLMODE="verify-full"
-export PRACE_DB_SSLROOTCERT="/path/to/ca.crt"
-```
+Current boundary defects are tracked under JAN-04: the resolver treats empty
+variables as absent and accepts whitespace name/user after stripping. Refuse these
+inputs operationally and repair/regression-test them; do not describe the current
+implementation as rejecting every explicitly supplied invalid target.
 
-Runtime statement timeout defaults to 500 ms; override with
-`PRACE_RUNTIME_STATEMENT_TIMEOUT_MS`. Migration timeout defaults to 60000 ms;
-override with `PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`.
+For transport diagnostics specify host/socket, port, database and user explicitly;
+`pg_isready` alone proves no application authentication. Avoid command-line passwords.
+Record a nonsecret target label and result; keep source values and credentials out
+of logs. Do not infer an HBA repair or password reset from an undifferentiated error.
 
-The settings module rejects symlinks on the SQLite database path and
-confines the runtime root to operator-owned directories. PostgreSQL targets
-bypass the SQLite symlink check but retain runtime-root confinement.
+## Disposable-target ownership and lifecycle
 
-## Test database isolation
+Before any test migration or cleanup, establish independently that provisioning
+created the exact exclusively owned disposable target. A database name denylist,
+`PRACE_DISPOSABLE_TARGET=1`, or a record written by the consumer is insufficient.
+Use a per-run target and an ownership record bound to provisioning/run/target;
+retain ownership across setup, workload and teardown. A cooperating advisory lock
+can coordinate those clients; it cannot exclude clients that never take the lock.
 
-`portal.settings_document_tests` supports an explicit isolated PostgreSQL
-test target via `DOCUMENT_TEST_PG_SOCKET` or `DOCUMENT_TEST_PG_NAME`. The
-socket path must resolve inside the project `runtime/` tree. When neither
-variable is set, tests fall back to SQLite in-memory.
+**Current limitation (JAN-04):** `tests/test_rehearse_workflow.py` still writes its
+own ownership record, invokes the guard only during cleanup, and uses table-wide
+DELETEs. Do not run this PostgreSQL lifecycle against a shared/operator database.
+The existing guard is not proof that an arbitrary configured target is safe.
+`scripts/disposable_pg_guard.py::_try_exclusive_lock` also mixes a psql meta-command
+and SQL in one `-c` argument; the 2026-09-16 owned-cluster audit reproduced failure
+on a reachable target. Fix invocation and real-cluster negative/positive cases
+before using this path as acceptance evidence. No new user approval is needed for
+those authorized source repairs.
 
-```bash
-export DOCUMENT_TEST_PG_SOCKET="/var/www/.../runtime/portal/supervised-<name>/pg.sock"
-export DOCUMENT_TEST_PG_NAME="prace_synthetic_test"
-export DOCUMENT_TEST_PG_USER="prace_synth_app"
-# DOCUMENT_TEST_PG_PORT defaults to 55439 when socket is set
-# DOCUMENT_TEST_PG_PASSWORD is optional for the socket/peer path and required
-# for a TCP target (DOCUMENT_TEST_PG_HOST). The TCP branch fails closed without it.
-```
+For corrected cleanup, verify scope before mutation, hold the needed ownership
+through the operation, and propagate native errors. Exercise wrong-target,
+simultaneous-run, partial failure and successful cleanup against owned synthetic
+PostgreSQL. Preserve operator data and private retention artifacts; no bulk cleanup
+of live roots. Stop only processes bound to the fixture's launch identity before
+removing its uniquely owned cluster directory.
 
-For a TCP test target use `DOCUMENT_TEST_PG_HOST` (+ optional
-`DOCUMENT_TEST_PG_PORT`, default 5432) and set `DOCUMENT_TEST_PG_PASSWORD`; the
-settings module refuses a TCP target without a password.
+## Migration identity and forwarding
 
-`settings_supervised_synthetic` no longer accepts `PRACE_TEST_DB_NAME`,
-`PRACE_TEST_DB_USER`, `PRACE_TEST_DB_HOST` or `PRACE_TEST_DB_PORT`. That
-test-variable mechanism is deprecated and any presence of those variables is
-rejected at import time with `ImproperlyConfigured`. Use `DOCUMENT_TEST_PG_*`
-(above, via `portal.settings_document_tests`) for isolated test targets.
+Runtime timeout defaults to 500 ms (`PRACE_RUNTIME_STATEMENT_TIMEOUT_MS`), migration
+timeout to 60000 ms (`PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`). The settings select
+migration credentials/timeout only with `PRACE_MIGRATION_SCOPE=1`; the intent is a
+single migration command, never a globally exported flag inherited by web/worker.
+Ordinary runtime must retain its restricted role even when a migration credential
+pair is available to the launcher.
 
-The rehearsal lifecycle test (`tests/test_rehearse_workflow.py`) does not
-use `pytest.mark.django_db`. Its subprocesses inherit `DJANGO_SETTINGS_MODULE`
-and database env vars from the parent. Set the full `PRACE_DB_*` set
-(Name/User/Password/Host/Port) in the caller's environment and
-`PRACE_WORKFLOW_PG=1`; with that flag the test fails closed if any variable
-(or `PRACE_DB_PASSWORD`) is missing — it never defaults a host or credential.
+At audit baseline `a48a1e8`, the shell's scope setter is only in the working tree.
+The workflow fixture drops the migration pair, the export omits `PRACE_WORKFLOW_PG`,
+and psql guard/cleanup do not map `PRACE_DB_SSLMODE/SSLROOTCERT` to libpq options.
+Inspect these paths before claiming forwarding is complete. Repair the existing
+chain: caller → export → fixture → migrate/runtime/psql. Verify actual
+`current_user`, `statement_timeout` and target on owned PostgreSQL; import-only
+settings tests cannot prove command scope. Do not print credential values.
 
-## Migration and prepare
+## Validation and diagnosis
 
-The canonical `prepare` subcommand runs:
-```bash
-bash scripts/rehearse_synthetic_site.sh prepare
-```
-It validates confinement, creates the runtime layout, writes the manifest,
-runs `manage.py migrate --noinput` and `manage.py collectstatic --noinput`,
-then re-asserts private permissions on the database file (SQLite only).
+Use focused regressions for resolver/forwarding logic; use a real owned cluster
+for lock semantics, effective role/timeout, historical migrations and concurrency.
+Mocks prove only refusal/control flow. Follow AGENTS.md's commit-hook cadence and
+read failing reports before reruns; do not duplicate broad integration by default.
 
-Migrations run with `DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic`
-and inherit `PRACE_DB_*` from the environment. Django's migration tracking
-is idempotent; rerunning `prepare` against an existing PostgreSQL target
-reapplies pending migrations without recreating the schema.
+Separate server HTTP errors, authentication redirects, OCR state and browser wait
+timeouts. A successful retry does not identify a cause. Check the actual error
+line, not error-name literals in pytest's displayed source. SQLite lock contention
+requires corresponding evidence; selecting PostgreSQL does not itself diagnose
+or fix a browser `networkidle` timeout. Record source/settings and bounded timing
+or request evidence for the affected transition.
 
-## Implemented, defective and intended
+## Intended-target persistence acceptance
 
-Distinguish what is implemented, what is a known defect and what is the
-intended repair (tracked in the active child plan's 2026-09-15 review
-checkpoint). Do not present prose here as runtime proof.
+Once application defects and the infrastructure contract are resolved, run the
+committed-source core browser/restart scenario on the explicitly selected target.
+The current default `scripts/release_reproducer.sh <commit-sha>` omits that scenario;
+JAN-03/REL-03 must extend it before it can be called complete core acceptance.
 
-Implemented (in source, observed behavior may still contain the listed
-defects):
-
-- The all-or-none `PRACE_DB_*` target contract and partial-set rejection at
-  import time; the deprecated `PRACE_TEST_DB_*` variables are rejected.
-- `DOCUMENT_TEST_PG_*`-scoped isolated test targets via
-  `portal.settings_document_tests`.
-- `scripts/rehearse_verify_persistence.py` exits 2
-  (`PERSISTENCE_ACCEPTANCE_BLOCKED`) when the target is unavailable and
-  supports `--profile core|optional-a1` in the current working tree.
-
-Known defects (open, JAN-04 / JAN-03):
-
-- Target forwarding from the rehearsal lifecycle to the configured
-  `PRACE_DB_*` target is not verified end to end.
-- Disposable-target cleanup is not verified against an exclusively owned
-  target; cleanup behavior must be demonstrated before it is relied on.
-- Migration credential scope (`PRACE_MIGRATION_DB_USER` /
-  `PRACE_MIGRATION_DB_PASSWORD`) and the effective statement timeout
-  (`PRACE_RUNTIME_STATEMENT_TIMEOUT_MS` /
-  `PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`) exist in the working tree but are
-  pending validation.
-- The core/optional-A1 profile separation is partially implemented; A1-only
-  requirements must not gate core acceptance.
-
-Intended repairs are owned by JAN-04 (target forwarding, verified disposable
-cleanup, migration credential scope, effective timeout, restart verification
-of actual file bytes and exact records) and JAN-03 (profile separation).
-Repair progress is recorded in the child plan and the delivery record, not by
-editing this skill.
-
-## Flakiness diagnosis
-
-SQLite under gunicorn with concurrent requests can produce `database is
-locked` or intermittent HTTP 500 errors. Switching the supervised target
-to PostgreSQL removes the file-lock bottleneck. Symptoms:
-- `OperationalError: database is locked` in gunicorn logs
-- `IntegrityError` under concurrent write load
-- Intermittent HTTP 500 on form submissions or document uploads
-
-Remediation: run the affected test or rehearsal against PostgreSQL by
-setting `PRACE_DB_*` in the environment. The rehearsal script and the
-workflow test both forward these env vars to their subprocesses.
-
-## Cleanup and retention
-
-The operator owns PostgreSQL cluster lifecycle (start, configuration,
-backup, recovery). Engineering prepares a scoped recipe and hands it to
-the operator.
-
-For local synthetic PostgreSQL targets:
-- Use a dedicated database per acceptance run when possible.
-- Do not bulk-delete rows; retention review owns cleanup.
-- A killed gunicorn or worker process may leave unreferenced derivative
-  files under `DOCUMENT_STORAGE_ROOT`; retention review owns cleanup.
-- The `rehearse_verify_persistence.py` script exits 2
-  (`PERSISTENCE_ACCEPTANCE_BLOCKED`) when the PostgreSQL target is
-  unavailable, distinguishing transport failure from data mismatch.
-
-## Avoid
-
-- Do not silently downgrade a PostgreSQL-configured run to SQLite.
-- Do not point test database creation or teardown at the operator database.
-- Do not invent a second settings module; reuse
-  `portal.settings_supervised_synthetic`.
-- Do not run `manage.py migrate` directly against the operator database
-  from a test runner without explicit test-target configuration.
-- Do not commit protected paths (`a1/`, `scans/`, `data/`,
-  `runtime/portal/`, `secrets/`, `.env`).
-- Do not print, copy, hash-into-reports or store the value of
-  `/etc/prace/env` variables when the configuration is disputed
-  (shared-secret equality 2026-09-16 is reported as a boolean only).
-- Do not blindly move the Práce md5 `pg_hba` record above the `local all
-  all peer` catch-all; reconcile only if transport/principal tests justify
-  it, and treat `peer` shadowing as a plausible rather than proved cause of
-  the socket-path failure.
-- Do not repin or rotate `/etc/prace/env` from this project; flag operator
-  ownership and record the last-known result.
-
-## Related references
-
-- `AGENTS.md` — operational authority.
-- `docs/operations/git-delivery.md` — implementation/validation/
-  publication/deployment/activation record.
-- `plans/2026-09-14-delivery-reliability-and-jan-v1.md` — JAN-04
-  PostgreSQL acceptance target.
-- `portal/settings_supervised_synthetic.py` — DATABASES and
-  PRACE_DB_* contract.
-- `portal/settings_document_tests.py` — DOCUMENT_TEST_PG_* test target.
-- `scripts/rehearse_synthetic_site.sh` — canonical lifecycle with
-  PRACE_DB_* forwarding.
-- `tests/test_rehearse_workflow.py` — lifecycle test; set PRACE_DB_*
-  in `workflow_env` for PostgreSQL target.
+`scripts/rehearse_verify_persistence.py --profile core` verifies supplied exact
+worker/document/assignment identifiers, relationships and stored source bytes.
+Supply its required environment or journey receipt in the same target context;
+it does not restart the service. The authorized target owner performs restart
+without reseeding, then the same IDs/bytes/corrected values are checked. Optional
+A1 rows/PDFs belong to `--profile optional-a1`. A mismatch fails; unavailable target
+is blocked/unverified (exit 2). Broad exception classification remains a plan item.
+Neither a local PostgreSQL probe nor this verification alone grants Jan acceptance,
+real-data activation or the separate backup-plus-files restore gate.

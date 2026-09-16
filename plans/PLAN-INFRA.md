@@ -3,7 +3,7 @@
 **Status**: active
 **Milestone**: M0–M2
 
-## Current execution — 2026-09-14
+## Current execution — 2026-09-16
 
 Own REL-01–REL-06 and JAN-04 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md). Priorities are truthful
 completion evidence, proportional validation and usable private-site acceptance.
@@ -16,6 +16,13 @@ The implementation backlog and parallel ownership live in the child plan. Core
 v1 excludes official A1 generation/issuance; drafts are optional. JAN-03 owns
 scope reconciliation in review UI/machine checks, with shared controls preserved.
 No registered approval is changed by this planning checkpoint.
+
+Current audit: incomplete committed shell dependency, self-declared PG ownership,
+invalid psql lock probe and missing forwarding are application repairs. REL-03/04
+also own working-tree evidence binding, default export coverage and overlapping
+selection. An owned in-project PG cluster can test these independently of live
+credential recovery. Host credential/supervisor/route work remains INFRA-PG-01;
+no candidate or operator acceptance follows from a green hook.
 
 ## Retained contracts and dated evidence
 

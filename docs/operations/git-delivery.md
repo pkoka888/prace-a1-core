@@ -3,6 +3,24 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Delivery audit and execution-plan reconciliation — 2026-09-16
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Reconciled the active plan, roadmap/index/parents, AGENTS, PostgreSQL and rehearsal skills, feedback and operational recipes against `a48a1e8` and inherited changes. Defined observable goal, sources, priorities, owners, validation and limitations. This increment changes documentation; application repairs remain TODOs |
+| Validation | Inspected both commit objects, index/worktree differences, installed hook/selector code and three private reports. Fresh bounded read-only unit/socket/dependency/remote observations. Owned-cluster SELECT-only probe reproduced invalid psql invocation; plain SQL control passed and owned cluster stopped. Configuration probes reproduced missing migration-pair forwarding and empty/blank target gaps; mocked lock probe demonstrates self-declared ownership is insufficient. All scoped local links resolve and the planning catalog is unchanged; both skill frontmatters pass after correcting an inherited arrow in the rehearsal description. Final mandatory-hook result belongs to the private local delivery receipt |
+| Publication | Documentation publication deferred: pushing the current branch would also publish the inherited incomplete source increments. Preserve those commits without rewriting history; primary first integrates their missing dependencies and reviews all outgoing objects. No push is claimed by this audit |
+| Deployment / activation / operator acceptance | No host service/config/credential change, deployment, real-data activation or Jan acceptance. Temporary owned PostgreSQL test instance only; no operator data accessed |
+| Limitations | Browser timeout cause unresolved; intended-target authentication/route/build/restart and PG5 restore unverified. A documentation correction does not close a source defect. Installed allauth now matches pin 65.19.1; earlier drift is historical |
+| Next owner | Engineering starts the P0 REL-03/JAN-04 candidate/ownership/probe/forwarding repairs; infrastructure handles INFRA-PG-01 independently; Jan observes the candidate after technical acceptance |
+
+Private audit receipt directory: `runtime/portal/temporary/delivery-audit-20260916-moriz8mx/`.
+It retains pre-edit documentation snapshots, source identities and bounded native
+probe outcomes, including the initial 30s initdb sync timeout and successful
+`--no-sync` disposable retry. This command probe is not durability acceptance.
+See the [active plan](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md) for
+repair/validation detail; the prior failed and successful hook logs are retained.
+
 ## Layout review and temporary public hostname — 2026-09-16 (server62)
 
 Servers-infra-core (server61) layout-and-safe-merge review received, archived
@@ -11,9 +29,9 @@ configuration, service, credential or database change.
 
 | Field | Evidence / state |
 |---|---|
-| Implementation | Received servers-infra-core audit + agent work order (server61, `f8280118`), archived verbatim under `docs/operations/2026-09-16-layout-review/ORIGINAL-servers-infra-core-review-s61.md`; two host-labeled reports written (`REPORT-servers-infra-core-s61.md`, `REPORT-prace-application-s62.md`) so the two project contexts are never mixed. Operator decision on 2026-09-16: proceed temporarily with public hostname `prace-v-nemecku.expc.cz` (matches nginx vhost and `/etc/prace/env` `PRACE_ALLOWED_HOSTS`); checkout path stays `/var/www/prace-v-nemecku.tvoje.info`. Corrected phantom `/etc/prace/secret.key` + `/etc/prace/manifest.sha256` reads in `wsgi-deployment-recipe.md` (kept `PRACE_RELEASE_MANIFEST_SHA256` bound to `$PRACE_RUNTIME_ROOT/.release_manifest.sha256` which matches the on-disk manifest; env's pin is separate and stale) and `delivery-1-postgres-handoff.md` (secret key read now sourced from `/etc/prace/env`); aligned `technical-needs-sysadmin-2026-09-12.md` (0640 vs 0600 framed as explicit identity/access policy; dated correction block for the 2026-09-12 "not live" table) — that alignment edit lives in the working-tree copy of an inherited untracked file and is preserved, not committed; both skills documented the infra-owned EnvironmentFile contract and unresolved credential/provenance state |
+| Implementation | Received servers-infra-core audit + agent work order (server61, `f8280118`), archived as a sanitized historical transcription under `docs/operations/2026-09-16-layout-review/ORIGINAL-servers-infra-core-review-s61.md`; two host-labeled reports written (`REPORT-servers-infra-core-s61.md`, `REPORT-prace-application-s62.md`) so the two project contexts are never mixed. Operator decision on 2026-09-16: proceed temporarily with public hostname `prace-v-nemecku.expc.cz` (matches nginx vhost and `RETIRED_RUNTIME_CONFIG` `PRACE_ALLOWED_HOSTS`); checkout path stays `/var/www/prace-v-nemecku.tvoje.info`. Corrected phantom `RETIRED_RUNTIME_CONFIG_DIRECTORY/secret.key` + `RETIRED_RUNTIME_CONFIG_DIRECTORY/manifest.sha256` reads in `wsgi-deployment-recipe.md` (kept `PRACE_RELEASE_MANIFEST_SHA256` bound to `$PRACE_RUNTIME_ROOT/.release_manifest.sha256` which matches the on-disk manifest; env's pin is separate and stale) and `delivery-1-postgres-handoff.md` (secret key read now sourced from `RETIRED_RUNTIME_CONFIG`); aligned `technical-needs-sysadmin-2026-09-12.md` (0640 vs 0600 framed as explicit identity/access policy; dated correction block for the 2026-09-12 "not live" table) — that alignment edit lives in the working-tree copy of an inherited untracked file and is preserved, not committed; both skills documented the infra-owned EnvironmentFile contract and unresolved credential/provenance state |
 | Validation | Planning validator and staged-link/whitespace checks over the touched documents; relative-link depth verified for skill-to-docs references. Documentation/review validation only — no application or live-services suite run or claimed. Shared-secret equality (`PRACE_SECRET_KEY` == `PRACE_DB_PASSWORD`) re-verified on server62 as a sha-256 boolean-only comparison; values never printed or stored |
-| Publication | Pending commit on `feat/prace-readiness-plan-2026-08-13` after mandatory hook green |
+| Publication | Historical layout source checkpoint `8d125f2` exists on the remote at the audit observation; later inherited path/doc changes are distinct and covered by the current audit entry |
 | Deployment | None changed |
 | Activation | Unchanged; synthetic-only posture; §14 gate untouched |
 | Limitations | Credential rotation, release repin, adoption of the running gunicorn by systemd, HBA reconciliation and orphan-process disposition remain operator-owned (INFRA-PG-01); the s61 320-test/14-validator results validate the servers-infra-core repository, not this checkout |
@@ -26,13 +44,29 @@ Manual operator-host verification and tooling audit on `server62` (user
 
 | Field | Evidence / state |
 |---|---|
-| Implementation | Manual DB test: `postgresql@18-main` online (`pg_isready` 127.0.0.1:5432 accepting); roles include `prace_synth_app`; databases `prace_synthetic` and `prace_synthetic_test` exist; configured `/etc/prace/env` password (read via sudo, never displayed) returns `FATAL: password authentication failed for user "prace_synth_app"` over TCP — INFRA-PG-01 credential mismatch confirmed manually, no app code involved. Audit fixes (app-side, committed separately): F1 `tests/test_rehearse_workflow.py::_postgres_env` no longer invents `PRACE_DB_*` defaults (removed the fabricated `prace_synth_app` password); `PRACE_WORKFLOW_PG=1` now requires the explicit full target and fails closed. F2 `portal/settings_document_tests.py` honors `DOCUMENT_TEST_PG_PASSWORD` and requires it for a TCP (`DOCUMENT_TEST_PG_HOST`) test target; socket mode unchanged. F3 `scripts/run_release_reproducer.py` forwards the caller's real `PRACE_DB_*`, `DOCUMENT_TEST_PG_*`, `PRACE_TEST_DB_*`, `PGPASSWORD`, `JOURNEY_EVIDENCE_PATH`, `PRACE_SECRET_KEY`, `PRACE_RUNTIME_ROOT` and statement-timeout vars into the exported acceptance environment instead of a clean-slate guess. F4 `scripts/rehearse_synthetic_site.sh` rejects partial `PRACE_DB_*` sets and prints the effective database target (`DB target: PostgreSQL host=… db=… user=…` / `DB target: SQLite (local rehearsal default)`) at `migrate` and `start`, so a silent SQLite downgrade on the operator runtime becomes visible |
+| Implementation | Manual DB test: `postgresql@18-main` online (`pg_isready` 127.0.0.1:5432 accepting); roles include `prace_synth_app`; databases `prace_synthetic` and `prace_synthetic_test` exist; configured `RETIRED_RUNTIME_CONFIG` password (read via sudo, never displayed) returns `FATAL: password authentication failed for user "prace_synth_app"` over TCP — INFRA-PG-01 credential mismatch confirmed manually, no app code involved. Audit fixes (app-side, committed separately): F1 `tests/test_rehearse_workflow.py::_postgres_env` no longer invents `PRACE_DB_*` defaults (removed the fabricated `prace_synth_app` password); `PRACE_WORKFLOW_PG=1` now requires the explicit full target and fails closed. F2 `portal/settings_document_tests.py` honors `DOCUMENT_TEST_PG_PASSWORD` and requires it for a TCP (`DOCUMENT_TEST_PG_HOST`) test target; socket mode unchanged. F3 `scripts/run_release_reproducer.py` forwards the caller's real `PRACE_DB_*`, `DOCUMENT_TEST_PG_*`, `PRACE_TEST_DB_*`, `PGPASSWORD`, `JOURNEY_EVIDENCE_PATH`, `PRACE_SECRET_KEY`, `PRACE_RUNTIME_ROOT` and statement-timeout vars into the exported acceptance environment instead of a clean-slate guess. F4 `scripts/rehearse_synthetic_site.sh` rejects partial `PRACE_DB_*` sets and prints the effective database target (`DB target: PostgreSQL host=… db=… user=…` / `DB target: SQLite (local rehearsal default)`) at `migrate` and `start`, so a silent SQLite downgrade on the operator runtime becomes visible |
 | Validation | Repro rounds: `tests/test_release_reproducer.py` + `test_postgres_env_fails_closed_without_explicit_target` → 15 passed (2.23 s); settings/readiness → 96 passed, 1 skipped; site/lifecycle/OCR/change-packages → 90 passed (75.88 s); canonical `tests/test_rehearse_workflow.py` → 2 passed (106.93 s). Settings probe: `DOCUMENT_TEST_PG_HOST` without `DOCUMENT_TEST_PG_PASSWORD` raises `RuntimeError`; with password sets `ENGINE=postgresql` and `PASSWORD`. `bash -n` clean on the lifecycle script. The orphan `gunicorn` (PID 2681143, user `prace-synthetic`, bind 127.0.0.1:8001, since Sep 14) still runs with no `PRACE_DB_*` in `/proc/.../environ` and a `db.sqlite3` in `runtime/portal/supervised-synthetic` — the documented supervision/transport mismatch; operator-owned, not touched |
 | Publication | Committed on `feat/prace-readiness-plan-2026-08-13` as `644bc4e` (`fix: fail-closed PG targets in rehearsal/export tooling (no invented credentials, real env forwarding)`, 8 files) and pushed to the existing private `origin` feature branch; remote SHA verified `644bc4e79f9193668ac96cb8755dc6b89f5000b9`. Mandatory hook ran 7 checks green, including `delivery_lifecycle_rehearsal` (180.73 s) and `synthetic_runtime_dependencies`; protected-path scan clean |
 | Deployment | None. No database, credential or service change |
 | Activation | Unchanged. Synthetic-only posture; §14 gate untouched |
 | Limitations | PostgreSQL data-plane acceptance (JAN-04) still requires the infrastructure credential response; these fixes make credal/transport mistakes fail loudly instead of silently, they do not substitute for the missing password reset. The orphan gunicorn and systemd unit reconciliation remain sysadmin-owned (INFRA-PG-01 items 2-3) |
-| Next owner | Operator: infra response contract (credential reset, supervision reconciliation). Engineering: after the response, `rehearse_dev_local.sh start` with the full `/etc/prace/env` `PRACE_DB_*` set, then the committed-source PostgreSQL acceptance |
+| Next owner | Historical handoff superseded by the current audit: infrastructure reconciles the selected target; engineering fixes the application paths using independent disposable credentials. Never reuse the retired/live secret file for rehearsal |
+
+## PG and core workflow source increments — 2026-09-16 (corrected audit)
+
+`fa87ad8` contains the PG settings/contract/guard/reproducer changes (14 files).
+`a48a1e8` contains stored-source-byte persistence checks, actual-result verifier
+dedup and non-A1 browser assignment correction (5 files). These are implementation
+increments; the prior blanket “FIXED”, “committed-source hook”, “load-induced” and
+“engineering complete” descriptions overstated the evidence.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Useful source improvements exist. Missing committed shell migration-scope/target-refusal dependency, self-declared disposable ownership, teardown-only guard, invalid psql probe, forwarding and core-profile gaps remain open in the active plan |
+| Validation | Failed hook `change-checks-dvp3wac9`: 674.08s, document-detail networkidle timeout, captured server error categories empty. Successful retry `change-checks-3wz11m3j`: 733.59s, shared suites 304.656s +162.950s, lifecycle 239.284s. Second commit hook `change-checks-fak3qz33`: 224.87s, lifecycle 222.918s. All report directories are under protected runtime/portal/temporary. These are working-tree checks, not committed-export acceptance. Earlier standalone counts remain reported evidence, not re-executed by this audit |
+| Publication | Direct remote observation during the audit: existing feature branch at `8d125f2ced67fced2206a470e9299d57761549e6`; `fa87ad8` and `a48a1e8` local only at that time. The previous draft's pushed/remote-verified claim is retracted |
+| Deployment / activation | No deployment or real-data activation by these source increments; intended-target/Jan acceptance open |
+| Limitations / next owner | Engineering repairs the concrete candidate/PG/core/evidence defects; infrastructure independently reconciles credentials, supervisor/listener, approved build and route. An infrastructure response alone cannot close JAN-04 |
 
 ## JAN-01/JAN-02 separate investigations — 2026-09-16
 
@@ -84,7 +118,7 @@ Committed-source export: 33 OCR/authorization tests passed (11.694s command), an
 one canonical Chromium journey passed (139.709s command); source integrity verified.
 The commit matches all 42 reviewed path hashes. SQLite evidence does not establish
 PostgreSQL concurrency or target acceptance. Installed allauth65.19.2 still differs
-from pin65.19.1; no clean pinned-environment acceptance is claimed.
+from pin 65.19.1; no clean pinned-environment acceptance is claimed.
 
 Detailed commands, exit codes, durations, negative cases, skills/Context7 sources
 and failed-attempt history: `runtime/portal/temporary/jan-01-02-repair-20260914/handoff.md`.
@@ -1055,3 +1089,30 @@ operator-owned cluster lifecycle boundary.
 | Activation | Synthetic-only posture unchanged; `settings.M2_SYNTHETIC_ONLY` remains `True`; PostgreSQL acceptance does not alter the real-data gate (§14). Local cluster is reachable (`psql -U prace_synth_app -d prace_synthetic_test` succeeds); `prace_synth_app` owns all tables in `prace_synthetic_test`. |
 | Limitations | PostgreSQL activation for default test runs is opt-in; CI and the mandatory pre-commit hook still run against SQLite by default. `prace_synth_app` cannot create databases; test database `prace_synthetic_test` must be pre-provisioned by an operator. The `TRUNCATE` cleanup covers application tables but does not remove files under `DOCUMENT_STORAGE_ROOT`; those are removed by the runtime root fixture. Official A1 PDF generation/issuance remains outside v1 scope. |
 | Next owner | Runtime engineering: make the workflow test use PostgreSQL by default when the cluster is available, or add CI matrix entry for `PRACE_WORKFLOW_PG=1`. Operator: provision `prace_synthetic_test` (or equivalent) on new hosts and set `PRACE_DB_*` in the CI/rehearsal environment. Primary: commit the postgres-ops skill and test fix after review. |
+
+## Runtime path retirement checkpoint — 2026-09-16
+
+Operator selected `/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env` as the infra-owned EnvironmentFile.
+See [runtime contract](runtime-manifest.md#runtime-configuration-path-decision--2026-09-16).
+This update changes application source guidance only: production cutover requires
+separate infrastructure receipts, with exact payload retained and no restart or rotation.
+The temporary hostname stays `prace-v-nemecku.expc.cz`; checkout `.env` stays separate.
+Earlier authentication failures remain report-attributed; no fresh password test
+was performed here. Current manifest bytes/marker are not an approved release.
+JAN-01–04, committed-source acceptance, supervision and PG5 remain open.
+
+## Runtime path deployment evidence — 2026-09-16
+
+Infrastructure applied the authorized path-only migration and reloaded systemd,
+without restarting the failed service or rotating credentials. Independent current
+unit query confirms `EnvironmentFiles=/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`,
+`NeedDaemonReload=no`, and unchanged failed/signal9 status. Server61 core receipts:
+`evidence/reviews/2026-09-16-prace-path-retirement/parent/migration-apply.json`
+and `parent/migration-repeat.json` (native0; repeat changed0), plus
+`review-policy/postflight.json` (private on-host byte-equivalence, metadata and
+unchanged listener-process checks) and `review-app/loaded-unit-final.json`.
+These references are under that same server61 core evidence directory, not local
+application files. At that path-deployment checkpoint, source updates were uncommitted and
+unpublished in this application checkout; current publication is in the delivery record. No PostgreSQL authentication,
+secret separation/rotation, manifest approval/repin, service recovery, JAN acceptance
+or PG5 restore gate is closed by the path deployment.

@@ -17,8 +17,8 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 
 | Plan | Status | Milestone | Owner | Lane | Current Blocker | Expected Result | Acceptance Command |
 |---|---|---|---|---|---|---|---|
-| [Plan PLAN-INFRA — architecture, operating model and infrastructure](PLAN-INFRA.md) | active | M0–M2 | engineering + primary + sysadmin | Critical Release 1A | REL-01–06 open; routed-site/PG acceptance needs current evidence; CI/host activation separate | Truthful evidence, proportional validation, usable testing site | Child reliability plan REL-01–06/JAN-04; targeted checks and one candidate acceptance |
-| [Plan PLAN-WORKERS — worker, document/OCR and assignment workflows](PLAN-WORKERS.md) | active | M1A–M3 | product owner + engineering | Critical Release 1A | JAN-01–03 open; current normal login/role/core workflow acceptance incomplete | Jan core workflow; optional A1 excluded from required acceptance | Core browser + role/tenant + missing-data/correction checks; observed acceptance separate |
+| [Plan PLAN-INFRA — architecture, operating model and infrastructure](PLAN-INFRA.md) | active | M0–M2 | engineering + primary + sysadmin | Critical Release 1A | P0 candidate completeness and PG ownership/probe/forwarding defects; REL evidence/selection open; live acceptance separate | Truthful evidence, proportional validation, usable testing site | Child reliability plan REL-01–06/JAN-04; targeted checks and one candidate acceptance |
+| [Plan PLAN-WORKERS — worker, document/OCR and assignment workflows](PLAN-WORKERS.md) | active | M1A–M3 | product owner + engineering | Critical Release 1A | Browser wait cause unresolved; core sparse path still requires A1; intended-route/Jan acceptance open | Jan core workflow; optional A1 excluded from required acceptance | Core browser + role/tenant + missing-data/correction checks; observed acceptance separate |
 | [2026-09-06-OCR-SHARED-CORE-LOCAL](2026-09-06-ocr-shared-core-local-web.md) | active | M3 | product engineering | Critical Release 1A (subordinate to PLAN-WORKERS) | None | Task OCR-CORE-1 through OCR-CORE-14 acceptance tests pass | Offline real OCR + document semantics; CLI/web parity; protected OcrRun derivatives; PostgreSQL concurrency and historical migration tests; broader M3 acceptance pending |
 | [Plan PLAN-INVOICE — accounting research and invoice ingestion foundation](PLAN-INVOICE.md) | active | M1B+ | product engineering + Czech/German accounting specialists | Parallel non-blocking | DEC-015 specialist sign-off pending; live capture gated by Integrity 1.3 | Provisional evidence corpus; synthetic in-memory ingestion/review/CSV boundary; no accounting behavior | `venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q`; DEC-015 before any persistence/adapters |
 | [Plan PLAN-LEGAL — data protection, market, and business validation](PLAN-LEGAL.md) | active | M1A–M6 | product owner + legal | Parallel non-blocking | None | Verified market/legal evidence; activation gate and operational procedures | Manual review of legal compliance checklist against real-data-rules |
@@ -39,13 +39,13 @@ deliver normal login, core worker/document/OCR/assignment use and PostgreSQL
 persistence. PILOT-01 is separately gated. Parallel file ownership and acceptance
 commands are in the child plan; these are child tasks, not new top-level catalog IDs.
 
-**2026-09-15 review checkpoint:** a dated review checkpoint was added to the
-child plan mapping the confirmed findings (separate OCR HTTP 500 / download
-mismatch investigation, partial profile separation, JAN-04 repair list,
-evidence binding, skill reconciliation and INFRA-PG-01 reconciliation-first
-next action) onto the existing task IDs. No new plan or catalog entry; the
-[sysadmin reconciliation report](../docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md)
-records the observed host state.
+**2026-09-16 corrective audit:** the child plan binds current results to
+`a48a1e8`, the failed and successful hook receipts, fresh nonsecret host/package
+observations and an owned-cluster reproduction of the invalid psql probe. Next:
+complete candidate dependencies and repair PG ownership/forwarding, then browser
+readiness/core separation and actual committed-source acceptance. Infrastructure
+reconciliation proceeds independently. Details and validation criteria live in
+that plan; publication lives in the delivery record. No new catalog ID or approval.
 
 [Local automation](2026-09-08-local-a1-automation.md) remains a retained
 implementation/optional-A1 contract. Official A1 generation/issuance is outside v1;

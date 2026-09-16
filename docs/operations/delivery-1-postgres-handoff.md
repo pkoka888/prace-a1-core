@@ -6,67 +6,39 @@ infrastructure request is issued and awaiting the returned contract.**
 ## Application-side status: pending repair and validation
 
 The recipe below describes the intended integration path, not a validated one.
-A 2026-09-15 review checkpoint confirmed application-side defects that must be
-repaired and revalidated before PostgreSQL acceptance (JAN-04):
+The 2026-09-16 corrective audit at `a48a1e8` found remaining application
+repairs as well as intended-host prerequisites. The
+[active plan](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md) owns the
+current TODOs, evidence, validation and owners; the
+[delivery record](git-delivery.md) owns publication.
 
-- **Target forwarding** from the rehearsal lifecycle to the configured
-  `PRACE_DB_*` target is not yet verified end to end.
-- **Disposable-test-target cleanup** is not yet verified against an exclusively
-  owned target; cleanup behavior must be demonstrated, not presumed.
-- **Migration credential scoping** (`PRACE_MIGRATION_DB_USER` /
-  `PRACE_MIGRATION_DB_PASSWORD`) and the **effective statement timeout**
-  (`PRACE_RUNTIME_STATEMENT_TIMEOUT_MS` /
-  `PRACE_MIGRATION_STATEMENT_TIMEOUT_MS`) exist in the current working tree but
-  are pending validation.
-- **Restart persistence** must verify actual file bytes and exact records, and
-  has not passed against the intended PostgreSQL target.
+Application repairs (JAN-04/REL-03) are not infra-only blockers: integrate the
+missing committed shell migration-scope dependency; verify independently provisioned
+exclusive disposable targets before mutation; repair the invalid mixed-meta/SQL psql
+probe; propagate target selection, migration credentials and TLS through every
+subprocess. The owned-cluster audit reproduced the probe failure without using host
+credentials. The current workflow writes its own ownership record and performs
+table-wide cleanup, so it must not run against an arbitrary/shared/operator DB.
 
-The PostgreSQL target acceptance that completes JAN-04 is **blocked on both
-application repair and the infrastructure response** from
-`servers-infra-core`. The application team has issued
-[the infrastructure request](servers-infra-core-postgresql-request.md)
-(v1.0) and is awaiting the returned contract with verified database, roles,
-credentials, TLS, backup/restore and operational ownership.
-**An infrastructure response alone cannot close JAN-04**: the defects above
-must be repaired and revalidated against the returned target, and one
-committed-source core acceptance run must pass, before any acceptance claim.
+JAN-03 is partial: the browser helper supports `core|optional-a1`, but the lifecycle
+still unconditionally calls A1 sparse assertions and the default release reproducer
+omits the browser/restart journey. Actual source-byte checks are implemented; the
+standalone persistence command does not perform a restart. A successful local hook
+runs working-tree bytes and does not certify the committed candidate.
 
-**This repository does not provision host services, databases, roles or
-credentials.** The `servers-infra-core` task runs on a separate host under
-its own authorization; its owner chooses hosts, versions, ports, transport,
-schemas and service arrangements. The application team only forwards the
-request and consumes the returned nonsecret contract values plus secret
-references.
+Infrastructure independently returns/reconciles the
+[target contract](servers-infra-core-postgresql-request.md): current authentication,
+supervision/listener ownership, approved build and route. Fresh audit observations
+show PostgreSQL running, application service failed and a port 8001 listener; no
+new authentication test was performed and no live secret payload read. An
+infrastructure response alone cannot close application defects or JAN-04 acceptance.
 
-Until the infrastructure response arrives:
-- Local synthetic implementation continues against the default SQLite target.
-- The `PRACE_DB_*` contract, migration credential scoping and test isolation
-  repairs in `portal/settings_supervised_synthetic.py` exist in the current
-  working tree and are **pending repair and validation** before they are
-  treated as ready to consume the returned target.
-- The `--profile core|optional-a1` separation, the canonical persistence
-  verifier and the release verifier's required-check declaration are partially
-  implemented in the working tree; validation is pending (JAN-03/JAN-04).
-- Required regressions (ignored/partial target configuration, wrong-target
-  cleanup refusal, simultaneous-run refusal, cleanup failure, actual
-  migration timeout, historical migration transitions, PostgreSQL concurrency,
-  core success without A1, required-check failure propagation, missing/
-  corrupted files, unavailable PostgreSQL) remain defined; they execute
-  against the returned target when it is available.
-
-**Local synthetic implementation does not require a running PostgreSQL
-cluster.** A missing or unavailable target is reported as unverified or
-blocked environment, never downgraded to a SQLite PASS.
-The recipe describes an explicit bind acceptance, a single consistent
-environment contract, a canonical persistence-acceptance script and a
-persistence acceptance that verifies exact pre-restart identifiers
-and actual file bytes (no replacement rows) — as the intended target,
-with the defects listed above still pending repair and validation. No host
-service, configuration or database change in this repository activates this
-recipe. See the [infrastructure request](servers-infra-core-postgresql-request.md)
-for the values the infrastructure team must provide, and
-[`plans/2026-09-14-delivery-reliability-and-jan-v1.md`](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md)
-for the bounded JAN-01–04 task ownership and the 2026-09-15 review checkpoint.
+Engineering can continue synthetic contracts and an owned in-project PostgreSQL
+cluster using the existing ephemeral harness pattern. This is separate from host
+services and does not prove the deployed target. A missing intended target is
+blocked/unverified; do not substitute SQLite acceptance. After repairs, execute one
+committed-source core scenario against the selected intended route/PG target, then
+Jan's observed use. Real-data activation and PG5 backup/restore remain separate.
 
 ## Scope
 
@@ -125,10 +97,10 @@ infrastructure team's selected target.
 - PostgreSQL version: as selected by infrastructure and returned in the
   contract. Django 5.2 supports PostgreSQL 14+; infrastructure selects
   a currently supported fleet version.
-- A dedicated database role with login and schema-owning rights on
-  the application schema; no `SUPERUSER`, no `CREATEROLE`, no
-  `CREATEDB`. The supervised synthetic settings module does not need
-  to create databases or roles at runtime.
+- Intended roles: a restricted runtime login for application reads/writes and a
+  separately scoped migration identity for schema changes. No runtime `SUPERUSER`,
+  `CREATEROLE` or `CREATEDB`; verify effective privileges in the returned contract.
+  Source settings alone do not prove the deployed role separation.
 - Default `search_path` is acceptable; the application uses
   unqualified table names.
 - The application runtime uses a per-session `statement_timeout` of
@@ -140,207 +112,120 @@ infrastructure team's selected target.
 
 ## Database and role creation (operator-owned)
 
-Run as a PostgreSQL superuser:
-
-```sql
-CREATE ROLE prace_synth_app LOGIN PASSWORD 'set-by-operator';
-CREATE DATABASE prace_synthetic OWNER prace_synth_app;
-GRANT ALL PRIVILEGES ON DATABASE prace_synthetic TO prace_synth_app;
-\c prace_synthetic
-GRANT ALL ON SCHEMA public TO prace_synth_app;
-```
-
-The migration command (`manage.py migrate`) will create all Release 1A
-tables in the `public` schema; no DDL pre-steps are required.
+Infrastructure provisions the selected database, runtime and migration roles,
+explicit schema privileges and secret references under its own authorization.
+Consume the returned contract; do not copy a generic superuser SQL example into
+an unknown cluster or grant schema ownership to the runtime role by default.
+An engineering-owned disposable cluster has its own verified provisioning/teardown
+identity and must never reuse the deployed database or secret-file payload.
 
 ## Lifecycle invocation (operator-owned)
 
-This recipe uses the canonical rehearsal script. Running
-`scripts/rehearse_synthetic_site.sh` produces a runtime root under
-`runtime/portal/supervised-<name>/` that the same script later
-manages (start/stop/restart/rollback), and that
-`scripts/rehearse_dev_local.sh` persists a stable signing key
-across ordinary invocations. The handoff reuses that lifecycle; it
-does not invent a parallel one.
+The selected live owner is `prace-v-nemecku-gunicorn.service`. Its configured
+EnvironmentFile is `/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`;
+see [runtime configuration policy](runtime-manifest.md#runtime-configuration-path-decision--2026-09-16).
+Systemd reads this file itself. Do not export secrets through `grep`, `cut`, `cat`
+or shell sourcing, and do not mix it with the checkout tool `.env`.
 
-```bash
-export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
-export PRACE_RUNTIME_ROOT="/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development"
-export PRACE_SECRET_KEY="$(grep -E '^PRACE_SECRET_KEY=' /etc/prace/env | cut -d= -f2-)"
-export PRACE_ALLOWED_HOSTS=prace-v-nemecku.expc.cz,127.0.0.1
-# PostgreSQL target (all four set together; omit all four to use SQLite).
-export PRACE_DB_NAME=prace_synthetic
-export PRACE_DB_USER=prace_synth_app
-export PRACE_DB_HOST=127.0.0.1
-export PRACE_DB_PORT=5432
-export PRACE_DB_PASSWORD=set-by-operator
-# PRACE_DB_SSLMODE / PRACE_DB_SSLROOTCERT only for remote TCP.
-export PRACE_RELEASE_MANIFEST="$PRACE_RUNTIME_ROOT/release_manifest.json"
-export PRACE_RELEASE_MANIFEST_SHA256="$(cat "$PRACE_RUNTIME_ROOT/.release_manifest.sha256")"
-cd "$A1_PRIVATE_DIR"
-bash scripts/rehearse_synthetic_site.sh prepare
-```
+`scripts/rehearse_synthetic_site.sh` remains the canonical **disposable rehearsal**
+lifecycle. Select a separate root, bind and synthetic credentials under its existing
+contract; never prepare/provision/start it against the live supervised-synthetic root
+or port 8001. Its prepare/provision/start/smoke/workflow sequence is not a second live
+supervisor and must not overwrite a live manifest.
 
-> **Environment contract (2026-09-16, reconciled):** `PRACE_SECRET_KEY` is read from
-> the infra-owned `/etc/prace/env` (Ansible-managed, 0640 root:prace-synthetic);
-> there is **no** `/etc/prace/secret.key`, so the earlier `cat` example was removed.
-> The **manifest pin** already pointed at the manifest-bound fingerprint
-> `$PRACE_RUNTIME_ROOT/.release_manifest.sha256` (matches the on-disk manifest) and
-> is unchanged; it is **not** the same as the stale `PRACE_RELEASE_MANIFEST_SHA256`
-> in `/etc/prace/env`, which still lags the approved release and must be repinned by
-> the operator before service adoption. When `prace-v-nemecku-gunicorn.service`
-> runs, systemd loads `/etc/prace/env` itself via `EnvironmentFile=`; the one-liners
-> above are only for manual rehearsal shell steps that predate the unit. Temporary
-> public hostname is `prace-v-nemecku.expc.cz` (operator decision 2026-09-16);
-> checkout path stays `/var/www/prace-v-nemecku.tvoje.info` (see the
-> [layout review](2026-09-16-layout-review/REPORT-prace-application-s62.md)).
-bash scripts/rehearse_synthetic_site.sh provision
-bash scripts/rehearse_synthetic_site.sh start
-bash scripts/rehearse_synthetic_site.sh smoke
-bash scripts/rehearse_synthetic_site.sh workflow
-```
+Manifest approval comes from the selected release/build, not from copying the
+current `.release_manifest.sha256` marker. The reported env-pin mismatch and
+application-authenticated PostgreSQL identity remain unresolved until independently
+verified. Runtime path relocation alone authorizes neither a repin, credential
+rotation nor restart. Temporary public hostname remains `prace-v-nemecku.expc.cz`.
 
-`prepare` records the supervised release manifest, runs `migrate`
-and `collectstatic`. `provision` writes the synthetic operator +
-organization + MFA. `start` launches gunicorn, verifies the bind, and
-records the launch identity so a later `stop` refuses wrong PIDs.
-`smoke` exercises the typed JSON contract; `workflow` runs the
-real-browser authenticated journey (login + TOTP, worker, OP-card
-upload + OCR confirm, address, assignment, A1 prepare, protected PDF
-download, correction, regeneration). The `workflow` command prints a
-JSON evidence document on stdout; **record `worker_pk`, `assignment_pk`,
-`case_pk`, `regenerated_case_pk` and the artifact `sha256` values from
-it** — the persistence acceptance below verifies those exact
-identifiers after restart.
+Disposable workflow evidence must preserve exact synthetic record/file identities
+for later persistence assertions. Core/optional-A1 gates, JAN-01–04 and PG5 remain
+separate; a source documentation change does not establish their acceptance.
 
-## Explicit bind acceptance (operator-owned)
+## Explicit target acceptance (operator-owned)
 
-Before the lifecycle run, confirm the database role can connect and
-own the schema with exactly the values the application will use:
+For the existing operator database, use authorized read-only identity/schema checks
+against the selected transport and record `current_database`, `current_user` and
+effective `search_path`. An empty schema is **not** an acceptance criterion for the
+existing `prace_synthetic` database: the September 16 administrative observation
+recorded 43 public base tables. Do not drop, truncate, recreate or reset that database
+to make an empty-table assertion pass. Runtime-role authentication remains a separate
+check; the earlier administrative observation does not prove it.
 
-```bash
-export PRACE_DB_NAME=prace_synthetic
-export PRACE_DB_USER=prace_synth_app
-export PRACE_DB_HOST=127.0.0.1
-export PRACE_DB_PORT=5432
-export PRACE_DB_PASSWORD=set-by-operator
-PGPASSWORD="$PRACE_DB_PASSWORD" psql \
-    -h "$PRACE_DB_HOST" -p "$PRACE_DB_PORT" \
-    -U "$PRACE_DB_USER" -d "$PRACE_DB_NAME" -v ON_ERROR_STOP=1 \
-    -c "select current_database() = '$PRACE_DB_NAME' as db_ok,
-               current_user = '$PRACE_DB_USER' as user_ok;
-         select count(*) = 0 as no_rows_before
-           from information_schema.tables
-          where table_schema = 'public';"
-```
+A zero-table precondition applies only to a newly created, explicitly disposable,
+fixture-owned database with verified creation/teardown boundaries. It must use a
+separate test identity and synthetic credentials, never copied from the live service
+EnvironmentFile. Absence, access failure and empty schema are different outcomes.
 
-Loopback (`localhost`/`127.0.0.1`/`::1` or a `/`-prefixed Unix socket
-path) is treated as local by the settings module: no `sslmode` is
-required. Any other hostname is remote and **must** set
-`PRACE_DB_SSLMODE=verify-full` plus `PRACE_DB_SSLROOTCERT`, or the
-settings module refuses to load.
+Loopback or a Unix socket is local under the current settings contract; remote TCP
+requires `PRACE_DB_SSLMODE=verify-full` and `PRACE_DB_SSLROOTCERT`. Verify transport
+and effective access rather than modifying HBA from generic login failure.
 
-## Acceptance commands
+## Acceptance procedure
 
-Run on the host after gunicorn is up:
+**Live service:** infrastructure first establishes the selected systemd supervisor,
+approved release/configuration and database identity through its reviewed operational
+procedure. Then use its declared endpoint for read-only health/readiness checks and
+an explicitly scoped synthetic login/protected-document/OCR journey. Preserve each
+native result independently. HTTP success alone is not database or workflow acceptance.
+This document gives no manual server-start command and authorizes no restart.
 
-```bash
-# 1. /health/ must report the supervised contract.
-curl -sS -H "Host: 127.0.0.1" http://127.0.0.1:8001/health/ | python -m json.tool
+**Disposable rehearsal:** before any lifecycle command, select and record all of:
 
-# 2. /readiness/ must report ready under the configured budget.
-curl -sS -H "Host: 127.0.0.1" http://127.0.0.1:8001/readiness/ | python -m json.tool
+- Canonical checkout working directory and `A1_PRIVATE_DIR` matching that checkout.
+- A uniquely owned disposable `PRACE_RUNTIME_ROOT`, never the live supervised-synthetic
+  root; independently validate its approved source/manifest before preparation.
+- A test-owned bind/port that is not live port 8001, plus an ownership guard that refuses
+  a foreign listener. Do not rely on helper defaults.
+- A disposable SQLite or PostgreSQL target with verified create/cleanup boundaries,
+  independent synthetic credentials and no live secret-file reuse.
+- One fixture-owned supervisor, private evidence destination and cleanup ownership.
 
-# 3. Rehearsal script's smoke probe.
-bash scripts/rehearse_synthetic_site.sh smoke
-
-# 4. Real-browser journey end-to-end (requires Playwright + Chromium).
-bash scripts/rehearse_synthetic_site.sh workflow
-```
+Only that isolated context may run the existing rehearsal prepare/provision/start/
+smoke/workflow/stop lifecycle. If the current helper cannot accept and enforce the
+selected disposable root/bind, fix and test it before running; do not fall back to
+live defaults. The canonical code and existing fixture tests define supported flags.
 
 ## Persistence acceptance
 
-Capture the journey identifiers **before** the restart, then stop
-and restart gunicorn and verify exactly those rows and artifact
-bytes. The same pks must come back — a reappeared row with a new pk
-would mean data was recreated, which this acceptance must reject.
-Recording replacements is not allowed here; the restart must change
-nothing.
+Capture exact synthetic organization, worker, document and assignment identifiers
+and original document bytes before restart, with the selected target and release.
+For the core profile, verify those same records, relationships and exact bytes after
+restart; recreated rows with new identifiers do not pass. Optional A1 case/PDF checks
+remain a separate profile and do not gate the core workflow.
 
-```bash
-# 1. Run the journey once and save its evidence.
-bash scripts/rehearse_synthetic_site.sh workflow \
-  > /var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json
+For the live target, only the infrastructure-owned supervisor performs an authorized
+restart after recovery and process-ownership prerequisites pass. Never use rehearsal
+stop/start against the live listener. For a disposable target, the fixture's exclusive
+supervisor may restart only its recorded processes after rechecking identity/start
+information and target boundaries. Neither route may rebuild, reseed or overwrite
+state during the persistence check.
 
-# 2. Copy the exact identifiers from that evidence (do not guess).
-export ORG_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['organization_id'])")"
-export WORKER_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['worker_pk'])")"
-export DOCUMENT_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['document_pk'])")"
-export DOCUMENT_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['document_sha256'])")"
-export ASSIGNMENT_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['assignment_pk'])")"
-# Optional A1 identifiers (only for optional-a1 profile):
-export CASE_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['case_pk'])")"
-export REGENERATED_CASE_PK="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['regenerated_case_pk'])")"
-export PDF_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['stages']['a1_pdf_downloaded']['sha256'])")"
-export REGEN_SHA256="$(python -c "import json;print(json.load(open('/var/www/prace-v-nemecku.tvoje.info/runtime/portal/evidence.workflow.json'))['stages']['regeneration_differs']['sha256'])")"
+The existing `scripts/rehearse_verify_persistence.py` and workflow tests provide
+record/byte assertions; prepare their required nonsecret synthetic identifiers in
+the same explicitly selected context. Unavailable PostgreSQL is blocked, not a pass;
+wrong target, missing inputs, record mismatch or byte mismatch fail acceptance. Keep
+private records/evidence inside the authorized private runtime, outside source reports.
 
-# 3. Restart without touching data.
-bash scripts/rehearse_synthetic_site.sh stop
-bash scripts/rehearse_synthetic_site.sh start
+## Recovery procedure
 
-# 4. Verify the exact rows and the artifact bytes with the canonical
-#    acceptance script. Use --profile core for worker/document/assignment
-#    only; use --profile optional-a1 to additionally verify A1 identifiers.
-#    Exit 0 means every check passed; any other exit blocks publication.
-cd "$A1_PRIVATE_DIR"
-# Core profile (no A1 identifiers required):
-venv/bin/python scripts/rehearse_verify_persistence.py \
-  --profile core
-# Optional A1 profile (requires CASE_PK, REGENERATED_CASE_PK, PDF_SHA256, REGEN_SHA256):
-# venv/bin/python scripts/rehearse_verify_persistence.py \
-#   --profile optional-a1
-```
-
-The script reuses the same post-restart query logic exercised by
-`tests/test_rehearse_workflow.py`: it queries the supervised database
-for the worker, document, assignment and their relationships captured
-during the browser journey. The `core` profile verifies document
-existence, the worker→document and worker→assignment links, and the
-document's stored SHA-256 hash against `DOCUMENT_SHA256`. The
-`optional-a1` profile additionally verifies A1 case rows and the
-artifact bytes on disk. It exits non-zero with an actionable message
-on mismatch or missing configuration. When the PostgreSQL target is
-unavailable the script exits 2
-(`PERSISTENCE_ACCEPTANCE_BLOCKED`) so the operator can distinguish a
-transport failure from a data mismatch.
-
-For `core` profile, the required environment variables are:
-`ORG_PK`, `WORKER_PK`, `DOCUMENT_PK`, `DOCUMENT_SHA256`,
-`ASSIGNMENT_PK`. A1 identifiers (`CASE_PK`, `REGENERATED_CASE_PK`,
-`PDF_SHA256`, `REGEN_SHA256`) are required only for the
-`optional-a1` profile.
-
-Each row check must print `ok`; the document hash check must print
-`sha256=matched`. None of these checks creates or updates rows.
-
-## Recovery steps
-
-- **Stale gunicorn pidfile**: `bash scripts/rehearse_synthetic_site.sh
-  stop` reads `/proc/<pid>/cmdline` and refuses to signal an
-  unrelated process. Inspect the pidfile contents and remove them
-  only when the recorded pid is confirmed dead.
-- **Database connection refused**: confirm the cluster is up
-  (`pg_isready -h $PRACE_DB_HOST -p $PRACE_DB_PORT`) and that
-  `pg_hba.conf` accepts the role from the gunicorn host over the
-  configured transport. Restart gunicorn after fixing the cluster.
-- **Migration drift**: `manage.py migrate --plan` shows pending
-  operations; commit-and-run `manage.py migrate` to apply them.
-  Never use `--fake` to hide divergence; investigate first.
-- **Rollback**: `bash scripts/rehearse_synthetic_site.sh rollback`
-  stops the server and preserves the runtime root. The operator
-  removes the runtime root manually after inspecting the logs and
-  the manifest. PostgreSQL data is preserved; restoration requires
-  a separate backup/restore authorization.
+- **Process ownership:** infrastructure owns live service adoption/stop/restart and
+  checks current executable, start identity and supervisor. Rehearsal PID/rollback
+  helpers apply only to their explicitly owned disposable fixture, never live port 8001.
+- **Database failure:** distinguish transport, authentication and target errors with
+  authorized read-only checks; report uncertainty. Do not reset a password or restart
+  Gunicorn simply because a connection fails.
+- **Migration drift:** inspect the approved migration plan and target first. Apply
+  through the separately scoped migration identity/procedure; never use fake migration
+  state to hide divergence or rerun fixture provisioning on operator data.
+- **Rollback:** infrastructure selects an approved compatible release/configuration and
+  recovery path for live operation. Never blindly adopt current mutable manifests,
+  restore exposed credentials, delete the live root, or use rehearsal rollback as a
+  live recovery command. Disposable cleanup may remove only its verified owned target.
+- **Restore:** actual consistent database-plus-protected-files recovery remains PG5,
+  with a named owner, isolated restore proof and agreed recovery objectives. Path
+  retirement, documentation or a successful health probe does not close that gate.
 
 ## What this recipe does NOT do
 

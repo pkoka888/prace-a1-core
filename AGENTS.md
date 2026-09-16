@@ -72,7 +72,7 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
   are sysadmin-owned. Host reads are permitted for necessary diagnostics.
 - Never commit, force-add or copy outside the repo (including `/tmp`): `a1/`,
   `scans/`, `evidence/`, `ocr/`, `data/`, `employees/scans/`, `output/`,
-  `runtime/portal/`, `secrets/`, `.env`, or `.history-remediation/`.
+  `runtime/portal/`, `secrets/`, `.env`, `.runtime-config/`, or `.history-remediation/`.
   Gitignore is not access control. `/tmp` is disposable non-PII only.
 - Tests, fixtures, docs, screenshots and model prompts use synthetic data. Never
   disguise an actual employee record by lightly changing names or identifiers.
@@ -117,9 +117,12 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
   Changed inputs or failures require affected checks again, not every unrelated suite.
 - Migration transition tests use Django historical states through `MigrationExecutor`;
   never simulate history by manually dropping/recreating columns.
-- Verify delivered Git objects and scoped completeness. `git diff-tree HEAD` proves
-  contents, not runtime behavior. Test a committed-source export for integration/release
-  acceptance; do not mandate both working-tree and export runs for each small change.
+- Verify delivered Git objects and scoped completeness, including helper/configuration
+  dependencies. A hook selecting staged paths may still execute working-tree bytes;
+  inspect its execution mode and never label that result index-tested or committed-tested.
+  `git diff-tree HEAD` proves contents, not runtime behavior. Test a committed-source
+  export for integration/release acceptance; do not mandate both working-tree and
+  export runs for each small change.
 - Existing mandatory hooks remain effective until deliberately updated. Never bypass
   them. Keep check failures and structural acceptance distinct from runtime acceptance.
 - Avoid tests that merely mirror trivial edits. Record genuine limitations explicitly.
@@ -130,7 +133,8 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
   a working demonstration.
 - For commit-bound changes, let the installed hook run its selected checks once;
   do not first duplicate the same run with `--run-checks`. Read its private
-  `VALIDATION_REPORT` and per-command logs before retrying a failure. Keep hook
+  `VALIDATION_REPORT` and per-command logs before retrying a failure. Retain the
+  original failure; a successful retry does not establish its cause. Keep hook
   output visible: no `| tail` and no shorter outer `timeout git commit` wrapper.
   A tool's wait/yield interval is not a reason to kill a progressing check.
 - Check selection uses each package's own staged paths. Validation-tool changes
@@ -214,13 +218,26 @@ export A1_PRIVATE_DIR="$(git rev-parse --show-toplevel)"
 - Current evidence lives in PLAN-A1 and the delivery record, not hardcoded cohort counts
   here. Renderer internals live in source and the [pipeline guide](docs/architecture/readme-a1-forms.md).
 
+## Protected runtime configuration
+
+The operator-selected service EnvironmentFile is
+`/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`; infrastructure
+owns its payload and unit binding. Keep it separate from checkout `.env` and exclude
+`.runtime-config/` from Git, fixture/export/packaging walks, public serving and broad
+file inventories. Never print/hash/copy its contents to reports or model context.
+See [runtime policy](docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16)
+and server61 core `desired-state/service-runtime-paths.yml`. Deployment evidence is
+separate from source selection; path changes do not restart or rotate secrets.
+
 ## PostgreSQL test cleanup
 
 PostgreSQL test isolation, disposable-target verification and cleanup procedures
 live in [`.agents/skills/postgres-ops/SKILL.md`](.agents/skills/postgres-ops/SKILL.md).
-Test cleanup must verify an exclusively owned disposable target before any
-migration or teardown; it must never point database creation, truncation or
-cleanup at the operator database. The supervised-synthetic settings module
+Test setup/cleanup must verify an exclusively owned disposable target before any
+migration or teardown; a consumer-written disposable marker is not provisioning
+evidence. Keep ownership for the run, including teardown; advisory locks protect
+only cooperating clients. Never point test creation, truncation or cleanup at the
+operator database. The supervised-synthetic settings module
 rejects partial PostgreSQL targets and deprecated test-variable forms at import
 time; see `portal/settings_supervised_synthetic.py` for the current contract.
 Known application-side defects in PostgreSQL target forwarding, disposable

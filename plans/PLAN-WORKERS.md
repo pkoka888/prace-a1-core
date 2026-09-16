@@ -3,7 +3,7 @@
 **Status**: active
 **Milestone**: M1A–M3
 
-## Current execution — 2026-09-14
+## Current execution — 2026-09-16
 
 Own JAN-01–JAN-03 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md): normal login/TOTP,
 role/tenant-safe worker management, protected documents/OCR review, assignments,
@@ -15,6 +15,13 @@ sparse worker saving and core acceptance must not require complete A1 inputs.
 Weekly-budget inclusion remains unresolved. Keep ADR-002 authorization, audit and
 revision contracts. JAN-03 reconciles optional A1 in machine gates and review UI;
 it must not mark human decisions approved or relax shared §14 controls.
+
+Current audit: non-A1 assignment correction and protected source-byte checks are
+implemented, but browser timeout cause remains unresolved and the core lifecycle
+still requires optional-A1 sparse assertions. Prove incomplete saving through the
+shipped UI; preserve failure diagnostics and shared access/revision controls.
+The child plan defines affected checks and separates implementation from intended-
+route PostgreSQL and Jan acceptance.
 
 ## Retained contracts and dated evidence
 

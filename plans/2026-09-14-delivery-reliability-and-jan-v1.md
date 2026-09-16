@@ -3,273 +3,181 @@
 **Status**: active
 **Milestone**: M0–M3; separately gated M5
 **Parents**: [PLAN-INFRA](PLAN-INFRA.md), [PLAN-WORKERS](PLAN-WORKERS.md)
-**Owner**: primary agent integrates; named engineering agents own bounded paths
-**Authority**: current user scope; [roadmap](../roadmap.md); existing ADR-001/ADR-002
-**Baseline**: repository HEAD 00786f74fb5321900f9f293f989447e5d7bd8016 on review; inherited dirty/untracked work preserved. This plan is implementation-ready, not implementation acceptance.
+**Owner**: primary agent integrates; engineering owns source repairs; infrastructure owns live operations; Jan owns observed usability acceptance
+**Authority**: user scope; [roadmap](../roadmap.md); existing ADR-001/ADR-002
+**Audit baseline**: `a48a1e843a3b59d783d3710dd414993964296368` plus explicitly identified inherited working-tree changes, 2026-09-16. Remote feature branch observed at `8d125f2ced67fced2206a470e9299d57761549e6`. These are dated observations, not release approval.
 
-## Review checkpoint — 2026-09-15
+## Outcome, sources and expected results
 
-This is a documentation/review checkpoint only: it claims no code repair,
-credential change, service change, deployment or operator acceptance. It maps
-the confirmed findings onto the existing task IDs; no new plan, catalog ID or
-competing roadmap is introduced. The 2026-09-14 bounded JAN-01/JAN-02 repair
-record and all historical evidence remain valid for their own scope.
+Jan can complete normal login/TOTP → save a worker with optional facts unknown →
+upload a protected document → review/correct OCR proposals → create/correct an
+assignment → download the protected original. The same records, corrected facts,
+relationships and source bytes survive restart on the intended PostgreSQL target.
+Czech instructions, visible failures/retry and a short limitations note accompany
+that demonstration. Operator acceptance is separate from automated acceptance.
 
-| Task | Required update and acceptance |
-|---|---|
-| JAN-01/JAN-02 | Investigate the OCR HTTP 500 and the download mismatch as separate defects; in each, distinguish authentication redirects from file corruption. Demonstrate normal login and protected original download before broader acceptance is claimed |
-| JAN-03 | Record the core/optional-A1 profiles as partially implemented; remove remaining A1-specific requirements from core acceptance |
-| JAN-04 | Repair target forwarding, verified disposable cleanup, migration credential scope and the effective statement timeout; verify actual file bytes and exact records after restart |
-| REL-03/REL-04 | Eliminate manufactured PASS results and incorrect test deduplication; bind every receipt to the actual tested inputs |
-| REL-06 | Reconcile skill instructions with the executable configuration and observed cleanup behavior |
-| INFRA-PG-01 | Next action changes from presumed new provisioning to inspection/reconciliation of the existing infrastructure and return of the completed response contract |
+Official A1 generation/issuance is outside v1. Existing drafts are optional;
+A1 readiness, institution approval and PDF checks must not gate core acceptance.
+Shared authorization, provenance, audit and storage remain required. Weekly budget
+is unresolved business scope, not an engineering prerequisite. Legacy data transfer,
+real-data activation, host mutations and CI activation are outside this audit.
 
-Observed on 2026-09-15 (see the
-[sysadmin reconciliation report](../docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md)):
-PostgreSQL was observed running, but configured application authentication
-failed; the Gunicorn systemd unit was failed while separate Gunicorn processes
-carried no PostgreSQL target variables. Application-side defects and
-infrastructure reconciliation are both open; neither subsumes the other.
+| Question | Source | Expected evidence |
+|---|---|---|
+| What should ship? | Current roadmap/PRD and explicit user scope | Bounded core scenario and exclusions |
+| Which facts are authoritative? | Authorized source revision and explicit human review | Actor/time/revision; OCR proposals never silently confirmed; unknowns remain unknown |
+| What code is being evaluated? | Git object plus dependency/settings identity | Reproducible candidate; related uncommitted bytes cannot certify that object |
+| What actually passed or failed? | Native receipts/logs and focused reproductions | Command, source identity, exit, duration, target label, proves/does-not-prove |
+| What is running? | Fresh nonsecret service/route/build/database observations | Actual selected deployment and target; document claims alone do not establish it |
+| Is it useful? | Jan's observed scenario | Recorded outcome, limitations, recovery instructions and next owner |
 
-Status after the 2026-09-16 investigations (see
-[git-delivery.md](../docs/operations/git-delivery.md)):
+The user-supplied OpenCode transcript is a claim to audit, not evidence of completion.
+Current conclusions below supersede its “packaging only”, “load-induced”, blanket
+“FIXED” and publication claims where they conflict with inspected evidence.
 
-- **JAN-01** — the OCR `OCR_STATUS_HTTP_500` is a genuine server 500 (write
-  contention under gunicorn + SQLite), not an authentication redirect. The
-  supervised-settings mitigation (`WAL`, `IMMEDIATE` writes, busy timeout 20)
-  is in effect and three consecutive full journeys produced zero 500s; the
-  historical reproduction was flaky, so this stays an investigation/mitigation
-  record, not a statistical fix claim.
-- **JAN-02** — the protected-download "bytes differ" failure was an
-  authentication-redirect artifact, not file corruption. Page-context fetch
-  served the exact uploaded PNG bytes (200, `image/png`, 36462 B, matching
-  `Document.sha256`, `document.downloaded` audited), while Playwright's
-  `APIRequestContext` drops the `Secure` session cookie over plain loopback
-  HTTP and silently followed the login redirect (200 HTML). Stage 9c now
-  fetches through the real browser session and asserts status, non-HTML type,
-  exact size and SHA-256; the canonical workflow test passes (core profile).
-- **JAN-03** — core/optional-A1 profile separation verified end-to-end at
-  runtime: core requires only its non-A1 stage set and records `a1_skipped`;
-  optional-A1 exercises the full A1 stages.
-- **INFRA-PG-01 (manual re-verification, 2026-09-16 on `server62`)** — the
-  cluster is online (`postgresql@18-main`, `pg_isready` 127.0.0.1:5432
-  accepting), roles include `prace_synth_app`, and databases
-  `prace_synthetic` + `prace_synthetic_test` exist. TCP `scram-sha-256`
-  authentication with the configured `/etc/prace/env` password still fails
-  (`password authentication failed`) — the credential mismatch is confirmed
-  directly, not inferred. The orphan gunicorn (PID 2681143, user
-  `prace-synthetic`, bind 127.0.0.1:8001) continues to run with no
-  `PRACE_DB_*` variables and a SQLite `db.sqlite3` in
-  `runtime/portal/supervised-synthetic`; both remain sysadmin-owned.
-- **servers-infra-core review received (2026-09-16)** — servers-infra-core
-  (server61) returned its layout-and-safe-merge audit and application-agent
-  work order. Received copy and host-labeled reports are under
-  `docs/operations/2026-09-16-layout-review/`. Findings confirmed on server62:
-  `/etc/prace/` contains only `env` (no `secret.key`/`manifest.sha256`
-  siblings); the live Django secret equals the DB password (boolean-only
-  sha-256 comparison, values never printed); the configured release pin lags
-  the approved manifest; `PRACE_ALLOWED_HOSTS` names `prace-v-nemecku.expc.cz`.
-  **Operator decision:** proceed temporarily with the `prace-v-nemecku.expc.cz`
-  hostname while the checkout path stays `/var/www/prace-v-nemecku.tvoje.info`.
-  Recipes and the handoff doc were corrected to read the actual `/etc/prace/env`
-  contract (no phantom secret-key reads); skills now carry the live-run
-  separation note. Credential rotation, release repin, adoption of the running
-  gunicorn by systemd, and HBA reconciliation remain operator-owned; the md5
-  record must not be blindly moved above the peer catch-all.
-- **Tooling audit (2026-09-16, with committed fixes)** — engineered defaults
-  that could silently invent or guess DB targets were replaced by fail-closed
-  contracts: test PG target `_postgres_env` (no invented password/defaults),
-  `DOCUMENT_TEST_PG_PASSWORD` support with a required password for TCP test
-  targets, producer forwarding of the caller's real `PRACE_DB_*`/
-  `DOCUMENT_TEST_PG_*`/`PGPASSWORD` into the exported acceptance run, and an
-  all-or-none `PRACE_DB_*` guard plus effective-target banner in
-  `scripts/rehearse_synthetic_site.sh`. These harden JAN-04 target
-  forwarding; they do not close JAN-04 (the credential reset and supervision
-  reconciliation remain INFRA-PG-01).
+Technical references checked for the proposed repairs: [Playwright navigation/readiness](https://playwright.dev/python/docs/api/class-page#page-goto) discourages `networkidle` as a testing readiness signal; [PostgreSQL psql options](https://www.postgresql.org/docs/18/app-psql.html#APP-PSQL-OPTIONS) prohibit mixing SQL and meta-commands in one `-c` argument. These explain API contracts; local receipts establish what happened here.
 
-Execution order: application repairs (JAN-01–JAN-04) and sysadmin
-reconciliation (INFRA-PG-01) proceed independently; then one committed-source
-core acceptance run; then Jan's observed use. Nothing in this checkpoint
-substitutes for that acceptance, and an infrastructure response alone cannot
-close JAN-04.
+## Audit results — 2026-09-16
 
-## Outcome and limits
+Private receipts and baseline snapshots: `runtime/portal/temporary/delivery-audit-20260916-moriz8mx/`.
+The [delivery record](../docs/operations/git-delivery.md) owns publication and final
+validation; detailed logs remain private. No host secret payload was read.
 
-Deliver a truthful handoff and a usable Jan workflow, with less repeated validation.
-Normal login/TOTP → worker → protected document/OCR review → assignment/correction →
-protected source-document download → durable persistence is required.
-Official A1 generation/issuance is outside v1; existing drafts are optional.
-Do not make complete A1 fields, PDF review or institution approval prerequisites
-for worker saving or core-v1 release. Weekly-budget inclusion remains unresolved.
+| Existing task | Verified result / remaining gap | Evidence and consequence |
+|---|---|---|
+| REL-03 / JAN-04 | **Open: incomplete committed implementation.** `fa87ad8` introduces settings gated by `PRACE_MIGRATION_SCOPE`; through `a48a1e8`, the shell setter and operator-target refusal still exist only in the working tree | Inspect `git show a48a1e8:scripts/rehearse_synthetic_site.sh` versus working tree. The committed refusal test depends on omitted shell code. Repair a coherent candidate before acceptance |
+| REL-03 | **Open: hook checks working-tree bytes.** Staged paths choose checks, but subprocess `cwd` is the mutable checkout; receipts do not bind the complete tested input set | `scripts/validate_change_packages.py::_run_command/_execute_checks`. Existing hook PASS is working-tree evidence, not committed-export evidence |
+| JAN-04 | **Open: ownership is self-declared.** Workflow fixture writes its own disposable marker/record from the supplied target; guard runs at teardown, after migrations. Table-wide DELETEs remain | `tests/test_rehearse_workflow.py::_postgres_env/_write_disposable_ownership/_cleanup_pg_operator`. A synthetic configuration probe accepts a self-created record when lock success is mocked; this does not prove live exclusivity |
+| JAN-04 | **Reproduced application defect: invalid lock probe.** `psql -Atc` receives both `\set` and SQL. It fails against a reachable isolated cluster and is misreported as transport/credential/lock blockage | `scripts/disposable_pg_guard.py::_try_exclusive_lock`; private `postgres-probe.json`: actual probe refuses, mixed command exit 1, plain-SQL control exit 0 (`t`, `t`). New Unix-socket-only cluster stopped successfully; no operator DB used |
+| JAN-04 | **Open: incomplete environment chain.** Export omits `PRACE_WORKFLOW_PG`; workflow fixture drops migration credential pair. Probe/cleanup do not translate `PRACE_DB_SSLMODE/SSLROOTCERT` to libpq TLS options | Inspect reproducer → workflow fixture → migration/runtime/psql. Synthetic fixture probe confirms dropped migration pair; remote TLS behavior still needs integration |
+| JAN-04 | **Reproduced configuration boundary gaps.** Empty test-target variable selects SQLite; whitespace database name is accepted as an empty PostgreSQL name | `portal/test_pg_contract.py`; private `configuration-probes.json`. Define presence/normalization rules and reject unusable explicit targets before connection |
+| JAN-01/JAN-02 | **Timeout cause unresolved.** First hook fails at document-detail `networkidle`, 20000 ms; captured `SERVER_ERROR_CATEGORIES: []`. Retry passes; runner is sequential | Failure `change-checks-dvp3wac9/check-8.stdout`, lines 52–61. Error names elsewhere in the log are printed test source, not observed server failures. No resource sample or request trace establishes load as cause |
+| JAN-03 | **Partial core separation.** `a48a1e8` adds non-A1 correction and optional A1-fact filling. Core lifecycle still unconditionally requires `_rehearse_workflow_data_path.py` A1 preparation/reservation assertions | Sparse saving currently uses direct ORM creation, not a browser proof. Split the optional assertions while retaining a core incomplete-input scenario and shared controls |
+| JAN-03 / REL-03 | **Open: default exported acceptance omits the core journey.** `run_release_reproducer.py::acceptance_commands` remains A1-heavy and does not execute the browser/restart lifecycle | Extend the existing entrypoint and receipt contract; do not advertise a proposed profile flag as implemented |
+| REL-04 | **Open: overlap and broad selection.** Dependency selector emits a three-file lifecycle command; package emits five files. Exact-command dedup cannot merge them | First failed hook 674.08 s; retry 733.59 s, including shared suites 304.66 + 162.95 s; next hook 224.87 s. These are different attempts/scopes, not a measured optimization |
+| JAN-04 / REL-03 | **Implemented but acceptance partial.** `a48a1e8` reads actual stored source bytes; verifier dedup reuses actual prior results | Keep these improvements. Standalone persistence verifier does not perform the restart; broad exception handling also needs a regression distinguishing unavailable DB from programming/schema errors |
+| JAN-01 / INFRA-PG-01 | **Fresh bounded observations.** Installed allauth 65.19.1 matches its pin (earlier mismatch no longer observed). PostgreSQL unit running; application unit failed, MainPID 0; 8001 listener exists; selected EnvironmentFile loaded | Read-only unit/socket/package metadata only. No new DB authentication, route, secret separation, release approval or restore proof; those remain unverified |
 
-No new top-level catalog IDs, blanket gate approvals, host changes, new remotes or
-CI activation. Draft/source changes are reviewable engineering work; publication
-that changes active CI behavior must follow existing CI authorization.
-Do not commit inherited session reports/helpers or institution edits without their
-own sanitized review. Preserve the quarantined OCR benchmark test.
+Historical JAN-01 SQLite mitigation and JAN-02 download-redirect investigation
+remain valid for their dated scope. Their successful SQLite runs do not close
+PostgreSQL, routed-site, recovery or human acceptance. The original attempt is
+retained beside successful retries; a pass does not diagnose the earlier failure.
 
-## Implementation backlog
+## Implementation backlog and execution order
 
-Tasks remain open except the bounded JAN-01/JAN-02 repair below. Broader task
-acceptance is not implied by this repair. Audit leads are not automatically defects.
+All broad task IDs below remain open. This audit repairs planning/instructions;
+it does not implement or certify the remaining application repairs. Capability
+mapping is retained: REL-01–06 → JAN-VALIDATION; JAN-01 → JAN-ACCESS; JAN-02 →
+JAN-WORKERS/JAN-DOCUMENTS/JAN-ASSIGNMENTS; JAN-03 → JAN-A1-OPTIONAL; JAN-04,
+INFRA-PG-01, DB-MIG-1–7 and PILOT-01 → JAN-RUNTIME.
 
-| ID / capability | Work and reason | Acceptance / dependency | Owner |
+| Priority / ID | Next bounded work and owned paths | Validation / expected result | Owner |
 |---|---|---|---|
-| REL-01 / JAN-VALIDATION | Rebuild the five refresh outputs from the six existing summaries. Account for all 71 input requirement rows through dedup/replacement/deferral; create meaningful capability IDs, separate evidence states, no invented human approvals | Every input row mapped or explicitly dispositioned; file refs resolve; Jan core scope consistent; semantic reviewer checks final files. No dependence on a new tool | packet integrator |
-| REL-02 / JAN-VALIDATION | Add a small deterministic refresh validator, reusing existing jsonschema/CLI conventions; no LLM service. Validate structure/references/coverage, not prose keywords as acceptance | Invalid JSON, missing/orphan/duplicate IDs, unresolved/cyclic hard deps, dropped requirements, missing/unresolvable approval provenance, contradictory structured states and source-only evidence labeled runtime PASS fail. Resolve approval references against authoritative records; semantic review checks their meaning/authenticity. Valid partial/unverified output succeeds structurally without claiming acceptance | evidence tooling |
-| REL-03 / JAN-VALIDATION | Bind runner receipts to tested source, dependency/config identity and evidence mode; preserve staged privacy checks | Partial staging cannot be certified as index-tested when checks used worktree bytes; related helper/config drift detected. Regression uses a synthetic temporary Git repo, never inherited staging. Reuse committed-export mechanism for release evidence | evidence tooling after REL-02 |
-| REL-04 / JAN-VALIDATION | Resolve compatible test units once; fix observed J4 overlap, reversed A1 target order, delivery-doc overdispatch and smoke-test underdispatch; add reviewed refresh-document ownership | Selection-only cases show correct commands for docs/tooling/worker/shared-service/A1/deleted-test changes; changed shared behavior retains integration. Timings recorded before/after on comparable inputs, no promised arbitrary speedup | validation selection |
-| REL-05 / JAN-VALIDATION | Inventory installed hook, framework config, GitHub and proposed GitLab CI, selectors, pins and actual command outputs. Prepare coherent CI source delta | One trigger→selector→runner/settings→test units→receipt map; disabled proposals cannot run accidentally; preserve required-check identities or document required transition. Current remote settings/runs unknown until read | CI reviewer; primary integrates |
-| REL-06 / JAN-VALIDATION | Audit effective OpenCode config/rules/skill discovery and refine only persistent procedure gaps | Record version, loaded instruction paths, agent/tool permissions without secrets. One tiny synthetic edit/verify task proves tools execute; one deliberately false completion is rejected by verifier. Skills link canonical commands and distinguish optional A1 | primary, after evidence protocol settled |
-| JAN-01 / JAN-ACCESS | Reproduce normal login/TOTP/logout/recovery through intended middleware/proxy. Verify role×action and tenant isolation for worker read/edit/archive/delete; repair confirmed gaps | Normal browser login, explicit denied role/cross-org cases, legitimate operator succeeds; recovery path documented. Test-client cookie injection is not onboarding. Reconcile allauth pin/install drift before new auth acceptance | access engineering |
-| JAN-02 / JAN-WORKERS / JAN-DOCUMENTS / JAN-ASSIGNMENTS | Verify incomplete worker save, OCR proposal/review revision, corrections/retry, assignment and protected source-document download; repair confirmed UI/service defects | Sparse worker saved with unknowns intact; OCR not silently confirmed; duplicate retry no duplicate effect; correction persists; denied download yields no bytes; actionable Czech error/loading/stale states | workflow engineering |
-| JAN-03 / JAN-A1-OPTIONAL | Split core-v1 acceptance from optional A1 in journey stage definitions, review surface, release verifier, catalog/plan semantics and skill | Core can pass with optional PDF unavailable, without falsifying A1 PASS; required core-stage failure exits nonzero; optional A1 execution still reports its own failures; shared auth/storage/revisions and §14 remain enforced. Depends on stable JAN-01/02 interfaces | primary with workflow owner |
-| JAN-04 / JAN-RUNTIME | Prove intended PostgreSQL target, migrations, normal routed browser workflow and exact restart persistence; fix standalone persistence script/exit behavior if reproduced | Explicit engine/target/build identity, historical migration and concurrency evidence, same row IDs/source-document hashes after restart; target unavailable reported as unverified/blocked environment, not SQLite PASS. One committed-source candidate acceptance after JAN-01–03; application-side recipe ready, infrastructure contract awaited for target acceptance | runtime engineering + authorized host owner |
-| INFRA-PG-01 / JAN-RUNTIME | Issue and publish the infrastructure request for a private PostgreSQL target; await the servers-infra-core response with the completed contract. **2026-09-15 review checkpoint:** the next action is inspection/reconciliation of the existing infrastructure and return of the completed response contract — not presumed new provisioning. See the [sysadmin reconciliation report](../docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md) | `docs/operations/servers-infra-core-postgresql-request.md` v1.0 published, status request—awaiting infrastructure response, contract template ready for completion; sysadmin report forwarded through the user, response returned into the template | application team forwards to servers-infra-core |
-| DB-MIG-1–7 / JAN-RUNTIME | Retain existing-data transfer and real-data migration planning for later work; do not implement SQLite-to-PostgreSQL copying in this increment | Planning retained: selected source authority, field mappings, dry-run reconciliation, provenance, idempotency, backup/restore and explicit cutover authorization required before any transfer; no automated SQLite-to-PG copying, no import of real worker records, no cutover in this batch | engineering + primary, separately gated |
-| PILOT-01 / JAN-RUNTIME | Prepare scoped restricted real-data pilot after usable core | Backup/restore, TLS/access/storage, retention/deletion and §14 decisions for selected org/target; Jan limitations/onboarding; no inherited A1-only prerequisite silently blocks core | operator/legal/sysadmin |
+| P0 REL-03 + JAN-04 | Integrate missing migration-scope shell dependency with settings/tests; review target refusal at the correct disposable-test boundary. Own `scripts/rehearse_synthetic_site.sh`, affected settings and tests | Candidate contains dependencies; committed-source command-scope test proves migration role/timeout and ordinary runtime role/timeout. Refusal occurs before mutation | primary + runtime engineering |
+| P0 JAN-04 | Repair provisioning-owned target identity, pre-migration verification, run exclusivity, cleanup scope and failure propagation. Own `scripts/disposable_pg_guard.py`, workflow fixture and guard tests | Dedicated disposable target; foreign/unowned target refused before migration; second run denied before writes; same-session cleanup verified with real PG; simulated cleanup failure reported. Consumer cannot mint its own authority | runtime engineering |
+| P0 JAN-04 | Repair psql command and exact connection contract; forward workflow selection, command-scoped migration credentials and TLS through every subprocess. Normalize explicit test targets | Isolated real-PG positive/negative lock tests; empty/whitespace/partial/contradictory targets rejected; `SELECT current_user` / `SHOW statement_timeout` in migrate/runtime; settings and libpq use intended target/TLS. No global migration-scope leakage into web/worker | runtime engineering |
+| P1 JAN-01/JAN-02 | Replace `networkidle` at affected transitions with response/URL/domain-state assertions; preserve bounded synthetic failure evidence before cleanup. Own browser helper/lifecycle tests | Focused reproduction distinguishes timeout, HTTP failure, auth redirect and OCR state; evidence includes failing stage, elapsed time and relevant request/server categories without cookies/bodies. Controlled repeated runs assess reproducibility, not statistical reliability | workflow engineering |
+| P1 JAN-01/JAN-02 | Complete normal access/recovery and core review behavior using existing services/templates. Preserve the currently matching dependency pin; do not repeat historical drift as current | Real login/TOTP/logout and documented recovery; role/action and cross-org deny cases for worker read/edit/archive/delete and document download; OCR proposal confirmation bound to exact revision/actor; stale edit refusal; duplicate retry one effect; actionable Czech pending/error/retry states. Reuse matching evidence, repair only reproduced gaps | access + workflow engineering |
+| P1 JAN-03 | Separate optional A1 across sparse helper, lifecycle, reproducer, review UI and machine requirements. Extend existing entrypoints, not another runner | Core succeeds with optional A1 disabled/unavailable; required core failure exits nonzero; optional A1 reports its own failures. Sparse save through shipped UI with unknowns intact; denied download returns no bytes; corrected facts survive reload/restart | primary + workflow engineering |
+| P1 REL-03 | Bind receipts to actual source/dependency/config/settings identity; guard related drift and stale reuse; preserve staged privacy checks | Synthetic Git fixture with partially staged helper/config proves unstaged success cannot certify index/candidate. Committed export drives the actual core journey. Persistence mismatch exits 1; unavailable environment exits 2; coding errors do not masquerade as environment blockage | evidence tooling |
+| P1 REL-04 | Define shared compatible test units once; reconcile selector/package commands; preserve changed shared behavior integration | Selection-only regressions for docs/tooling/core/shared/A1/deletions/dependencies, with runner/settings/fixture identity. Record comparable before/after timings; no arbitrary speedup promise or bypassed mandatory hook | validation engineering |
+| Parallel INFRA-PG-01 | Reconcile existing credentials, supervisor/listener ownership, approved build/pin, route and target through returned infrastructure contract | Fresh intended-target authentication and health/build/engine evidence; operator-owned service recovery. Existing path-only deployment does not satisfy these checks. No guessed secrets, repin, restart or HBA reorder | infrastructure owner |
+| Candidate JAN-04 | After repairs and selected-target availability, run one reproducible committed-source core scenario through intended route; normal runtime role, expected build/engine/target | Historical migrations/concurrency on owned PG; login/TOTP, upload/review/correction/download; deny/retry/incomplete cases; authorized restart with identical IDs/relationships/corrected values and source bytes; no reseed. Jan instructions and limitations attached | primary + runtime engineering, then Jan |
+| REL-01 | Reconcile five refresh outputs from six existing summaries; account for all 71 input requirement rows through mapping/dedup/replacement/deferral | Meaningful capability IDs, resolving references, separate evidence layers; no invented human approvals. Do not restart the six analyses | packet integrator |
+| REL-02 | Audit inherited `scripts/validate_project_refresh.py` before adoption; extend existing schema/CLI where sufficient | Invalid structure/refs, orphan/duplicate IDs, dropped coverage, cycles, contradictory states and unsupported approval provenance fail. Valid unverified material passes structure only; semantic review remains separate | evidence tooling |
+| REL-05 | Map installed hook, framework config, GitHub and proposed GitLab CI to selectors/settings/checks/receipts | Coherent source proposal; inactive proposals cannot run accidentally; preserve required-check identities or document transition. Remote CI/settings unverified until observed. No new remote or CI activation | CI reviewer + primary |
+| REL-06 | Reconcile skill/procedure claims with executable behavior; audit effective agent configuration only within scope | Skills distinguish desired contracts, actual limitations and available commands. Record effective version/instruction paths/permissions without secrets; one isolated synthetic edit/verify and one rejected false completion exercise the agent/verifier contract. Avoid incident-specific global rules | primary |
+| DB-MIG-1–7 | Retain legacy transfer planning separately | Selected authority, mapping, dry-run reconciliation, idempotency, backup/restore and explicit cutover authority; no real-record transfer in this batch | engineering + primary |
+| PILOT-01 | Restricted real-data pilot after usable core | Existing §14 access/storage/retention/recovery/capacity gates and scoped decision; A1-only requirements excluded from core; PG5 backup-plus-files restore separately demonstrated | operator/legal/sysadmin |
 
-REL-02 proposed files: `scripts/validate_project_refresh.py`,
-`tests/test_validate_project_refresh.py`, and a schema beside the existing work-order
-template if reusing it is insufficient. These files/commands are **not implemented
-by this planning checkpoint**. Prefer extending existing entrypoints if that is
-smaller. Avoid adding a second general-purpose test runner.
+REL work may proceed alongside product repairs where independent; refresh-packet
+cleanup is not a prerequisite for fixing a UI or database defect. Infrastructure
+credential repair does not block pure contracts or an engineering-owned in-project
+PostgreSQL test cluster. That cluster is not acceptance of the deployed target.
 
-## JAN-01/JAN-02 bounded repair — 2026-09-14
+## Validation contract
 
-Implemented: HTTP persists pending OCR work; the explicit organization/actor worker
-consumes committed rows sequentially with existing claim/token fencing and lease
-recovery. The inbox command retains terminal synchronous receipts. Rehearsal owns
-both web and worker start/stop/restart. The Czech page exposes refresh, completion,
-failure and bounded retry. Browser interactions use native selection and observed
-completion, with explicit submission navigation waits.
+| Layer | Execute / inspect | What it proves |
+|---|---|---|
+| Documentation and skills | Existing selected planning checks, relevant links/status consistency, whitespace and skill frontmatter; staged-content review | Coherent instructions and plan, not application runtime |
+| Focused repair | Regression reproducing the changed behavior on identified source | That defect's behavior; no unrelated broad rerun |
+| Integration | Affected real DB/storage/auth flows; owned isolated PG for PG-specific behavior | Actual interactions, including failure and cleanup; mocks alone cannot certify locking |
+| Release candidate | Existing export mechanism extended to execute core browser/restart on explicit target and pinned inputs | Exact committed candidate on named environment; no automatic human approval |
+| Operator / activation | Jan scenario and separate §14/PG5 evidence | Usability / authorization only within recorded scope |
 
-Worker edit/create state transitions cannot bypass archive permission; permanent
-hard deletion stays denied pending a separately authorized policy. Legitimate
-ordinary updates remain allowed. Focused negative tests and SQLite browser/lifecycle
-checks exist; delivery-record receipts bind final integration results to source.
-JAN-01/JAN-02 remain partial overall: authentication recovery/pin reconciliation and
-full agreed workflow acceptance are not established by this repair alone.
+Before a commit, inspect selected checks without running them; let the mandatory
+hook execute once. Read its complete private report and failed command log before
+retrying. A tool yield is not a deadline. Reuse evidence only when tested inputs
+match; related working-tree drift invalidates candidate claims. Implement narrow
+source-isolation protection under REL-03; do not declare the current hook index-tested.
 
-JAN-03 optional-A1 profile separation remains open; no new core-only CLI flag is
-advertised. JAN-04 requires committed-source PostgreSQL/routed-site and exact-row
-acceptance. REL-01/REL-02 refresh reconciliation is separate and not claimed fixed.
-No host deployment, systemd change, activation or human approval follows.
-
-## Parallel waves and file ownership
-
-One batch means one dependency-aware delivery effort, not one giant commit.
-
-- **Wave A:** packet integrator owns only the five consolidated refresh files;
-  evidence tooling owns proposed refresh schema/validator/test; CI reviewer reads
-  workflows/config and proposes a diff without editing shared catalog files.
-  Product reproduction can proceed in isolated synthetic roots.
-- **Wave B:** after REL-02, evidence tooling owns runner/receipt tests (REL-03).
-  Selection agent owns selector modules and selector tests (REL-04).
-  Primary alone integrates `change-packages.yml`, `scripts/validate_planning.py`,
-  AGENTS, roadmap/index, approvals/catalog and delivery record.
-- **Wave C:** access owner has named auth/settings/worker-view files;
-  workflow owner has named document/assignment/template files; runtime owner has
-  rehearsal/persistence scripts. Primary assigns actual paths after reproduction.
-  If both need `portal/release1a/views.py` or `services.py`, sequence those edits
-  or use isolated source checkouts and integrate once. Use separate test DBs/ports.
-- **Wave D:** primary integrates JAN-03 scope changes and reviews; one candidate
-  acceptance JAN-04. Operator observes usable workflow; pilot authority separate.
-
-Use at most three simultaneous source-editing lanes on this shared host until
-resource evidence supports more. Parallel tests must not share runtime roots,
-database names, ports, caches, credentials or process cleanup targets. This is an
-engineering default, not a permanent throughput limit.
-
-## Completion protocol and report contract
-
-At task start: read current scope, inspect inherited diff/staging, name the desired
-observable behavior, identify owning paths and one acceptance command/scenario.
-Record assumption/unknown facts separately. A copied TODO list is not evidence.
-
-Every task report contains:
-`task_id, source_requirement, changed_paths, before_behavior, after_behavior,
-source_identity, validation[], residual_risks, next_owner`.
-Each validation includes:
-`command_argv, cwd, executed, exit_code, elapsed_seconds, result,
-tested_source_identity, dependency_config_identity, log_reference, proves,
-does_not_prove`. Do not include secrets, session cookies, source PII or raw env dumps.
-
-A source identity includes baseline HEAD plus the actual selected tree/file hashes
-and mode (working_tree/index/committed_export). Hash dependencies/settings without
-publishing secret-bearing values or low-entropy secret fingerprints. Record runtime
-target using a nonsecret label. A live-target receipt additionally needs observation
-time, deployed build and environment identity. Hashing a report cannot establish
-the truth of its claims.
-
-Use states per layer: implementation, validation, publication, deployment and
-operator_acceptance. Evidence-only inspection cannot become runtime PASS.
-A missing target is unverified, not “not deployed.” A recommendation is not Jan
-approval; an approval needs actor, scope, time and authoritative evidence.
-Machine structural validation cannot certify prose or business acceptance.
-
-After a rejected review, return finding → actual diff → affected evidence.
-If the same disputed file hash is unchanged, explain why the finding is invalid or
-keep it open; do not claim it was fixed. After two unchanged failed correction
-attempts, switch integrator/fresh bounded context and inspect raw outputs rather
-than generating another completion summary. Do not retry a costly unchanged suite.
-
-## Validation tiers and execution
-
-- **Fast documentation:** scoped link/schema/consistency/diff checks.
-- **Focused code:** one changed-behavior regression; retain a failure regression
-  where it protects a meaningful contract.
-- **Integration:** shared authorization/storage/migrations/dependencies use the
-  appropriate Django runner/settings and isolated PostgreSQL where required.
-- **Candidate:** one exported committed-source core journey. Optional A1 regression
-  only when its source changed or when explicitly evaluating that optional capability.
-
-Before a commit, let the mandatory hook run selected checks once; do not duplicate
-with a pre-run of `--run-checks`. Read its private `VALIDATION_REPORT` and check
-logs before retrying. Keep progress visible; do not kill a healthy process at a
-tool yield deadline. Detect hangs by elapsed time/progress and process state, not
-absence of a final line. Preserve exit status; no `| tail` masking.
-
-Existing commands, used only for their stated scope:
+Existing commands (use only for the relevant scope):
 ```bash
-venv/bin/python scripts/validate_planning.py
 venv/bin/python scripts/validate_change_packages.py --staged
-git diff --check
-env -u DJANGO_SETTINGS_MODULE -u PRACE_RUNTIME_ROOT venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q
+venv/bin/python scripts/validate_planning.py
+git diff --cached --check
 ```
-The last command is for changes to those runner/reproducer contracts; it is not a
-mandatory documentation check. Core journey profile/CLI syntax will be documented
-with JAN-03 implementation; do not advertise a proposed flag as working.
+The planning check is already selected for these documentation paths; do not
+pre-run it and then duplicate it through the hook. Future candidate profile syntax
+must be documented after implementation. Current `scripts/release_reproducer.sh
+<commit-sha>` is a supported regression export, not complete core-v1 acceptance.
 
-## Structure and governance disposition
+Each result records command, cwd, native exit, duration, exact tested source,
+dependency/settings identity, nonsecret target label, private log reference and
+proves/does-not-prove. Separate implementation, validation, publication, deployment
+and operator acceptance. Never hash secret-bearing configuration into evidence.
+On a failure preserve the original result; rerun the smallest discriminating case
+before paying for unchanged broad suites. A successful retry is additional evidence,
+not a root-cause diagnosis. If two corrections leave disputed bytes unchanged,
+return to the actual diff and a fresh bounded review rather than another PASS summary.
 
-| Path/scope | Disposition |
-|---|---|
-| roadmap.md, prd.md, plans/INDEX.md | Current scope/sequence/owners; updated at meaningful checkpoint |
-| This plan | Single bounded current backlog; no parallel replacement roadmap |
-| Five refresh outputs | Repair in place; handoff summarizes actual catalog/requirements; six agent inputs retained as dated evidence |
-| scripts/validate_change_packages.py and selectors | Keep canonical runner; repair observed contracts |
-| scripts/pre-commit + installer | Keep effective canonical hook; reconcile competing framework instructions |
-| .pre-commit-config.yaml | Audit/retire or deliberately integrate; do not install a replacement hook over canonical validation |
-| .github/workflows/ci.yml | Existing CI: prepare synchronized selection/trigger delta; remote activation/required-check changes separate |
-| .gitlab-ci.yml | Inactive proposal in an executable location: prepare explicit nonactivation guard/disposition before use |
-| .agents/skills/synthetic-portal-delivery/ | Keep canonical procedure; add core-v1 vs optional-A1 scope after scripts support it |
-| .agents/skills/a1-pdf-production/ | Keep separate optional/operator A1 capability; no official-PDF v1 prerequisite |
-| .opencode/agents/free-eval-* and experimental research skill | Separate evaluation lane; not generic delivery agents or v1 prerequisites |
-| docs/operations/servers-infra-core-postgresql-request.md | Infrastructure request v1.0; application team forwards, does not send automatically; response feeds JAN-04 |
-| docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md | Sysadmin reconciliation report (2026-09-15 observations); user forwards, does not send automatically; response feeds INFRA-PG-01 and JAN-04 |
-| docs/operations/2026-09-16-layout-review/ | servers-infra-core received audits + host-labeled reports (ORIGINAL/review s61; application s62); temporary public hostname `prace-v-nemecku.expc.cz` documented, checkout path unchanged; feeds INFRA-PG-01/JAN-04 and the hostname reconciliation |
-| Inherited session helpers/reports, institution edits, OCR benchmark test | Preserve; sanitize/classify/reproduce before adoption, no blind stage or deletion |
+## Ownership and integration
 
-Update AGENTS only for stable project-wide policy or recurring failure prevention.
-Put command procedures in the owning existing skill, implementation in scripts,
-architecture changes in ADRs, scope/priority in PRD/roadmap, measured output in private
-receipts plus one concise delivery entry. Audit overlaps whenever a runner, workflow,
-selector, dependency pin or instruction source changes; broader inventory once at
-this reset and at release checkpoints, not on every edit.
+Primary owns shared plan/roadmap/index, catalog and final integration. Assign named
+source paths before parallel edits; tests must use separate databases, roots, ports
+and cleanup targets. At task handoff include desired observable behavior, current
+source, changed paths, before/after, evidence, residual risks and next owner.
+Do not race another session's staging/commits. Preserve unrelated inherited edits.
 
-## Completion of this planning checkpoint
+Keep procedures in existing skills, executable logic in canonical scripts,
+architecture in ADRs, scope in roadmap/PRD, current TODOs here and delivery evidence
+in one record. Preserve all 34 top-level catalog entries and existing approvals;
+regenerate derived assets only when their source changes. The inherited institution
+edits, session helpers, experimental refresh artifacts and quarantined OCR benchmark
+are not adopted merely because they share a dirty checkout.
 
-Roadmap, parent-plan pointers and PRD scope are updated; the research/audit and this
-work order are prepared. Implementation tasks remain open. Machine gate/UI/catalog
-scope reconciliation belongs to JAN-03; no historical human receipt is rewritten.
+## Historical references and limitations
+
+The September 14–15 repair/checkpoint narrative remains in Git history and the
+[delivery record](../docs/operations/git-delivery.md). Architecture ADR-001/002 and
+historical bounded synthetic evidence are retained; this audit retracts broad
+completion claims rather than overwriting their underlying receipts. Path-only
+infrastructure deployment below is a distinct historical event. No credential,
+service, release activation or human approval follows from these document updates.
+
+## Runtime path retirement checkpoint — 2026-09-16
+
+Operator selected `/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env` as the infra-owned EnvironmentFile.
+See [runtime contract](../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16).
+This update changes application source guidance only: production cutover requires
+separate infrastructure receipts, with exact payload retained and no restart or rotation.
+The temporary hostname stays `prace-v-nemecku.expc.cz`; checkout `.env` stays separate.
+Earlier authentication failures remain report-attributed; no fresh password test
+was performed here. Current manifest bytes/marker are not an approved release.
+JAN-01–04, committed-source acceptance, supervision and PG5 remain open.
+
+## Runtime path deployment evidence — 2026-09-16
+
+Infrastructure applied the authorized path-only migration and reloaded systemd,
+without restarting the failed service or rotating credentials. Independent current
+unit query confirms `EnvironmentFiles=/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`,
+`NeedDaemonReload=no`, and unchanged failed/signal9 status. Server61 core receipts:
+`evidence/reviews/2026-09-16-prace-path-retirement/parent/migration-apply.json`
+and `parent/migration-repeat.json` (native0; repeat changed0), plus
+`review-policy/postflight.json` (private on-host byte-equivalence, metadata and
+unchanged listener-process checks) and `review-app/loaded-unit-final.json`.
+These references are under that same server61 core evidence directory, not local
+application files. At that path-deployment checkpoint, source updates were uncommitted and
+unpublished in this application checkout; current publication is in the delivery record. No PostgreSQL authentication,
+secret separation/rotation, manifest approval/repin, service recovery, JAN acceptance
+or PG5 restore gate is closed by the path deployment.

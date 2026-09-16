@@ -1,8 +1,8 @@
 # WSGI/ASGI deployment recipe — Release 1A Delivery 1
 
 Parent: [AGENTS.md](../../AGENTS.md) "Default delivery unit"; the four-delivery
-sequence in [roadmap.md](../../roadmap.md); the active automation plan
-[2026-09-08-local-a1-automation.md](../../plans/2026-09-08-local-a1-automation.md).
+sequence in [roadmap.md](../../roadmap.md); the active delivery plan
+[delivery reliability and Jan core v1](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md).
 
 Scope: deliver a stable private URL, individual login, persistent database,
 and the existing frontend/backend wired through a single WSGI/ASGI entrypoint.
@@ -14,6 +14,21 @@ This is **not** a production activation. Real-data activation remains
 gated by [`docs/security/real-data-rules.md §14`](../security/real-data-rules.md#14-real-data-activation-gate)
 and REV-003. The settings module used here is synthetic-only; it refuses
 real-data operations at the intake service.
+
+## Current acceptance limitations — 2026-09-16
+
+At `a48a1e8`, source corrections are partial: the shell migration-scope dependency
+remains outside the commit; disposable PG ownership/probe/forwarding need repair;
+core lifecycle still requires optional-A1 sparse assertions; the default export
+omits browser/restart acceptance. Follow the active plan and
+[PostgreSQL handoff](delivery-1-postgres-handoff.md) before treating this recipe as
+an accepted candidate. A green local hook proves working-tree checks only.
+
+Fresh read-only audit: PostgreSQL unit running, application unit failed/MainPID 0,
+and an 8001 listener present. Authentication, intended route/build and restart
+acceptance were not reverified. The installed allauth version now matches its pin;
+this observation alone does not prove authentication recovery. No service restart
+or credential change is authorized by this document update.
 
 ## What was added
 
@@ -43,44 +58,27 @@ to `/accounts/login/`.
 
 ## Host deployment (synthetic-gated)
 
-The WSGI entrypoint works under gunicorn. The ASGI entrypoint works
-under uvicorn/daphne. Both default to `portal.settings` if
-`DJANGO_SETTINGS_MODULE` is not set; deployment scripts set it explicitly.
+The infrastructure-owned `prace-v-nemecku-gunicorn.service` injects configuration
+through this unit directive (unit syntax, not a shell command):
 
-```bash
-DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
-    PRACE_RUNTIME_ROOT=/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development \
-    PRACE_SECRET_KEY=<from /etc/prace/env, not a cat of a secrets file> \
-    PRACE_RELEASE_MANIFEST=/var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-development/release_manifest.json \
-    PRACE_RELEASE_MANIFEST_SHA256=<from /etc/prace/env, not a cat of a fingerprints file> \
-    PRACE_ALLOWED_HOSTS=prace-v-nemecku.expc.cz,127.0.0.1 \
-    gunicorn portal.wsgi:application --bind 127.0.0.1:8001
+```ini
+EnvironmentFile=/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env
 ```
 
-> **Environment contract (2026-09-16, reconciled):** `PRACE_SECRET_KEY` and
-> `PRACE_RELEASE_MANIFEST_SHA256` come from the infra-owned `/etc/prace/env` file
-> (Ansible-managed, 0640 root:prace-synthetic), loaded via
-> `EnvironmentFile=/etc/prace/env` in `prace-v-nemecku-gunicorn.service`. There are
-> **no** `/etc/prace/secret.key` or `/etc/prace/manifest.sha256` siblings; the older
-> `cat`-based examples were removed. On a real host the unit loads the values itself;
-> use `$(cat ...)` only against a shell you control, never the file names listed
-> here. The current temporary public hostname is `prace-v-nemecku.expc.cz` (operator
-> decision 2026-09-16); the checkout path stays `/var/www/prace-v-nemecku.tvoje.info`
-> (see the [layout review](2026-09-16-layout-review/REPORT-prace-application-s62.md)).
+See [runtime configuration policy](runtime-manifest.md#runtime-configuration-path-decision--2026-09-16).
+The intended unit contract selects `portal.settings_supervised_synthetic`, an approved runtime root,
+manifest and pin, and the complete selected database target. Do not extract a
+secret with `cat`/`grep`, shell-source the file, or launch a parallel manual WSGI/ASGI
+process on live port 8001. A rehearsal must use its own disposable root, credentials
+and port. The temporary public hostname is `prace-v-nemecku.expc.cz`; the checkout
+remains `/var/www/prace-v-nemecku.tvoje.info`.
 
-The supervised synthetic settings module fails closed on missing env vars;
-the gunicorn command above is the minimum viable contract. Reverse-proxying
-is the operator's nginx configuration; this document does not prescribe it.
+A matching marker proves only on-disk consistency, not release approval. The
+currently reported pin mismatch must be reconciled against an approved release;
+this recipe does not authorize repinning or service restart. Infrastructure owns
+unit/reverse-proxy adoption; the application supplies its nonsecret interface.
 
-For ASGI (HTTP/2 or websockets):
-
-```bash
-DJANGO_SETTINGS_MODULE=portal.settings_supervised_synthetic \
-    <same env vars as above> \
-    uvicorn portal.asgi:application --host 127.0.0.1 --port 8001
-```
-
-## Persistent PostgreSQL (optional)
+## Persistent PostgreSQL (required for intended-target acceptance)
 
 The supervised synthetic settings module accepts an all-or-none PostgreSQL
 target. Set all four `PRACE_DB_NAME`, `PRACE_DB_USER`, `PRACE_DB_HOST`,
@@ -121,6 +119,12 @@ pytest case plus the restart-survival query). The bounded negative
 fixtures for F1 (wrong-server / stopped-server smoke failures), F2
 (child symlink before mkdir/chmod), and F8 (umask-022 file modes) live
 in `tests/test_rehearse_synthetic_site.py`.
+
+Use the sequence below only after selecting a unique owned disposable runtime,
+synthetic credentials, a fixture-owned port and a verified target. Never use the
+live port 8001/root defaults. For PostgreSQL, the current workflow guard is insufficient:
+complete the JAN-04 ownership/probe/forwarding repairs before using the PG workflow
+as acceptance. SQLite rehearsal remains local implementation evidence.
 
 ```bash
 # 1. Confine-validate, mkdir, write the manifest, migrate, collectstatic.
@@ -164,27 +168,27 @@ The `prepare-manifest-only` subcommand skips migrate/collectstatic and
 is what the cheap unit tests use. The bounded lifecycle test exercises
 the real gunicorn path and proves the smoke contract now catches
 HTTP-500, no-server, a stale-pidfile scenario, and the same-origin
-redirect contract. The workflow test (`tests/test_rehearse_workflow.py`)
-covers prepare + provision + start + a real headless Chromium browser
-journey against gunicorn (login + TOTP + worker + document upload +
-document association + OCR + assignment + A1 preparation) + stop +
-restart + query-after-restart + stop. The browser journey uses the
-operator's session cookies through the natural allauth login form and
-TOTP challenge — no service-side shortcut, no helper-side membership
-widening. Sparse-input stages (OCR confirm when no proposals exist;
-PDF download when the 44-field A1 contract is incomplete) are recorded
-as documented skip paths, not failures. Restart-survival of the
-synthetic record set is verified by stopping gunicorn, restarting it,
-and querying the supervised-synthetic database for the worker and case
-captured during the journey.
+redirect contract. The workflow test drives prepare/provision/start, a real
+Chromium core journey and stop/start persistence checks. The core browser stages
+cover normal login/TOTP, worker creation, document upload/association/OCR review,
+assignment correction and protected original download. Optional A1 preparation,
+PDF download and regeneration are a separate browser profile. A required-stage
+failure is never relabeled as a skip.
+
+Current limitation: the lifecycle still unconditionally calls the service-level
+A1 sparse helper between stop and restart. JAN-03 must separate that dependency
+and demonstrate incomplete saving through the UI. Restart evidence must retain
+exact worker/document/assignment IDs, relationships, corrected facts and source
+bytes; optional A1 artifacts do not gate core acceptance.
 
 The `workflow` subcommand is implemented as a real entrypoint and is
-the documented Delivery-1 acceptance path:
+the documented local core journey entrypoint; intended-route PostgreSQL and
+restart acceptance require the full candidate scenario:
 
 ```bash
 # After prepare + provision + start:
 bash scripts/rehearse_synthetic_site.sh workflow
-# Exit 0 on every documented stage; exit 7 on a journey failure.
+# Core is the default profile. A required journey failure exits nonzero.
 ```
 
 The same journey is exposed as a pytest test
