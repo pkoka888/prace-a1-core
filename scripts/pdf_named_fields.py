@@ -25,7 +25,7 @@ def display_value(source: str, value: str) -> str:
 def _check_fields(fields: Sequence[Mapping]) -> None:
     seen = set()
     for field in fields:
-        if not re.fullmatch(r"[a-z][a-z0-9_]*", field["name"]):
+        if not re.fullmatch(r"[a-z][a-z0-9_.]*", field["name"]):
             raise ValueError("INVALID_FIELD_NAME")
         key = (field["page"], field["name"])
         if key in seen:
@@ -71,7 +71,7 @@ def replace_placeholders(template_pdf: bytes, fields: Sequence[Mapping], values:
     with pymupdf.open(stream=template_pdf, filetype="pdf") as document:
         for page_number, page in enumerate(document):
             expected = [f for f in fields if f["page"] == page_number]
-            actual = re.findall(r"\{\{([a-z][a-z0-9_]*)\}\}", page.get_text())
+            actual = re.findall(r"\{\{([a-z][a-z0-9_.]*)\}\}", page.get_text())
             if sorted(actual) != sorted(f["name"] for f in expected):
                 raise ValueError("PLACEHOLDER_CONTRACT_MISMATCH")
             for field in expected:

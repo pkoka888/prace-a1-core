@@ -479,12 +479,24 @@ def row_to_form(row: dict[str, str], profile: dict[str, Any], *, application_dra
             "status_profile": row["status_profile"],
             "institution_profile": row["institution_profile"],
         },
-        "activity": {"name": row["activity_name"], "address": row["activity_address"]},
+        # Activity: for multi-state, territories default to DE, CZ
+        "activity": {
+            "name": row["activity_name"],
+            "address": row["activity_address"] or ("DE, CZ" if row["status_profile"] in {
+                "self_employed_multi_state", "employee_multi_state", "posted_employee"
+            } else ""),
+        },
         "certificate": {
             "document_id": row["document_id"], "member_state": "CZ",
             "start_date": row["start_date"], "end_date": row["end_date"],
         },
-        "institution": {"issue_date": row["issue_date"], "signed_by": row["signed_by"]},
+        # Institution: add contact person from profile
+        "institution": {
+            "issue_date": row["issue_date"],
+            "signed_by": row["signed_by"],
+            "contact_person_1": profile.get("current_office_contact", {}).get("name", ""),
+            "contact_title_1": profile.get("current_office_contact", {}).get("role", ""),
+        },
     }
     institution_config = {
         "institution": profile["institution"],

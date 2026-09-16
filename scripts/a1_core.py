@@ -369,6 +369,10 @@ def build_form_data(
             else "",
             "signed_by": employee.get("institution", {}).get("signed_by")
             or institution_config.get("signed_by", ""),
+            "contact_person_1": employee.get("institution", {}).get("contact_person_1")
+            or institution_config.get("contact_person_1", ""),
+            "contact_title_1": employee.get("institution", {}).get("contact_title_1")
+            or institution_config.get("contact_title_1", ""),
         },
         "activity": deepcopy(employee.get("activity", {})) if status_profile in {"self_employed_multi_state", "employee_multi_state", "posted_employee"} else {},
         # Checkboxes: derived from the reviewed status profile.
