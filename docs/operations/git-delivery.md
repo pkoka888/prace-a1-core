@@ -43,6 +43,41 @@ explicitly takes a caller `values` dict (no `os.environ` default).
 | Limitations | Only the cleanup integration regression is closed. Broader PostgreSQL-acceptance work, real-canary certificate/signatory evidence and live restart acceptance remain open JAN-04 rows |
 | Next owner | Runtime engineering closes remaining JAN-04 rows (provisioning-owned target identity, real-PG `current_user`/`statement_timeout` checks, env/TLS through every migrate/runtime subprocess), then the bounded LangGraph comparison per the orchestration review |
 
+Hook artefact: `runtime/portal/temporary/change-checks-fv8il4ex/report.json`
+(`PASS [delivery_lifecycle_rehearsal] 173.76s exit=0`,
+`dirty=5 classified=5 eligible=5 quarantined=0`). The hook was re-run
+post-commit against an explicitly staged snapshot of the d0903a8 bytes;
+working tree is now restored to HEAD and only inherited unrelated edits
+remain unstaged.
+
+## Bounded OCR orchestration experiment scoped — 2026-09-16
+
+Captured the orchestration review and `OCR-CORE-10/11/13 / optional
+experiment` row from the OCR child plan as the active plan's
+`Parallel OCR-EXP-LG` row. No application code or dependency was
+installed. The experiment runs only inside an isolated, synthetic-only
+Python 3.13 environment built from a recorded dependency/license diff;
+canonical `venv/` is unchanged until an adopt/defer decision is
+recorded against ADR-001/002.
+
+- Mandatory cases: clean, missing/corrupt model, malformed/unsupported
+  input, timeout, crash before/after publish, duplicate/resume,
+  cross-tenant resume, inactive reviewer, source replacement while
+  waiting, restart during review, DB outage, retention deletion,
+  graph-version change.
+- Invariants: no automatic field confirmation, no external traffic, no
+  duplicate effect, no stale-source acceptance. Completed checkpointed
+  stages must not rerun during the recovery test.
+- Comparison axis: current execution, minimal Django stage receipts,
+  thin LangGraph adapter — same engine/model/corpus.
+- Output: dependency/license diff, exact pinned versions, checkpoint
+  durability, drain/rollback behaviour, data-class classification of
+  graph state, semantic field correctness across the mandatory cases.
+- Adopt only if the invariants hold and measured recovery/review
+  benefits justify the dependencies/operations; otherwise retain the
+  current worker and treat stage receipts as the binding layer for
+  OCR-CORE-10/11/13. JAN-01–04 retain priority over this row.
+
 ## Migration-scope shell dependency integrated — 2026-09-16
 
 Commit `b687abe` completes the specific missing shell dependency under REL-03/JAN-04: the shell setter and
