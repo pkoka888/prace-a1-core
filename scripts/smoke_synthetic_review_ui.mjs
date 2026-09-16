@@ -46,7 +46,8 @@ function assert(condition, message) {
 }
 
 async function login(page) {
-  await page.goto(url("/accounts/login/"), { waitUntil: "networkidle" });
+  await page.goto(url("/accounts/login/"), { waitUntil: "load" });
+  await page.waitForSelector('input[name="login"]', { state: "visible" });
   const localStylesheet = page.locator('link[href*="tailwind-2.2.19.min.css"]');
   assert(await localStylesheet.count(), "login page is missing its local stylesheet");
   const bodyBackground = await page.locator("body").evaluate((body) => getComputedStyle(body).backgroundColor);
@@ -64,7 +65,8 @@ async function login(page) {
 
 async function reviewChecks(page, viewport) {
   await page.setViewportSize(viewport);
-  await page.goto(url("/review/"), { waitUntil: "networkidle" });
+  await page.goto(url("/review/"), { waitUntil: "load" });
+  await page.waitForSelector("main, body", { state: "visible" });
   const outcome = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
     placeholderLinks: document.querySelectorAll('a[href="#"]').length,
@@ -81,7 +83,8 @@ async function reviewChecks(page, viewport) {
 
 async function budgetPreviewChecks(page) {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(url("/budget/week/"), { waitUntil: "networkidle" });
+  await page.goto(url("/budget/week/"), { waitUntil: "load" });
+  await page.waitForSelector("main, body", { state: "visible" });
   const outcome = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > window.innerWidth,
     pivotVisible: (() => {
@@ -115,7 +118,8 @@ async function main() {
   page.on("pageerror", (error) => browserErrors.push("PAGE_ERROR"));
 
   try {
-    await page.goto(url("/review/"), { waitUntil: "networkidle" });
+    await page.goto(url("/review/"), { waitUntil: "load" });
+    await page.waitForSelector("main, body", { state: "visible" });
     assert(new URL(page.url()).pathname === "/accounts/login/", "anonymous review did not reach login");
     await login(page);
     const mobile = await reviewChecks(page, { width: 390, height: 844 });
@@ -125,14 +129,17 @@ async function main() {
     const desktop = await reviewChecks(page, { width: 1440, height: 1000 });
     const budgetPreview = await budgetPreviewChecks(page);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(url("/review/check-answers/"), { waitUntil: "networkidle" });
+    await page.goto(url("/review/check-answers/"), { waitUntil: "load" });
+    await page.waitForSelector("main, body", { state: "visible" });
     const checkAnswersOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     assert(!checkAnswersOverflow, "answer-check layout has horizontal overflow");
 
-    await page.goto(url("/accounts/logout/"), { waitUntil: "networkidle" });
+    await page.goto(url("/accounts/logout/"), { waitUntil: "load" });
     await page.locator('button[type="submit"]').click();
-    await page.waitForLoadState("networkidle");
-    await page.goto(url("/review/"), { waitUntil: "networkidle" });
+    await page.waitForLoadState("load");
+    await page.waitForSelector("main, body", { state: "visible" });
+    await page.goto(url("/review/"), { waitUntil: "load" });
+    await page.waitForSelector("main, body", { state: "visible" });
     assert(new URL(page.url()).pathname === "/accounts/login/", "review remains available after logout");
     assert(browserErrors.length === 0, `browser errors: ${browserErrors.join(" | ")}`);
 

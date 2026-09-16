@@ -2,7 +2,25 @@
   "schema_version": 1,
   "accepted_checkpoint": "c01aa2b",
   "packages": {
-    "a1_checkbox_alignment": {"purpose": "Canonical blank checkbox outlines at original geometry and inset data-driven crosses; synthetic acceptance only.", "paths": ["config/a1_layout.json", "config/a1_checkbox_reference.json", "config/a1_checkbox_fix_receipt.json", "templates/a1_background.pdf", "scripts/a1_core.py", "scripts/a1_restore_checkbox_outlines.py", "tests/test_a1_core.py"], "checks": ["venv/bin/python -m pytest tests/test_a1_core.py tests/test_pdf_named_fields.py -q"], "dependencies": ["Original vector geometry recorded as non-personal metadata; previous blank background retained in protected runtime"], "rollback": "Restore template/layout/renderer/receipt together; preserve employee artifacts."},
+    "a1_checkbox_alignment": {
+      "purpose": "Canonical blank checkbox outlines at original geometry and inset data-driven crosses; synthetic acceptance only.",
+      "paths": [
+        "config/a1_layout.json",
+        "config/a1_checkbox_reference.json",
+        "config/a1_checkbox_fix_receipt.json",
+        "templates/a1_background.pdf",
+        "scripts/a1_core.py",
+        "scripts/a1_restore_checkbox_outlines.py",
+        "tests/test_a1_core.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_pdf_named_fields.py -q"
+      ],
+      "dependencies": [
+        "Original vector geometry recorded as non-personal metadata; previous blank background retained in protected runtime"
+      ],
+      "rollback": "Restore template/layout/renderer/receipt together; preserve employee artifacts."
+    },
     "shared_document_core": {
       "purpose": "Offline framework-independent synthetic document processing and optional local adapters.",
       "paths": [
@@ -177,7 +195,8 @@
         "scripts/a1_audit.py",
         "scripts/finalize_a1.py",
         "scripts/generate_provisional_a1.py",
-        "tests/test_a1_stabilization.py", "tests/test_a1_application_draft.py",
+        "tests/test_a1_stabilization.py",
+        "tests/test_a1_application_draft.py",
         "tests/test_finalize_a1.py",
         "config/institutions/louny.json"
       ],
@@ -191,108 +210,312 @@
     },
     "governance_truth": {
       "purpose": "Authority, roadmap, decisions, plan statuses, and truth audit.",
-      "paths": ["docs/architecture/release-1a-field-mapping.md", "docs/architecture/A1_FRAMEWORKS.md", "docs/architecture/readme-a1-forms.md", "docs/architecture/operator-a1-workflow.md", "plans/PLAN-WORKERS-MIGRATE-TO-DB.md", "plans/PLAN-REAL-DATA.md", "plans/2026-09-06-a1-evidence-status-repair.md", "plans/2026-09-06-free-vision-provider-safety.md", "docs/architecture/shared-document-intake.md", "AGENTS.md", "roadmap.md", "prd.md", "plans/INDEX.md", "plans/PLAN-INFRA.md", "plans/PLAN-WORKERS.md", "plans/PLAN-INVOICE.md", "plans/PLAN-LEGAL.md", "plans/PLAN-A1.md", "plans/PLAN-FREE-MODEL.md",       "plans/PLAN-HISTORY.md",
-      "plans/RELEASE-1A-REVIEW-STATUS-2026-09-02.md",
-      "plans/REPORT-investigation-2026-09-03.md",
-      "plans/audits/2026-08-15-repository-truth-audit.md", "plans/audits/2026-08-15-worktree-inventory.json", "docs/decisions/", "docs/plans/", ".archive/README.md", "docs/security/real-data-rules.md", "docs/mock-data-provenance.md",       "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md",
-      "docs/research/2026-09-06-a1-engineering-delivery.md",
-      "docs/research/2026-09-06-a1-session-architect-review.md",
-      "docs/research/2026-09-06-ocr-local-web-workflow-report.md",
-      "docs/research/2026-09-07-a1-stabilization.md",
-      "docs/research/2026-09-07-infra-application-review.md",
-      "docs/research/2026-09-07-research-audit.md",
-      "docs/research/2026-09-07-runtime-j4-engineering.md",
-      "docs/research/2026-09-08-agents-md-audit-and-skill-plan.md",
-      "docs/research/2026-09-08-consolidation-plan-feedback.md",
-      "docs/research/2026-09-08-local-a1-automation-review.md",
-      "docs/research/2026-09-16-document-orchestration-review.md",
-      "docs/operations/runtime-manifest.md",
-      "docs/operations/infra-return-work-order-2026-09-07.md",
-      "docs/operations/servers-infra-core-postgresql-request.md",
-      "docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md",
-      "docs/operations/2026-09-16-layout-review/",
-      "docs/operations/s62-live-state-triage-2026-09-16.md",
-      "docs/operations/s62-comprehensive-triage-and-fix-playbook-2026-09-16.md",
-      "docs/operations/s62-verification-report-2026-09-16.md",
-      "docs/operations/synthetic-reviewer-user-guide.md", "docs/operations/opencode-work-orders/", "docs/operations/repository-history-remediation.md", "docs/operations/sysadmin-readiness-2026-08-12.md", "docs/operations/operator-action-plan-2026-08-29.md", "docs/operations/project-migration-audit-2026-08-30.md", "docs/operations/infra-review-20260907T0230Z/", "CHANGELOG.md", "PROJECT_AUDIT_REPORT.md", ".opencode/skills/market-research-evidence/SKILL.md"],
-      "prefixes": ["plans/2026-"],
-      "checks": ["venv/bin/python scripts/validate_planning.py"],
+      "paths": [
+        "docs/architecture/release-1a-field-mapping.md",
+        "docs/architecture/A1_FRAMEWORKS.md",
+        "docs/architecture/readme-a1-forms.md",
+        "docs/architecture/operator-a1-workflow.md",
+        "plans/PLAN-WORKERS-MIGRATE-TO-DB.md",
+        "plans/PLAN-REAL-DATA.md",
+        "plans/2026-09-06-a1-evidence-status-repair.md",
+        "plans/2026-09-06-free-vision-provider-safety.md",
+        "docs/architecture/shared-document-intake.md",
+        "AGENTS.md",
+        "roadmap.md",
+        "prd.md",
+        "plans/INDEX.md",
+        "plans/PLAN-INFRA.md",
+        "plans/PLAN-WORKERS.md",
+        "plans/PLAN-INVOICE.md",
+        "plans/PLAN-LEGAL.md",
+        "plans/PLAN-A1.md",
+        "plans/PLAN-FREE-MODEL.md",
+        "plans/PLAN-HISTORY.md",
+        "plans/RELEASE-1A-REVIEW-STATUS-2026-09-02.md",
+        "plans/REPORT-investigation-2026-09-03.md",
+        "plans/audits/2026-08-15-repository-truth-audit.md",
+        "plans/audits/2026-08-15-worktree-inventory.json",
+        "docs/decisions/",
+        "docs/plans/",
+        ".archive/README.md",
+        "docs/security/real-data-rules.md",
+        "docs/mock-data-provenance.md",
+        "docs/research/2026-08-15-codex-opencode-free-model-orchestration.md",
+        "docs/research/2026-09-06-a1-engineering-delivery.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/research/2026-09-06-ocr-local-web-workflow-report.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/research/2026-09-07-infra-application-review.md",
+        "docs/research/2026-09-07-research-audit.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md",
+        "docs/research/2026-09-08-agents-md-audit-and-skill-plan.md",
+        "docs/research/2026-09-08-consolidation-plan-feedback.md",
+        "docs/research/2026-09-08-local-a1-automation-review.md",
+        "docs/research/2026-09-16-document-orchestration-review.md",
+        "docs/operations/runtime-manifest.md",
+        "docs/operations/infra-return-work-order-2026-09-07.md",
+        "docs/operations/servers-infra-core-postgresql-request.md",
+        "docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md",
+        "docs/operations/2026-09-16-layout-review/",
+        "docs/operations/s62-live-state-triage-2026-09-16.md",
+        "docs/operations/s62-comprehensive-triage-and-fix-playbook-2026-09-16.md",
+        "docs/operations/s62-verification-report-2026-09-16.md",
+        "docs/operations/synthetic-reviewer-user-guide.md",
+        "docs/operations/opencode-work-orders/",
+        "docs/operations/repository-history-remediation.md",
+        "docs/operations/sysadmin-readiness-2026-08-12.md",
+        "docs/operations/operator-action-plan-2026-08-29.md",
+        "docs/operations/project-migration-audit-2026-08-30.md",
+        "docs/operations/infra-review-20260907T0230Z/",
+        "CHANGELOG.md",
+        "PROJECT_AUDIT_REPORT.md",
+        ".opencode/skills/market-research-evidence/SKILL.md"
+      ],
+      "prefixes": [
+        "plans/2026-"
+      ],
+      "checks": [
+        "venv/bin/python scripts/validate_planning.py"
+      ],
       "dependencies": [],
-      "rollback": "Revert one current delivery; preserve catalog IDs and approval states."
-      ,"intended_commit": "docs: reconcile repository governance and planning truth"
+      "rollback": "Revert one current delivery; preserve catalog IDs and approval states.",
+      "intended_commit": "docs: reconcile repository governance and planning truth"
     },
     "repository_documentation": {
       "purpose": "Actual research-stage repository and protected-data boundaries.",
-      "paths": ["README.md", "docs/research/2026-08-15-free-model-provider-comparison.md", "docs/operations/wsgi-deployment-recipe.md", "docs/operations/delivery-1-postgres-handoff.md", "docs/operations/delivery-reliability-review-2026-09-14.md"],
-      "checks": ["git diff --cached --check"],
-      "dependencies": ["governance_truth"],
-      "rollback": "Revert documentation without changing runtime or private data."
-      ,"intended_commit": "docs: add research-stage repository guide"
+      "paths": [
+        "README.md",
+        "docs/research/2026-08-15-free-model-provider-comparison.md",
+        "docs/operations/wsgi-deployment-recipe.md",
+        "docs/operations/delivery-1-postgres-handoff.md",
+        "docs/operations/delivery-reliability-review-2026-09-14.md"
+      ],
+      "checks": [
+        "git diff --cached --check"
+      ],
+      "dependencies": [
+        "governance_truth"
+      ],
+      "rollback": "Revert documentation without changing runtime or private data.",
+      "intended_commit": "docs: add research-stage repository guide"
     },
     "planning_cockpit": {
       "purpose": "Planning catalog, validator, and derived visual assets.",
-      "paths": ["scripts/validate_approvals.py", "tests/test_validate_approvals.py", "planning/", "scripts/generate_planning_asset.py", "scripts/validate_planning.py", "tests/test_validate_planning.py", "tests/fixtures/planning/", "docs/prototypes/roadmap-portal/"],
-      "checks": ["venv/bin/python scripts/validate_planning.py", "venv/bin/python -m pytest tests/test_validate_planning.py tests/test_validate_approvals.py -q"],
-      "dependencies": ["governance_truth"],
-      "rollback": "Revert generator, validator, catalog, and derived assets together."
-      ,"intended_commit": "feat: validate planning catalog and cockpit assets"
+      "paths": [
+        "scripts/validate_approvals.py",
+        "tests/test_validate_approvals.py",
+        "planning/",
+        "scripts/generate_planning_asset.py",
+        "scripts/validate_planning.py",
+        "tests/test_validate_planning.py",
+        "tests/fixtures/planning/",
+        "docs/prototypes/roadmap-portal/"
+      ],
+      "checks": [
+        "venv/bin/python scripts/validate_planning.py",
+        "venv/bin/python -m pytest tests/test_validate_planning.py tests/test_validate_approvals.py -q"
+      ],
+      "dependencies": [
+        "governance_truth"
+      ],
+      "rollback": "Revert generator, validator, catalog, and derived assets together.",
+      "intended_commit": "feat: validate planning catalog and cockpit assets"
     },
     "cli_agent_tooling": {
       "purpose": "Sanitized CLI and agent verification tooling and reports.",
-      "paths": ["cli-docs-update/README.md", "cli-docs-update/current-agent-dir-audit.json", "cli-docs-update/current-agent-dir-audit.md", "cli-docs-update/current-verification.json", "cli-docs-update/current-verification.md", "config/cli_verification_claims.schema.json", "docs/operations/agent-tooling-ledger.md", "scripts/verify_cli_claims.py", "scripts/playwright_smoke.py", "scripts/release_verifier.py", "scripts/seed_verification_db.py", "scripts/repair_a1_template_checkboxes.py", "scripts/reset_synthetic_reviewer_password.py", "scripts/smoke_synthetic_review_ui.mjs", "tests/test_verify_cli_claims.py", "tests/test_release_verifier.py", "tests/test_playwright_smoke.py"],
+      "paths": [
+        "cli-docs-update/README.md",
+        "cli-docs-update/current-agent-dir-audit.json",
+        "cli-docs-update/current-agent-dir-audit.md",
+        "cli-docs-update/current-verification.json",
+        "cli-docs-update/current-verification.md",
+        "config/cli_verification_claims.schema.json",
+        "docs/operations/agent-tooling-ledger.md",
+        "scripts/verify_cli_claims.py",
+        "scripts/playwright_smoke.py",
+        "scripts/release_verifier.py",
+        "scripts/seed_verification_db.py",
+        "scripts/repair_a1_template_checkboxes.py",
+        "scripts/reset_synthetic_reviewer_password.py",
+        "scripts/smoke_synthetic_review_ui.mjs",
+        "tests/test_verify_cli_claims.py",
+        "tests/test_release_verifier.py",
+        "tests/test_playwright_smoke.py",
+        "scripts/axe_check.sh",
+        "scripts/check_readiness.sh"
+      ],
       "checks": [
         "venv/bin/python -m pytest tests/test_verify_cli_claims.py tests/test_release_verifier.py -q"
       ],
-      "dependencies": ["governance_truth"],
-      "rollback": "Revert code, schema, tests, and generated reports together."
-      ,"intended_commit": "test: reconcile CLI verification tooling"
+      "dependencies": [
+        "governance_truth"
+      ],
+      "rollback": "Revert code, schema, tests, and generated reports together.",
+      "intended_commit": "test: reconcile CLI verification tooling"
     },
     "plan_ad_invoice_contracts": {
       "purpose": "Public/synthetic in-memory invoice boundary proof only.",
-      "paths": ["src/invoice_ingestion/", "tests/test_invoice_ingestion_contract.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q"],
-      "dependencies": ["DEC-015 before persistence/adapters, production implementation, or Plan PLAN-INVOICE acceptance"],
-      "rollback": "Revert contracts and synthetic tests together."
-      ,"intended_commit": "test: add synthetic invoice ingestion contracts"
+      "paths": [
+        "src/invoice_ingestion/",
+        "tests/test_invoice_ingestion_contract.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_invoice_ingestion_contract.py -q"
+      ],
+      "dependencies": [
+        "DEC-015 before persistence/adapters, production implementation, or Plan PLAN-INVOICE acceptance"
+      ],
+      "rollback": "Revert contracts and synthetic tests together.",
+      "intended_commit": "test: add synthetic invoice ingestion contracts"
     },
     "plan_ac_integrity": {
       "purpose": "Provisional public/synthetic research contracts and Integrity 1.3 tooling.",
-      "paths": ["research/query-packs/", "research/schemas/", "research/acquisition/synthetic-mini-pilot/README.md", "research/acquisition/synthetic-mini-pilot/fixture-set.json", "research/acquisition/synthetic-mini-pilot/fixture-set.schema.json", "research/acquisition/synthetic-mini-pilot/fixtures/", "research/acquisition/synthetic-mini-pilot/request.json", "research/review/README.md", "research/review/operator-review.template.json", "research/review/review-queue.schema.json", "research/review/review-response.schema.json", "scripts/benchmark_groundtruth.py", "scripts/capture_research_sources.py", "scripts/check_evidence_url.py", "scripts/check_research_completeness.py", "scripts/collect_market_evidence.py", "scripts/compare_research_runs.py", "scripts/create_synthetic_benchmark.py", "scripts/evaluate_research_field_fixtures.py", "scripts/generate_research_review_queue.py", "scripts/normalize_datasets.py", "scripts/run_collector_fixture.py", "scripts/run_collector_proposals.py", "scripts/run_collector_proposals_v12.py", "scripts/score_research_results.py", "scripts/validate_collector_execution.py", "scripts/validate_collector_execution_v12.py", "scripts/validate_field_normalization.py", "scripts/validate_research_review_response.py", "scripts/validate_research_schema.py", "tests/_research_tmp.py", "tests/fixtures/research/", "tests/test_capture_research_sources.py", "tests/test_collector_execution.py", "tests/test_collector_v12.py", "tests/test_evidence_url.py", "tests/test_field_decision_fixtures.py", "tests/test_field_normalization.py", "tests/test_gate1_security.py", "tests/test_research_isolation.py", "tests/test_research_review_queue.py", "tests/test_research_tooling.py", "tests/test_run_collector_fixture.py", "tests/test_run_collector_proposals.py", "docs/research/2026-08-19-open-decisions-research.md", "docs/research/2026-08-19-mock-review-csv.csv", "docs/operations/collect-plan-k-evidence.sh"],
-      "checks": ["venv/bin/python -m pytest tests/test_capture_research_sources.py tests/test_collector_execution.py tests/test_collector_v12.py tests/test_field_normalization.py -q"],
-      "dependencies": ["Integrity 1.3 freeze before successor artifact", "Plan PLAN-INFRA approval before skill activation"],
-      "rollback": "Revert tooling and synthetic fixtures; never promote provisional evidence."
-      ,"intended_commit": "test: add provisional plan-ac research contracts"
+      "paths": [
+        "research/query-packs/",
+        "research/schemas/",
+        "research/acquisition/synthetic-mini-pilot/README.md",
+        "research/acquisition/synthetic-mini-pilot/fixture-set.json",
+        "research/acquisition/synthetic-mini-pilot/fixture-set.schema.json",
+        "research/acquisition/synthetic-mini-pilot/fixtures/",
+        "research/acquisition/synthetic-mini-pilot/request.json",
+        "research/review/README.md",
+        "research/review/operator-review.template.json",
+        "research/review/review-queue.schema.json",
+        "research/review/review-response.schema.json",
+        "scripts/benchmark_groundtruth.py",
+        "scripts/capture_research_sources.py",
+        "scripts/check_evidence_url.py",
+        "scripts/check_research_completeness.py",
+        "scripts/collect_market_evidence.py",
+        "scripts/compare_research_runs.py",
+        "scripts/create_synthetic_benchmark.py",
+        "scripts/evaluate_research_field_fixtures.py",
+        "scripts/generate_research_review_queue.py",
+        "scripts/normalize_datasets.py",
+        "scripts/run_collector_fixture.py",
+        "scripts/run_collector_proposals.py",
+        "scripts/run_collector_proposals_v12.py",
+        "scripts/score_research_results.py",
+        "scripts/validate_collector_execution.py",
+        "scripts/validate_collector_execution_v12.py",
+        "scripts/validate_field_normalization.py",
+        "scripts/validate_research_review_response.py",
+        "scripts/validate_research_schema.py",
+        "tests/_research_tmp.py",
+        "tests/fixtures/research/",
+        "tests/test_capture_research_sources.py",
+        "tests/test_collector_execution.py",
+        "tests/test_collector_v12.py",
+        "tests/test_evidence_url.py",
+        "tests/test_field_decision_fixtures.py",
+        "tests/test_field_normalization.py",
+        "tests/test_gate1_security.py",
+        "tests/test_research_isolation.py",
+        "tests/test_research_review_queue.py",
+        "tests/test_research_tooling.py",
+        "tests/test_run_collector_fixture.py",
+        "tests/test_run_collector_proposals.py",
+        "docs/research/2026-08-19-open-decisions-research.md",
+        "docs/research/2026-08-19-mock-review-csv.csv",
+        "docs/operations/collect-plan-k-evidence.sh"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_capture_research_sources.py tests/test_collector_execution.py tests/test_collector_v12.py tests/test_field_normalization.py -q"
+      ],
+      "dependencies": [
+        "Integrity 1.3 freeze before successor artifact",
+        "Plan PLAN-INFRA approval before skill activation"
+      ],
+      "rollback": "Revert tooling and synthetic fixtures; never promote provisional evidence.",
+      "intended_commit": "test: add provisional plan-ac research contracts"
     },
     "plan_ac_quarantine_metadata": {
       "purpose": "Record the exact stale v2 state without committing quarantined artifacts.",
-      "paths": ["plans/audits/2026-08-15-synthetic-mini-v2-status.json", "tests/test_plan_ac_quarantine.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_plan_ac_quarantine.py -q"],
-      "dependencies": ["Stale v2 artifacts remain quarantined and unchanged"],
+      "paths": [
+        "plans/audits/2026-08-15-synthetic-mini-v2-status.json",
+        "tests/test_plan_ac_quarantine.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_plan_ac_quarantine.py -q"
+      ],
+      "dependencies": [
+        "Stale v2 artifacts remain quarantined and unchanged"
+      ],
       "rollback": "Revert status and regression assertion together; do not mutate v2 artifacts.",
       "intended_commit": "test: quarantine stale plan-ac synthetic checkpoint"
     },
     "a1_named_field_experiment": {
       "purpose": "Named PDF token experiment and shared personal-name display casing. No canonical template migration or employee publication.",
-      "paths": ["scripts/pdf_named_fields.py", "tests/test_pdf_named_fields.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_pdf_named_fields.py tests/test_a1_core.py -q"],
-      "dependencies": ["Source reference and experimental PDFs remain in protected storage", "Canonical acceptance requirements unchanged"],
+      "paths": [
+        "scripts/pdf_named_fields.py",
+        "tests/test_pdf_named_fields.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_pdf_named_fields.py tests/test_a1_core.py -q"
+      ],
+      "dependencies": [
+        "Source reference and experimental PDFs remain in protected storage",
+        "Canonical acceptance requirements unchanged"
+      ],
       "rollback": "Revert helper, renderer name-formatting call and associated tests together; preserve all source PDFs."
     },
     "a1_policy": {
       "purpose": "Fail-closed A1 policy documentation; no real-data operation.",
-      "paths": [".agents/skills/a1-pdf-production/", "readme-employees-to-a1-form.md", "readme-scan-to-employees.md", "scripts/a1_quality_gate.py", "tests/test_comprehensive.py", "tests/test_a1_quality_gate.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py -q"],
-      "dependencies": ["Private CSV seven-field update before regeneration"],
-      "rollback": "Revert policy only and preserve existing private outputs."
-      ,"intended_commit": "docs: reconcile fail-closed A1 policy"
+      "paths": [
+        ".agents/skills/a1-pdf-production/",
+        "readme-employees-to-a1-form.md",
+        "readme-scan-to-employees.md",
+        "scripts/a1_quality_gate.py",
+        "tests/test_comprehensive.py",
+        "tests/test_a1_quality_gate.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py -q"
+      ],
+      "dependencies": [
+        "Private CSV seven-field update before regeneration"
+      ],
+      "rollback": "Revert policy only and preserve existing private outputs.",
+      "intended_commit": "docs: reconcile fail-closed A1 policy"
     },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
-      "paths": ["change-packages.yml", "requirements.txt", "requirements-dev.txt", "requirements-lock.txt", "scripts/pre-commit", "scripts/validate_change_packages.py", "scripts/select_shared_document_portal_checks.py", "scripts/select_infrastructure_git_workflow_checks.py", "scripts/install-git-hooks.sh", "scripts/check_git_content.py", "scripts/evaluate_a1_pdf_tools.py", "scripts/release_reproducer.sh", "scripts/run_release_reproducer.py", "tests/test_validate_change_packages.py", "tests/test_release_reproducer.py", "docs/operations/gitlab-integration.md", ".gitlab-ci.yml", ".github/workflows/ci.yml", ".gitattributes", ".gitignore", "docs/operations/git-delivery.md", "docs/research/2026-09-07-pdf-tool-comparison.md", "docs/research/2026-09-07-a1-pdf-tools.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q", "venv/bin/python scripts/validate_change_packages.py --staged --json", "scripts/select_infrastructure_git_workflow_checks.py"],
-      "dependencies": ["Exact staged scope classified", "Standing GitHub feature-branch authorization; separate approval for new remotes"],
-      "rollback": "Revert local workflow files; this package never changes remotes."
-      ,"intended_commit": "test: add fail-closed change-package validation"
+      "paths": [
+        "change-packages.yml",
+        "requirements.txt",
+        "requirements-dev.txt",
+        "requirements-lock.txt",
+        "scripts/pre-commit",
+        "scripts/validate_change_packages.py",
+        "scripts/select_shared_document_portal_checks.py",
+        "scripts/select_infrastructure_git_workflow_checks.py",
+        "scripts/install-git-hooks.sh",
+        "scripts/check_git_content.py",
+        "scripts/evaluate_a1_pdf_tools.py",
+        "scripts/release_reproducer.sh",
+        "scripts/run_release_reproducer.py",
+        "tests/test_validate_change_packages.py",
+        "tests/test_release_reproducer.py",
+        "docs/operations/gitlab-integration.md",
+        ".gitlab-ci.yml",
+        ".github/workflows/ci.yml",
+        ".gitattributes",
+        ".gitignore",
+        "docs/operations/git-delivery.md",
+        "docs/research/2026-09-07-pdf-tool-comparison.md",
+        "docs/research/2026-09-07-a1-pdf-tools.md"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py -q",
+        "venv/bin/python scripts/validate_change_packages.py --staged --json",
+        "scripts/select_infrastructure_git_workflow_checks.py"
+      ],
+      "dependencies": [
+        "Exact staged scope classified",
+        "Standing GitHub feature-branch authorization; separate approval for new remotes"
+      ],
+      "rollback": "Revert local workflow files; this package never changes remotes.",
+      "intended_commit": "test: add fail-closed change-package validation"
     },
     "delivery_lifecycle_rehearsal": {
       "purpose": "Delivery-1 supervised synthetic rehearsal lifecycle and its bounded integration test. Runs only when rehearsal files or the lifecycle test are staged; not part of every infrastructure commit.",
@@ -312,7 +535,10 @@
         "tests/_rehearse_workflow_browser.py",
         "tests/_rehearse_workflow_data_path.py",
         "tests/test_persistence_verifier.py",
-        "tests/test_disposable_pg_guard.py"
+        "tests/test_disposable_pg_guard.py",
+        "scripts/fix_nginx_static_alias.sh",
+        "tests/document_web/test_browser_debug5.py",
+        "tests/test_no_networkidle_regression.py"
       ],
       "checks": [
         "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_ocr_worker_lifecycle.py tests/test_disposable_pg_guard.py -q"
@@ -321,8 +547,8 @@
         "Existing supervised settings module and wsgi/asgi entrypoints",
         "Exact staged scope classified"
       ],
-      "rollback": "Revert rehearsal files; the script and lifecycle test never change runtime data."
-      ,"intended_commit": "test: rehearsal lifecycle is bounded and selected on its own package"
+      "rollback": "Revert rehearsal files; the script and lifecycle test never change runtime data.",
+      "intended_commit": "test: rehearsal lifecycle is bounded and selected on its own package"
     },
     "synthetic_portal_delivery_skill": {
       "purpose": "Synthetic-portal-delivery skill metadata only. Prose edits must not run the 2½-minute rehearsal suite; structural and link checks are sufficient.",
@@ -334,66 +560,185 @@
         "venv/bin/python scripts/validate_planning.py",
         "venv/bin/python -c \"import yaml, pathlib; doc = pathlib.Path('.agents/skills/synthetic-portal-delivery/SKILL.md').read_text(); assert doc.startswith('---'), doc[:200]; parts = doc.split('---', 2); meta = yaml.safe_load(parts[1]) if len(parts) >= 3 else None; assert isinstance(meta, dict) and 'name' in meta and 'description' in meta, repr(meta); assert 'synthetic-portal-delivery' in (meta['name'] or '') or 'synthetic portal delivery' in (meta['description'] or '').lower(), repr(meta)\""
       ],
-      "dependencies": ["Existing canonical rehearsal scripts and tests"],
+      "dependencies": [
+        "Existing canonical rehearsal scripts and tests"
+      ],
       "rollback": "Revert skill text only; nothing in the runtime path depends on it."
     },
     "free_model_evaluation": {
       "purpose": "Synthetic-only bounded evaluation of named free OpenCode models with Codex control and deterministic safety gates.",
-      "paths": ["pytest.ini", ".opencode/agents/free-eval-read.md", ".opencode/agents/free-eval-code-draft.md", ".opencode/agents/free-eval-contract-echo.md", "config/free-model-eval/", "src/free_model_eval/", "scripts/run_free_model_eval.py", "tests/fixtures/free_model_eval/", "tests/test_free_model_eval_contracts.py", "tests/test_free_model_eval_events.py", "tests/test_free_model_eval_isolation.py", "tests/test_free_model_eval_preflight.py", "tests/test_free_model_eval_scoring.py", "tests/test_free_model_eval_af2_protocol.py", "tests/test_free_model_eval_af21_integrity.py", "docs/research/templates/free-model-eval-report.md", "docs/research/2026-08-15-af2-free-model-trace-review-report.md"],
-      "checks": ["venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py tests/test_free_model_eval_af2_protocol.py tests/test_free_model_eval_af21_integrity.py -q", "venv/bin/python scripts/run_free_model_eval.py verify-fixtures --policy config/free-model-eval/policy.json"],
-      "dependencies": ["Plan L operating rules", "Exact zero-cost preflight before live synthetic calls"],
+      "paths": [
+        "pytest.ini",
+        ".opencode/agents/free-eval-read.md",
+        ".opencode/agents/free-eval-code-draft.md",
+        ".opencode/agents/free-eval-contract-echo.md",
+        "config/free-model-eval/",
+        "src/free_model_eval/",
+        "scripts/run_free_model_eval.py",
+        "tests/fixtures/free_model_eval/",
+        "tests/test_free_model_eval_contracts.py",
+        "tests/test_free_model_eval_events.py",
+        "tests/test_free_model_eval_isolation.py",
+        "tests/test_free_model_eval_preflight.py",
+        "tests/test_free_model_eval_scoring.py",
+        "tests/test_free_model_eval_af2_protocol.py",
+        "tests/test_free_model_eval_af21_integrity.py",
+        "docs/research/templates/free-model-eval-report.md",
+        "docs/research/2026-08-15-af2-free-model-trace-review-report.md"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_free_model_eval_contracts.py tests/test_free_model_eval_events.py tests/test_free_model_eval_isolation.py tests/test_free_model_eval_preflight.py tests/test_free_model_eval_scoring.py tests/test_free_model_eval_af2_protocol.py tests/test_free_model_eval_af21_integrity.py -q",
+        "venv/bin/python scripts/run_free_model_eval.py verify-fixtures --policy config/free-model-eval/policy.json"
+      ],
+      "dependencies": [
+        "Plan L operating rules",
+        "Exact zero-cost preflight before live synthetic calls"
+      ],
       "rollback": "Revert Plan PLAN-FREE-MODEL tracked files together; remove only validated ignored runtime/free-model-eval run children.",
       "intended_commit": "test: add bounded free-model evaluation harness"
     },
     "quarantined_research_artifacts": {
       "purpose": "Live, generated, benchmark, OCR, review, backup, or unreviewed research artifacts.",
       "eligible_for_staging": false,
-      "paths": ["research/acquisition/collector-executions/", "research/acquisition/collector-proposals/", "research/acquisition/live-mini-pilot/", "research/acquisition/raw/", "research/acquisition/repeat-2026-08-14/", "research/acquisition/source-captures/live-mini-2026-08-14/", "research/acquisition/source-captures/synthetic-mini-v1/", "research/acquisition/source-captures/synthetic-mini-v2/", "research/acquisition/synthetic-mini-pilot/manifest.json", "research/acquisition/synthetic-mini-pilot/manifest.json.bak", "research/acquisition/synthetic-mini-pilot/runs/", "research/benchmark-experimental/", "research/pilot/", "research/processed/", "research/review/queue.json", "research/synthetic/", "scripts/run_ocr_benchmark.py", "tests/test_ocr_benchmark_contract.py"],
-      "prefixes": ["research/acquisition/atomic-", "research/review/atomic-"],
+      "paths": [
+        "research/acquisition/collector-executions/",
+        "research/acquisition/collector-proposals/",
+        "research/acquisition/live-mini-pilot/",
+        "research/acquisition/raw/",
+        "research/acquisition/repeat-2026-08-14/",
+        "research/acquisition/source-captures/live-mini-2026-08-14/",
+        "research/acquisition/source-captures/synthetic-mini-v1/",
+        "research/acquisition/source-captures/synthetic-mini-v2/",
+        "research/acquisition/synthetic-mini-pilot/manifest.json",
+        "research/acquisition/synthetic-mini-pilot/manifest.json.bak",
+        "research/acquisition/synthetic-mini-pilot/runs/",
+        "research/benchmark-experimental/",
+        "research/pilot/",
+        "research/processed/",
+        "research/review/queue.json",
+        "research/synthetic/",
+        "scripts/run_ocr_benchmark.py",
+        "tests/test_ocr_benchmark_contract.py"
+      ],
+      "prefixes": [
+        "research/acquisition/atomic-",
+        "research/review/atomic-"
+      ],
       "checks": [],
-      "dependencies": ["Separate provenance and privacy review"],
+      "dependencies": [
+        "Separate provenance and privacy review"
+      ],
       "rollback": "No automated mutation or deletion is permitted."
     },
     "benchmark_contract": {
       "purpose": "Synthetic-only benchmark contract fixtures and boundary tests. No real research data.",
-      "paths": ["tests/fixtures/benchmark-experimental/", "tests/test_benchmark_experimental.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_benchmark_experimental.py -q"],
-      "dependencies": ["plan_ac_integrity"],
-      "rollback": "Revert synthetic fixtures and boundary tests together."
-      ,"intended_commit": "test: add synthetic benchmark contract fixtures"
+      "paths": [
+        "tests/fixtures/benchmark-experimental/",
+        "tests/test_benchmark_experimental.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_benchmark_experimental.py -q"
+      ],
+      "dependencies": [
+        "plan_ac_integrity"
+      ],
+      "rollback": "Revert synthetic fixtures and boundary tests together.",
+      "intended_commit": "test: add synthetic benchmark contract fixtures"
     },
     "research_comparison_contract": {
       "purpose": "Synthetic-only research-comparison contract fixtures and boundary tests. No real research data.",
-      "paths": ["tests/fixtures/research-comparison/", "tests/test_compare_research_runs.py"],
-      "checks": ["venv/bin/python -m pytest tests/test_compare_research_runs.py -q"],
-      "dependencies": ["plan_ac_integrity"],
-      "rollback": "Revert synthetic fixtures and boundary tests together."
-      ,"intended_commit": "test: add synthetic research-comparison contract fixtures"
+      "paths": [
+        "tests/fixtures/research-comparison/",
+        "tests/test_compare_research_runs.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_compare_research_runs.py -q"
+      ],
+      "dependencies": [
+        "plan_ac_integrity"
+      ],
+      "rollback": "Revert synthetic fixtures and boundary tests together.",
+      "intended_commit": "test: add synthetic research-comparison contract fixtures"
     },
     "legacy_cleanup": {
       "purpose": "Remove tracked legacy artifacts identified in 2026-08-19 audit.",
-      "paths": ["scripts/a1_core.py.backup", "portal/settings.py.bak", "config/a1_field_coords.json", "config/a1_checkbox_coords.json", "config/a1_field_map.json"],
-      "checks": ["git diff --check", "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py -q"],
-      "dependencies": ["Plan PLAN-A1 CSV update before A1 regeneration"],
+      "paths": [
+        "scripts/a1_core.py.backup",
+        "portal/settings.py.bak",
+        "config/a1_field_coords.json",
+        "config/a1_checkbox_coords.json",
+        "config/a1_field_map.json"
+      ],
+      "checks": [
+        "git diff --check",
+        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py -q"
+      ],
+      "dependencies": [
+        "Plan PLAN-A1 CSV update before A1 regeneration"
+      ],
       "rollback": "Restore deleted files from git history.",
       "intended_commit": "chore: remove legacy A1 configs and script backups"
     },
     "j4_confirmation_evidence_repair": {
       "purpose": "Repair J4 visual confirmation and evidence intake interface with durable persistence, atomic transactions, capability checks, and tests. Synthetic data only.",
-      "paths": ["portal/release1a/j4_artifacts.py", "portal/release1a/migrations/0012_a1case_confirmation_evidence.py", "portal/release1a/models.py", "portal/release1a/views.py", "portal/templates/portal/a1_artifact_confirm.html", "portal/templates/portal/partials/a1_evidence_list.html", "tests/m2/test_j4_delivery.py"],
-      "checks": ["env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.m2.test_j4_delivery --noinput -v 1"],
-      "dependencies": ["plan_ac_integrity"],
-      "rollback": "Revert confirmation/evidence views, model fields, migration, templates, and tests together."
-      ,"intended_commit": "fix: repair J4 confirmation/evidence interface"
+      "paths": [
+        "portal/release1a/j4_artifacts.py",
+        "portal/release1a/migrations/0012_a1case_confirmation_evidence.py",
+        "portal/release1a/models.py",
+        "portal/release1a/views.py",
+        "portal/templates/portal/a1_artifact_confirm.html",
+        "portal/templates/portal/partials/a1_evidence_list.html",
+        "tests/m2/test_j4_delivery.py"
+      ],
+      "checks": [
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python manage.py test tests.m2.test_j4_delivery --noinput -v 1"
+      ],
+      "dependencies": [
+        "plan_ac_integrity"
+      ],
+      "rollback": "Revert confirmation/evidence views, model fields, migration, templates, and tests together.",
+      "intended_commit": "fix: repair J4 confirmation/evidence interface"
     },
     "quarantined_unrelated": {
       "purpose": "Artifacts outside the authorized update scope.",
       "eligible_for_staging": false,
-      "paths": [".kilo/", "práce-v-německu.zip", "scripts/validate_ocr_proposals.py", "public-site/", "readme-researches-frameworks.md", "cli-docs-update/2026-08-14-comprehensive-cli-investigation.json", "cli-docs-update/2026-08-14-documentation-comparison.json", "cli-docs-update/2026-08-14-summary.md", "cli-docs-update/2026-08-14-workflow-update.md", "cli-docs-update/VERIFICATION_REPORT_2026-08-14.md", "cli-docs-update/VERIFIED-CI-CLI-DOCS-2026-08-14.md", "docs/operations/shell-environment-audit-2026-08-14.md", "scripts/generate_research_cockpit.py", "docs/prototypes/research-cockpit/", "docs/prototypes/2026-08-13-google-ai-studio-frontend-review.md"],
+      "paths": [
+        ".kilo/",
+        "práce-v-německu.zip",
+        "scripts/validate_ocr_proposals.py",
+        "public-site/",
+        "readme-researches-frameworks.md",
+        "cli-docs-update/2026-08-14-comprehensive-cli-investigation.json",
+        "cli-docs-update/2026-08-14-documentation-comparison.json",
+        "cli-docs-update/2026-08-14-summary.md",
+        "cli-docs-update/2026-08-14-workflow-update.md",
+        "cli-docs-update/VERIFICATION_REPORT_2026-08-14.md",
+        "cli-docs-update/VERIFIED-CI-CLI-DOCS-2026-08-14.md",
+        "docs/operations/shell-environment-audit-2026-08-14.md",
+        "scripts/generate_research_cockpit.py",
+        "docs/prototypes/research-cockpit/",
+        "docs/prototypes/2026-08-13-google-ai-studio-frontend-review.md"
+      ],
       "checks": [],
-      "dependencies": ["Separate explicit approval"],
+      "dependencies": [
+        "Separate explicit approval"
+      ],
       "rollback": "No automated mutation or deletion is permitted."
     }
   },
-  "forbidden_paths": ["a1/", "scans/", "evidence/", "ocr/", "data/", "employees/scans/", "output/", "runtime/portal/", "secrets/", ".env", ".history-remediation/", "private/", "reports/"]
+  "forbidden_paths": [
+    "a1/",
+    "scans/",
+    "evidence/",
+    "ocr/",
+    "data/",
+    "employees/scans/",
+    "output/",
+    "runtime/portal/",
+    "secrets/",
+    ".env",
+    ".history-remediation/",
+    "private/",
+    "reports/"
+  ]
 }

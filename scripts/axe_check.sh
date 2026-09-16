@@ -117,8 +117,8 @@ with sync_playwright() as p:
     page = context.new_page()
 
     # Step 1: GET login page to get CSRF token
-    page.goto(f"{BASE}/accounts/login/", wait_until="networkidle", timeout=15000)
-    login_token = page.query_selector('input[name="csrfmiddlewaretoken"]')
+    page.goto(f"{BASE}/accounts/login/", wait_until="load", timeout=15000)
+    page.wait_for_selector('input[name="csrfmiddlewaretoken"]', state="visible")
     if not login_token:
         print("ERROR: Could not find login CSRF token")
         import sys
@@ -130,7 +130,8 @@ with sync_playwright() as p:
     page.fill('input[name="password"]', ADMIN_PASSWORD)
     with page.expect_navigation(timeout=15000):
         page.click('button[type="submit"]')
-    page.wait_for_load_state("networkidle", timeout=5000)
+    page.wait_for_load_state("load", timeout=5000)
+    page.wait_for_selector("main, body", state="visible")
 
     # If redirected to MFA, complete TOTP
     if "/accounts/2fa/" in page.url:
@@ -147,7 +148,8 @@ with sync_playwright() as p:
         page.fill('input[name="code"]', totp.now())
         with page.expect_navigation(timeout=15000):
             page.click('button[type="submit"]')
-        page.wait_for_load_state("networkidle", timeout=5000)
+        page.wait_for_load_state("load", timeout=5000)
+        page.wait_for_selector("main, body", state="visible")
 
     # Verify we're logged in
     if "/accounts/login" in page.url:
@@ -161,7 +163,8 @@ with sync_playwright() as p:
         results[url_path] = {"status": "untested", "violations": [], "notices": []}
 
         try:
-            page.goto(url, wait_until="networkidle", timeout=15000)
+            page.goto(url, wait_until="load", timeout=15000)
+            page.wait_for_selector("main, body", state="visible")
         except Exception as e:
             results[url_path] = {
                 "status": "error",
@@ -183,7 +186,8 @@ with sync_playwright() as p:
             continue
 
         try:
-            page.wait_for_load_state("networkidle", timeout=10000)
+            page.wait_for_load_state("load", timeout=10000)
+            page.wait_for_selector("main, body", state="visible")
         except Exception:
             pass
 
