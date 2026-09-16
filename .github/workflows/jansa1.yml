@@ -1,0 +1,168 @@
+# JanSA1 Framework - GitHub Actions
+name: JanSA1 Framework
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frameworks/jansa1_v1/**'
+      - 'scripts/a1_*.py'
+      - 'verification/**'
+  pull_request:
+    paths:
+      - 'frameworks/jansa1_v1/**'
+      - 'scripts/a1_*.py'
+      - 'verification/**'
+
+jobs:
+  # =============================================================================
+  # GENERATION - Run generation on changes
+  # =============================================================================
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install -r requirements.txt
+          
+      - name: Generate missing PDFs
+        env:
+          A1_PRIVATE_DIR: ${{ github.workspace }}
+        run: |
+          venv/bin/python frameworks/jansa1_v1/v0.2-incremental/lib/gen_incremental.py --dry-run
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-pdfs
+          path: output/provisional/**/
+
+  # =============================================================================
+  # VERIFICATION - Run all verification checks
+  # =============================================================================
+  verify:
+    runs-on: ubuntu-latest
+    needs: generate
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install pypdf reportlab pyyaml
+          
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-pdfs
+          path: output/provisional/
+          
+      - name: Schema validation
+        run: |
+          for pdf in output/provisional/**/*.pdf; do
+            venv/bin/python frameworks/jansa1_v1/v0.3-verification/lib/chk_schema.py --file "$pdf"
+          done
+          
+      - name: Hardcode check
+        run: |
+          for pdf in output/provisional/**/*.pdf; do
+            worker=$(basename "$pdf" .pdf | sed 's/A1_//')
+            venv/bin/python frameworks/jansa1_v1/v0.3-verification/lib/chk_hardcode.py \
+              --worker "$worker" --pdf "$pdf"
+          done
+
+  # =============================================================================
+  # DUAL FRAMEWORK - Compare implementations
+  # =============================================================================
+  dual-framework:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install pypdf reportlab
+          
+      - name: Run dual framework comparison
+        run: |
+          # Run both frameworks and compare
+          echo "Framework comparison requires two implementations"
+          echo "Currently: PARTIAL (one framework)"
+
+  # =============================================================================
+  # TESTS - Run unit tests
+  # =============================================================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          venv/bin/pip install -r requirements.txt
+          
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: portal.settings_supervised_synthetic
+        run: |
+          venv/bin/python -m pytest tests/test_a1_*.py -q --tb=short
+
+  # =============================================================================
+  # DEPLOY - Deploy to staging
+  # =============================================================================
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: [generate, verify, test]
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to staging
+        run: |
+          echo "Deploy to staging environment"
+          # rsync or similar deployment command
+
+  # =============================================================================
+  # RELEASE - Create release on main
+  # =============================================================================
+  release:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: output/provisional/**/*.pdf
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
