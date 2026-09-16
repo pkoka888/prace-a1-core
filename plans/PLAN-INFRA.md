@@ -3,7 +3,7 @@
 **Status**: active
 **Milestone**: M0–M2
 
-## Current execution — 2026-09-16
+## Current execution — 2026-09-17
 
 Own REL-01–REL-06 and JAN-04 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md). Priorities are truthful
 completion evidence, proportional validation and usable private-site acceptance.
@@ -17,10 +17,13 @@ v1 excludes official A1 generation/issuance; drafts are optional. JAN-03 owns
 scope reconciliation in review UI/machine checks, with shared controls preserved.
 No registered approval is changed by this planning checkpoint.
 
-Current follow-up at `4a38067`: `b687abe` closes the missing shell dependency only.
-Unstaged probe/forwarding fixes are partial; the cleanup helper now loses explicit
-target/ownership context. Self-declared PG ownership and effective role/timeout/TLS
-remain application repairs. REL-03/05 also own clean dependency/browser/model bootstrap
+The September17 [child-plan follow-up](2026-09-14-delivery-reliability-and-jan-v1.md#runtime-and-automation-follow-up--2026-09-17)
+records current supervision/listener and tagged journal evidence, readiness503,
+unapproved declared build identity and confirmed nginx access to service
+configuration. The immediate host task isolates static access from credentials.
+The earlier probe/forwarding defects remain dated evidence in the child plan;
+current self-declared workflow ownership and effective role/timeout/TLS acceptance
+are still separate application tasks. REL-03/05 also own clean dependency/browser/model bootstrap
 with one documented constraints contract; a package freeze/import is not acceptance.
 REL-03/04 also own working-tree evidence binding, default export coverage and overlapping
 selection. An owned in-project PG cluster can test these independently of live

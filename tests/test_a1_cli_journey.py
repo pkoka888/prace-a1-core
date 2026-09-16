@@ -12,8 +12,8 @@ from pathlib import Path
 from uuid import UUID
 
 import pymupdf
-import test_finalize_a1 as fixtures
-from test_finalize_a1 import employee, review_row
+from tests import test_finalize_a1 as fixtures
+from tests.test_finalize_a1 import employee, review_row
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = ROOT / "venv/bin/python"

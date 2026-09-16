@@ -168,6 +168,96 @@ class TestRuntimeRoot:
             tmp_path.chmod(0o700)
 
 
+@pytest.fixture
+def directory_policy_env():
+    parent = REPO_ROOT / "runtime" / "portal"
+    parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with tempfile.TemporaryDirectory(prefix="supervised-group-policy-", dir=parent) as temporary:
+        root = Path(temporary)
+        os.chown(root, -1, os.getegid())
+        root.chmod(0o2700)  # Owner-only roots may inherit the repository setgid bit.
+        manifest = Path(_make_manifest(root))
+        yield root, {
+            "PRACE_RUNTIME_ROOT": str(root),
+            "PRACE_SECRET_KEY": "synthetic-directory-policy-only",
+            "PRACE_RELEASE_MANIFEST": str(manifest),
+            "PRACE_RELEASE_MANIFEST_SHA256": hashlib.sha256(manifest.read_bytes()).hexdigest(),
+            "PRACE_ALLOWED_HOSTS": "localhost",
+        }
+
+
+def _import_directory_policy(env, *, different_primary_group=False):
+    code = IMPORT_CODE
+    if different_primary_group:
+        # Exercise a real file GID against a different selected process GID,
+        # without requiring another host group or changing process privileges.
+        code = f"import os; os.getegid = lambda: {os.getegid() + 1}\n" + code
+    return subprocess.run(
+        [sys.executable, "-c", code], cwd=REPO_ROOT,
+        env={"PATH": os.defpath, "LC_ALL": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1", **env},
+        capture_output=True, text=True, timeout=30,
+    )
+
+
+class TestRuntimeDirectoryPolicy:
+    def test_new_sensitive_children_stay_private_under_setgid_parent(self, directory_policy_env):
+        root, env = directory_policy_env
+        proc = _import_directory_policy(env)
+        assert proc.returncode == 0, proc.stderr
+        assert stat.S_IMODE(root.stat().st_mode) == 0o2700
+        for name in ("storage", "media", "static", "cache", "tmp", "logs"):
+            assert stat.S_IMODE((root / name).stat().st_mode) == 0o700
+
+    def test_primary_group_runtime_and_static_are_allowed(self, directory_policy_env):
+        root, env = directory_policy_env
+        root.chmod(0o750)
+        static = root / "static"
+        static.mkdir()
+        os.chown(static, -1, os.getegid())
+        static.chmod(0o750)
+        proc = _import_directory_policy(env)
+        assert proc.returncode == 0, proc.stderr
+        assert stat.S_IMODE(static.stat().st_mode) == 0o750
+        assert stat.S_IMODE((root / "storage").stat().st_mode) == 0o700
+
+    @pytest.mark.parametrize("target,marker", [
+        ("root", "PRACE_RUNTIME_ROOT"), ("static", "RUNTIME_CHILD_CONFINEMENT_INVALID"),
+    ])
+    def test_group_readable_paths_reject_other_primary_gid(self, directory_policy_env, target, marker):
+        root, env = directory_policy_env
+        path = root if target == "root" else root / "static"
+        if target != "root":
+            path.mkdir()
+        os.chown(path, -1, os.getegid())
+        path.chmod(0o750)
+        _assert_failure(_import_directory_policy(env, different_primary_group=True), marker)
+        assert stat.S_IMODE(path.stat().st_mode) == 0o750
+
+    @pytest.mark.parametrize("name", ["storage", "media", "cache", "tmp", "logs"])
+    def test_sensitive_child_rejects_group_access(self, directory_policy_env, name):
+        root, env = directory_policy_env
+        root.chmod(0o750)
+        child = root / name
+        child.mkdir()
+        os.chown(child, -1, os.getegid())
+        child.chmod(0o750)
+        _assert_failure(_import_directory_policy(env), "RUNTIME_CHILD_CONFINEMENT_INVALID")
+        assert stat.S_IMODE(child.stat().st_mode) == 0o750  # Never repair inherited state.
+
+    @pytest.mark.parametrize("target", ["inbox", "inbox/org-12"])
+    def test_inbox_rejects_group_access(self, directory_policy_env, target):
+        root, env = directory_policy_env
+        for name in ("storage", "storage/inbox", "storage/inbox/org-12"):
+            directory = root / name
+            directory.mkdir()
+            directory.chmod(0o700)
+        child = root / "storage" / target
+        child.chmod(0o750)
+        env.update(PRACE_INBOX_ORGANIZATION_ID="12", PRACE_INBOX_ACTOR_ID="34")
+        _assert_failure(_import_directory_policy(env), "Inbox directories must be private")
+        assert stat.S_IMODE(child.stat().st_mode) == 0o750
+
+
 class TestSecretKey:
     def test_missing(self):
         env = _valid_env()

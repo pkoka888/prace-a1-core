@@ -294,3 +294,39 @@ change follows from passing planning tests or root-owned file metadata. The
 [runtime diagnostic contract](../docs/operations/runtime-manifest.md#bounded-readiness-diagnostics)
 records the manual fallback and limits; publication and native test results belong
 to the delivery record. Do not shell-source the service EnvironmentFile.
+
+## Runtime and automation follow-up — 2026-09-17
+
+Fresh unit/socket/cgroup evidence supersedes the earlier failed-unit observation:
+the selected service is active and owns the8001 listener. Two tagged health
+requests reached its journal. PostgreSQL18 main is online; an inactive umbrella
+unit does not establish a stopped cluster. Both selected routes serve the expected
+htmx/Tailwind MIME/library signatures; five account/MFA scripts return403 through
+nginx. Readiness remains503 `deadline_exceeded`;
+health declares `g00786f74fb53`, which is not an independently approved release.
+These findings do not prove actual loaded source bytes or runtime DB identity.
+
+P1 INFRA-PG-01 now includes a confirmed permission defect: `www-data` can read
+the service EnvironmentFile. The boolean-only probe did not read its contents.
+Infrastructure must isolate static access from secret-reading membership,
+refresh effective nginx worker credentials and verify denied credential/document
+access together with working assets. The [updated request](../docs/operations/servers-infra-core-postgresql-request.md)
+contains the concrete host work order; no host change is performed by this source
+increment.
+
+REL-03/04 source repairs remove the new global xdist/plugin timeout defaults and
+false Make acceptance claims. PostgreSQL contract tests and actual owned-target
+integration remain distinct. The existing `test_document_intake.py` harness now
+supports explicit document/browser settings and labels on a freshly owned local
+PostgreSQL cluster, and discards inherited target credentials. `make test-pg`
+selects that browser integration; it does not certify deployment or restart.
+Runtime0750 support is restricted to traversal/static
+with the effective primary group; sensitive children/inbox keep0700. Targeted
+negative tests cover these boundaries. Final-source validation and any bounded
+PostgreSQL/browser evidence belong to the delivery receipt.
+
+Next: resolve host secret exposure; select the intended source/build and profile
+readiness costs before changing its budget; complete core/optional-A1 separation,
+provisioner-owned target evidence and exact corrected-value restart assertions.
+The existing exported acceptance command still omits the core lifecycle. No new
+test count closes JAN-03/04, real-data activation or PG5.

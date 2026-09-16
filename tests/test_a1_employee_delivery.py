@@ -8,8 +8,8 @@ import numpy as np
 import pymupdf
 import pytest
 
-import test_finalize_a1 as fixtures
-from test_finalize_a1 import review_row
+from tests import test_finalize_a1 as fixtures
+from tests.test_finalize_a1 import review_row
 from scripts.finalize_a1 import (FinalizationError, load_profile, read_review, row_to_form,
                                  verify_pdf, generation_dependencies)
 from scripts.a1_paths import ensure_candidate_destination

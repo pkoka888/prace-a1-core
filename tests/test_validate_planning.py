@@ -472,6 +472,19 @@ def test_staged_readme_documentation_paths_allowed(root):
     assert "staged forbidden-path and PII/secret indicators" not in failures(p.stdout)
 
 
+@pytest.mark.parametrize("path,allowed", [
+    ("portal/release1a/runtime_safety.py", True),
+    ("tests/test_runtime_safety.py", True),
+    ("portal/release1a/runtime/secrets.txt", False),
+    ("tests/runtime/test_runtime_safety.py", False),
+    ("tests/test_runtime_safety.py/credentials.txt", False),
+])
+def test_reviewed_runtime_sources_do_not_exempt_private_neighbors(monkeypatch, path, allowed):
+    monkeypatch.setattr(vp, "get_staged_paths", lambda root: [path])
+    ok, _ = vp.check_staged_forbidden_and_pii({}, REPO)
+    assert ok is allowed
+
+
 @pytest.mark.parametrize("path", [
     "scripts/run_ocr_benchmark.py",
     "scripts/evaluate_a1_pdf_tools.py",

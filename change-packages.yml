@@ -60,10 +60,10 @@
         "tests/test_settings_supervised_synthetic.py",
         "tests/test_wsgi_asgi.py",
         "tests/test_test_pg_contract.py",
-        "tests/fixtures/conftest.py"
+        "tests/test_runtime_safety.py"
       ],
       "checks": [
-        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_settings_supervised_synthetic.py tests/test_wsgi_asgi.py tests/test_test_pg_contract.py -q"
+        "env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_readiness_checks.py tests/test_runtime_hardening.py tests/test_runtime_safety.py tests/test_settings_supervised_synthetic.py tests/test_wsgi_asgi.py tests/test_test_pg_contract.py -q"
       ],
       "dependencies": [
         "Existing synthetic portal models; no host service or database writes"
@@ -149,8 +149,7 @@
         "tests/test_j4_artifacts.py",
         "tests/test_runtime_contract.py",
         "tests/test_a1_cli_journey.py",
-        "tests/test_a1_employee_delivery.py",
-        "scripts/test_document_intake.py"
+        "tests/test_a1_employee_delivery.py"
       ],
       "checks": [
         "scripts/select_shared_document_portal_checks.py"
@@ -538,10 +537,15 @@
         "docs/research/2026-09-07-pdf-tool-comparison.md",
         "docs/research/2026-09-07-a1-pdf-tools.md",
         "Makefile",
-        "pytest.ini"
+        "pytest.ini",
+        "tests/fixtures/conftest.py",
+        "tests/test_automation_entrypoints.py",
+        "scripts/test_document_intake.py",
+        "tests/test_document_intake_runner.py",
+        "tests/__init__.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_release_export_sensitive_paths.py -q",
+        "venv/bin/python -m pytest tests/test_automation_entrypoints.py tests/test_document_intake_runner.py tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_release_export_sensitive_paths.py -q",
         "venv/bin/python scripts/validate_change_packages.py --staged --json",
         "scripts/select_infrastructure_git_workflow_checks.py"
       ],

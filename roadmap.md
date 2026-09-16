@@ -2,7 +2,7 @@
 
 **Status:** Authoritative
 **Original date:** 2026-08-19
-**Last status update:** 2026-09-16
+**Last status update:** 2026-09-17
 **Current stage:** Release 1A in progress. Repository implementation and historical synthetic evidence exist; current private-site usability, PostgreSQL acceptance and Jan acceptance remain separately verifiable. A separate infrastructure request for the PostgreSQL target is issued and awaiting response.
 
 2026-09-16 follow-up at `4a38067`: core correction, source-byte verification and
@@ -22,6 +22,17 @@ This is the execution roadmap. The [PRD](prd.md) defines product scope and the
 [delivery reliability and Jan v1](plans/2026-09-14-delivery-reliability-and-jan-v1.md).
 Older dated checkpoints remain in Git history and the
 [delivery record](docs/operations/git-delivery.md); they are not an active queue.
+
+September17 runtime follow-up supersedes the earlier failed-unit observation:
+the selected service owns the8001 listener and tagged access requests reach its
+journal. PostgreSQL18 main is online; htmx/Tailwind pass through the selected
+internal route, while five account/MFA scripts return403. Readiness returns503 `deadline_exceeded`; an approved
+source/build and core/restart acceptance remain missing. A boolean-only probe
+also confirms nginx's identity can read the service EnvironmentFile through its
+supplementary group. Infrastructure must isolate static access from credentials
+under the [updated request](docs/operations/servers-infra-core-postgresql-request.md).
+Application repairs narrow0750 sharing and remove unsafe global test parallelism;
+their validation/publication remains distinct from host correction.
 
 ## Product objective and v1 boundary
 

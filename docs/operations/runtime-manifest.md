@@ -182,11 +182,46 @@ missing source coverage cannot become PASS. Reports record the unit's local
 host separately from the HTTP origin/Host header. A local active unit does not
 prove ownership of a listener at a separately selected origin.
 
-Logging delivery remains explicitly blocked pending an infrastructure-owned,
-bounded delivery test. `ProtectSystem=strict` with `--capture-output` alone
-proves neither a logging fault nor successful delivery. Full diagnostics therefore
-cannot currently return all-pass; this is a documented diagnostic limitation,
-not a new prerequisite for core-v1 acceptance. Infrastructure supplies intended
-unit/listener/build reconciliation and log-delivery evidence. Application
-engineering then performs intended-target core browser/restart acceptance;
-restore and Jan's observation remain separate.
+The generic diagnostic does not consume journal evidence and reports logging
+delivery as blocked. A separate bounded check on September17 correlated two tagged
+health requests with the selected unit's worker in journald. This establishes
+access-log delivery for those requests, not log retention, error completeness or
+the cause of an earlier empty journal. `ProtectSystem=strict` and
+`--capture-output` alone establish no logging verdict. Full generic diagnostics
+cannot currently return all-pass; this is a documented tool limitation, not a new
+core-v1 acceptance gate. See the [reconciled observations](s62-operator-triage-report-2026-09-16.md).
+
+### Static access and private runtime children — 2026-09-17
+
+Owner-only directory access remains the default. Runtime traversal and the static
+directory may use0750 only with the runtime process's effective primary group.
+The owned root and symlink checks remain in force. Sensitive storage, media,
+cache, temporary files, logs and inbox directories require0700 access; settings
+must not accept layouts their OCR/inbox consumers reject. Existing directories
+are checked, never silently chmodded. Disposable rehearsal remains owner-only.
+
+This application permission check does not certify group membership. The fresh
+boolean access probe confirmed that nginx's `www-data` identity can read the
+service EnvironmentFile through its `prace-synthetic` membership. The payload was
+not read. Static serving must not grant that secret-reading group to nginx.
+The [infrastructure request](servers-infra-core-postgresql-request.md) describes
+the separate host correction and refusal/asset checks. Source publication alone
+does not change group membership, ACLs or effective worker credentials.
+
+### Owned PostgreSQL browser demonstration
+
+`make test-pg` invokes the existing `scripts/test_document_intake.py` harness
+with browser settings and the explicit Chromium journey label. It provisions a
+new private PostgreSQL cluster under this source checkout's runtime, with a Unix
+socket and no TCP listener. Inherited database targets and password-file lookup
+are excluded. Phase commands, native results and logs are retained; the harness
+stops only its newly created cluster. It never consumes the service EnvironmentFile.
+
+The canonical Python interpreter and PostgreSQL18/Chromium assets must be
+installed. Long nested checkout paths fail before database startup because Unix
+socket names have a finite length; use a short in-project source export and
+`make PYTHON_BIN=/var/www/prace-v-nemecku.tvoje.info/venv/bin/python test-pg`
+from that export. This exercises synthetic login/TOTP, document/OCR and access
+boundaries on local PostgreSQL. Complete core workflow, exact corrected-value
+restart persistence, deployed runtime-role separation and Jan acceptance remain
+separate. `make test-pg-contract` executes only target/guard contract regressions.

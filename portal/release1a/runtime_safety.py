@@ -23,14 +23,29 @@ def confined_root(path):
     parent = Path(__file__).resolve().parents[2] / 'runtime' / 'portal'
     if root.parent != parent or not root.name.startswith('supervised-'):
         raise ValueError('RUNTIME_ROOT_OUTSIDE_APPROVED_SUBTREE')
-    if not root.is_dir() or root.stat().st_uid != os.getuid():
-        raise ValueError('RUNTIME_ROOT_PERMISSIONS')
-    mode = root.stat().st_mode
-    # Accept 0700 (default) or 0750 (dedicated-group alternative per AGENTS.md).
-    # Other bits must be zero; owner must have rwx.
-    if (mode & 0o777) not in (0o700, 0o750):
-        raise ValueError('RUNTIME_ROOT_PERMISSIONS')
+    try:
+        runtime_directory(root, allow_static_group=True)
+    except (OSError, ValueError):
+        raise ValueError('RUNTIME_ROOT_PERMISSIONS') from None
     return root
+
+
+def runtime_directory(path, *, allow_static_group=False):
+    """Require owner-only access, or explicit root/static primary-group access.
+
+    Preserve inherited setgid semantics: the access bits, not special bits,
+    determine privacy. Infrastructure owns group membership; accepting 0750
+    never authorizes sharing credentials or document directories with that group.
+    """
+    path = no_symlinks(path)
+    info = path.stat()
+    mode = stat.S_IMODE(info.st_mode) & 0o777
+    allowed = mode == 0o700 or (
+        allow_static_group and mode == 0o750 and info.st_gid == os.getegid()
+    )
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or not allowed:
+        raise ValueError('RUNTIME_DIRECTORY_PERMISSIONS')
+    return path
 
 
 def exclusive_probe(path):

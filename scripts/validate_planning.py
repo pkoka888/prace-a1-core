@@ -143,6 +143,7 @@ APPROVED_STAGED_SKILL_PATHS = frozenset({
 # (ocr, evidence, scans, etc.). The token guard stays active for any non-listed
 # file under scripts/.
 APPROVED_STAGED_SCRIPT_PATHS = frozenset({
+    "portal/release1a/runtime_safety.py",
     "portal/templates/portal/a1_case_detail.html",
     "portal/templates/portal/a1_list.html",
     "portal/templates/portal/a1_prepare.html",
@@ -192,6 +193,7 @@ APPROVED_STAGED_SETTINGS_PATHS = frozenset({
 })
 # Tracked source test files. Filenames legitimately embed pipeline words.
 APPROVED_STAGED_TEST_PATHS = frozenset({
+    "tests/test_runtime_safety.py",
     "tests/document_web/test_a1_exports.py",
     "tests/document_web/test_a1_cohort_exports.py",
     "tests/document_web/test_a1_input_publication.py",

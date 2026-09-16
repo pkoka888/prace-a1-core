@@ -51,7 +51,7 @@ def _csv(value):
 
 
 # Resolve the approved synthetic root before any writes.
-from portal.release1a.runtime_safety import confined_root, no_symlinks, read_manifest
+from portal.release1a.runtime_safety import confined_root, no_symlinks, read_manifest, runtime_directory
 _runtime_root_raw = _require_env("PRACE_RUNTIME_ROOT")
 try:
     _runtime_root = confined_root(_runtime_root_raw)
@@ -199,10 +199,13 @@ LOG_DIR = _runtime_root / "logs"
 for _child in (DOCUMENT_STORAGE_ROOT, MEDIA_ROOT, STATIC_ROOT, CACHE_DIR, TMP_DIR, LOG_DIR):
     try:
         no_symlinks(_child)
-        _child.mkdir(mode=0o700, exist_ok=True)
-        mode = _child.stat().st_mode
-        if _child.stat().st_uid != os.getuid() or (mode & 0o777) not in (0o700, 0o750):
-            raise ValueError("CHILD_PERMISSIONS")
+        try:
+            _child.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        else:
+            _child.chmod(0o700)  # Clear inherited setgid on our new directory only.
+        runtime_directory(_child, allow_static_group=_child == STATIC_ROOT)
     except (OSError, ValueError):
         raise ImproperlyConfigured("RUNTIME_CHILD_CONFINEMENT_INVALID") from None
 try:
@@ -366,9 +369,9 @@ if _inbox_org or _inbox_actor:
             pass
         else:
             _child.chmod(0o700)  # Clear an inherited setgid bit on our new directory.
-        mode = _child.stat().st_mode
-        if (not _child.is_dir() or _child.stat().st_uid != os.getuid()
-                or (mode & 0o777) not in (0o700, 0o750)):
+        try:
+            runtime_directory(_child)
+        except (OSError, ValueError):
             raise ImproperlyConfigured("Inbox directories must be private and operator-owned")
     DOCUMENT_INBOX_ROOTS[DOCUMENT_INBOX_ORGANIZATION_ID] = _inbox_root
 

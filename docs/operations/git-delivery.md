@@ -3,6 +3,37 @@
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No deployment, new runner/remote, history rewrite or real-data processing.
 
+## Runtime isolation and automation correction — 2026-09-17
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Restrict0750 to runtime traversal/static with effective primary GID; sensitive children/inbox remain0700. Remove global xdist/timeout flags and unused fixture scaffold; Make targets distinguish synthetic integration, PG contracts and owned local PG/browser integration through the existing harness. Correct unsupported operator-triage claims and update the host work order |
+| Validation | Three bounded agent reviews; five automation regression checks initially passed. Final mandatory-hook, committed-source checks and scoped integration outcomes are in the private delivery receipt. Live unit/socket/cgroup and tagged journal observations pass; readiness503 remains. Boolean nginx credential readability confirmed without reading payload |
+| Publication | Isolated checkout based on89a8902; original working-tree edits preserved. Exact final commit, inspected source identities and verified origin SHA are recorded in `runtime/portal/temporary/runtime-followup-4952a52f6c91/delivery.json` |
+| Deployment / activation | No host configuration, service restart, credential access/change, live DB operation or real-data activation |
+| Limitations | Host credential exposure, five account/MFA asset403 responses, readiness deadline, approved build and runtime DB identity remain unresolved. Generic diagnostics do not consume the separate journal receipt. Existing core lifecycle/export/ownership/restart assertion gaps remain; synthetic integration does not establish intended-target or Jan acceptance |
+| Next owner | Infrastructure isolates nginx static access, reconciles source/build and readiness; application engineering completes core target/restart evidence; Jan observes the resulting scoped workflow |
+
+Detailed live evidence remains private under the same run directory with a
+December16 retention review. The [triage reconciliation](s62-operator-triage-report-2026-09-16.md)
+separates fresh observations from historical agent assertions.
+
+Test-harness dispatch belongs to the existing infrastructure tooling package;
+the final owned PostgreSQL/browser run is recorded separately against a verified
+committed export. New harness logs retain phase commands/native results and
+cleanup outcomes. Inherited live database variables and password-file lookup
+cannot select the owned test target.
+
+The first mandatory hook failed because installed `requests-viewer` supplied a
+regular `tests` package that shadowed this repository's namespace directory.
+An explicit local test package and qualified legacy helper imports repair that
+collision for both pytest and Django dotted labels. The original hook receipt
+and cause remain separate from the retry; no application database was involved.
+A second hook passed runtime and affected A1 tests, then rejected the reviewed
+runtime helper/test filenames under the planning token rule. Their two exact
+source paths are now registered with adjacent-private-path negative controls;
+the protected-directory rule remains active. Both original failures are retained.
+
 ## Planning fixture and unprivileged readiness repair — 2026-09-16
 
 | Field | Evidence / state |

@@ -1,20 +1,29 @@
-.PHONY: help test-unit test-smoke test-integration test-browser test-pg test-a1-gate test-focused test-gate test-all lint format hooks
+.DEFAULT_GOAL := help
+.PHONY: help test-unit test-smoke test-integration test-browser test-pg test-pg-contract test-a1-gate test-focused check-selection test-gate lint format hooks
 
-REPO_ROOT := $(shell git rev-parse --show-toplevel)
-VENV := $(REPO_ROOT)/venv/bin/python
-PYTEST := $(VENV) -m pytest
+REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+PYTHON_BIN ?= $(REPO_ROOT)/venv/bin/python
+# These entrypoints select sequential runs, independent of inherited pytest flags.
+PYTEST = env -u DJANGO_SETTINGS_MODULE PYTEST_ADDOPTS= "$(PYTHON_BIN)" -m pytest
+# These two Django targets explicitly exercise synthetic SQLite. PostgreSQL
+# requires separate provisioning/ownership evidence and is never selected here.
+SQLITE_ENV = env -u DOCUMENT_TEST_PG_SOCKET -u DOCUMENT_TEST_PG_NAME \
+	-u DOCUMENT_TEST_PG_USER -u DOCUMENT_TEST_PG_HOST \
+	-u DOCUMENT_TEST_PG_PORT -u DOCUMENT_TEST_PG_PASSWORD
 
 help:
-	@just --list 2>/dev/null || grep -E '^[a-z-]+:' Makefile | sed 's/://' | sort
+	@printf '%s\n' \
+		'test-focused / test-unit: bounded reliability contract checks' \
+		'test-smoke: boot/readiness helper checks' \
+		'test-integration: synthetic SQLite document-service integration' \
+		'test-browser: synthetic SQLite Chromium journey' \
+		'test-pg-contract: PostgreSQL target/guard contracts only' \
+		'test-pg: Chromium integration on a newly owned local PostgreSQL cluster' \
+		'test-a1-gate: optional A1 quality-gate regressions' \
+		'check-selection / test-gate: dependency consistency and staged check selection only' \
+		'lint / format / hooks: explicit developer maintenance commands'
 
-test-unit:
-	$(PYTEST) -q \
-		--ignore=tests/m2 \
-		--ignore=tests/architecture \
-		--ignore=tests/document_web/test_browser_journey.py \
-		--ignore=tests/test_rehearse_synthetic_site_lifecycle.py \
-		--deselect=tests/test_rehearse_workflow.py \
-		--deselect=tests/test_rehearse_synthetic_site.py
+test-unit: test-focused
 
 test-smoke:
 	$(PYTEST) -q \
@@ -23,45 +32,54 @@ test-smoke:
 		tests/test_check_readiness.py
 
 test-integration:
-	$(PYTEST) -q \
-		tests/test_rehearse_synthetic_site_lifecycle.py \
-		tests/document_web/test_browser_journey.py \
-		tests/test_rehearse_workflow.py
+	@printf '%s\n' 'Synthetic SQLite integration; PostgreSQL and restart acceptance are separate.'
+	$(SQLITE_ENV) DJANGO_SETTINGS_MODULE=portal.settings_document_tests \
+		"$(PYTHON_BIN)" manage.py test \
+		tests.document_web.test_inbox \
+		tests.document_web.test_field_review \
+		tests.document_web.test_identity_review --noinput --verbosity 1
 
 test-browser:
-	DJANGO_SETTINGS_MODULE=portal.settings_browser_tests $(PYTEST) -q \
-		tests/document_web/test_browser_journey.py
+	@printf '%s\n' 'Synthetic SQLite browser journey; PostgreSQL and restart acceptance are separate.'
+	$(SQLITE_ENV) DJANGO_SETTINGS_MODULE=portal.settings_browser_tests \
+		"$(PYTHON_BIN)" manage.py test tests.document_web.test_browser_journey \
+		--noinput --verbosity 1
 
 test-pg:
+	@printf '%s\n' 'Owned local PostgreSQL browser integration; deployed-target and restart acceptance are separate.'
+	"$(PYTHON_BIN)" scripts/test_document_intake.py \
+		--settings portal.settings_browser_tests tests.document_web.test_browser_journey
+
+test-pg-contract:
 	$(PYTEST) -q \
 		tests/test_test_pg_contract.py \
-		tests/test_disposable_pg_guard.py \
-		tests/test_rehearse_workflow.py \
-		--ignore=tests/m2/test_release1a_vertical.py
+		tests/test_disposable_pg_guard.py
 
 test-a1-gate:
 	$(PYTEST) -q tests/test_a1_quality_gate.py
 
 test-focused:
-	$(PYTEST) -q -o "addopts=" \
+	$(PYTEST) -q \
+		tests/test_automation_entrypoints.py \
+		tests/test_document_intake_runner.py \
 		tests/test_no_networkidle_regression.py \
 		tests/test_disposable_pg_guard.py \
 		tests/test_test_pg_contract.py \
 		tests/test_release_reproducer.py \
 		tests/test_persistence_verifier.py
 
-test-gate:
-	$(VENV) -m pip check
-	$(VENV) scripts/validate_change_packages.py --staged --json
+check-selection:
+	@printf '%s\n' 'Dependency consistency and check selection only; selected checks are not executed by this target.'
+	"$(PYTHON_BIN)" -m pip check
+	"$(PYTHON_BIN)" scripts/validate_change_packages.py --staged --json
 
-test-all: test-unit test-smoke test-gate
-	@echo "All checks passed"
+test-gate: check-selection
 
 lint:
-	$(VENV) -m ruff check scripts/ tests/ portal/
+	"$(PYTHON_BIN)" -m ruff check scripts/ tests/ portal/
 
 format:
-	$(VENV) -m ruff format scripts/ tests/ portal/
+	"$(PYTHON_BIN)" -m ruff format scripts/ tests/ portal/
 
 hooks:
-	$(REPO_ROOT)/scripts/install-git-hooks.sh
+	"$(REPO_ROOT)/scripts/install-git-hooks.sh"
