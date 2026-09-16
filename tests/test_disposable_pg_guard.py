@@ -141,3 +141,55 @@ def test_cleanup_env_carries_password_but_guard_sees_no_raw_secret(monkeypatch, 
     env = _disposable_env(monkeypatch, tmp_path)
     verdict = guard.verify_target(env)
     assert "synthetic-test-password" not in str(verdict)
+
+
+def test_psql_probe_command_is_pure_sql_with_tls_env():
+    values = dict(FULL_TARGET, PRACE_DB_SSLMODE="verify-full",
+                  PRACE_DB_SSLROOTCERT="/etc/ssl/root.crt")
+    argv, env = guard.psql_probe_command(values, key=77)
+    assert argv[0] == guard.PSQL
+    idx = argv.index("-Atc")
+    sql = argv[idx + 1]
+    assert "\\set" not in sql
+    assert "\\" not in sql
+    assert "SELECT pg_try_advisory_lock(77);" in sql
+    assert "SELECT pg_advisory_unlock(77);" in sql
+    assert "-v" in argv and argv[argv.index("-v") + 1] == "ON_ERROR_STOP=1"
+    assert argv[argv.index("-d") + 1] == FULL_TARGET["PRACE_DB_NAME"]
+    assert env["PGPASSWORD"] == FULL_TARGET["PRACE_DB_PASSWORD"]
+    assert env["PGSSLMODE"] == "verify-full"
+    assert env["PGSSLROOTCERT"] == "/etc/ssl/root.crt"
+
+
+def test_psql_env_omits_tls_vars_when_not_configured():
+    argv, env = guard.psql_probe_command(dict(FULL_TARGET), key=7)
+    assert "PGSSLMODE" not in env
+    assert "PGSSLROOTCERT" not in env
+    assert env["PGPASSWORD"] == FULL_TARGET["PRACE_DB_PASSWORD"]
+
+
+def test_psql_env_preserves_caller_target_and_ownership_keys():
+    """Regression: ``psql_env`` is called by cleanup with the caller-supplied
+    worker env that carries PRACE_DB_* and the disposable marker / ownership
+    record path. ``verify_target`` then resolves the same target — a mislayered
+    helper that rebuilt from ``os.environ`` caused a silent ``no PostgreSQL
+    target`` verdict and a follow-on ``KeyError('lock_key')`` in the cleanup
+    caller. The helper now preserves every caller-supplied key.
+    """
+    values = dict(FULL_TARGET,
+                  PRACE_DISPOSABLE_TARGET="1",
+                  PRACE_DISPOSABLE_OWNERSHIP="/tmp/ownership.json")
+    env = guard.psql_env(values)
+    for key in ("PRACE_DB_NAME", "PRACE_DB_USER", "PRACE_DB_PASSWORD",
+                "PRACE_DB_HOST", "PRACE_DB_PORT", "PRACE_DISPOSABLE_TARGET",
+                "PRACE_DISPOSABLE_OWNERSHIP"):
+        assert env[key] == values[key], key
+    assert env["PGPASSWORD"] == values["PRACE_DB_PASSWORD"]
+
+
+def test_collect_target_carries_optional_tls_values():
+    env = dict(FULL_TARGET, PRACE_DB_SSLMODE="  verify-full  ",
+               PRACE_DB_SSLROOTCERT=" /etc/ssl/root.crt ")
+    target = guard._collect_target(env)
+    assert target["values"]["PRACE_DB_SSLMODE"] == "verify-full"
+    assert target["values"]["PRACE_DB_SSLROOTCERT"] == "/etc/ssl/root.crt"

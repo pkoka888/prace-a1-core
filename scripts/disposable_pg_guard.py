@@ -46,6 +46,14 @@ REQUIRED_TARGET_ENV = (
     "PRACE_DB_PORT",
 )
 
+# Optional target attributes forwarded verbatim when present so the
+# probe and cleanup connect under the same TLS contract as the settings
+# module (never a plaintext probe of an encrypted target).
+OPTIONAL_TARGET_ENV = (
+    "PRACE_DB_SSLMODE",
+    "PRACE_DB_SSLROOTCERT",
+)
+
 DISPOSABLE_MARKER_ENV = "PRACE_DISPOSABLE_TARGET"
 DISPOSABLE_OWNERSHIP_ENV = "PRACE_DISPOSABLE_OWNERSHIP"
 DISPOSABLE_LOCK_KEY_ENV = "PRACE_DISPOSABLE_LOCK_KEY"
@@ -86,6 +94,9 @@ def _collect_target(env: dict) -> dict | None:
         return {"refused": True, "blocked": False, "reason": (
             f"partial PostgreSQL target: {', '.join(present)}; set the full "
             "PRACE_DB_* set or none")}
+    for name in OPTIONAL_TARGET_ENV:
+        if env.get(name, "").strip():
+            values[name] = env[name].strip()
     return {"refused": False, "blocked": False, "name": values["PRACE_DB_NAME"],
             "values": values}
 
@@ -198,6 +209,55 @@ def exclusive_cleanup_sql(operation_sql: str, *, lock_key_value: int) -> str:
     )
 
 
+def psql_env(values: dict) -> dict:
+    """Child environment for the psql/lock probe and cleanup commands.
+
+    The caller owns the disposable marker, ownership record path and
+    ``PRACE_DB_*`` target tuple; this helper MUST preserve every key
+    passed in ``values`` so the psql subprocess sees the same target the
+    guard verified. ``PGPASSWORD`` carries the target password, and
+    ``PRACE_DB_SSLMODE``/``PRACE_DB_SSLROOTCERT`` are translated to the
+    libpq variables psql actually reads (``PGSSLMODE``/``PGSSLROOTCERT``).
+    Without this translation an encrypted target would be probed in
+    plaintext settings that silently behave differently from the
+    configured connection contract.
+    """
+    env = dict(values)
+    password = values.get("PRACE_DB_PASSWORD", "")
+    if password:
+        env["PGPASSWORD"] = password
+    sslmode = values.get("PRACE_DB_SSLMODE", "").strip()
+    if sslmode:
+        env["PGSSLMODE"] = sslmode
+    sslrootcert = values.get("PRACE_DB_SSLROOTCERT", "").strip()
+    if sslrootcert:
+        env["PGSSLROOTCERT"] = sslrootcert
+    return env
+
+
+def psql_probe_command(values: dict, key: int) -> tuple[list, dict]:
+    """Pure psql argv + env for the exclusive-use lock probe.
+
+    ``-c`` carries only SQL. psql prohibits mixing a backslash
+    meta-command extension with SQL in a single ``-c`` argument; the
+    pre-repair probe inlined ``\\set ON_ERROR_STOP on`` and failed every
+    reachable cluster while being reported as blocked. ``ON_ERROR_STOP``
+    is set through the separate ``-v`` option instead. Returning the argv
+    and env as pure data keeps the invocation deterministically testable
+    without a live cluster.
+    """
+    sql = (
+        f"SELECT pg_try_advisory_lock({key});\n"
+        f"SELECT pg_advisory_unlock({key});\n"
+    )
+    argv = [
+        PSQL, "-h", values["PRACE_DB_HOST"], "-p", str(values["PRACE_DB_PORT"]),
+        "-U", values["PRACE_DB_USER"], "-d", values["PRACE_DB_NAME"],
+        "-v", "ON_ERROR_STOP=1", "-Atc", sql,
+    ]
+    return argv, psql_env(values)
+
+
 def _try_exclusive_lock(values: dict, key: int) -> dict:
     """Attempt a small exclusive-use verification on the target.
 
@@ -206,20 +266,10 @@ def _try_exclusive_lock(values: dict, key: int) -> dict:
     psql, unreachable cluster, wrong credential, lock already held) is
     reported as blocked and therefore refuses the operation.
     """
-    sql = (
-        "\\set ON_ERROR_STOP on\n"
-        f"SELECT pg_try_advisory_lock({key});\n"
-        f"SELECT pg_advisory_unlock({key});\n"
-    )
-    env = dict(os.environ)
-    env["PGPASSWORD"] = values.get("PRACE_DB_PASSWORD", "")
+    argv, env = psql_probe_command(values, key)
     try:
-        result = subprocess.run(
-            [PSQL, "-h", values["PRACE_DB_HOST"], "-p", str(values["PRACE_DB_PORT"]),
-             "-U", values["PRACE_DB_USER"], "-d", values["PRACE_DB_NAME"],
-             "-v", "ON_ERROR_STOP=1", "-Atc", sql],
-            env=env, capture_output=True, text=True, timeout=15,
-        )
+        result = subprocess.run(argv, env=env, capture_output=True, text=True,
+                                timeout=15)
     except (OSError, subprocess.TimeoutExpired):
         return {"acquired": False, "reason": "exclusive-use probe could not run"}
     if result.returncode != 0:

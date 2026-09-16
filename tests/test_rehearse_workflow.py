@@ -43,7 +43,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.disposable_pg_guard import exclusive_cleanup_sql, verify_target
+from scripts.disposable_pg_guard import exclusive_cleanup_sql, psql_env, verify_target
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +73,40 @@ def test_postgres_env_fails_closed_without_explicit_target(monkeypatch):
     env = _postgres_env(base)
     assert env["PRACE_DB_PASSWORD"] == "synthetic-test-password"
     assert env["PRACE_DB_NAME"] == "prace_synthetic_test"
+
+
+def test_postgres_env_forwards_migration_credential_pair(monkeypatch):
+    monkeypatch.setenv("PRACE_WORKFLOW_PG", "1")
+    for name in POSTGRES_TARGET_ENV:
+        monkeypatch.setenv(name, {
+            "PRACE_DB_NAME": "prace_synthetic_test",
+            "PRACE_DB_USER": "prace_synth_app",
+            "PRACE_DB_PASSWORD": "synthetic-test-password",
+            "PRACE_DB_HOST": "127.0.0.1",
+            "PRACE_DB_PORT": "5432",
+        }[name])
+    monkeypatch.setenv("PRACE_MIGRATION_DB_USER", "prace_migrator")
+    monkeypatch.setenv("PRACE_MIGRATION_DB_PASSWORD", "migrator-password")
+    env = _postgres_env({"PATH": "/usr/bin:/bin"})
+    assert env["PRACE_MIGRATION_DB_USER"] == "prace_migrator"
+    assert env["PRACE_MIGRATION_DB_PASSWORD"] == "migrator-password"
+
+
+def test_postgres_env_omits_migration_credentials_when_unset(monkeypatch):
+    monkeypatch.setenv("PRACE_WORKFLOW_PG", "1")
+    for name in POSTGRES_TARGET_ENV:
+        monkeypatch.setenv(name, {
+            "PRACE_DB_NAME": "prace_synthetic_test",
+            "PRACE_DB_USER": "prace_synth_app",
+            "PRACE_DB_PASSWORD": "synthetic-test-password",
+            "PRACE_DB_HOST": "127.0.0.1",
+            "PRACE_DB_PORT": "5432",
+        }[name])
+    monkeypatch.delenv("PRACE_MIGRATION_DB_USER", raising=False)
+    monkeypatch.delenv("PRACE_MIGRATION_DB_PASSWORD", raising=False)
+    env = _postgres_env({"PATH": "/usr/bin:/bin"})
+    assert "PRACE_MIGRATION_DB_USER" not in env
+    assert "PRACE_MIGRATION_DB_PASSWORD" not in env
 
 
 def _run_script(args, env, *, timeout=600):
@@ -189,6 +223,14 @@ POSTGRES_OPTIONAL_ENV = (
     "PRACE_DB_SSLROOTCERT",
 )
 
+# Command-scoped migration credentials forwarded verbatim when present so
+# the workflow's ``manage.py migrate`` session uses the schema-owner role
+# the operator exported, exactly like the shell rehearsal path.
+POSTGRES_MIGRATION_ENV = (
+    "PRACE_MIGRATION_DB_USER",
+    "PRACE_MIGRATION_DB_PASSWORD",
+)
+
 
 def _postgres_env(base: dict, runtime_root: Path | None = None) -> dict:
     """If PRACE_WORKFLOW_PG=1 is set, require an explicit PostgreSQL
@@ -218,6 +260,9 @@ def _postgres_env(base: dict, runtime_root: Path | None = None) -> dict:
     for name in POSTGRES_TARGET_ENV:
         env[name] = os.environ[name]
     for name in POSTGRES_OPTIONAL_ENV:
+        if os.environ.get(name):
+            env[name] = os.environ[name]
+    for name in POSTGRES_MIGRATION_ENV:
         if os.environ.get(name):
             env[name] = os.environ[name]
     if runtime_root is not None:
@@ -568,11 +613,14 @@ def _cleanup_pg_operator(env: dict) -> None:
     performs the DELETEs (``exclusive_cleanup_sql``), so a concurrent run
     cannot interleave between the verification and the teardown.
     """
-    pg_env = dict(env)
-    pg_env["PGPASSWORD"] = env["PRACE_DB_PASSWORD"]
+    pg_env = psql_env(env)
     verdict = verify_target(pg_env)
     assert verdict.get("ok"), (
         f"refusing PostgreSQL cleanup: {verdict.get('reason')}")
+    lock_key_value = verdict.get("lock_key")
+    assert isinstance(lock_key_value, int), (
+        f"refusing PostgreSQL cleanup: guard verdict missing 'lock_key' "
+        f"(verdict={verdict})")
     delete_sql = (
         "DELETE FROM release1a_fielddecision;"
         " DELETE FROM release1a_reviewtask;"
@@ -591,7 +639,7 @@ def _cleanup_pg_operator(env: dict) -> None:
         " DELETE FROM auth_user_groups;"
         " DELETE FROM auth_user;"
     )
-    sql = exclusive_cleanup_sql(delete_sql, lock_key_value=verdict["lock_key"])
+    sql = exclusive_cleanup_sql(delete_sql, lock_key_value=lock_key_value)
     subprocess.run(
         ["psql", "-h", env.get("PRACE_DB_HOST", "127.0.0.1"),
          "-p", env.get("PRACE_DB_PORT", "5432"),

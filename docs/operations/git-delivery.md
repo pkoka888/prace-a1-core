@@ -18,6 +18,31 @@ Research: [document orchestration review](../research/2026-09-16-document-orches
 Private evidence: `runtime/portal/temporary/ocr-orchestration-review-20260916-3iu4h9nx/`.
 Existing task/catalog IDs and human approvals are unchanged.
 
+## Cleanup environment regression fixed — 2026-09-16
+
+`psql_env()` rebuilt from `os.environ` and dropped the caller-supplied
+worker's `PRACE_DB_*` target + `PRACE_DISPOSABLE_TARGET`/`PRACE_DISPOSABLE_OWNERSHIP`,
+so `verify_target(pg_env)` saw no PostgreSQL target, returned
+`{"ok": True, "target": None, "reason": "no PostgreSQL target; local rehearsal default"}`,
+and `_cleanup_pg_operator`'s `verdict["lock_key"]` raised `KeyError('lock_key')`.
+The helper now preserves every caller key and only layers `PGPASSWORD`
+plus `PGSSLMODE`/`PGSSLROOTCERT` (libpq translations of
+`PRACE_DB_SSLMODE`/`PRACE_DB_SSLROOTCERT`); `_cleanup_pg_operator`
+asserts the verdict's `lock_key` is an `int` so a refused verdict fails
+closed instead of `KeyError`-ing into the destructive DELETEs. The
+proposed `KEY` index in the helper could re-introduce the regression if
+the helper ever fell back to a stale `os.environ` again, so the helper
+explicitly takes a caller `values` dict (no `os.environ` default).
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | `scripts/disposable_pg_guard.py::psql_env` preserves caller-supplied keys (no `os.environ` rebuild); `tests/test_rehearse_workflow.py::_cleanup_pg_operator` asserts `verdict["lock_key"]` is an `int`; new regression test `test_psql_env_preserves_caller_target_and_ownership_keys` |
+| Validation | Deterministic: `pytest tests/test_disposable_pg_guard.py tests/test_test_pg_contract.py tests/test_rehearse_synthetic_site.py tests/test_settings_supervised_synthetic.py -q` = 129 passed. Broader: 153 passed across `tests/test_rehearse_synthetic_site.py tests/test_settings_supervised_synthetic.py tests/test_run_collector_proposals.py tests/test_collector_execution.py tests/test_release_reproducer.py -q`. Isolated real-PG positive + negative lock probe on a fresh PG 18 `initdb` owned cluster: positive `acquired: True`, negative (transaction-held key) `acquired: False — exclusive-use lock already held` |
+| Publication | Local commit only; not pushed. Cleaning up requires a coordinated PG/requirements review alongside this commit |
+| Deployment / activation | None. No service restart, no rotation, no live target use |
+| Limitations | Only the cleanup integration regression is closed. Broader PostgreSQL-acceptance work, real-canary certificate/signatory evidence and live restart acceptance remain open JAN-04 rows |
+| Next owner | Runtime engineering closes remaining JAN-04 rows (provisioning-owned target identity, real-PG `current_user`/`statement_timeout` checks, env/TLS through every migrate/runtime subprocess), then the bounded LangGraph comparison per the orchestration review |
+
 ## Migration-scope shell dependency integrated — 2026-09-16
 
 Commit `b687abe` completes the specific missing shell dependency under REL-03/JAN-04: the shell setter and
