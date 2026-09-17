@@ -115,3 +115,7 @@ separate current host/site observations, protected-export repair, offline
 Ansible coverage and an optional local LangGraph demonstration. PLAN-INFRA and
 REL-02–06 retain ownership; JAN-01–04 and PG5 acceptance remain separate.
 No new top-level task, fleet inventory, production authority or v1 prerequisite.
+
+## Follow-up — 2026-09-17
+
+Automation foundation completed with pytest-xdist parallel execution, test tier markers, shared fixtures, and Makefile standardization. Static files (G-3) and service logging (G-4) resolved; browser timeouts (D-1) eliminated. Operator action pending for G-1 credential sync; G-2 systemd unit requires review. Research documentation added to inform Phases 2-4: Ansible best practices, agent workflows, and deployment strategies. See `docs/master-plan-automation-deployment-testing-2026-09-17.md`.

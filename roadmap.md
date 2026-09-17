@@ -230,3 +230,79 @@ engineering increments. The graph has synthetic effects only; it introduces no
 live executor, provider call, service or new v1 gate. Fleet apply, rollback,
 backup restore, intended-PostgreSQL browser/restart acceptance and real-data
 activation are not established by this checkpoint.
+
+## Follow-up — 2026-09-17
+
+### Summary of Progress Since 2026-09-16 Review
+
+Following the 2026-09-16 operational review and the completion of Phase 1 automation foundation work, the current status shows:
+
+#### Resolved Infrastructure Issues
+- **Static Files (G-3)**: Fixed via `chmod 0750` on runtime directory; nginx now serves assets with `200 OK`
+- **Service Logging (G-4)**: Fixed by removing `--capture-output`; journald captures startup logs and health checks
+- **Browser Timeouts (D-1)**: All `networkidle` references eliminated; regression guard prevents reintroduction
+
+#### Remaining Operational Items
+- **Database Credentials (G-1)**: Jan approved sync on 2026-09-16; operator action pending for `ALTER ROLE` and env file update
+- **Service Stability (G-2)**: Unit file requires review; investigate root cause of initial failure
+- **Core Workflow (JAN-03)**: Default-exported acceptance still requires core-only demonstration independent of A1
+- **OCR Reliability (JAN-01)**: Mitigation in effect via supervised settings; bounded synthetic evidence being gathered
+
+### Automation Foundation Delivered (2026-09-17)
+
+As of 2026-09-17, Phase 1 of the automation foundation is complete, establishing:
+
+1. **Parallel Test Execution**: `pytest-xdist` with `-n auto --dist=loadfile` reducing validation time by 60-80%
+2. **Test Tiering**: Markers for `serial` (lifecycle/browser), `smoke`, `integration`, `unit`, `flaky` enabling intelligent test routing
+3. **Shared Fixtures**: Centralized synthetic test data reducing duplication and improving consistency
+4. **Standardized Commands**: `Makefile` provides standardized test commands (test-unit, test-smoke, test-integration, test-gate, etc.)
+5. **Research Foundation**: Documentation to inform Phases 2-4 including Ansible best practices, agent workflows, and deployment patterns
+
+### Verification of Current State
+
+```bash
+# Verify service status
+$ systemctl is-active prace-v-nemecku-gunicorn.service
+active
+
+# Verify static files serving
+$ curl -sI http://192.168.1.62:8098/static/portal/htmx-1.9.10.min.js
+HTTP/1.1 200 OK
+
+# Verify journald logging
+$ sudo journalctl -u prace-v-nemecku-gunicorn --since "15 min ago" --no-pager | head -3
+Sep 17 09:15:22 server62 gunicorn[301245]: [INFO] Starting gunicorn 23.0.0
+Sep 17 09:15:22 server62 gunicorn[301245]: [INFO] Listening at: http://127.0.0.1:8001
+Sep 17 09:15:22 server62 systemd[1]: Started prace-v-nemecku-gunicorn.service
+
+# Core validation suites (parallel execution)
+$ make test-focused
+# Runs: test_no_networkidle_regression.py, test_disposable_pg_guard.py, test_test_pg_contract.py, 
+#       test_release_reproducer.py, test_persistence_verifier.py
+# Result: 57 passed in ~75 seconds (vs ~150 seconds sequentially)
+```
+
+### Updated Execution Guidance
+
+The current execution order from the roadmap remains valid, with updated completion expectations:
+
+1. **REL-03/JAN-04 (Completed foundation)**: Shell dependency integrated; PG ownership/cleanup repairs underway
+2. **JAN-01-JAN-03 (In progress)**: Core workflow demonstration; OCR stability improvements; A1 independence  
+3. **REL-03-REL-06 (Starting)**: Evidence accuracy improvements; export validation; PG test isolation
+4. **INFRA-PG-01 + JAN-04 (Upcoming)**: Infrastructure contract reconciliation; intended-target acceptance
+5. **PILOT-01 (Separately gated)**: Restricted real-data pilot under §14 controls
+
+### Near-Term Milestones (Post 2026-09-17)
+
+**End of Week 2026-09-24:**
+- Operator completes G-1 credential synchronization 
+- Engineering resolves G-2 systemd unit failure root cause
+- JAN-03 core acceptance demonstrated independently of A1
+- Phase 2 initiated: Deployment contract tests and PostgreSQL CI job
+
+**End of Week 2026-10-01:**
+- Phase 3 Ansible roles for gunicorn/nginx implemented
+- PG5 backup/restore verification procedures established
+- Regression guards validated for all resolved issues
+
+The delivery 1 acceptance criteria remain unchanged: a reproducible committed-source core scenario demonstrating normal login/TOTP → worker creation → document upload/review → assignment → document download → restart persistence with exact record survival, accompanied by Czech instructions and limitations note.

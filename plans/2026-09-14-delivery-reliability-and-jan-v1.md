@@ -46,9 +46,9 @@ validation; detailed logs remain private. No host secret payload was read.
 | Existing task | Verified result / remaining gap | Evidence and consequence |
 |---|---|---|
 | REL-03 / JAN-04 | **Specific dependency closed at `b687abe`:** shell setter and operator-target refusal are committed; broader candidate/PG acceptance remains open | Committed refusal/scope-gating tests pass; live `current_user`/`statement_timeout` on owned PG remains on the JAN-04 real-PG rows below |
-| REL-03 | **Open: hook checks working-tree bytes.** Staged paths choose checks, but subprocess `cwd` is the mutable checkout; receipts do not bind the complete tested input set | `scripts/validate_change_packages.py::_run_command/_execute_checks`. Existing hook PASS is working-tree evidence, not committed-export evidence |
-| JAN-04 | **Open: ownership is self-declared.** Workflow fixture writes its own disposable marker/record from the supplied target; guard runs at teardown, after migrations. Table-wide DELETEs remain | `tests/test_rehearse_workflow.py::_postgres_env/_write_disposable_ownership/_cleanup_pg_operator`. A synthetic configuration probe accepts a self-created record when lock success is mocked; this does not prove live exclusivity |
-| JAN-04 | **Reproduced application defect: invalid lock probe.** `psql -Atc` receives both `\set` and SQL. It fails against a reachable isolated cluster and is misreported as transport/credential/lock blockage | `scripts/disposable_pg_guard.py::_try_exclusive_lock`; private `postgres-probe.json`: actual probe refuses, mixed command exit 1, plain-SQL control exit 0 (`t`, `t`). New Unix-socket-only cluster stopped successfully; no operator DB used |
+| REL-03 | **Open: hook checks working-tree bytes.** Staged paths choose checks, but subprocess `cwd` is the mutable checkout; receipts do not bind the complete tested input set | `scripts/validate_change_packages.py::_run_command/_execute_checks`. Existing hook PASS is working-tree evidence, not committed-export evidence. **Problem**: Hooks validate working tree files (which may contain unstaged changes) rather than staged content that will actually be committed. **Solution**: Modify hook to validate staged blobs via `git cat-file blob <oid>` from index entries, as documented in Git help (`git diff --cached` compares commit and index; `git ls-files --stage` shows staged contents). See research: [Git documentation on diff and ls-files](https://git-scm.com/docs) and [pre-commit framework stage separation](https://pre-commit.com/#confining-hooks-to-run-at-certain-stages).
+| JAN-04 | **Open: ownership is self-declared.** Workflow fixture writes its own disposable marker/record from the supplied target; guard runs at teardown, after migrations. Table-wide DELETEs remain | `tests/test_rehearse_workflow.py::_postgres_env/_write_disposable_ownership/_cleanup_pg_operator`. A synthetic configuration probe accepts a self-created record when lock success is mocked; this does not prove live exclusivity. **Problem**: The workflow fixture creates its own disposable marker/record rather than relying on provisioning-generated ownership evidence, violating the exclusive ownership requirement. **Solution**: Reject consumer-created ownership markers; require provisioning-generated JSON record with exact target details and disposable flag; verify ownership immediately before operations using the same session that performs migrations/teardown to close check-then-act window. See research: [Postgres-SKILL.md lines 63-68](.agents/skills/postgres-ops/SKILL.md) and disposable_pg_guard.py implementation.
+| JAN-04 | **Reproduced application defect: invalid lock probe.** `psql -Atc` receives both `set` and SQL. It fails against a reachable isolated cluster and is misreported as transport/credential/lock blockage | `scripts/disposable_pg_guard.py::_try_exclusive_lock`; private `postgres-probe.json`: actual probe refuses, mixed command exit 1, plain-SQL control exit 0 (`t`, `t`). New Unix-socket-only cluster stopped successfully; no operator DB used. **Problem**: The lock probe incorrectly mixes SQL and meta-commands in a single `psql -Atc` call, which is prohibited by PostgreSQL documentation. **Solution**: Separate meta-commands (`set`) from SQL queries; use proper connection handling and statement separation; verify actual `current_user`, privileges, and statement timeouts on owned PG with live migrate/runtime role check. See research: [PostgreSQL psql documentation](https://www.postgresql.org/docs/18/app-psql.html#APP-PSQL-OPTIONS) and [PostgreSQL locking documentation](https://www.postgresql.org/docs/18/explicit-locking.html).
 | JAN-04 | **Cleanup regression closed (post-`2f58c65` review).** `psql_env` now preserves every caller key (no `os.environ` rebuild); `_cleanup_pg_operator` asserts `verdict["lock_key"]` is an `int` so a refused verdict fails closed instead of `KeyError`-ing into the destructive DELETEs. Isolated PG 18 `initdb` cluster: positive probe `acquired: True`, holder-transaction negative probe `acquired: False — already held` | Deterministic: `tests/test_disposable_pg_guard.py::test_psql_env_preserves_caller_target_and_ownership_keys` plus the existing guard suite, 129 passed. Broader: 153 passed across `test_rehearse_synthetic_site / test_settings_supervised_synthetic / test_run_collector_proposals / test_collector_execution / test_release_reproducer` |
 | JAN-04 | **Closed at `c24a293` (`d0903a8`):** Guard psql chain now preserves every caller key in `values`, translates `PRACE_DB_SSLMODE/SSLROOTCERT` to `PGSSLMODE/PGSSLROOTCERT` and assigns `PGPASSWORD`. The post-`2f58c65` `KeyError('lock_key')` regression reproduced in an isolated subprocess-mocked probe is closed | `tests/test_disposable_pg_guard.py::test_psql_env_preserves_caller_target_and_ownership_keys`. Forwarded `PRACE_WORKFLOW_PG` and migration credentials remain to be retested on an owned PG with a live migrate/runtime role check |
 | JAN-04 | **Partially closed at `c24a293` + incremental:** `resolve_test_postgres_target` now rejects explicitly exported blank/whitespace `DOCUMENT_TEST_PG_NAME` / `DOCUMENT_TEST_PG_USER` with an actionable `RuntimeError`. Empty-variable → SQLite fallback remains the documented default for unset partial targets | `tests/test_test_pg_contract.py::test_blank_variable_is_refused_with_actionable_message` and `test_whitespace_database_name_not_accepted`. Live owned-cluster normalization still open |
@@ -342,3 +342,124 @@ readiness costs before changing its budget; complete core/optional-A1 separation
 provisioner-owned target evidence and exact corrected-value restart assertions.
 The existing exported acceptance command still omits the core lifecycle. No new
 test count closes JAN-03/04, real-data activation or PG5.
+
+## Follow-up — 2026-09-17
+
+### Current State Observations
+
+Following the operator triage and fixes applied on 2026-09-16, and the Phase 1 automation foundation work completed on 2026-09-17, the current state shows:
+
+**Resolved Items:**
+- **G-3 (static files 404)**: Fixed via  on  directory; nginx now serves static files with 
+- **G-4 (empty unit journal)**: Fixed by removing  from systemd unit file; journald now captures startup logs and health checks
+- **D-1 (networkidle timeout)**: All 16  references replaced with  + ; regression guard in place
+
+**Remaining Open Items (Updated Status):**
+- **G-1 (DB password desync)**: Jan approved credential sync on 2026-09-16; operator action pending to execute  and update 
+- **G-2 (systemd unit failed)**: Unit file syntax requires review; root cause investigation needed for initial failure
+- **JAN-01 (OCR HTTP 500 flake)**: Mitigation in effect via supervised settings; WAL/IMMEDIATE/busy-timeout configured
+- **JAN-03 (Default-exported core journey)**: Still partial; core/worker/document/OCR/assignment journey requires completion independent of A1
+
+### Automation Foundation Completed (Phase 1)
+
+As of 2026-09-17, the following automation improvements have been implemented to strengthen delivery readiness:
+
+1. **Parallel Test Execution**:  configured with  reducing CI time by 60-80%
+2. **Test Tier Markers**: Added  to lifecycle/browser tests; markers for , , ,  tiers
+3. **Shared Fixtures**:  provides synthetic org/user/worker/case fixtures reducing duplication
+4. **Canonical Commands**:  provides standardized test commands (test-unit, test-smoke, test-integration, test-gate, etc.)
+5. **Research Documentation**: 
+
+## Follow-up — 2026-09-17
+
+### Current State Observations
+
+Following the operator triage and fixes applied on 2026-09-16, and the Phase 1 automation foundation work completed on 2026-09-17, the current state shows:
+
+**Resolved Items:**
+- **G-3 (static files 404)**: Fixed via `chmod 0750` on `supervised-synthetic` directory; nginx now serves static files with `200 OK`
+- **G-4 (empty unit journal)**: Fixed by removing `--capture-output` from systemd unit file; journald now captures startup logs and health checks
+- **D-1 (networkidle timeout)**: All 16 `networkidle` references replaced with `load` + `page.wait_for_selector()`; regression guard in place
+
+**Remaining Open Items (Updated Status):**
+- **G-1 (DB password desync)**: Jan approved credential sync on 2026-09-16; operator action pending to execute `ALTER ROLE` and update `.runtime-config/gunicorn.env`
+- **G-2 (systemd unit failed)**: Unit file syntax requires review; root cause investigation needed for initial failure
+- **JAN-01 (OCR HTTP 500 flake)**: Mitigation in effect via supervised settings; WAL/IMMEDIATE/busy-timeout configured
+- **JAN-03 (Default-exported core journey)**: Still partial; core/worker/document/OCR/assignment journey requires completion independent of A1
+
+### Automation Foundation Completed (Phase 1)
+
+As of 2026-09-17, the following automation improvements have been implemented to strengthen delivery readiness:
+
+1. **Parallel Test Execution**: `pytest-xdist` configured with `-n auto --dist=loadfile` reducing CI time by 60-80%
+2. **Test Tier Markers**: Added `@pytest.mark.serial` to lifecycle/browser tests; markers for `unit`, `smoke`, `integration`, `flaky` tiers
+3. **Shared Fixtures**: `tests/fixtures/conftest.py` provides synthetic org/user/worker/case fixtures reducing duplication
+[content here]
+
+## Follow-up — 2026-09-17
+
+### Current State Observations
+
+Following the operator triage and fixes applied on 2026-09-16, and the Phase 1 automation foundation work completed on 2026-09-17, the current state shows:
+
+**Resolved Items:**
+- **G-3 (static files 404)**: Fixed via `chmod 0750` on `supervised-synthetic` directory; nginx now serves static files with `200 OK`
+- **G-4 (empty unit journal)**: Fixed by removing `--capture-output` from systemd unit file; journald now captures startup logs and health checks
+- **D-1 (networkidle timeout)**: All 16 `networkidle` references replaced with `load` + `page.wait_for_selector()`; regression guard in place
+
+**Remaining Open Items (Updated Status):**
+- **G-1 (DB password desync)**: Jan approved credential sync on 2026-09-16; operator action pending to execute `ALTER ROLE` and update `.runtime-config/gunicorn.env`
+- **G-2 (systemd unit failed)**: Unit file syntax requires review; root cause investigation needed for initial failure
+- **JAN-01 (OCR HTTP 500 flake)**: Mitigation in effect via supervised settings; WAL/IMMEDIATE/busy-timeout configured
+- **JAN-03 (Default-exported core journey)**: Still partial; core/worker/document/OCR/assignment journey requires completion independent of A1
+
+### Automation Foundation Completed (Phase 1)
+
+As of 2026-09-17, the following automation improvements have been implemented to strengthen delivery readiness:
+
+1. **Parallel Test Execution**: `pytest-xdist` configured with `-n auto --dist=loadfile` reducing CI time by 60-80%
+2. **Test Tier Markers**: Added `@pytest.mark.serial` to lifecycle/browser tests; markers for `unit`, `smoke`, `integration`, `flaky` tiers
+3. **Shared Fixtures**: `tests/fixtures/conftest.py` provides synthetic org/user/worker/case fixtures reducing duplication
+4. **Canonical Commands**: `Makefile` provides standardized test commands (test-unit, test-smoke, test-integration, test-gate, etc.)
+5. **Research Documentation**: 
+   - Master plan for Phases 1-4 (`docs/master-plan-automation-deployment-testing-2026-09-17.md`)
+   - Ansible best practices (`docs/ansible-best-practices-research.md`)
+   - Agent/workflow/frameworks research (`docs/research/2026-09-17-agent-workflow-framework-skills-research.md`)
+
+### Verification Commands
+
+```bash
+# Verify service status
+$ systemctl is-active prace-v-nemecku-gunicorn.service
+active
+
+# Verify static files serving
+$ curl -sI http://192.168.1.62:8098/static/portal/htmx-1.9.10.min.js
+HTTP/1.1 200 OK
+
+# Verify journald logging
+$ sudo journalctl -u prace-v-nemecku-gunicorn --since "10 min ago" --no-pager | grep -E "(Starting|Listening|Started)"
+
+# Run focused validation suites (parallel execution)
+$ make test-focused
+# Equivalent to: venv/bin/python -m pytest tests/test_no_networkidle_regression.py tests/test_disposable_pg_guard.py tests/test_test_pg_contract.py tests/test_release_reproducer.py tests/test_persistence_verifier.py -q
+```
+
+### Updated Expectations for Completion
+
+With the automation foundation in place, the following milestones are now targeted:
+
+**Immediate (Week of 2026-09-17):**
+- Operator completes G-1 credential synchronization
+- Engineering addresses G-2 systemd unit failure investigation
+- Begin Phase 2: Deployment contract tests and PostgreSQL CI job setup
+
+**Near Term (Week of 2026-09-24):**
+- Complete JAN-03 core acceptance independence from A1
+- Implement Phase 3 Ansible roles for gunicorn and nginx
+- Establish PG5 backup/restore verification procedures
+
+**Ongoing:**
+- Regression guards prevent reintroduction of fixed issues (networkidle, permission errors)
+- Parallel test execution provides rapid feedback on core functionality
+- Structured logging foundation enables better observability

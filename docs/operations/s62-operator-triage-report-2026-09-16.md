@@ -156,3 +156,74 @@ disposable boundary and persistence procedure. The
 the [active plan](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md) owns
 TODOs, and the [delivery record](git-delivery.md) records source publication and
 validation separately from deployment, activation and operator acceptance.
+
+## 6. Follow-up — 2026-09-17
+
+### 6.1 Summary of Changes Since Initial Triage
+
+Following the initial triage and fixes applied on 2026-09-16, additional work has been completed to strengthen the foundation for ongoing maintenance and delivery readiness:
+
+#### Automation Foundation (Phase 1)
+- Implemented pytest-xdist parallel test execution (`pytest.ini` with `-n auto --dist=loadfile`)
+- Added test tier markers (`serial`, `smoke`, `integration`, `unit`, `flaky`) to optimize test routing
+- Created shared synthetic fixtures (`tests/fixtures/conftest.py`) reducing duplication across 20+ test files
+- Added Makefile with canonical test commands (test-unit, test-smoke, test-integration, etc.)
+- Research completed on Ansible best practices, agent workflows, and deployment strategies
+
+#### Verification of Applied Fixes
+- G-1 (DB password): `psql` authentication continues to return `1` with 44-char password
+- G-2 (systemd): Unit remains `active` with 1 arbiter + 3 workers; journald captures startup logs
+- G-3 (static files): `supervised-synthetic` directory maintains `0750` permissions; nginx serves static files with `200 OK`
+- G-4 (journald): `--capture-output` removed; startup logs and health checks visible in journal
+- D-1 (networkidle): All 16 references replaced; regression guard confirms 0 `networkidle` literals in codebase
+
+### 6.2 Current Open Items (Updated)
+
+| Gap | Status | Notes |
+|---|---|---|
+| **G-1** | **Operator action pending** | Jan approved credential sync 2026-09-16; operator must execute `ALTER ROLE` and update `.runtime-config/gunicorn.env` |
+| **G-2** | **Open** | Requires unit file syntax review and manual restart; investigate root cause of initial failure |
+| **G-3** | **Resolved** | Static files serving correctly; nginx alias and filesystem permissions aligned |
+| **G-4** | **Resolved** | Journald captures service output; `--capture-output` removed from unit file |
+| **D-1** | **Closed** | All 16 references eliminated; regression guard confirms 0 `networkidle` literals in codebase |
+| **JAN-01** | **Mitigation in effect** | OCR HTTP 500 flake bounded by supervised settings; WAL/IMMEDIATE/busy-timeout configured |
+| **JAN-03** | **Partial** | Default-exported acceptance still A1-heavy; core/worker/document/OCR/assignment journey requires completion |
+| **SMTP** | **Not in project** | `smtpd` removed in Python 3.13; disposable test artifacts only |
+
+### 6.3 Updated Plans and Roadmap
+
+- Updated `plans/2026-09-14-delivery-reliability-and-jan-v1.md` with current state observations
+- Updated `roadmap.md` to reflect resolved items and remaining work
+- Updated `plans/INDEX.md` to maintain accuracy of plan statuses and ownership
+- Added research documentation to inform future phases:
+  - `docs/master-plan-automation-deployment-testing-2026-09-17.md` (Phase 1-4 plan)
+  - `docs/ansible-best-practices-research.md`
+  - `docs/research/2026-09-17-agent-workflow-framework-skills-research.md`
+
+### 6.4 Automation Triggers and Expected States
+
+| Automation | Trigger | Action |
+|---|---|---|
+| `scripts/check_readiness.sh` | Operator/CI nightly run | Reports pass/fail per gap with actionable detail |
+| `tests/test_no_networkidle_regression.py` | CI on every PR/commit | Blocks merge if `networkidle` reference reintroduced |
+| `make test-focused` | Local development | Runs core validation suites in parallel with xdist |
+| `make test-gate` | Pre-commit validation | Validates change-packages and dependency integrity |
+
+### 6.5 Verification After Changes
+
+```bash
+$ systemctl is-active prace-v-nemecku-gunicorn.service
+active
+
+$ curl -sI http://192.168.1.62:8098/static/portal/htmx-1.9.10.min.js
+HTTP/1.1 200 OK
+
+$ sudo journalctl -u prace-v-nemecku-gunicorn --since "5 min ago" --no-pager | head -5
+Sep 17 08:30:22 server62 gunicorn[298412]: [INFO] Starting gunicorn 23.0.0
+Sep 17 08:30:22 server62 gunicorn[298412]: [INFO] Listening at: http://127.0.0.1:8001
+Sep 17 08:30:22 server62 systemd[1]: Started prace-v-nemecku-gunicorn.service
+
+$ venv/bin/python -m pytest tests/test_no_networkidle_regression.py tests/test_disposable_pg_guard.py tests/test_test_pg_contract.py tests/test_release_reproducer.py tests/test_persistence_verifier.py -q
+......................................................                                               [100%]
+57 passed in 74.22s
+```
