@@ -57,6 +57,12 @@ upstream and working-tree/staging changes. Reuse unchanged context during the ta
 - Ask only for missing authorization: deployment, new real-data portal activation,
   host changes, new remotes/CI, or other actions outside the authorized scope.
   Existing authorization persists; do not ask again for each edit or test.
+  An explicit instruction to deploy a reviewed fix also authorizes its required
+  release-manifest/pin update, controlled restart of the selected service and
+  availability checks within that deployment scope. Record the selected revision,
+  target, rollback and outcome in the active plan/delivery record; do not ask again
+  for those steps. This does not authorize unrelated host changes, credential
+  rotation, database migrations or new real-data activation.
 - No force-push, Git history rewrite, branch deletion, protected/default-branch merge,
   public release or new-remote publication without separate exact authorization.
 - Preserve inherited edits and staging. Never reset or stash another task's work.

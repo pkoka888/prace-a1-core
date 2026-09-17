@@ -4,6 +4,18 @@ Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No new runner/remote, history rewrite or real-data processing. Separately
 authorized host changes are recorded in their individual checkpoints.
 
+## Authorized readiness rollout — 2026-09-17
+
+The user approved deploying ebb1d70 with the AGENTS.md authorization clarification,
+release-manifest/pin selection, controlled restart and availability checks on the
+existing server62 service. Runtime source is unchanged from the tested ebb1d70;
+this increment changes authorization/documentation only. Deployment receipts and
+the actual before/after result are retained under
+`runtime/portal/temporary/readiness-deployment-20260917/` (review due December16).
+Publication, deployment and availability remain separate from authenticated core,
+exact-record persistence, infrastructure convergence and real-data acceptance.
+The active child plan records the bounded operation and rollback.
+
 ## Readiness latency investigation — 2026-09-17
 
 | Field | Evidence / state |

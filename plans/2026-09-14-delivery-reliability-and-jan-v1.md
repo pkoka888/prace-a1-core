@@ -476,3 +476,25 @@ storage write and preserves safe interrupted-phase/startup timing without
 relaxing readiness. Source validation/publication live in the delivery record.
 Approved source/build, actual runtime DB identity, managed ACL convergence and
 restart persistence remain open. No service restart, repin or deployment occurred.
+
+
+### Authorized readiness deployment — 2026-09-17
+
+The user explicitly approved the reviewed readiness fix ebb1d70, AGENTS.md update,
+deployment, controlled Gunicorn restart and availability verification with
+“souhlas se vsim, uprav agents.md a nasad opravu, over dostupnost”. The selected
+source is ebb1d70 plus this authorization/documentation-only increment, recorded
+by exact SHA in the delivery receipt. Target: existing server62
+`prace-v-nemecku-gunicorn.service`, working directory unchanged, existing protected
+EnvironmentFile and PostgreSQL target retained. Only the two release-manifest
+path/hash settings may change; credential payloads are neither printed nor copied
+into receipts. Generate the selected manifest through the canonical builder.
+
+Stop the selected unit before switching the source, to avoid mixing the old
+parent and new readiness-worker protocol; then start and verify ownership, build,
+readiness, anonymous login/protected-page redirects and assets on both routes.
+Rollback preserves the original manifest/pin and tracked source checkpoint;
+restore them only if the approved candidate cannot serve. Unrelated working-tree
+files remain untouched. Source/check results, runtime outcome and remaining
+limitations belong to the single delivery record. This is availability acceptance,
+not an authenticated core journey, exact-record persistence or real-data activation.
