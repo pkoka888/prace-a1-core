@@ -55,7 +55,17 @@ and `settings_browser_tests` use disposable fixtures and are never service subst
 
 Supervised checks run in a fresh subprocess with an overall deadline, not a web
 thread or a fork of an initialized OCR process. Timeout kills the process group;
-cleanup waits at most200ms beyond the budget. One active probe per web process;
+cleanup waits at most200ms beyond the budget. The child emits flushed progress
+records before initialization and each check. Timeout responses retain only an
+allowlisted `phase` and `worker_elapsed_ms` (time when that phase started), never
+raw subprocess output. A normal response includes `startup_ms` for Django setup;
+per-check timings exclude setup. The last phase identifies interrupted work, not
+its underlying cause. Document storage is probed only by `storage_writable`;
+`runtime_paths` covers the other directories. Every required directory still
+receives an exclusive write/fsync/unlink probe on each request. Independent
+`runtime_paths` probes run concurrently in at most six child-process threads,
+allowing filesystem journal commits to overlap; cancellation still kills the
+entire disposable process. One active probe per web process;
 concurrent probes defer with probe_busy. Kernel/storage failures still require
 operational handling; this is not a hard real-time guarantee. PostgreSQL connects
 with a1-second timeout and500ms statement limit; transaction-local set_config

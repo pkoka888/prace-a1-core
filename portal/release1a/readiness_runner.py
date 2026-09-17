@@ -8,6 +8,29 @@ import time
 import threading
 
 _PROBE_SLOT = threading.BoundedSemaphore(1)
+_PHASES = frozenset((
+    'initialization', 'apps_loaded', 'csrf_confined', 'runtime_paths',
+    'storage_writable', 'release_manifest', 'model_assets', 'db_connect',
+    'db_reachable', 'migrations_current',
+))
+
+
+def deadline_result(output=b''):
+    """Keep only allowlisted phase/timing data from complete progress lines."""
+    result = {'status': 'not_ready', 'reason': 'deadline_exceeded'}
+    if not isinstance(output, bytes) or len(output) > 16384:
+        return result
+    for line in output.split(b'\n')[:-1]:
+        try:
+            event = json.loads(line)
+        except (ValueError, UnicodeError):
+            continue
+        if not isinstance(event, dict) or event.get('event') != 'progress':
+            continue
+        phase, elapsed = event.get('phase'), event.get('elapsed_ms')
+        if isinstance(phase, str) and phase in _PHASES and type(elapsed) is int and elapsed >= 0:
+            result.update(phase=phase, worker_elapsed_ms=elapsed)
+    return result
 
 
 def run_process(command, budget_ms, *, env=None):
@@ -19,15 +42,15 @@ def run_process(command, budget_ms, *, env=None):
         remaining = budget_ms / 1000 - (time.monotonic() - started)
         output, _ = process.communicate(timeout=max(0, remaining))
         if time.monotonic() - started > budget_ms / 1000:
-            return {'status': 'not_ready', 'reason': 'deadline_exceeded'}
+            return deadline_result(output)
         if process.returncode or len(output) > 16384:
             return {'status': 'not_ready', 'reason': 'probe_failed'}
-        result = json.loads(output)
+        result = json.loads(output.splitlines()[-1] if output.strip() else b'')
         if not isinstance(result, dict) or result.get('status') not in ('ready', 'not_ready'):
             raise ValueError()
         return result
-    except subprocess.TimeoutExpired:
-        return {'status': 'not_ready', 'reason': 'deadline_exceeded'}
+    except subprocess.TimeoutExpired as exc:
+        return deadline_result(exc.output)
     except (OSError, ValueError):
         return {'status': 'not_ready', 'reason': 'probe_failed'}
     finally:
@@ -58,13 +81,18 @@ def supervised_probe(budget_ms):
         _PROBE_SLOT.release()
 
 
-def collect_checks():
+def collect_checks(progress=None):
     from django.conf import settings
     from django.db import connection, transaction
     from . import readiness_checks as rc
     started = time.monotonic()
     checks = []
+    def report(name):
+        if progress is not None:
+            progress(name)
+
     def check(name, fn):
+        report(name)
         tick = time.monotonic()
         try:
             status, detail = fn()
@@ -76,9 +104,10 @@ def collect_checks():
     check('apps_loaded', rc.check_app_loaded)
     check('csrf_confined', lambda: rc.check_csrf_confined(getattr(settings,'CSRF_TRUSTED_ORIGINS',[])))
     paths = {name.lower(): getattr(settings, name, None) for name in
-             ('DOCUMENT_STORAGE_ROOT','MEDIA_ROOT','STATIC_ROOT')}
+             ('MEDIA_ROOT','STATIC_ROOT')}
     paths.update({name.lower(): getattr(settings, name) for name in
                   ('CACHE_DIR','TMP_DIR','LOG_DIR') if hasattr(settings, name)})
+    # Document storage has its own check below: do not fsync it twice.
     check('runtime_paths', lambda: rc.check_runtime_paths(paths))
     check('storage_writable', lambda: rc.check_storage_writable(getattr(settings,'DOCUMENT_STORAGE_ROOT',None)))
     check('release_manifest', rc.check_release_manifest_live)
@@ -92,6 +121,7 @@ def collect_checks():
         # bound the BEGIN/connect preceding set_config on supervised PostgreSQL.
         if connection.vendor == 'postgresql':
             runtime_timeout = getattr(settings, 'PRACE_RUNTIME_STATEMENT_TIMEOUT_MS', 500)
+            report('db_connect')
             with transaction.atomic():
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT set_config('statement_timeout', %s, true)", [f'{runtime_timeout}ms'])

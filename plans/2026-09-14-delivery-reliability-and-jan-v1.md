@@ -463,3 +463,16 @@ With the automation foundation in place, the following milestones are now target
 - Regression guards prevent reintroduction of fixed issues (networkidle, permission errors)
 - Parallel test execution provides rapid feedback on core functionality
 - Structured logging foundation enables better observability
+
+
+## Readiness diagnosis follow-up — 2026-09-17
+
+REL-03 / INFRA-PG-01: initial live observations passed, but the next correct-Host
+series returned eleven503/one200: readiness is intermittent, with no recovery claim. Directory
+write/fsync latency varies substantially; live samples identify fsync journal
+waits as a major contributor. Independent directory probes now run concurrently
+in the bounded child, retaining per-directory durability checks. Candidate code removes the duplicate
+storage write and preserves safe interrupted-phase/startup timing without
+relaxing readiness. Source validation/publication live in the delivery record.
+Approved source/build, actual runtime DB identity, managed ACL convergence and
+restart persistence remain open. No service restart, repin or deployment occurred.

@@ -232,3 +232,17 @@ class TestAppLoaded:
         status, detail = rc.check_app_loaded()
         assert status == "ok"
         assert "_apps" in detail
+
+def test_directory_probes_overlap_and_keep_all_failures(tmp_path, monkeypatch):
+    import threading
+    rendezvous = threading.Barrier(3)
+    paths = {name: tmp_path / name for name in ('cache', 'logs', 'tmp')}
+    for path in paths.values():
+        path.mkdir()
+
+    def probe(path):
+        rendezvous.wait(timeout=3)
+        return path.name == 'cache'
+
+    monkeypatch.setattr(rc, '_probe_writable', probe)
+    assert rc.check_runtime_paths(paths) == ('fail', 'unwritable:logs,tmp')

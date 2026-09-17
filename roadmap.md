@@ -29,7 +29,11 @@ journal. PostgreSQL 18 main is online. After explicit user authorization, nine
 static ACL changes, group removal and a controlled nginx worker transition
 closed the observed credential-read and five account/MFA asset failures: all
 seven assets now pass on both routes, and the new workers lack the secret-reading
-group. Readiness still returns 503 `deadline_exceeded`; approved source/build,
+group. Historical readiness returned 503 `deadline_exceeded`; September17 follow-up
+samples alternate between success and timeout with variable directory-write latency. A candidate removes a
+duplicate storage probe, overlaps independent directory fsyncs and retains safe
+timeout-phase evidence; no deployed
+fix or historical cause is established. Approved source/build,
 core/restart acceptance and infrastructure desired-state reconciliation remain
 open under the [updated request](docs/operations/servers-infra-core-postgresql-request.md).
 Application repairs narrow 0750 sharing and remove unsafe global test parallelism;

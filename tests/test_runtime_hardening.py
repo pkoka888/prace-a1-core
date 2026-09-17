@@ -105,3 +105,72 @@ def test_probe_concurrency_slot_defers_without_spawning():
         with patch.object(runner,'run_process') as execute:
             assert runner.supervised_probe(2000)['reason']=='probe_busy'
             execute.assert_not_called()
+
+
+def test_deadline_retains_only_safe_phase_from_running_child():
+    code = """
+import json, time
+print(json.dumps({'event': 'progress', 'phase': 'model_assets',
+                  'elapsed_ms': 12, 'secret': 'private-token-path'}), flush=True)
+time.sleep(30)
+"""
+    started = time.monotonic()
+    result = run_process([sys.executable, '-c', code], 300)
+    assert result == {'status': 'not_ready', 'reason': 'deadline_exceeded',
+                      'phase': 'model_assets', 'worker_elapsed_ms': 12}
+    assert time.monotonic() - started < 1
+
+
+def test_deadline_ignores_unknown_or_incomplete_progress():
+    from portal.release1a.readiness_runner import deadline_result
+    unsafe = (b'{"event":"progress","phase":"private-token-path","elapsed_ms":1}\n'
+              b'{"event":"progress","phase":[],"elapsed_ms":1}\n'
+              b'{"event":"progress","phase":"db_connect","elapsed_ms":true}\n'
+              b'{"event":"progress","phase":"db_connect","elapsed_ms":2}')
+    assert deadline_result(unsafe) == {'status': 'not_ready', 'reason': 'deadline_exceeded'}
+
+
+def test_progress_does_not_replace_final_result():
+    code = """
+import json
+print(json.dumps({'event': 'progress', 'phase': 'initialization', 'elapsed_ms': 0}))
+print(json.dumps({'status': 'not_ready', 'reason': 'check_failed'}))
+"""
+    assert run_process([sys.executable, '-c', code], 1000) == {
+        'status': 'not_ready', 'reason': 'check_failed'}
+    assert run_process([sys.executable, '-c',
+                        'print(\'{"event":"progress","phase":"initialization","elapsed_ms":0}\')'],
+                       1000) == {'status': 'not_ready', 'reason': 'probe_failed'}
+
+
+@pytest.mark.parametrize('storage_failure', [False, True])
+def test_collect_checks_probes_storage_once_and_preserves_failure(tmp_path, storage_failure):
+    import django
+    django.setup()
+    from unittest.mock import MagicMock
+    from portal.release1a import readiness_runner as runner, readiness_checks as rc
+    paths = {name: tmp_path / name for name in (
+        'DOCUMENT_STORAGE_ROOT', 'MEDIA_ROOT', 'STATIC_ROOT', 'CACHE_DIR', 'TMP_DIR', 'LOG_DIR')}
+    for path in paths.values():
+        path.mkdir()
+    calls = []
+    phases = []
+
+    def probe(path):
+        calls.append(path)
+        if storage_failure and path == paths['DOCUMENT_STORAGE_ROOT']:
+            raise OSError('synthetic storage failure')
+
+    connection = MagicMock(vendor='sqlite')
+    with override_settings(PRACE_SUPERVISED=False, **paths), \
+            patch('django.db.connection', connection), \
+            patch('portal.release1a.runtime_safety.exclusive_probe', side_effect=probe), \
+            patch.object(rc, 'check_db_reachable', return_value=('ok', '')), \
+            patch.object(rc, 'check_migrations_current', return_value=('ok', '')), \
+            patch.object(rc, 'check_release_manifest_live', return_value=('ok', '')):
+        result = runner.collect_checks(progress=phases.append)
+    assert sorted(calls) == sorted(paths.values())
+    assert result['status'] == ('not_ready' if storage_failure else 'ready')
+    storage = next(check for check in result['checks'] if check['name'] == 'storage_writable')
+    assert storage['status'] == ('fail' if storage_failure else 'ok')
+    assert phases == [check['name'] for check in result['checks']]

@@ -475,6 +475,9 @@ def test_staged_readme_documentation_paths_allowed(root):
 @pytest.mark.parametrize("path,allowed", [
     ("portal/release1a/runtime_safety.py", True),
     ("tests/test_runtime_safety.py", True),
+    ("tests/test_runtime_hardening.py", True),
+    ("tests/runtime/test_runtime_hardening.py", False),
+    ("tests/test_runtime_hardening.py/credentials.txt", False),
     ("portal/release1a/runtime/secrets.txt", False),
     ("tests/runtime/test_runtime_safety.py", False),
     ("tests/test_runtime_safety.py/credentials.txt", False),

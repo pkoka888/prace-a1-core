@@ -6,6 +6,7 @@ interrupt blocking calls themselves.
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import re
 from pathlib import Path
@@ -90,6 +91,7 @@ def check_runtime_paths(paths: dict) -> tuple[str, str]:
     """
     missing: list[str] = []
     unwritable: list[str] = []
+    candidates = []
     for name, raw in paths.items():
         if raw is None:
             missing.append(name)
@@ -102,8 +104,14 @@ def check_runtime_paths(paths: dict) -> tuple[str, str]:
         if not p.exists():
             missing.append(name)
             continue
-        if not _probe_writable(p):
-            unwritable.append(name)
+        candidates.append((name, p))
+    # These exclusive probes are independent. Concurrent fsyncs can share one
+    # journal commit instead of serially consuming the readiness deadline.
+    # The disposable worker still bounds the entire operation, including threads.
+    if candidates:
+        with ThreadPoolExecutor(max_workers=min(6, len(candidates))) as pool:
+            results = pool.map(_probe_writable, (path for _, path in candidates))
+            unwritable.extend(name for (name, _), ok in zip(candidates, results) if not ok)
     if missing:
         return ("fail", "missing:" + ",".join(sorted(missing)))
     if unwritable:

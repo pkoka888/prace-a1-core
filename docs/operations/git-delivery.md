@@ -4,6 +4,27 @@ Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No new runner/remote, history rewrite or real-data processing. Separately
 authorized host changes are recorded in their individual checkpoints.
 
+## Readiness latency investigation — 2026-09-17
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Run independent directory probes concurrently (at most six threads in the killable child) and remove the duplicate document-storage fsync probe; retain all required directory writes/fsyncs, the 2-second budget and process-group cancellation. Worker progress preserves an allowlisted interrupted phase on timeout; successful probe output includes Django startup timing |
+| Validation | Focused hook and HTTP integration results, exact source and publication outcome are recorded in `runtime/portal/temporary/readiness-diagnosis-20260917/`. Tests cover real child timeout/cancellation, sanitization, progress-only failure and storage failure after removing the duplicate check |
+| Publication | Candidate prepared in the isolated `checkout` under that receipt directory from 6ad6540; final object and remote verification recorded separately |
+| Deployment / activation | None. Selected service remains active and declares g00786f74fb53/PostgreSQL. Live readiness is intermittent: a later correct-Host series returned eleven503/one200; this does not prove loaded-source or actual database role/target identity |
+| Limitations | Three timed-out live requests showed fsync (x86_64 syscall74), mostly jbd2_log_wait_commit, for about1.1s of sampled time; host I/O pressure was high. This identifies journal waiting as a contributor, not its underlying device/workload cause. Initial eight loopback samples took 1195–1819ms; runtime directory probes took 305–933ms and repeated storage writes 40–187ms. Earlier attempts at loopback8098 and an IP request without the intended Host were invalid route probes. Correct-Host samples are retained separately. No approved-build selection, infrastructure convergence, restart/persistence or Jan acceptance |
+| Next owner | Infrastructure deploys an explicitly selected candidate and reconciles managed ACLs; use phase evidence if timeouts recur. Application and infrastructure verify intended DB identity and exact-record restart persistence before claiming Delivery1 acceptance |
+
+The first hook passed154 runtime checks, then rejected the existing
+`tests/test_runtime_hardening.py` filename under the runtime token rule. Its exact
+reviewed path is now registered with adjacent private-path negative tests. The
+original failure receipt remains `change-checks-x4iw37yp` in the candidate runtime.
+
+Runnable synthetic demonstration: from the candidate checkout, run
+`env DJANGO_SETTINGS_MODULE=portal.settings_document_tests venv/bin/python -m pytest tests/test_runtime_hardening.py -q`.
+No operator credentials or service restart are needed. This exercises a real
+blocked subprocess and returns a sanitized timeout phase; it is not site acceptance.
+
 ## Runtime isolation and automation correction — 2026-09-17
 
 | Field | Evidence / state |
