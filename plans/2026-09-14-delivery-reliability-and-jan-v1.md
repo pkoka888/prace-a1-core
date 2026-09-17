@@ -301,18 +301,23 @@ Fresh unit/socket/cgroup evidence supersedes the earlier failed-unit observation
 the selected service is active and owns the8001 listener. Two tagged health
 requests reached its journal. PostgreSQL18 main is online; an inactive umbrella
 unit does not establish a stopped cluster. Both selected routes serve the expected
-htmx/Tailwind MIME/library signatures; five account/MFA scripts return403 through
-nginx. Readiness remains503 `deadline_exceeded`;
+htmx/Tailwind MIME/library signatures; five account/MFA scripts initially returned
+403 through nginx and passed after the authorized repair below. Readiness remains
+503 `deadline_exceeded`;
 health declares `g00786f74fb53`, which is not an independently approved release.
 These findings do not prove actual loaded source bytes or runtime DB identity.
 
-P1 INFRA-PG-01 now includes a confirmed permission defect: `www-data` can read
-the service EnvironmentFile. The boolean-only probe did not read its contents.
-Infrastructure must isolate static access from secret-reading membership,
-refresh effective nginx worker credentials and verify denied credential/document
-access together with working assets. The [updated request](../docs/operations/servers-infra-core-postgresql-request.md)
-contains the concrete host work order; no host change is performed by this source
-increment.
+P1 INFRA-PG-01 identified a confirmed permission defect: `www-data` could read
+the service EnvironmentFile. After the user approved the exact scope, the primary
+applied nine static ACL changes, removed supplementary group membership and
+reloaded nginx. All four old workers retired; all four new workers have only
+groups 4 and 33. Boolean configuration read/traversal probes now deny access,
+the protected URL returns HEAD 403, and all seven assets return matching bytes
+and valid MIME on both routes. Gunicorn identity/start time stayed unchanged.
+No credential payload or operator database was accessed. The [updated request](../docs/operations/servers-infra-core-postgresql-request.md)
+retains before/after evidence and the exact authorization. Infrastructure still
+owns desired-state reconciliation and any historical-exposure response; this
+repair does not establish broader document access or release acceptance.
 
 REL-03/04 source repairs remove the new global xdist/plugin timeout defaults and
 false Make acceptance claims. PostgreSQL contract tests and actual owned-target
@@ -323,9 +328,16 @@ selects that browser integration; it does not certify deployment or restart.
 Runtime0750 support is restricted to traversal/static
 with the effective primary group; sensitive children/inbox keep0700. Targeted
 negative tests cover these boundaries. Final-source validation and any bounded
-PostgreSQL/browser evidence belong to the delivery receipt.
+PostgreSQL/browser evidence belong to the delivery receipt. The committed a57e069
+export passed the real Chromium login/TOTP, desktop/mobile, document upload/OCR,
+review/field confirmation, original-byte download, tenant denial and logout
+journey on a freshly owned PostgreSQL cluster. All lifecycle phases passed;
+the stopped successful DB was removed. This does not cover assignment creation,
+restart persistence, intended runtime-role privileges or Jan acceptance. An earlier
+e55f132 run failed at readiness before login and remains retained; the later pass
+does not establish its cause. Readiness budgets and assertions were not relaxed.
 
-Next: resolve host secret exposure; select the intended source/build and profile
+Next: reconcile the host access correction into desired state; select the intended source/build and profile
 readiness costs before changing its budget; complete core/optional-A1 separation,
 provisioner-owned target evidence and exact corrected-value restart assertions.
 The existing exported acceptance command still omits the core lifecycle. No new

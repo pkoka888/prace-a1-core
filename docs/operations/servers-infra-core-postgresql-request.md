@@ -1,7 +1,7 @@
 # servers-infra-core PostgreSQL request — supervised synthetic Jan portal
 
 **Version:** 1.0
-**Status:** request — awaiting infrastructure response
+**Status:** PostgreSQL request awaiting infrastructure response; scoped s62 static/access repair applied and verified 2026-09-17
 **Owner:** application team (forwarding to servers-infra-core)
 **Forwarding instruction:** Do not send automatically. Deliver this document to the infrastructure team through the agreed channel; the application team does not provision host services.
 
@@ -104,27 +104,30 @@ verification:
 
 ## nginx/static isolation follow-up — 2026-09-17
 
-This is a concrete infrastructure work request, not an executed or approved host
-change. The existing contract version 1.0 and owner remain authoritative. Return
-the selected implementation and the evidence below with that contract; do not
-send secrets or infer authorization from an agent's operator label. Reuse exact
-applicable authorization already granted; otherwise present the completed change
-packet to the infrastructure operator before applying it.
+The user explicitly approved this exact s62 change packet with “Schválit tento
+zásah na server62”: nine specified ACL changes, removal of `www-data`
+supplementary `prace-synthetic` membership and a controlled native nginx worker
+transition. The primary applied it and verified the scoped result below. The
+existing PostgreSQL contract version 1.0 and owner remain authoritative; the
+broader infrastructure response is still outstanding. This record preserves the
+work order, authorization, before/after evidence and rollback; it does not grant
+additional host-change scope or permission to repeat the change against later
+state. Do not send secrets or infer authorization from an agent's operator label.
 
-### Measured problem and required outcome
+### Measured problem before repair and required outcome
 
-The primary's `runtime-followup-4952a52f6c91` receipts show that the `www-data`
-account can read
+The primary's pre-change `runtime-followup-4952a52f6c91` receipts showed that the `www-data`
+account could read
 `/var/www/prace-v-nemecku.tvoje.info/.runtime-config/gunicorn.env`: the boolean
 `sudo -n -u www-data test -r` probe returned 0 without opening the payload.
-The account has supplementary `prace-synthetic` GID 981 membership; the containing
-directory is 0750 and file 0640, both `root:prace-synthetic`. The two htmx/Tailwind
-static MIME/library checks pass through both loopback 8001 and internal nginx
-8098; five account/MFA JavaScript assets return nginx HTTP 403. Preserve the two
-working assets and restore the five failed assets while removing the nginx worker
-account's secret-reading access.
+The account had supplementary `prace-synthetic` GID 981 membership; the containing
+directory was 0750 and file 0640, both `root:prace-synthetic`. The two htmx/Tailwind
+static MIME/library checks passed through both loopback 8001 and internal nginx
+8098; five account/MFA JavaScript assets returned nginx HTTP 403. The required
+correction preserved the two working assets and restored the five failed assets
+while removing the nginx worker account's secret-reading access.
 Running nginx workers 205419, 205420, 205421 and 205422 were also observed with
-groups 4, 33 and 981; account changes alone will not remove their inherited access.
+groups 4, 33 and 981; account changes alone could not remove their inherited access.
 See the [corrected triage](s62-operator-triage-report-2026-09-16.md).
 
 Required result: for this application's delivery, grant nginx workers traversal
@@ -134,40 +137,44 @@ Workers must not traverse the configuration namespace. Systemd keeps
 its service configuration access; the application keeps its private data and
 service ownership. This work order does not claim confinement against host root.
 
-### Reviewable change packet
+### Approved change packet and retained procedure
 
-The preferred minimal correction preserves the currently served static bytes
-and nginx alias. Add narrowly scoped POSIX named-user ACLs for UID 33, remove
-`www-data` from `prace-synthetic`, and transition the actual nginx workers. This
-permission-only repair does not need a new approved application build or asset
-move. Record the current declared build as an observation; do not repin it.
+The applied minimal correction preserved the served static bytes and nginx alias.
+It added narrowly scoped POSIX named-user ACLs for UID 33, removed `www-data` from
+`prace-synthetic`, and transitioned the actual nginx workers. This permission-only
+repair required no new application build or asset move. The declared build remains
+an observation; it was not repinned or approved by this change.
 
-Infrastructure fills in: operational source revision; applying owner and exact
-authorization reference; current alias and static-only path manifest; original
-ownership/mode/ACL metadata; affected worker/service scope; worker start identities
-and drain deadline; secure rollback; and verification commands/native results.
-Preserve current static bytes and capture only their nonsecret identities plus
-permission metadata. Do not read or copy configuration or private document data.
+The primary's `host-apply-preflight.json`, `host-apply.json` and
+`host-apply-verification.json` in the private receipt directory bind the concrete
+preflight, applied commands and native verification results to this repair.
+Infrastructure must still reconcile its operational source revision and desired
+state so subsequent deployments preserve this boundary. The retained procedure
+requires exact applicable authorization, alias/path manifest, original permission
+metadata, affected worker scope, PID/start identities, drain deadline and secure
+rollback. Capture only static nonsecret identities and permission metadata;
+do not read or copy configuration or private document data.
 
 The primary verified `/usr/bin/getfacl`, `/usr/bin/setfacl` and `/usr/bin/gpasswd`
-are installed. Seven explicit paths (configuration directory/file, runtime root,
-static, static/portal and both shipped assets) have only owner/group/other ACL
-entries, with no named or default entries. Runtime root/static/static/portal are
-UID 992/GID 981 mode 0750; both assets are UID 992/GID 981 mode 0640. The primary's
+were installed. Seven explicit paths (configuration directory/file, runtime root,
+static, static/portal and both shipped assets) had only owner/group/other ACL
+entries, with no named or default entries. Runtime root/static/static/portal were
+UID 992/GID 981 mode 0750; both assets were UID 992/GID 981 mode 0640. The primary's
 same-filesystem synthetic ACL test exited 0, accepted a named UID 33 entry and
 removed its fixture. A bounded traversal check with proposed UID 33/groups 4,33
 confirmed access through `/var`, `/var/www`, the repository root, `runtime` and
 `runtime/portal`, while `.runtime-config` remained denied. These measured
-preflight checks passed; recheck the relevant metadata and proposed identity
-immediately before apply, since observations do not freeze host state.
+preflight checks passed, with the fresh apply preflight recorded separately.
+Any future use requires fresh relevant metadata and identity checks because these
+observations do not freeze host state.
 
 The complete static-only metadata inventory has 13 entries and no symlinks or
 unsafe entries, recorded in the private receipt
 `runtime/portal/temporary/runtime-followup-4952a52f6c91/static-permission-manifest.json`.
 Four additional directories, `static/account`, `static/account/js`, `static/mfa`
-and `static/mfa/js`, are mode 0700 and need named-user read/traversal ACLs.
-Their five JavaScript files are mode 0644 and already have file-level read access;
-they need parent traversal, not file ACL changes. nginx GETs returned HTTP 403
+and `static/mfa/js`, were mode 0700 and required named-user read/traversal ACLs.
+Their five JavaScript files were mode 0644 and already had file-level read access;
+they required parent traversal, not file ACL changes. nginx GETs returned HTTP 403
 with `text/html` for `account/js/onload.js`, `account/js/account.js`,
 `mfa/js/recovery_codes.js`, `mfa/js/webauthn-json.js` and `mfa/js/webauthn.js`.
 The private `account-static-route-checks.json` receipt records these failures;
@@ -184,8 +191,9 @@ to reflect the ACL mask without granting the owning group access. The other mask
 match the observed group permissions. Any different current metadata requires
 reconciliation before applying this packet.
 
-These are the reviewable ACL operations for the nine exact delivery paths,
-not commands executed or newly authorized by this document:
+These are the nine exact ACL operations and group removal approved by the user
+and executed by the primary; every command returned 0. This retained command
+record is not an instruction to rerun them:
 
 ```bash
 /usr/bin/setfacl -m 'u:33:--x,m::r-x' /var/www/prace-v-nemecku.tvoje.info/runtime/portal/supervised-synthetic
@@ -200,13 +208,13 @@ not commands executed or newly authorized by this document:
 /usr/bin/gpasswd -d www-data prace-synthetic
 ```
 
-Apply through the canonical infrastructure workflow after checking other consumers
-of this shared Unix account. Reconcile desired state so a later deployment does
-not re-add the membership or erase the narrow ACLs. Coordinate nginx syntax
-validation and the reviewed worker transition: account changes leave existing
-process groups unchanged, and reload alone does not prove old workers exited.
-Account for every old worker by PID/start identity within the selected deadline;
-do not kill historical PIDs or restart Gunicorn for this access repair.
+The primary also ran `systemctl reload nginx`, returning 0, with `nginx -t`
+returning 0 before and after. Other observed `www-data` consumers (PHP-FPM)
+already had groups 4,33 and remained unchanged. All four old nginx workers were
+verified retired by PID/start identity; a successful reload alone would not have
+proved that. No historical PID was killed and Gunicorn was not restarted for
+this repair. Reconcile the canonical infrastructure desired state so a later
+deployment does not re-add the membership or erase the narrow ACLs.
 
 If ACLs are unsupported or this bounded path cannot preserve static delivery,
 prepare a separately reviewed immutable static-only publication outside private
@@ -215,7 +223,7 @@ selection, static manifest, nginx alias and rollback before apply; it is not a
 prerequisite for the minimal existing-byte ACL correction. Never copy the whole
 runtime or checkout to publish assets, and do not describe `collectstatic` as read-only.
 
-### Exact refusal and preservation probes
+### Retained refusal and preservation probes
 
 Run these non-payload probes before and after the authorized change, recording
 each native result separately. First prove that the identity switch works:
@@ -264,7 +272,30 @@ repinning is included in this static isolation operation. The measured readiness
 HTTP 503/deadline result, error-body capture limitation and approved-build
 reconciliation remain separate reported outcomes.
 
-### Rollback and closure
+### Verified scoped closure
+
+The primary recorded these outcomes in `host-apply-verification.json` after the
+authorized apply. They close the measured s62 static/access defects in this
+receipt window, not the full PostgreSQL request or whole-host/fleet acceptance.
+
+| Required result | Observed result |
+|---|---|
+| Actual nginx workers lose secret-group access | Original workers 205419–205422 retired with PID/start identity verified. New workers 512081–512084 are UID/GID 33 with groups 4,33 only. Main nginx PID 205418 remains unchanged |
+| Account-level configuration refusal | Identity switch succeeded as UID 33, groups 33,4. EnvironmentFile `test -r` and configuration-directory `test -x` returned 1 with empty stderr; HEAD on the protected URL returned HTTP 403 |
+| All seven assets remain byte-identical and available | All seven assets returned HTTP 200, correct MIME and exact pre-change SHA/byte identities on both 8001 and 8098: 14/14 passed; the five former account/MFA HTTP 403 failures are resolved |
+| Selected application remains in place | Gunicorn PID 269606, start identity and cgroup are unchanged. Health remains HTTP 200 with declared commit `00786f74fb5321900f9f293f989447e5d7bd8016`; build approval is still separate |
+| Other consumers remain unchanged | Observed PHP-FPM processes already carried groups 4,33 and remained unchanged; no other workers were changed |
+| Readiness outcome remains explicit | Both routes still return HTTP 503, `deadline_exceeded`, at 2204/2206 ms with the reported 2000 ms budget |
+
+This repair did not read or change the configuration payload, restart the
+application, run a live database command or activate real data. The exact ACL
+commands, static bytes and alias were preserved as the bounded scope; no new
+application build was deployed. Infrastructure desired-state reconciliation is
+still required to prevent group/ACL regression. The separate owner decision on
+possible prior credential exposure and any rotation also remains outstanding;
+current denial cannot prove that no earlier access occurred.
+
+### Retained rollback and outstanding work
 
 If ACL application, asset delivery or worker transition fails, stop the sequence
 and reconcile the recorded partial effects. Restore only the selected permission
@@ -278,10 +309,8 @@ unavailable/maintenance response while repairing delivery. The separately review
 publication alternative has its own static-only rollback. Preserve application
 data and secret custody; this rollback authorizes no credential rollback/rotation.
 
-Closure requires the before/after refusal results, actual worker group/retirement
-evidence, passing static assertions for all seven assets, unchanged intended app ownership/target and
-the exact applied source/authorization references. Record a separate owner decision
-on possible past exposure and any credential rotation; the boolean audit neither
-read the payload nor proved that earlier access never occurred. Return outstanding
-PG identity, approved-build/readiness, core journey, restart, restore and Jan
-acceptance gaps independently. None is closed by this work request alone.
+Keep the before/after refusal results, worker retirement evidence, all-seven-asset
+assertions and exact authorization with the applied command receipts. Return
+infrastructure desired-state reconciliation and outstanding PG identity,
+approved-build/readiness, live core journey, restart, restore and Jan acceptance
+gaps independently. None is closed by this scoped repair alone.

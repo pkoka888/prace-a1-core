@@ -200,15 +200,24 @@ cache, temporary files, logs and inbox directories require0700 access; settings
 must not accept layouts their OCR/inbox consumers reject. Existing directories
 are checked, never silently chmodded. Disposable rehearsal remains owner-only.
 
-This application permission check does not certify group membership. The fresh
-boolean access probe confirmed that nginx's `www-data` identity can read the
-service EnvironmentFile through its `prace-synthetic` membership. The payload was
-not read. Static serving must not grant that secret-reading group to nginx.
-The [infrastructure request](servers-infra-core-postgresql-request.md) describes
-the separate host correction and refusal/asset checks. Source publication alone
-does not change group membership, ACLs or effective worker credentials.
+This application permission check does not certify group membership. A boolean
+probe confirmed that nginx's `www-data` identity could read the service
+EnvironmentFile through its `prace-synthetic` membership; no payload was read.
+The explicitly authorized host repair added nine static-only ACLs, removed that
+membership and transitioned all four workers. Configuration read/traversal is
+now denied, and all seven static assets pass on both routes with unchanged bytes.
+The [infrastructure request](servers-infra-core-postgresql-request.md) retains
+the before/after evidence. Infrastructure desired state must preserve this
+separation; publication of application source alone does not deploy host ACLs.
 
 ### Owned PostgreSQL browser demonstration
+
+The verified a57e069 committed export passed this real Chromium journey on a
+fresh local PostgreSQL cluster; all lifecycle phases exited 0. The initial e55f132
+run failed at readiness and remains in the private delivery receipt. No readiness
+budget or assertion was relaxed, and the successful retry is not a causal
+explanation of that failure. These test settings do not prove the live runtime
+identity, assignment flow or restart persistence.
 
 `make test-pg` invokes the existing `scripts/test_document_intake.py` harness
 with browser settings and the explicit Chromium journey label. It provisions a

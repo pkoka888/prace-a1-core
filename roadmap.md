@@ -25,14 +25,15 @@ Older dated checkpoints remain in Git history and the
 
 September17 runtime follow-up supersedes the earlier failed-unit observation:
 the selected service owns the8001 listener and tagged access requests reach its
-journal. PostgreSQL18 main is online; htmx/Tailwind pass through the selected
-internal route, while five account/MFA scripts return403. Readiness returns503 `deadline_exceeded`; an approved
-source/build and core/restart acceptance remain missing. A boolean-only probe
-also confirms nginx's identity can read the service EnvironmentFile through its
-supplementary group. Infrastructure must isolate static access from credentials
-under the [updated request](docs/operations/servers-infra-core-postgresql-request.md).
-Application repairs narrow0750 sharing and remove unsafe global test parallelism;
-their validation/publication remains distinct from host correction.
+journal. PostgreSQL 18 main is online. After explicit user authorization, nine
+static ACL changes, group removal and a controlled nginx worker transition
+closed the observed credential-read and five account/MFA asset failures: all
+seven assets now pass on both routes, and the new workers lack the secret-reading
+group. Readiness still returns 503 `deadline_exceeded`; approved source/build,
+core/restart acceptance and infrastructure desired-state reconciliation remain
+open under the [updated request](docs/operations/servers-infra-core-postgresql-request.md).
+Application repairs narrow 0750 sharing and remove unsafe global test parallelism;
+their publication remains separate from application deployment.
 
 ## Product objective and v1 boundary
 

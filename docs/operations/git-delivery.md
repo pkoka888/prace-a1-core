@@ -1,18 +1,19 @@
 # Git delivery safeguards — 2026-09-08
 
 Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
-No deployment, new runner/remote, history rewrite or real-data processing.
+No new runner/remote, history rewrite or real-data processing. Separately
+authorized host changes are recorded in their individual checkpoints.
 
 ## Runtime isolation and automation correction — 2026-09-17
 
 | Field | Evidence / state |
 |---|---|
-| Implementation | Restrict0750 to runtime traversal/static with effective primary GID; sensitive children/inbox remain0700. Remove global xdist/timeout flags and unused fixture scaffold; Make targets distinguish synthetic integration, PG contracts and owned local PG/browser integration through the existing harness. Correct unsupported operator-triage claims and update the host work order |
-| Validation | Three bounded agent reviews; five automation regression checks initially passed. Final mandatory-hook, committed-source checks and scoped integration outcomes are in the private delivery receipt. Live unit/socket/cgroup and tagged journal observations pass; readiness503 remains. Boolean nginx credential readability confirmed without reading payload |
+| Implementation | Restrict 0750 to runtime traversal/static with effective primary GID; sensitive children/inbox remain 0700. Remove global xdist/timeout flags and unused fixture scaffold; Make targets distinguish synthetic integration, PG contracts and owned local PG/browser integration through the existing harness. Preserve safe readiness timings and isolate libpq password-file lookup. Correct unsupported operator-triage claims |
+| Validation | Three bounded agent reviews; e55f132 mandatory hook passed 400 tests plus structural checks, followed by two committed planning-closure tests. The a57e069 hook passed the real SQLite browser journey and 103 affected tooling tests. Its verified committed export passed one complete Chromium journey on a fresh owned PostgreSQL cluster, with all four lifecycle phases exit 0 and unchanged dependencies/source bytes. Full native receipts remain private; the first PG/browser failure is retained below |
 | Publication | Isolated checkout based on89a8902; original working-tree edits preserved. Exact final commit, inspected source identities and verified origin SHA are recorded in `runtime/portal/temporary/runtime-followup-4952a52f6c91/delivery.json` |
-| Deployment / activation | No host configuration, service restart, credential access/change, live DB operation or real-data activation |
-| Limitations | Host credential exposure, five account/MFA asset403 responses, readiness deadline, approved build and runtime DB identity remain unresolved. Generic diagnostics do not consume the separate journal receipt. Existing core lifecycle/export/ownership/restart assertion gaps remain; synthetic integration does not establish intended-target or Jan acceptance |
-| Next owner | Infrastructure isolates nginx static access, reconciles source/build and readiness; application engineering completes core target/restart evidence; Jan observes the resulting scoped workflow |
+| Deployment / activation | User explicitly authorized nine static ACL changes, removing www-data from prace-synthetic and transitioning native nginx workers. Applied and verified: old workers retired, configuration access denied, all seven assets pass both routes with unchanged bytes. No application deployment/restart, credential payload access/change, live DB operation or real-data activation |
+| Limitations | Host readiness deadline, approved build and runtime DB identity remain unresolved. Infrastructure desired state must retain the access repair; historical credential exposure needs an owner decision. Generic diagnostics do not consume the separate journal receipt. Existing core lifecycle/export/ownership/restart assertion gaps remain; synthetic integration does not establish intended-target or Jan acceptance |
+| Next owner | Infrastructure reconciles desired state, source/build and readiness; application engineering completes core target/restart evidence; Jan observes the resulting scoped workflow |
 
 Detailed live evidence remains private under the same run directory with a
 December16 retention review. The [triage reconciliation](s62-operator-triage-report-2026-09-16.md)
@@ -33,6 +34,16 @@ A second hook passed runtime and affected A1 tests, then rejected the reviewed
 runtime helper/test filenames under the planning token rule. Their two exact
 source paths are now registered with adjacent-private-path negative controls;
 the protected-directory rule remains active. Both original failures are retained.
+
+The first committed PG/browser run at e55f132 executed one test and failed at
+readiness before login; initialization, startup and shutdown passed. It also
+emitted 231 libpq warnings because `/dev/null` is not a regular password file.
+a57e069 replaces that device with an exclusively created empty private file and
+adds bounded readiness failure timings without changing the HTTP 200 assertion
+or readiness budget. The second committed PG/browser run passed in 32.319 seconds
+of test time; the stopped successful cluster was removed and all logs retained.
+This successful retry does not establish the original readiness failure's cause.
+The live supervised service still returns 503 `deadline_exceeded`.
 
 ## Planning fixture and unprivileged readiness repair — 2026-09-16
 

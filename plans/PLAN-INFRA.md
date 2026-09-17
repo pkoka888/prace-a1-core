@@ -19,8 +19,10 @@ No registered approval is changed by this planning checkpoint.
 
 The September17 [child-plan follow-up](2026-09-14-delivery-reliability-and-jan-v1.md#runtime-and-automation-follow-up--2026-09-17)
 records current supervision/listener and tagged journal evidence, readiness503,
-unapproved declared build identity and confirmed nginx access to service
-configuration. The immediate host task isolates static access from credentials.
+unapproved declared build identity and the authorized nginx access repair.
+All seven assets pass on both routes; new workers cannot read service
+configuration. Reconcile this host correction into infrastructure desired state
+and decide the response to possible historical credential exposure separately.
 The earlier probe/forwarding defects remain dated evidence in the child plan;
 current self-declared workflow ownership and effective role/timeout/TLS acceptance
 are still separate application tasks. REL-03/05 also own clean dependency/browser/model bootstrap
