@@ -6,15 +6,25 @@ authorized host changes are recorded in their individual checkpoints.
 
 ## Authorized readiness rollout — 2026-09-17
 
-The user approved deploying ebb1d70 with the AGENTS.md authorization clarification,
-release-manifest/pin selection, controlled restart and availability checks on the
-existing server62 service. Runtime source is unchanged from the tested ebb1d70;
-this increment changes authorization/documentation only. Deployment receipts and
-the actual before/after result are retained under
-`runtime/portal/temporary/readiness-deployment-20260917/` (review due December16).
-Publication, deployment and availability remain separate from authenticated core,
-exact-record persistence, infrastructure convergence and real-data acceptance.
-The active child plan records the bounded operation and rollback.
+| Field | Evidence / state |
+|---|---|
+| Implementation / authority | User explicitly approved the readiness fix and deployment. AGENTS.md now recognizes required release selection, controlled restart and verification as part of an approved deployment; unrelated host/data changes remain separately scoped |
+| Publication | Runtime fix ebb1d70 and authorization/docs ea81d9b published to the existing feature branch, remote SHA verified. This later record changes documentation only; deployed source remains ea81d9b |
+| Deployment | ea81d9b76e2188a93ec2815f7f6ea37b081567ff deployed September 17 at 05:52:42Z. Selected Gunicorn unit stopped before fast-forwarding the source and started with a canonically generated manifest/build gea81d9b76e21. New master/workers own 8001; old master retired; no automatic restart observed |
+| Configuration | Only PRACE_RELEASE_MANIFEST and its SHA256 reference changed in the existing EnvironmentFile; every other byte and file ownership/mode/ACL preserved. Manifest lives in a new private 0700 supervised-release directory, leaving the shared 0750 static root and original manifest untouched. nginx still cannot read configuration. No credential rotation, migration or real-data activation |
+| Validation | Reused ebb1d70 runtime evidence (366 hook tests and 15 committed-export HTTP tests; application bytes unchanged). Authorization hook passed 103 tooling tests plus structural checks. Deployment verifies all tracked bytes against ea81d9b and preserves inherited untracked files. Repeated readiness 25/25: 20 loopback/nginx requests 902–1276 ms, five private HTTPS requests at most 1127 ms, all within unchanged 2000 ms budget. Three canonical smoke routes pass; 14/14 static checks match source bytes. Chromium shows both login fields without JS errors on all three routes |
+| Availability scope | Loopback 8001, internal nginx 8098 and verified-TLS https://prace-v-nemecku.expc.cz through explicit private resolution to 192.168.1.61. Default public-DNS/WAN route timed out from server62; external fetch tooling declined the URL without an HTTP observation. Internet availability is not established |
+| Limitations / next owner | Infrastructure investigates public-route reachability from an independent network and reconciles managed release/ACL desired state. Application/infrastructure retain actual DB role/target, authenticated core journey, exact-record restart persistence and backup/restore acceptance. A successful service restart/readiness check is not record-survival evidence |
+
+Private receipts: `runtime/portal/temporary/readiness-deployment-20260917/`
+(review due December16), including `delivery.json`, `source-after.json`,
+`unit-after.json`, `release-apply.json`, `availability-after.json`,
+`browser-login.json`, and `private-https-after.json`. The reference-update receipt
+contains only nonsecret release references and preservation booleans, never the
+EnvironmentFile payload. The first asset inventory mistakenly probed absent
+account/js/base.js; the final inventory comes from the installed package and
+includes recovery_codes.js. The failed guessed-path probe remains retained.
+The original deployment reference pair and manifest remain available for rollback.
 
 ## Readiness latency investigation — 2026-09-17
 
