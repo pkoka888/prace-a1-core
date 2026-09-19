@@ -510,3 +510,15 @@ restore them only if the approved candidate cannot serve. Unrelated working-tree
 files remain untouched. Source/check results, runtime outcome and remaining
 limitations belong to the single delivery record. This is availability acceptance,
 not an authenticated core journey, exact-record persistence or real-data activation.
+
+
+Deployment outcome: ea81d9b is running under the selected service with matching
+manifest/build, new listener-owning master/workers and preserved configuration
+permissions. Repeated readiness passes 25/25; three scoped smoke/browser routes
+pass and all seven assets match source bytes on both direct/internal paths.
+The HTTPS check uses explicit private resolution to the existing edge with TLS
+verification enabled; default public-DNS/WAN access times out from server62.
+No authenticated workflow, actual DB identity, record-survival or internet
+availability claim follows. The delivery record owns detailed outcomes and the
+remaining infrastructure/application work; the source root stays at the deployed
+commit while this documentation-only follow-up is published separately.

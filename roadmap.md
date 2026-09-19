@@ -29,15 +29,15 @@ journal. PostgreSQL 18 main is online. After explicit user authorization, nine
 static ACL changes, group removal and a controlled nginx worker transition
 closed the observed credential-read and five account/MFA asset failures: all
 seven assets now pass on both routes, and the new workers lack the secret-reading
-group. Historical readiness returned 503 `deadline_exceeded`; September17 follow-up
-samples alternate between success and timeout with variable directory-write latency. A candidate removes a
-duplicate storage probe, overlaps independent directory fsyncs and retains safe
-timeout-phase evidence; no deployed
-fix or historical cause is established. Approved source/build,
-core/restart acceptance and infrastructure desired-state reconciliation remain
-open under the [updated request](docs/operations/servers-infra-core-postgresql-request.md).
-Application repairs narrow 0750 sharing and remove unsafe global test parallelism;
-their publication remains separate from application deployment.
+group. The user then authorized deployment of the readiness repair: ea81d9b is
+running with its approved manifest/build after a controlled Gunicorn restart.
+Repeated readiness passes 25/25 within the unchanged 2-second budget; all seven
+assets pass both direct/internal routes. Anonymous Chromium login and verified-TLS
+private-edge checks pass. Default public-DNS/WAN access times out from server62,
+so internet availability remains unverified. These are scoped availability checks,
+not authenticated core or exact-record restart acceptance. Actual DB identity,
+managed infrastructure convergence and the existing Delivery1 gates remain open.
+See the [delivery record](docs/operations/git-delivery.md#authorized-readiness-rollout--2026-09-17).
 
 ## Backup-first separation request — 2026-09-18
 

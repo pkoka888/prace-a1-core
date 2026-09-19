@@ -410,3 +410,15 @@ demonstrates approval/recovery boundaries locally. A future live adapter still
 needs independent authentication, approved action/target/revision binding,
 uncertain-effect reconciliation and disposable deployment/rollback evidence.
 No current runtime, recovery or activation gate closes from the experiment.
+
+
+## Authorized readiness deployment — 2026-09-17
+
+REL-03 / INFRA-PG-01: ea81d9b deployed after explicit user approval, with matching
+manifest identity and controlled selected-unit restart. Private-route availability
+passes, including 25 repeated readiness checks and TLS/login through the private
+edge. The [delivery record](../docs/operations/git-delivery.md#authorized-readiness-rollout--2026-09-17)
+contains scoped evidence and limitations. Public-DNS/WAN reachability from server62
+still times out; infrastructure convergence, actual DB identity and authenticated
+core/exact-record restart acceptance remain open. This is not Delivery1 acceptance
+or a real-data activation checkpoint.

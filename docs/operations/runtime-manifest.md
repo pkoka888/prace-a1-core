@@ -1,18 +1,22 @@
 # Application runtime manifest
 
-**Status:** Application engineering implemented; target deployment unverified
-**Date:** 2026-09-07
+**Status:** Authorized server62 deployment verified for private-route availability; core acceptance open
+**Date:** 2026-09-17
 **Parent:** PLAN-INFRA; no activation gate opens from this document
 
-Current evidence: [runtime/J4 engineering](../research/2026-09-07-runtime-j4-engineering.md).
-Historical infrastructure packet: [review](../research/2026-09-07-infra-application-review.md).
-The working tree, including untracked migrations and helpers, is not a published release.
+Current deployment: ea81d9b, build gea81d9b76e21, selected
+`prace-v-nemecku-gunicorn.service`; see the
+[authorized rollout](git-delivery.md#authorized-readiness-rollout--2026-09-17).
+Readiness and anonymous private-route availability are verified; actual database
+identity, authenticated core/record-restart acceptance and internet reachability
+remain separate. Historical runtime/J4 and infrastructure packets describe their
+earlier checkpoints, not the current deployment state.
 
 ## Target and configuration
 
 The proposed host target remains `prace-synthetic-s62-v1`, with proposed identity
-`prace-synthetic` and root `runtime/portal/supervised-synthetic/`. These host resources
-have not been provisioned or verified by the application tests.
+`prace-synthetic` and root `runtime/portal/supervised-synthetic/`. The September17 authorized rollout verifies the selected service and
+private-route availability; provisioning/restore acceptance remains separate.
 
 Implemented settings: `portal.settings_supervised_synthetic`. DEBUG=False and
 synthetic-only are fixed. Runtime root must be an owner-only, UID-owned direct
