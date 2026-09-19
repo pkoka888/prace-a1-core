@@ -78,8 +78,13 @@ def test_selected_browser_labels_use_only_fresh_socket_for_every_subprocess(harn
                             "--noinput", "-v", "1"]
     assert django[2]["DJANGO_SETTINGS_MODULE"] == "portal.settings_browser_tests"
     assert "listen_addresses=''" in calls[1][1][calls[1][1].index("-o") + 1]
-    assert json.loads(record_path.read_text())["stopped"] is True
-    assert not (run_root / "db").exists()
+    payload = json.loads(record_path.read_text())
+    assert payload["stopped"] is True
+    assert payload["shutdown_certain"] is True
+    assert "uncertain_shutdown" not in payload
+    # Runtime directories are retained by default, including on success.
+    assert (run_root / "db").is_dir()
+    assert stat.S_IMODE(record_path.lstat().st_mode) == 0o600
 
 
 @pytest.mark.parametrize("phase,code", [("initdb", 9), ("start", 7), ("django", 5), ("stop", 4)])
@@ -101,9 +106,18 @@ def test_test_failure_survives_secondary_stop_failure(harness):
     root, _, exits = harness
     exits.update(django=5, stop=4)
     assert runner.main(["tests.document_web.test_inbox"]) == 5
-    phases = json.loads(receipt(root).read_text())["phases"]
+    record_path = receipt(root)
+    payload = json.loads(record_path.read_text())
+    phases = payload["phases"]
     assert [(p["name"], p["exit_code"]) for p in phases[-2:]] == [("django", 5), ("stop", 4)]
     assert all(p["command"] and p["started_at"] and p["finished_at"] for p in phases)
+    # The primary run failure is preserved; the failed shutdown is recorded as
+    # uncertain instead of being deleted or rewritten into a false success.
+    assert payload["exit_code"] == 5
+    assert payload["stopped"] is False
+    assert payload["shutdown_certain"] is False
+    assert payload["uncertain_shutdown"]["exit_code"] == 4
+    assert stat.S_IMODE(record_path.lstat().st_mode) == 0o600
 
 
 @pytest.mark.parametrize("argv", [

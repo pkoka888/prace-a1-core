@@ -4,6 +4,12 @@
 No host services, operator databases or credentials are used. PostgreSQL has
 no TCP listener; browser labels launch their own loopback HTTP test server.
 Invoke with venv/bin/python scripts/test_document_intake.py.
+
+Runtime directories are retained by default: each run keeps its stopped
+disposable data directory, server/diagnostic logs and a 0600 receipt under
+runtime/portal/pg-* so captured evidence survives review. A single cleanup
+handler always stops exactly the cluster owned by this run; an uncertain
+shutdown is recorded in the receipt rather than assumed complete.
 """
 import argparse
 import json
@@ -11,7 +17,6 @@ import os
 from pathlib import Path
 import pwd
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -101,7 +106,7 @@ def run_owned_cluster(args):
 
     code = 2
     start_attempted = False
-    stopped = False
+    stop_certain = True
     try:
         check_socket_path(root)
         code = run_phase("initdb", [str(BIN / "initdb"), "-D", str(data),
@@ -119,26 +124,32 @@ def run_owned_cluster(args):
     except KeyboardInterrupt:
         code = 130
     finally:
-        # A failed pg_ctl start can still leave a server running. Always attempt
-        # shutdown of this exact newly initialized data directory after start.
+        # A failed pg_ctl start can still leave a server running. This single
+        # cleanup handler always stops exactly the cluster owned by this run.
         if start_attempted:
             stop_code = run_phase("stop", [str(BIN / "pg_ctl"), "-D", str(data),
                                           "-m", "fast", "-t", "60", "-w", "stop"])
-            stopped = stop_code == 0
-            if code == 0:
+            stop_certain = stop_code == 0
+            if code == 0 and stop_code != 0:
                 code = stop_code
-        # Keep failure evidence (including the data directory). A successful run
-        # retains its logs/receipt and removes only its stopped disposable DB.
-        if code == 0 and stopped:
-            try:
-                shutil.rmtree(data)
-            except OSError as exc:
-                code = 2
-                receipt["cleanup_error"] = type(exc).__name__
+            if not stop_certain:
+                receipt["uncertain_shutdown"] = {
+                    "command": [str(BIN / "pg_ctl"), "-D", str(data),
+                                "-m", "fast", "-t", "60", "-w", "stop"],
+                    "exit_code": stop_code,
+                }
+        # Runtime directories are retained by default: diagnostics, server
+        # logs, the stopped disposable PostgreSQL data directory and the
+        # receipt stay available for review at the print-run path.
+        stopped = stop_certain if start_attempted else False
         receipt.update(exit_code=code, stopped=stopped,
+                       shutdown_certain=stop_certain,
                        finished_at=datetime.now(timezone.utc).isoformat())
-        (root / "receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
-        print(f"Receipt: {root / 'receipt.json'}", flush=True)
+        receipt_path = root / "receipt.json"
+        with receipt_path.open("w", encoding="utf-8") as handle:
+            handle.write(json.dumps(receipt, indent=2) + "\n")
+        os.chmod(receipt_path, 0o600)
+        print(f"Receipt: {receipt_path}", flush=True)
     return code if code >= 0 else 128 - code
 
 
