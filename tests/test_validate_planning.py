@@ -421,6 +421,26 @@ def test_malformed_skill_reference(root):
     assert "skill metadata and one-level references" in failures(p.stdout)
 
 
+def test_unregistered_opencode_skill_does_not_block(root):
+    skill_dir = root / ".opencode" / "skills" / "experimental-broken"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    (skill_dir / "SKILL.md").write_text("see [missing](missing-ref.md)\n")
+    p = run(root, json_out=True)
+    assert p.returncode == 0
+    assert "skill metadata and one-level references" not in failures(p.stdout)
+
+
+def test_registered_opencode_skill_is_validated(root):
+    skill_dir = root / ".opencode" / "skills" / "registered-broken"
+    skill_dir.mkdir(parents=True, exist_ok=True)
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text("see [missing](missing-ref.md)\n")
+    subprocess.run(["git", "-C", str(root), "add", "--", str(skill_md)], check=True)
+    p = run(root, json_out=True)
+    assert p.returncode == 1
+    assert "skill metadata and one-level references" in failures(p.stdout)
+
+
 def test_forbidden_stale_path(root):
     def fn(d):
         d["items"][0]["source_links"] = ["config/a1_provisional.json"]

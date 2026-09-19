@@ -372,19 +372,25 @@ def iter_markdown_links(text: str):
 
 
 def scan_skill_links(root: Path):
-    """Return list of (skill_dir, skill_md, [(ref, exists)]) for every skill root.
+    """Return list of (skill_dir, skill_md, [(ref, exists)]) for governed skills.
 
-    Covers both ``.agents/skills`` (authoritative A1 path) and ``.opencode/skills``
-    (experimental research skill) so neither is excluded from validation.
+    ``.agents/skills`` is the authoritative skill path and is always validated.
+    ``.opencode/skills`` holds experimental skills; one is validated only once
+    its bytes are tracked (registered) in the reviewed source. Untracked
+    experimental copies stay visible through the structured agent-directory
+    audit instead of blocking governed checks.
     """
     results = []
     for skills_root in (root / ".agents" / "skills", root / ".opencode" / "skills"):
         if not skills_root.is_dir():
             continue
+        is_experimental = skills_root.name == "skills" and skills_root.parent.name == ".opencode"
         for skill_dir in sorted(skills_root.iterdir()):
             if not skill_dir.is_dir():
                 continue
             skill_md = skill_dir / "SKILL.md"
+            if is_experimental and not _skill_tracked(root, skill_md):
+                continue
             refs = []
             if skill_md.is_file():
                 for target in iter_markdown_links(skill_md.read_text(encoding="utf-8", errors="ignore")):
@@ -395,6 +401,24 @@ def scan_skill_links(root: Path):
                     refs.append((rel, resolved.exists()))
             results.append((skill_dir.name, skill_md, refs))
     return results
+
+
+def _skill_tracked(root: Path, skill_md: Path) -> bool:
+    """True when skill bytes are tracked in the reviewed source.
+
+    Registration is the review gate for experimental skills: untracked copies
+    are outside the accepted set. When git is unavailable the check degrades to
+    strict (validate) rather than silently narrowing the governed surface.
+    """
+    rel = skill_md.relative_to(root).as_posix()
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "--error-unmatch", "--", rel],
+            capture_output=True, text=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return True
+    return proc.returncode == 0
 
 
 def get_staged_paths(root: Path):
