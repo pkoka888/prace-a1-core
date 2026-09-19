@@ -80,6 +80,17 @@ def _load_from_journey_evidence() -> dict:
     except (OSError, json.JSONDecodeError) as exc:
         _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
              f"JOURNEY_EVIDENCE_PATH={path_str} unreadable: {exc}")
+    # Journey evidence may carry PII-bearing identifiers; require owner-only
+    # file permissions (no group or other access).
+    try:
+        mode = Path(path_str).stat().st_mode
+        if mode & 0o077:
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 f"JOURNEY_EVIDENCE_PATH={path_str} has insecure permissions "
+                 f"mode={mode:o} (group/other access not allowed)")
+    except OSError as exc:
+        _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+             f"JOURNEY_EVIDENCE_PATH={path_str} cannot stat: {exc}")
     if not isinstance(evidence, dict):
         _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
              f"JOURNEY_EVIDENCE_PATH={path_str} is not a JSON object")
@@ -99,6 +110,49 @@ def _setup(profile: str = "core") -> None:
     ):
         if not os.environ.get(env_name) and evidence_key in evidence:
             os.environ[env_name] = str(evidence[evidence_key])
+    # Corrected-value evidence lives at stages.assignment_corrected in the
+    # canonical journey receipt, not at the JSON root. When the receipt
+    # claims a successful correction, the corrected value and its assignment
+    # identity are required and must match the selected assignment — a
+    # missing or malformed stage blocks acceptance instead of silently
+    # skipping the comparison. A receipt without that stage (older calls)
+    # keeps the previous behavior: the corrected-value check is omitted
+    # unless the caller supplies CORRECTED_ACTIVITY_LABEL explicitly.
+    stages = evidence.get("stages")
+    # Deliberately absent legacy evidence (no assignment_corrected key at all):
+    # keep the previous behavior — the corrected-value check is omitted unless the
+    # caller supplies CORRECTED_ACTIVITY_LABEL explicitly. A key that is present but
+    # malformed (not a dict, or a dict lacking the required fields) is an error, not
+    # a silent skip, because the receipt claims a correction was recorded.
+    if isinstance(stages, dict) and "assignment_corrected" in stages:
+        stage = stages["assignment_corrected"]
+        if not isinstance(stage, dict):
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence stages.assignment_corrected is present but "
+                 "not a JSON object")
+        if stage.get("ok") is not True or not isinstance(stage.get("corrected_activity"), str):
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence claims a correction was recorded but "
+                 "stages.assignment_corrected is malformed "
+                 "(ok=%r, corrected_activity=%r)" % (
+                     stage.get("ok"), stage.get("corrected_activity")))
+        label = stage["corrected_activity"]
+        if not label.strip():
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence claims a successful correction but "
+                 "stages.assignment_corrected.corrected_activity is empty")
+        stage_pk = stage.get("assignment_pk")
+        if stage_pk is None:
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence assignment_corrected stage is missing "
+                 "assignment_pk")
+        selected_pk = os.environ.get("ASSIGNMENT_PK")
+        if selected_pk and str(stage_pk) != str(selected_pk):
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 f"journey evidence assignment_pk {stage_pk} does not match "
+                 f"selected ASSIGNMENT_PK {selected_pk}")
+        if not os.environ.get("CORRECTED_ACTIVITY_LABEL"):
+            os.environ["CORRECTED_ACTIVITY_LABEL"] = label
     if profile == "optional-a1":
         for env_name, evidence_key in (
             ("CASE_PK", "case_pk"),
@@ -176,9 +230,28 @@ def _worker_assignment_relationship(worker_pk: int, assignment_pk: int, org_pk: 
             "assignment_worker_id": assignment.worker_id}
 
 
+def _assignment_corrected_value(assignment_pk: int, org_pk: int, expected_label: str) -> dict:
+    """Compare the persisted assignment's corrected activity_label against
+    the exact value the journey entered and recorded. Existence alone never
+    proves corrected-value persistence."""
+    from portal.release1a.models import Assignment
+
+    assignment = Assignment.objects.filter(
+        pk=assignment_pk, organization_id=org_pk
+    ).first()
+    if assignment is None:
+        return {"ok": False, "reason": "assignment not found in org"}
+    actual = assignment.activity_label
+    return {
+        "ok": actual == expected_label,
+        "expected": expected_label,
+        "actual": actual,
+        "matches": actual == expected_label,
+    }
+
+
 def _document_worker_sha256(document_pk: int, org_pk: int, expected_sha256: str | None = None) -> dict:
-    from django.conf import settings
-    from django.core.files.storage import default_storage
+    from portal.release1a.document_storage import document_storage
     from portal.release1a.models import Document
 
     document = Document.objects.filter(pk=document_pk, organization_id=org_pk).first()
@@ -196,7 +269,7 @@ def _document_worker_sha256(document_pk: int, org_pk: int, expected_sha256: str 
     source_matches = False
     source_reason = None
     try:
-        with default_storage.open(document.opaque_key, "rb") as stream:
+        with document_storage().open(document.opaque_key, "rb") as stream:
             source_matches = (
                 hashlib.sha256(stream.read()).hexdigest() == expected_sha256
             )
@@ -254,6 +327,12 @@ def main() -> int:
             "document_sha256": _document_worker_sha256(document_pk, org_pk, document_sha256),
         }
 
+        corrected_label = os.environ.get("CORRECTED_ACTIVITY_LABEL")
+        if corrected_label:
+            checks["assignment_corrected_value"] = _assignment_corrected_value(
+                assignment_pk, org_pk, corrected_label
+            )
+
         if profile == "optional-a1":
             if not case_pk or not regen_pk or not pdf_sha256 or not regen_sha256:
                 _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
@@ -285,7 +364,7 @@ def main() -> int:
             else:
                 print(f"ok  {key}: key={art.get('key')} sha256=matched")
         elif key in ("worker_document_relationship", "worker_assignment_relationship",
-                     "document_sha256"):
+                     "document_sha256", "assignment_corrected_value"):
             rel = value if isinstance(value, dict) else {}
             if key == "document_sha256":
                 # The document hash check carries two independent proofs:
@@ -306,6 +385,21 @@ def main() -> int:
                 else:
                     print(f"ok  {key}: sha256={rel.get('actual_sha256')} "
                           "db+source matched")
+            elif key == "assignment_corrected_value":
+                if not rel.get("ok"):
+                    if rel.get("reason"):
+                        print(f"FAIL {key}: {rel['reason']}", file=sys.stderr)
+                    else:
+                        print(
+                            f"FAIL {key}: corrected activity_label drift "
+                            f"(expected={rel.get('expected')!r}, "
+                            f"actual={rel.get('actual')!r})",
+                            file=sys.stderr,
+                        )
+                    failed = True
+                else:
+                    print("ok  assignment_corrected_value: activity_label "
+                          "matched the journey's exact corrected value")
             elif not rel.get("ok"):
                 print(f"FAIL {key}: {rel.get('reason', 'check failed')}",
                       file=sys.stderr)
