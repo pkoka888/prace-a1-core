@@ -30,6 +30,13 @@ Plan headers and this index use exactly: `planned`, `active`, `blocked`,
 | [Plan PLAN-REAL-DATA — scoped real-data activation](PLAN-REAL-DATA.md) | active | M5 | engineering + product owner + legal + sysadmin | Restricted pilot | JAN-03 scope reconciliation; OPS-001/LEG-001/INF-001 and REV-003 evidence/decisions remain scoped and unapproved by this checkpoint | Authorized protected core workflow, no official-PDF prerequisite | Existing §14 activation evidence plus scoped core acceptance |
 | [PostgreSQL infrastructure request](../docs/operations/servers-infra-core-postgresql-request.md) | request — awaiting infrastructure response | M0–M2 | servers-infra-core | Critical Release 1A | Application team has issued v1.0 request; awaiting infrastructure response with contract values. 2026-09-15: next action is inspection/reconciliation of existing infrastructure, not new provisioning; see the [sysadmin reconciliation report](../docs/operations/sysadmin-postgresql-reconciliation-2026-09-15.md) | Private PostgreSQL target with credentials, backup/restore and documented owner; response alone does not close JAN-04 | Infrastructure response YAML; application validates compatibility, repairs pending defects and runs acceptance |
 
+## Backup-first separation — 2026-09-18
+
+[Backup and project separation](2026-09-18-backup-and-project-separation.md) is a
+child plan under PLAN-INFRA/REL-02–06. Keep sites, FO, BO, OCR and A1 plus their
+supporting dependencies; extract unrelated tooling only after verified recovery.
+Research is prepared; backup and extraction are pending. No catalog ID is added.
+
 ## Current bounded batch — 2026-09-14
 
 [Delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md)

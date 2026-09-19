@@ -337,6 +337,18 @@ restart persistence, intended runtime-role privileges or Jan acceptance. An earl
 e55f132 run failed at readiness before login and remains retained; the later pass
 does not establish its cause. Readiness budgets and assertions were not relaxed.
 
+## Reconciliation checkpoint — 2026-09-18
+
+The duplicated Phase 1 automation text below is historical/unverified for the
+current candidate. The current `Makefile` selects sequential focused runs and
+`pytest-xdist` is absent from all dependency files; the advertised parallel
+60-80 percent reduction and 57-test/75-second timing are not current evidence.
+Current source also supersedes the dated failed-unit row: the selected Gunicorn
+unit is active and owns the loopback 8001 listener, but that host metadata is not
+release acceptance. The persistence verifier now uses `document_storage()` and
+its focused regression passes 10/10; standalone restart and error-taxonomy
+coverage remain open.
+
 Next: reconcile the host access correction into desired state; select the intended source/build and profile
 readiness costs before changing its budget; complete core/optional-A1 separation,
 provisioner-owned target evidence and exact corrected-value restart assertions.

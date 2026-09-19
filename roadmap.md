@@ -39,6 +39,15 @@ open under the [updated request](docs/operations/servers-infra-core-postgresql-r
 Application repairs narrow 0750 sharing and remove unsafe global test parallelism;
 their publication remains separate from application deployment.
 
+## Backup-first separation request — 2026-09-18
+
+The [separation child plan](plans/2026-09-18-backup-and-project-separation.md)
+preserves sites, front/back office, OCR and A1 with their supporting dependencies.
+It recommends extracting unrelated tooling into independent source after an
+encrypted whole-project backup and actual isolated restore. Research is prepared;
+destination/key custody is unresolved and no extraction is implemented. This does
+not change core-v1 acceptance, deployment or real-data activation status.
+
 ## Product objective and v1 boundary
 
 Give Jan a private Czech operator portal: normal login and TOTP → create/save a
@@ -236,6 +245,16 @@ backup restore, intended-PostgreSQL browser/restart acceptance and real-data
 activation are not established by this checkpoint.
 
 ## Follow-up — 2026-09-17
+
+### Reconciliation checkpoint — 2026-09-18
+
+The Phase 1 automation paragraph below is retained as historical intent, not as
+the current command contract. The current `Makefile` explicitly selects sequential
+focused runs, and `pytest-xdist` is absent from `requirements.txt`,
+`requirements-dev.txt`, and `requirements-lock.txt`. The claimed 57-test/75-second
+parallel result and 60-80 percent reduction must therefore not be reused for this
+candidate. Current focused evidence is the 71-test run recorded in the gap
+analysis; clean-CI and browser-driver bootstrap remain separate work.
 
 ### Summary of Progress Since 2026-09-16 Review
 

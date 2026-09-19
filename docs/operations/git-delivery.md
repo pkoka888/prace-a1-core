@@ -4,6 +4,27 @@ Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No new runner/remote, history rewrite or real-data processing. Separately
 authorized host changes are recorded in their individual checkpoints.
 
+## Script validation research and discovery review — 2026-09-17
+
+User-requested research/review is delivered locally in the
+[research package](../research/2026-09-17-script-validation-research/README.md):
+ten current solutions, recorded free-model CLI attempts, two reviewed installation
+contracts and a synthetic Nox/pre-commit trial. The final four trial cases met
+their explicit positive/negative assertions; the original discovery tests pass,
+but eight synthetic review probes reproduce unresolved defects. The discovery
+implementation is not accepted or repaired by this work.
+
+The health view joins 125 scoped definitions to 83 retained native receipts with
+320 check observations; remote GitHub history is unavailable due to HTTP401.
+Unknown execution/current-source equivalence remains explicit. GitHub is the
+configured origin; GitLab integration remains inactive. No existing hook,
+application dependencies, CI, PDF, service or real-data activation changed.
+Publication: local uncommitted research only. Detailed trial receipts remain in
+`runtime/portal/temporary/validation-research-20260917/`, review due 2026-12-16.
+Next owner: engineering repairs discovery confinement/redaction and coverage,
+recovers the missing session ledger, then integrates only justified checks with
+the existing package selector; operator credential ownership governs API access.
+
 ## Authorized readiness rollout — 2026-09-17
 
 The user approved deploying ebb1d70 with the AGENTS.md authorization clarification,
@@ -1368,3 +1389,64 @@ application files. At that path-deployment checkpoint, source updates were uncom
 unpublished in this application checkout; current publication is in the delivery record. No PostgreSQL authentication,
 secret separation/rotation, manifest approval/repin, service recovery, JAN acceptance
 or PG5 restore gate is closed by the path deployment.
+# 2026-09-18 — Provisional Section 5.1 core policy
+
+- Implementation: canonical `mark_provisional` clears `activity.name` for
+  self-employed client copies, preserving source data, territory and checkboxes.
+  `verify_pdf(..., provisional=True)` rejects text remaining in the canonical 5.1
+  overlay region. Authoritative/default verification and application drafts keep
+  their existing activity contract. The publisher explicitly selects this mode.
+- Validation: 89 tests and 21 subtests passed across `tests/test_a1_core.py`,
+  `tests/test_pdf_named_fields.py`, `tests/test_finalize_a1.py`,
+  `tests/test_a1_stabilization.py`, `tests/test_a1_application_draft.py` with
+  `venv/bin/python -m pytest <these paths> -q -o addopts=''`.
+  The new publisher test starts with populated synthetic source activity, checks
+  blank rendered 5.1 and preserved DE/AT territory, and rejects stale populated
+  bytes. Three synthetic pages inspected locally; 300-DPI comparison changes only
+  3,784 pixels inside 5.1, zero elsewhere. Existing receipt history preserved and
+  renderer binding extended in `config/a1_checkbox_fix_receipt.json`.
+- Reproduction: run `venv/bin/python -m pytest tests/test_finalize_a1.py::FinalizationTests::test_provisional_publisher_clears_populated_51_and_verifier_rejects_stale_pdf tests/test_a1_core.py::A1CoreUnitTests::test_provisional_51_omission_preserves_source_territory_and_checkboxes -q`.
+  This uses synthetic fixtures and temporary output; no employee input required.
+- Lint: Ruff F finds 21 existing findings versus 22 at HEAD, zero introduced.
+  First regression run exposed a new-test key error and stale renderer receipt;
+  both were corrected before the passing run. No claim of repository-wide lint pass.
+- CLI orchestration: direct Kilo calls are subprocesses with captured JSONL/stdout,
+  not inbox workers and not automatically integrated with `free_model_eval`.
+  Explicit offline runner/protocol/CLI-verifier tests passed (62 tests). These
+  include mocks and do not prove live provider availability or arbitrary-script
+  acceptance. Model output must still be reviewed and application tests executed.
+  The separate live local Bubblewrap capsule isolation probe also passed (1 test).
+- Kilo: requested `kilo/cohere/north-mini-code:free`, verified active/zero-price/free
+  in CLI model metadata. The first attempt tried an unavailable tool and returned
+  no patch. A retry with complete synthetic source returned code/test proposals;
+  its terminal event reports cost 0. The proposal put the optional flag on the
+  wrong function and assumed a nonexistent import; those suggestions were rejected.
+  The primary implemented and tested the canonical integration, including the
+  correct verifier flag. No paid fallback or employee data was sent. CLI events,
+  synthetic previews and source-bound validation receipt are retained locally at
+  `runtime/portal/temporary/a1-section5-core-20260918/`.
+- Publication/deployment/activation: local working-tree change only. No real cohort
+  regenerated, no deployment, no portal activation or official issuance. The manually
+  corrected operator PDF remains separate from these synthetic code checks.
+- Limitations/next owner: Jan retains artifact acceptance. Section 6 manual contact
+  placement is outside this Section 5.1 fix. Text-region verification is not OCR or
+  whole-page visual acceptance; raster-only foreign edits still require visual QA.
+
+## Backup-first separation planning — 2026-09-18
+
+| Layer | Result |
+|---|---|
+| Research/planning | [Comparison](../research/2026-09-18-project-separation.md) and [child plan](../../plans/2026-09-18-backup-and-project-separation.md) prepared; recommend focused application plus independent tooling source and approved encrypted recovery |
+| Baseline | HEAD `ea81d9b76e2188a93ec2815f7f6ea37b081567ff`; local upstream one commit ahead; inherited modified/untracked work preserved, empty index at task start |
+| Backup | Not executed: approved encrypted destination, key custodian and coordinated restore procedure not established; no ad-hoc private archive created |
+| Implementation | Documentation only; no source extraction, dependency pruning or private-file relocation |
+| Validation | New documents' relative file links and whitespace checked locally; no application execution or restore acceptance claimed |
+| Publication/deployment/activation | Not performed for this task; task documentation remains in the working tree |
+| Limitations | Initial path mapping is not exhaustive classification; no remote refresh or backup-volume estimate; existing dirty work remains |
+| Next owner | Infrastructure supplies approved recovery target/custody and backup/restore evidence; engineering completes per-file classification and extraction after recovery checkpoint |
+
+### Separation research follow-up — 2026-09-18
+
+[Authoritative Git research and actual-plan comparison](../research/2026-09-18-git-extraction-evidence.md) adds GitHub splitting guidance, upstream filter-repo/subtree documentation, alternatives and a generated synthetic experiment. Eight assertions pass with Git 2.47.3/filter-repo `31ebad4c8fb3`; receipt and reproducer: `runtime/portal/temporary/separation-research-79fqh0w9/`. Initial harness failure (`FETCH_HEAD` after bundle clone) remains documented at `runtime/portal/temporary/separation-research-9fcyrrm8/`; retry uses the known fixture commit ID. No application history was copied.
+
+Actual package inspection found site/release/A1 helpers mixed into `cli_agent_tooling` and a consumed registry JSON absent from that package's path list. The child plan now requires exact-file extraction and retains these product helpers. Three research/plan documents pass relative-file-link and whitespace checks. This is mechanism evidence, not application migration, backup/restore or deployment acceptance. No source relocation, publication or activation; infrastructure recovery facts remain pending.

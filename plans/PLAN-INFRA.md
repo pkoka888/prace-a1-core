@@ -3,6 +3,14 @@
 **Status**: active
 **Milestone**: M0–M2
 
+## Backup and project separation — 2026-09-18
+
+The requested [backup-first separation child plan](2026-09-18-backup-and-project-separation.md)
+compares solutions and selects a focused application plus independent tooling source.
+Research is prepared; encrypted backup destination/key custody and actual restore
+remain unresolved. No relocation has started. Existing REL ownership and all
+34 top-level catalog entries are preserved.
+
 ## Current execution — 2026-09-17
 
 Own REL-01–REL-06 and JAN-04 in [delivery reliability and Jan core v1](2026-09-14-delivery-reliability-and-jan-v1.md). Priorities are truthful
@@ -31,6 +39,16 @@ REL-03/04 also own working-tree evidence binding, default export coverage and ov
 selection. An owned in-project PG cluster can test these independently of live
 credential recovery. Host credential/supervisor/route work remains INFRA-PG-01;
 no candidate or operator acceptance follows from a green hook.
+
+## Runtime/readiness reconciliation — 2026-09-18
+
+The `Bounded settings and readiness — partial status — 2026-09-07` section is a
+historical defect list, not the current source state. Current
+`portal/release1a/runtime_safety.py`, `readiness_checks.py`, and
+`readiness_runner.py` contain the reviewed symlink rejection, unique probes,
+manifest hash binding, TLS enforcement, model-asset checks, and bounded readiness
+workers. This source reconciliation does not close host authentication, routed
+workflow, intended PostgreSQL role/timeout/TLS, restart, or Jan acceptance.
 
 ## Retained contracts and dated evidence
 
