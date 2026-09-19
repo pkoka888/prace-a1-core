@@ -77,7 +77,13 @@ def audit_skill(path: Path) -> dict[str, Any]:
     for target in LINK_RE.findall(path.read_text(encoding="utf-8")):
         if "://" in target or target.startswith("#"):
             continue
-        resolved = (path.parent / target).resolve()
+        # A "#fragment" names an anchor inside the target file, not a file name.
+        fragment = ""
+        path_part = target
+        if "#" in target:
+            path_part, fragment = target.split("#", 1)
+            fragment = f"#{fragment}"
+        resolved = (path.parent / path_part).resolve()
         exists = resolved.exists()
         links.append({"target": target, "exists": exists})
         if not exists:
