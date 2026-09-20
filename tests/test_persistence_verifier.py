@@ -262,6 +262,451 @@ class TestSourceBytesVerification:
             assert "db hash mismatch" in wrong_hash.stderr
 
 
+class TestConfirmedIdentityPersistence:
+    """The verifier must load the exact confirmed identity fields from the
+    canonical nested journey receipt shape (stages.identity_confirmed),
+    compare them against the stored WorkerIdentityRevision (after the same
+    normalization the persistence layer applied), and reject a mutated stored
+    field with the exact expected vs actual strings."""
+
+    STORED_FIELDS = {
+        "family_name": "TESTOVA",
+        "given_name": "ALFA",
+        "birth_date": "1990-03-15",
+        "residence_address": "TESTOVACI 12, 12345 TESTOV",
+        "birth_place": "Praha",
+        "nationality": "CZE",
+        "sex": "F",
+        "insurance_number": "INS000001",
+        "street": "Testovaci",
+        "house_number": "12",
+        "city": "Testov",
+        "postal_code": "12345",
+        "country_code": "CZ",
+    }
+
+    # What the journey entered/recorded; nationality "CZ" must be normalized
+    # to "CZE" by the verifier, exactly as the persistence layer did.
+    JOURNEY_FIELDS = dict(STORED_FIELDS)
+    JOURNEY_FIELDS["nationality"] = "CZ"
+
+    def _seed_rows(self, tmp_root, env, activity_label="Montážní práce"):
+        """Seed org/worker/document/assignment plus a confirmed identity
+        revision with the exact stored fields, and return identifiers."""
+        import json as _json
+        seed_code = (
+            "import io, hashlib, json\n"
+            "from datetime import date\n"
+            "from portal.release1a.models import (Organization, Worker,\n"
+            "    Assignment, Document, WorkerIdentityRevision)\n"
+            "from portal.release1a.document_storage import document_storage\n"
+            "org, _ = Organization.objects.get_or_create(\n"
+            "    pk=1, defaults={'key': 'synthetic-demo',\n"
+            "                    'label': 'Synthetic demo org'})\n"
+            "worker = Worker.objects.create(\n"
+            "    organization=org, given_name='Alfa',\n"
+            "    family_name='Testerova', birth_date=date(1990, 3, 15),\n"
+            "    activity_profile='employee')\n"
+            "payload = b'persistence-verification-source-bytes'\n"
+            "digest = hashlib.sha256(payload).hexdigest()\n"
+            "key = 'documents/' + ('a' * 32) + '/' + ('c' * 64) + '.source'\n"
+            "document_storage().save(key, io.BytesIO(payload))\n"
+            "document = Document.objects.create(\n"
+            "    organization=org, worker=worker,\n"
+            "    opaque_key=key, sha256=digest,\n"
+            "    content_type='application/pdf')\n"
+            "assignment = Assignment.objects.create(\n"
+            "    organization=org, worker=worker, workplace_label='Brno',\n"
+            "    activity_label=%r, start=date(2026, 1, 1),\n"
+            "    end=date(2026, 2, 1))\n"
+            "WorkerIdentityRevision.objects.create(\n"
+            "    organization=org, worker=worker,\n"
+            "    source_document=document,\n"
+            "    revision_number=1,\n"
+            "    confirmed_fields=json.loads(%r),\n"
+            "    confirmed_at=__import__('django.utils.timezone')"
+            ".utils.timezone.now())\n"
+            "print(json.dumps({'worker_pk': worker.pk,\n"
+            "    'document_pk': document.pk, 'assignment_pk': assignment.pk,\n"
+            "    'sha256': digest}))\n"
+            % (activity_label, _json.dumps(self.STORED_FIELDS, sort_keys=True))
+        )
+        r = subprocess.run(
+            [sys.executable, "manage.py", "shell", "-c", seed_code],
+            cwd=str(REPO_ROOT), env={**os.environ, **env},
+            capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, f"seed failed:\n{r.stderr}"
+        return json.loads(r.stdout.strip().splitlines()[-1])
+
+    def _journey_receipt(self, ids):
+        """Canonical nested journey evidence with an identity_confirmed
+        stage carrying the exact journey-entered identity values."""
+        receipt = {
+            "ok": True,
+            "profile": "core",
+            "organization_id": 1,
+            "worker_pk": ids["worker_pk"],
+            "document_pk": ids["document_pk"],
+            "assignment_pk": ids["assignment_pk"],
+            "source_document_sha256": ids["sha256"],
+            "stages": {
+                "identity_confirmed": {
+                    "ok": True,
+                    "stage": "identity_confirmed",
+                    "worker_pk": ids["worker_pk"],
+                    "confirmed_fields": dict(self.JOURNEY_FIELDS),
+                },
+            },
+        }
+        return receipt
+
+    def _journey_env(self, tmp_root, env, ids):
+        env = dict(env)
+        env.update({
+            "JOURNEY_EVIDENCE_PATH": str(tmp_root / "journey-evidence.json"),
+            "ORG_PK": "1",
+            "WORKER_PK": str(ids["worker_pk"]),
+            "DOCUMENT_PK": str(ids["document_pk"]),
+            "ASSIGNMENT_PK": str(ids["assignment_pk"]),
+            "DOCUMENT_SHA256": ids["sha256"],
+        })
+        assert "CONFIRMED_IDENTITY_FIELDS" not in env
+        assert "CONFIRMED_IDENTITY_FIELDS" not in os.environ
+        return env
+
+    def _write_receipt(self, tmp_root, ids, mutate=lambda receipt: receipt):
+        receipt = mutate(self._journey_receipt(ids))
+        path = tmp_root / "journey-evidence.json"
+        path.write_text(json.dumps(receipt))
+        os.chmod(str(path), 0o600)
+        return path
+
+    def _base_run(self, tmp_root, env, ids):
+        env = self._journey_env(tmp_root, env, ids)
+        self._write_receipt(tmp_root, ids)
+        return _run(["--profile", "core"], env)
+
+    def test_receipt_identity_values_pass(self):
+        """The exact journey identity values must come from
+        stages.identity_confirmed in the receipt and pass against the
+        stored revision (with nationality normalized like the persist
+        layer normalized it)."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+            r = self._base_run(tmp_root, env, ids)
+            assert r.returncode == 0, (
+                f"rc={r.returncode}\n{r.stdout}\n{r.stderr}")
+            assert "ok  identity_confirmed" in r.stdout
+            outcome = json.loads(r.stdout.strip().splitlines()[-1])
+            assert outcome["checks"]["identity_confirmed"]["ok"] is True
+
+    def test_require_identity_full_field_pass(self):
+        """--require-identity must pass when the receipt carries the complete
+        canonical 13-field confirmed identity set and the stored values
+        match: durable core acceptance demands the full identity comparison,
+        and a complete valid run is the complement to the negative coverage
+        cases below."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids)
+            r = _run(["--profile", "core", "--require-identity"], env)
+            assert r.returncode == 0, (
+                f"rc={r.returncode}\n{r.stdout}\n{r.stderr}")
+            assert "ok  identity_confirmed" in r.stdout
+            outcome = json.loads(r.stdout.strip().splitlines()[-1])
+            identity = outcome["checks"]["identity_confirmed"]
+            assert identity["ok"] is True
+            assert identity["confirmed_fields_count"] == 13
+
+    def test_mutated_stored_identity_field_fails_with_exact_values(self):
+        """Negative case: keep the receipt unchanged, mutate one stored
+        confirmed field in the database, and require failure naming both the
+        journey value and the drifted stored value."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids)
+            mutated = dict(self.STORED_FIELDS)
+            mutated["street"] = "TAMPERED"
+            r = subprocess.run(
+                [sys.executable, "manage.py", "shell", "-c",
+                 "import json\n"
+                 "from portal.release1a.models import WorkerIdentityRevision\n"
+                 f"WorkerIdentityRevision.objects"
+                 f".filter(worker_id={ids['worker_pk']})"
+                 f".update(confirmed_fields=json.loads(%r))\n" % (
+                     json.dumps(mutated, sort_keys=True))],
+                cwd=str(REPO_ROOT), env={**os.environ, **env},
+                capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, f"mutation failed:\n{r.stderr}"
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 1, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "FAIL identity_confirmed" in r.stderr
+            assert "street" in r.stderr
+            assert "Testovaci" in r.stderr
+            assert "TAMPERED" in r.stderr
+            assert "PERSISTENCE_ACCEPTANCE_BLOCKED" not in r.stderr
+
+    def test_malformed_identity_evidence_blocks(self):
+        """A receipt claiming confirmed identity values without the field
+        map must block (exit 2), never silently skip the comparison."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def drop_fields(receipt):
+                receipt["stages"]["identity_confirmed"].pop("confirmed_fields")
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, drop_fields)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 2, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "PERSISTENCE_ACCEPTANCE_BLOCKED" in r.stderr
+            assert "confirmed_fields" in r.stderr
+
+    def test_absent_identity_evidence_skips_legacy(self):
+        """A receipt whose stages lack an identity_confirmed key keeps the
+        legacy behavior: the identity comparison is omitted (exit 0 when
+        rows exist), distinguished from a present-but-malformed stage."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def drop_stage(receipt):
+                receipt["stages"].pop("identity_confirmed", None)
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, drop_stage)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 0, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            outcome = json.loads(r.stdout.strip().splitlines()[-1])
+            assert "identity_confirmed" not in outcome["checks"], (
+                f"unexpected identity check in outcome: {outcome['checks']}"
+            )
+
+    def test_non_dict_identity_evidence_blocks(self):
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def non_dict(receipt):
+                receipt["stages"]["identity_confirmed"] = "invalid"
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, non_dict)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 2, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "PERSISTENCE_ACCEPTANCE_BLOCKED" in r.stderr
+            assert "not a JSON object" in r.stderr
+
+    def test_worker_pk_mismatch_between_receipt_and_selection_blocks(self):
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def wrong_pk(receipt):
+                receipt["stages"]["identity_confirmed"]["worker_pk"] = 99999
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, wrong_pk)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 2, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "does not match" in r.stderr
+
+    def test_require_identity_blocks_on_absent_stage(self):
+        """--require-identity must refuse a legacy receipt that omits the
+        identity stage (exit 2): durable core acceptance can never be
+        claimed without the confirmed-identity comparison."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def drop_stage(receipt):
+                receipt["stages"].pop("identity_confirmed", None)
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, drop_stage)
+            r = _run(["--profile", "core", "--require-identity"], env)
+            assert r.returncode == 2, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "PERSISTENCE_ACCEPTANCE_BLOCKED" in r.stderr
+            assert "confirmed identity evidence" in r.stderr
+
+    def test_require_identity_enforces_full_field_coverage(self):
+        """A receipt carrying only a subset of the canonical fields must be
+        refused under --require-identity (exit 2) with the missing fields
+        named, so a truncated or re-authored receipt cannot pass acceptance
+        by omitting fields."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def truncated(receipt):
+                receipt["stages"]["identity_confirmed"]["confirmed_fields"] = {
+                    "family_name": "TESTOVA"}
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, truncated)
+            r = _run(["--profile", "core", "--require-identity"], env)
+            assert r.returncode == 2, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "missing expected fields" in r.stderr
+            assert "birth_date" in r.stderr
+
+    def test_empty_identity_field_map_blocks(self):
+        """An empty confirmed_fields map must block (exit 2) rather than
+        produce a vacuous zero-comparison pass."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def empty_fields(receipt):
+                receipt["stages"]["identity_confirmed"]["confirmed_fields"] = {}
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, empty_fields)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 2, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "vacuous" in r.stderr or "confirmed_fields is empty" in r.stderr
+
+    def test_non_string_identity_value_fails(self):
+        """A confirmed identity value that is not a non-empty string must
+        fail the check (never fall back to a raw comparison)."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def non_string(receipt):
+                fields = dict(self.JOURNEY_FIELDS)
+                fields["sex"] = None
+                receipt["stages"]["identity_confirmed"]["confirmed_fields"] = fields
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, non_string)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 1, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "not a string" in r.stderr
+
+    def test_normalization_findings_identity_value_fails(self):
+        """A journey value that cannot be normalized cleanly must fail the
+        check (exit 1), not fall back to a raw string comparison. An invalid
+        birth_date is refused even though a stored raw match could exist."""
+        with tempfile.TemporaryDirectory(
+                prefix="supervised-persistence-test-",
+                dir=str(REPO_ROOT / "runtime" / "portal")) as tmp:
+            tmp_root = Path(tmp)
+            os.chmod(str(tmp_root), 0o700)
+            env = _migrated_runtime_env(tmp_root)
+            ids = self._seed_rows(tmp_root, env)
+
+            def bad_date(receipt):
+                fields = dict(self.JOURNEY_FIELDS)
+                fields["birth_date"] = "1990-13-45"
+                receipt["stages"]["identity_confirmed"]["confirmed_fields"] = fields
+                return receipt
+
+            env = self._journey_env(tmp_root, env, ids)
+            self._write_receipt(tmp_root, ids, bad_date)
+            r = _run(["--profile", "core"], env)
+            assert r.returncode == 1, f"rc={r.returncode}\n{r.stdout}\n{r.stderr}"
+            assert "failed normalization" in r.stderr
+            assert "invalid_date" in r.stderr
+
+
+class TestIdentityFieldSetConsistency:
+    """The verifier's canonical EXPECTED_IDENTITY_FIELDS must stay identical
+    to the browser journey's CONFIRMED_IDENTITY_FIELDS, otherwise coverage
+    enforcement and the journey would silently diverge."""
+
+    def test_expected_fields_match_browser_helper(self):
+        import ast
+
+        source = (REPO_ROOT / "tests" / "_rehearse_workflow_browser.py").read_text()
+        tree = ast.parse(source)
+        browser_fields = None
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and \
+                            target.id == "CONFIRMED_IDENTITY_FIELDS":
+                        browser_fields = ast.literal_eval(node.value)
+        assert browser_fields is not None, (
+            "CONFIRMED_IDENTITY_FIELDS not found in _rehearse_workflow_browser.py")
+
+        verifier_code = (
+            "import sys\n"
+            "sys.path.insert(0, " + repr(str(REPO_ROOT)) + ")\n"
+            "from scripts.rehearse_verify_persistence import "
+            "EXPECTED_IDENTITY_FIELDS\n"
+            "import json\n"
+            "print(json.dumps(sorted(EXPECTED_IDENTITY_FIELDS)))\n"
+        )
+        r = subprocess.run(
+            [sys.executable, "-c", verifier_code],
+            env={**os.environ, "PYTHONPATH": str(REPO_ROOT)},
+            capture_output=True, text=True, timeout=15)
+        assert r.returncode == 0, f"import failed: {r.stderr}"
+        expected = json.loads(r.stdout.strip().splitlines()[-1])
+        assert set(expected) == set(browser_fields), (
+            f"verifier EXPECTED_IDENTITY_FIELDS diverged from the browser "
+            f"helper:\nverifier={expected}\nbrowser={sorted(browser_fields)}"
+        )
+
+
 class TestBrowserProfileWiring:
     """F5: playwright_smoke must not strip PostgreSQL env vars."""
 

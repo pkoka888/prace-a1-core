@@ -68,6 +68,7 @@ REQUIRED_STAGES = (
     "ocr_proposals_confirmed",
     "missing_identity_confirmed",
     "address_confirmed",
+    "identity_confirmed",
     "assignment_created",
     "assignment_corrected",
     "source_document_downloaded",
@@ -89,6 +90,16 @@ OPTIONAL_A1_STAGES = frozenset({
     "a1_regenerated",
     "regeneration_differs",
 })
+
+
+# Exact confirmed identity facts whose persistence the acceptance verifier
+# compares against the stored WorkerIdentityRevision after a restart. The
+# journey records them in stages.identity_confirmed for that contract.
+CONFIRMED_IDENTITY_FIELDS = (
+    "family_name", "given_name", "birth_date", "residence_address",
+    "birth_place", "nationality", "sex", "insurance_number",
+    "street", "house_number", "city", "postal_code", "country_code",
+)
 
 
 # Stages whose outcome documents an expected operation-specific block
@@ -422,9 +433,28 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     f"expected to yield at least family_name, given_name, "
                     f"birth_date, residence_address")
             # Capture every box name once so HTMX-driven re-renders do
-            # not shift the index mid-loop.
+            # not shift the index mid-loop. The proposal value inputs are
+            # named value_<field>_<pk> and carry the exact value the
+            # operator reviews; capture them before the batch confirm,
+            # because confirming a proposal removes it from the review
+            # page's proposal list.
             box_names = confirm_boxes.evaluate_all(
                 "els => els.map(el => el.name)")
+            captured_values = page.evaluate(r'''() => {
+                const out = {};
+                for (const el of document.querySelectorAll(
+                        'input[name^="value_"]')) {
+                    const m = el.name.match(/^value_(.+)_\d+$/);
+                    if (m) {
+                        out[m[1]] = (el.value || '').trim();
+                    }
+                }
+                return out;
+            }''')
+            if not isinstance(captured_values, dict) or not captured_values:
+                raise SystemExit(
+                    f"FAIL: could not capture OCR proposal values "
+                    f"(captured={captured_values!r}, url={page.url!r})")
             for name in box_names:
                 page.locator(
                     f'input[type="checkbox"][name="{name}"]').check()
@@ -441,6 +471,7 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
             evidence["stages"]["ocr_proposals_confirmed"] = _stage_ok(
                 "ocr_proposals_confirmed",
                 confirmed=initial_count - remaining,
+                confirmed_values=captured_values,
                 url=page.url)
 
             # Stage 7: missing-identity form appears because the worker
@@ -456,13 +487,14 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     f"FAIL: missing-identity form did not render the "
                     f"expected four inputs (count={identity_inputs.count()}, "
                     f"url={page.url!r})")
-            for field, value in (
-                ("identity_birth_place", "Praha"),
-                ("identity_nationality", "CZ"),
-                ("identity_sex", "F"),
-                ("identity_insurance_number", "INS000001"),
-            ):
-                _set_field(page, name=field, value=value)
+            missing_identity_values = {
+                "birth_place": "Praha",
+                "nationality": "CZ",
+                "sex": "F",
+                "insurance_number": "INS000001",
+            }
+            for field, value in missing_identity_values.items():
+                _set_field(page, name=f"identity_{field}", value=value)
             _submit_form(page, action="confirm_missing_identity")
             _wait_page_ready(page)
             page.reload(wait_until="domcontentloaded")
@@ -473,7 +505,9 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     f"FAIL: missing-identity form still rendered after "
                     f"confirmation (url={page.url!r})")
             evidence["stages"]["missing_identity_confirmed"] = _stage_ok(
-                "missing_identity_confirmed", url=page.url)
+                "missing_identity_confirmed",
+                confirmed_values=missing_identity_values,
+                url=page.url)
 
             # Stage 8: address review form appears because the OP card
             # contains the residence_address label. Fill the five
@@ -511,7 +545,36 @@ def run_journey(base_url: str, runtime_root: Path, tmpdir: Path,
                     f"submitted values (missing={missing!r}, "
                     f"observed={actual_address!r}, url={page.url!r})")
             evidence["stages"]["address_confirmed"] = _stage_ok(
-                "address_confirmed", url=page.url)
+                "address_confirmed", confirmed_values=expected_address,
+                url=page.url)
+
+            # Stage 8b: assemble the exact confirmed identity fields into
+            # one canonical stage so the persistence verifier can compare
+            # them (after the same normalization the persist layer applied)
+            # against the stored WorkerIdentityRevision after a restart.
+            identity_fields = {
+                f: v for f, v in captured_values.items()
+                if f in CONFIRMED_IDENTITY_FIELDS}
+            identity_fields.update(missing_identity_values)
+            identity_fields.update(
+                {k.removeprefix("address_"): v
+                 for k, v in expected_address.items()})
+            absent = [f for f in CONFIRMED_IDENTITY_FIELDS
+                      if not identity_fields.get(f)]
+            if absent:
+                raise SystemExit(
+                    f"FAIL: confirmed identity evidence missing fields "
+                    f"{absent!r} (captured={sorted(captured_values)}, "
+                    f"url={page.url!r})")
+            if set(identity_fields) != set(CONFIRMED_IDENTITY_FIELDS):
+                raise SystemExit(
+                    f"FAIL: confirmed identity evidence field set mismatch: "
+                    f"{sorted(identity_fields)} != "
+                    f"{sorted(CONFIRMED_IDENTITY_FIELDS)} (url={page.url!r})")
+            evidence["stages"]["identity_confirmed"] = _stage_ok(
+                "identity_confirmed", worker_pk=worker_pk,
+                confirmed_fields=dict(sorted(identity_fields.items())),
+                url=page.url)
 
             # Stage 9: create assignment.
             page.goto(base_url + f"/workers/{worker_pk}/assignments/new/",

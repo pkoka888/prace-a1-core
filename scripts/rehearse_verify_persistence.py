@@ -58,6 +58,19 @@ A1_REQUIRED_ENV = (
     "REGEN_SHA256",
 )
 
+# Canonical confirmed-identity field set recorded by the committed-source
+# journey (``tests/_rehearse_workflow_browser.py::CONFIRMED_IDENTITY_FIELDS``).
+# The default (legacy) path compares whatever fields the receipt or
+# CONFIRMED_IDENTITY_FIELDS supplies. An explicit ``--require-identity``
+# acceptance run additionally demands coverage of this set, so a truncated or
+# re-authored receipt cannot qualify as durable core acceptance by omitting
+# fields. A regression keeps the two definitions in sync.
+EXPECTED_IDENTITY_FIELDS = frozenset({
+    "family_name", "given_name", "birth_date", "residence_address",
+    "birth_place", "nationality", "sex", "insurance_number",
+    "street", "house_number", "city", "postal_code", "country_code",
+})
+
 
 def _die(rc: int, *lines: str) -> None:
     for line in lines:
@@ -97,7 +110,7 @@ def _load_from_journey_evidence() -> dict:
     return evidence
 
 
-def _setup(profile: str = "core") -> None:
+def _setup(profile: str = "core", require_identity: bool = False) -> None:
     # Allow journey evidence file to supply identifiers that are not
     # already set in the environment.
     evidence = _load_from_journey_evidence()
@@ -153,6 +166,58 @@ def _setup(profile: str = "core") -> None:
                  f"selected ASSIGNMENT_PK {selected_pk}")
         if not os.environ.get("CORRECTED_ACTIVITY_LABEL"):
             os.environ["CORRECTED_ACTIVITY_LABEL"] = label
+    # Exact confirmed identity values live at stages.identity_confirmed in
+    # the canonical journey receipt. When the receipt claims confirmed
+    # identity facts, the field map and its worker identity are required and
+    # must match the selected assignment's worker — a missing or malformed
+    # stage blocks acceptance instead of silently skipping the comparison.
+    # A receipt without that stage (older calls) keeps the previous behavior:
+    # the identity comparison is omitted unless the caller supplies
+    # CONFIRMED_IDENTITY_FIELDS explicitly.
+    if isinstance(stages, dict) and "identity_confirmed" in stages:
+        stage = stages["identity_confirmed"]
+        if not isinstance(stage, dict):
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence stages.identity_confirmed is present but "
+                 "not a JSON object")
+        if (stage.get("ok") is not True
+                or not isinstance(stage.get("confirmed_fields"), dict)):
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence claims confirmed identity values but "
+                 "stages.identity_confirmed is malformed "
+                 "(ok=%r, confirmed_fields=%s)" % (
+                     stage.get("ok"),
+                     type(stage.get("confirmed_fields")).__name__))
+        fields = stage["confirmed_fields"]
+        if not fields:
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence claims confirmed identity values but "
+                 "stages.identity_confirmed.confirmed_fields is empty")
+        stage_pk = stage.get("worker_pk")
+        if stage_pk is None:
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 "journey evidence identity_confirmed stage is missing "
+                 "worker_pk")
+        selected_pk = os.environ.get("WORKER_PK")
+        if selected_pk and str(stage_pk) != str(selected_pk):
+            _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                 f"journey evidence worker_pk {stage_pk} does not match "
+                 f"selected WORKER_PK {selected_pk}")
+        if not os.environ.get("CONFIRMED_IDENTITY_FIELDS"):
+            os.environ["CONFIRMED_IDENTITY_FIELDS"] = json.dumps(fields)
+    # Legacy compatibility is not acceptance. A receipt without an
+    # identity_confirmed stage (or an explicit CONFIRMED_IDENTITY_FIELDS
+    # environment value) keeps the historical behavior only when the caller
+    # does not demand the identity comparison. The committed-source core
+    # acceptance path passes --require-identity, which refuses to treat an
+    # omitted identity check as a durable pass.
+    if require_identity and not os.environ.get("CONFIRMED_IDENTITY_FIELDS"):
+        _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+             "--require-identity was requested but no confirmed identity "
+             "evidence is available: the journey receipt has no "
+             "stages.identity_confirmed and CONFIRMED_IDENTITY_FIELDS is not "
+             "set. Durable core acceptance must include the confirmed "
+             "identity comparison")
     if profile == "optional-a1":
         for env_name, evidence_key in (
             ("CASE_PK", "case_pk"),
@@ -250,6 +315,68 @@ def _assignment_corrected_value(assignment_pk: int, org_pk: int, expected_label:
     }
 
 
+def _confirmed_identity_values(worker_pk: int, org_pk: int, expected_fields: dict) -> dict:
+    """Compare the latest confirmed identity revision's stored field values
+    against the exact values the journey entered and recorded. The stored
+    values come from WorkerIdentityRevision.confirmed_fields, which is the
+    source of truth for confirmed identity facts. The comparison applies the
+    same normalization (valid_value) the persistence layer applied at confirm
+    time, so an entered/displayed value and its normalized stored value match.
+
+    Fail closed: an empty field map is refused (a vacuous zero-comparison pass
+    is not acceptance), and a value that is not a non-empty string or that
+    does not normalize cleanly fails the check instead of falling back to a
+    raw string comparison. The persistence layer itself rejects any value with
+    normalization findings (INVALID_FIELD_VALUE), so a stored fact is always a
+    cleanly normalized value and cannot legitimately require a fallback.
+    """
+    from portal.release1a.models import Worker, WorkerIdentityRevision
+    from src.document_core.interpretation import valid_value
+
+    if not expected_fields:
+        return {"ok": False,
+                "reason": "confirmed identity field map is empty; refusing a "
+                          "vacuous zero-comparison pass"}
+    worker = Worker.objects.filter(pk=worker_pk, organization_id=org_pk).first()
+    if worker is None:
+        return {"ok": False, "reason": "worker not found in org"}
+    revision = WorkerIdentityRevision.objects.filter(
+        organization=org_pk, worker=worker
+    ).order_by("-revision_number", "-pk").first()
+    if revision is None:
+        return {"ok": False, "reason": "no confirmed identity revision for worker"}
+    diffs = {}
+    for field, expected in expected_fields.items():
+        if not isinstance(expected, str) or not expected.strip():
+            return {"ok": False,
+                    "reason": f"confirmed identity value for {field!r} is "
+                              f"empty or not a string: {expected!r}"}
+        try:
+            normalized, findings = valid_value(field, expected)
+        except Exception as exc:
+            return {"ok": False,
+                    "reason": f"confirmed identity value for {field!r} could "
+                              f"not be normalized: {exc}"}
+        if findings:
+            return {"ok": False,
+                    "reason": f"confirmed identity value for {field!r} failed "
+                              f"normalization "
+                              f"({','.join(findings)}): {expected!r}"}
+        actual = revision.confirmed_fields.get(field)
+        if actual != normalized:
+            diffs[field] = {
+                "expected": expected,
+                "expected_normalized": normalized,
+                "actual": actual,
+            }
+    return {
+        "ok": not diffs,
+        "worker_pk": worker_pk,
+        "confirmed_fields_count": len(revision.confirmed_fields),
+        "diffs": diffs,
+    }
+
+
 def _document_worker_sha256(document_pk: int, org_pk: int, expected_sha256: str | None = None) -> dict:
     from portal.release1a.document_storage import document_storage
     from portal.release1a.models import Document
@@ -296,10 +423,18 @@ def main() -> int:
         help="Acceptance profile: 'core' covers worker/document/assignment; "
              "'optional-a1' additionally requires A1 identifiers (default: core)",
     )
+    parser.add_argument(
+        "--require-identity",
+        action="store_true",
+        help="Durable core acceptance: fail closed (exit 2) when confirmed "
+             "identity evidence is absent, and require coverage of the "
+             "canonical confirmed-identity field set. The committed-source "
+             "core acceptance run passes this flag; legacy callers omit it.",
+    )
     args = parser.parse_args()
     profile = args.profile
 
-    _setup(profile=profile)
+    _setup(profile=profile, require_identity=args.require_identity)
 
     # A blocked or unreachable database must produce the documented
     # PERSISTENCE_ACCEPTANCE_BLOCKED exit code (2), not an unhandled
@@ -333,6 +468,32 @@ def main() -> int:
                 assignment_pk, org_pk, corrected_label
             )
 
+        expected_identity = os.environ.get("CONFIRMED_IDENTITY_FIELDS")
+        if expected_identity:
+            try:
+                expected_fields = json.loads(expected_identity)
+            except json.JSONDecodeError as exc:
+                _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                     f"CONFIRMED_IDENTITY_FIELDS is not valid JSON: {exc}")
+            if not isinstance(expected_fields, dict):
+                _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                     "CONFIRMED_IDENTITY_FIELDS is not a JSON object")
+            if not expected_fields:
+                _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                     "CONFIRMED_IDENTITY_FIELDS is an empty field map; "
+                     "refusing a vacuous zero-comparison pass")
+            if args.require_identity:
+                missing_fields = sorted(
+                    EXPECTED_IDENTITY_FIELDS - set(expected_fields))
+                if missing_fields:
+                    _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
+                         "--require-identity: confirmed identity evidence is "
+                         "missing expected fields: "
+                         + ", ".join(missing_fields))
+            checks["identity_confirmed"] = _confirmed_identity_values(
+                worker_pk, org_pk, expected_fields
+            )
+
         if profile == "optional-a1":
             if not case_pk or not regen_pk or not pdf_sha256 or not regen_sha256:
                 _die(2, "PERSISTENCE_ACCEPTANCE_BLOCKED",
@@ -364,7 +525,8 @@ def main() -> int:
             else:
                 print(f"ok  {key}: key={art.get('key')} sha256=matched")
         elif key in ("worker_document_relationship", "worker_assignment_relationship",
-                     "document_sha256", "assignment_corrected_value"):
+                     "document_sha256", "assignment_corrected_value",
+                     "identity_confirmed"):
             rel = value if isinstance(value, dict) else {}
             if key == "document_sha256":
                 # The document hash check carries two independent proofs:
@@ -400,6 +562,28 @@ def main() -> int:
                 else:
                     print("ok  assignment_corrected_value: activity_label "
                           "matched the journey's exact corrected value")
+            elif key == "identity_confirmed":
+                if not rel.get("ok"):
+                    if rel.get("reason"):
+                        print(f"FAIL {key}: {rel['reason']}", file=sys.stderr)
+                    else:
+                        diffs = rel.get("diffs") or {}
+                        for field, diff in diffs.items():
+                            print(
+                                f"FAIL {key}: confirmed identity field "
+                                f"{field} drift (expected="
+                                f"{diff.get('expected_normalized')!r}, "
+                                f"actual={diff.get('actual')!r})",
+                                file=sys.stderr,
+                            )
+                        if not diffs:
+                            print(f"FAIL {key}: identity comparison failed",
+                                  file=sys.stderr)
+                    failed = True
+                else:
+                    print(f"ok  identity_confirmed: "
+                          f"{rel.get('confirmed_fields_count')} confirmed "
+                          "fields matched the journey's exact values")
             elif not rel.get("ok"):
                 print(f"FAIL {key}: {rel.get('reason', 'check failed')}",
                       file=sys.stderr)
