@@ -1076,6 +1076,14 @@ def a1_list(request):
 
 
 @require_org_membership
+def a1_variant_counts(request):
+    from .services import count_workers_by_variant, require_capability, Forbidden
+    require_capability(request.user, request.organization, "a1:prepare")
+    data = count_workers_by_variant(request.organization)
+    return JsonResponse(data)
+
+
+@require_org_membership
 def intake_wizard(request):
     """Unified Přidat pracovníka wizard with three paths: Upload, Paste, Manual.
 

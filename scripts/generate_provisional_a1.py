@@ -29,7 +29,7 @@ try:
     from .finalize_a1 import (
         DEFAULT_REVIEW, ROOT, FinalizationError, load_profile, read_review,
         row_to_form, verify_pdf, validate_review, generation_dependencies, snapshot_hash,
-        validate_application_draft_row,
+        validate_application_draft_row, derive_variant, VARIANT_PARAMETERS, VARIANT_DEFAULT,
     )
     from .a1_paths import (
         PathValidationError, validate_output_path, unique_staging_path,
@@ -50,7 +50,7 @@ except ImportError:  # Direct CLI execution.
     from finalize_a1 import (
         DEFAULT_REVIEW, ROOT, FinalizationError, load_profile, read_review,
         row_to_form, verify_pdf, validate_review, generation_dependencies, snapshot_hash,
-        validate_application_draft_row,
+        validate_application_draft_row, derive_variant, VARIANT_PARAMETERS, VARIANT_DEFAULT,
     )
     from a1_paths import (
         PathValidationError, validate_output_path, unique_staging_path,
@@ -131,6 +131,7 @@ def build_provisional_rows(
 def generate(
     review: Path, profiles: Path, config_path: Path, cohort_path: Path, output: Path,
     employees_path: Path | None = None,
+    variant: str | None = None,
 ) -> Path:
     employees_path = employees_path or private_path("a1/employees_normalized.json")
     validate_output_path(output, review, employees_path, config_path, cohort_path, allow_existing=False)
@@ -138,6 +139,14 @@ def generate(
     extras = (config_path, cohort_path, Path(__file__))
     inputs = generation_dependencies(review, employees_path, profiles, background, layout, extras)
     built, config = build_provisional_rows(review, profiles, config_path, cohort_path, employees_path)
+    if variant is None:
+        variant = derive_variant(built[0][0].get("status_profile", "")) if built else VARIANT_DEFAULT
+    variant_params = VARIANT_PARAMETERS.get(variant, VARIANT_PARAMETERS[VARIANT_DEFAULT])
+    for row, _, _ in built:
+        if not row.get("activity_name"):
+            row["activity_name"] = variant_params["section5_activity_name_default"]
+        if not row.get("activity_address"):
+            row["activity_address"] = variant_params["section5_activity_address_default"]
     run_id = current_run_id()
     staging = unique_staging_path(output.parent, f"provisional-{run_id}")
     generated_at = datetime.now(timezone.utc).isoformat()
@@ -167,7 +176,7 @@ def generate(
             )
             target = staging / f"A1_{row['employee_id']}.pdf"
             generate_a1_pdf(form, ROOT / "templates/a1_background.pdf", ROOT / "config/a1_layout.json", target)
-            checks = verify_pdf(target, row, profile, all_rows)
+            checks = verify_pdf(target, row, profile, all_rows, provisional=True)
             manifest["generated"].append({"employee_id": row["employee_id"], "path": target.name, **checks})
             verification_rows.append({
                 "employee_id": row["employee_id"],
@@ -217,6 +226,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", type=Path, default=ROOT / "config/a1_provisional.json")
     parser.add_argument("--cohort", type=Path)
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--variant", type=str, default=None,
+                        choices=("employee", "self_employed"),
+                        help="worker variant; if omitted, inferred from status_profile")
     return parser
 
 
@@ -226,7 +238,7 @@ def main(argv: list[str] | None = None) -> int:
         private_root()
         review = args.review or private_path("a1/review.csv")
         cohort = args.cohort or private_path("a1/cohort.json")
-        result = generate(review, args.profiles, args.config, cohort, (args.output or private_root() / "output/provisional" / str(uuid.uuid4())), args.employees)
+        result = generate(review, args.profiles, args.config, cohort, (args.output or private_root() / "output/provisional" / str(uuid.uuid4())), args.employees, variant=args.variant)
         print("Generated provisional candidate set; QA and artifact approval remain required")
         return 0
     except (Exception, KeyboardInterrupt):  # CLI boundary: protected receipts retain non-content failure evidence.

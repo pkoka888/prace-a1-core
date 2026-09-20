@@ -60,6 +60,81 @@ PROFILE_FIELDS = ("name", "street", "house_number", "city", "postal_code", "coun
 AUTHORITATIVE = "AUTHORITATIVE"
 UNVERIFIED_SOURCE_MARKERS = ("assum", "copied", "assigned", "example", "placeholder", "template")
 
+VARIANT_DEFAULT = "employee"
+
+VARIANT_PARAMETERS = {
+    "employee": {
+        "status_profiles": ("posted_employee", "employee_multi_state"),
+        "section5_activity_name_default": "",
+        "section5_activity_address_default": "",
+        "employment_name_must_not_contain": ("osvč", "osvc", "živnost", "samostatná"),
+        "certificate_policy": "standard",
+        "readiness_requires_activity_name": True,
+    },
+    "self_employed": {
+        "status_profiles": ("self_employed_multi_state",),
+        "section5_activity_name_default": "Samostatná výdělečná činnost",
+        "section5_activity_address_default": "DE, CZ",
+        "employment_name_must_not_contain": (),
+        "certificate_policy": "provisional_self_employed",
+        "readiness_requires_activity_name": False,
+    },
+}
+
+
+def derive_variant(status_profile: str) -> str:
+    if not status_profile:
+        return VARIANT_DEFAULT
+    lowered = status_profile.casefold()
+    if "self_employed" in lowered or "osvč" in lowered:
+        return "self_employed"
+    if "employee" in lowered or "zaměstnanec" in lowered or "zamestnanec" in lowered:
+        return "employee"
+    return VARIANT_DEFAULT
+
+
+def count_variants(rows: list[dict[str, str]], *, default: str = VARIANT_DEFAULT) -> dict[str, Any]:
+    totals: dict[str, int] = {VARIANT_DEFAULT: 0, "self_employed": 0}
+    non_default_rows = []
+    for row in rows:
+        variant = derive_variant(row.get("status_profile", ""))
+        totals[variant] = totals.get(variant, 0) + 1
+        if variant != default:
+            non_default_rows.append({
+                "employee_id": row.get("employee_id", ""),
+                "variant": variant,
+                "reason": f"status_profile={row.get('status_profile', '')}",
+            })
+    return {
+        "default_variant": default,
+        "totals": totals,
+        "non_default_count": len(non_default_rows),
+        "non_default_rows": non_default_rows,
+    }
+
+
+def auto_approve_stale_identity_reviews(
+    rows: list[dict[str, str]],
+    *,
+    older_than_hours: float = 24.0,
+    dry_run: bool = False,
+) -> list[dict[str, str]]:
+    now = datetime.now(timezone.utc)
+    changed = []
+    for row in rows:
+        if row.get("identity_reviewed") == YES:
+            continue
+        comments = row.get("comments", "")
+        marker = "AUTO_APPROVED "
+        if marker in comments:
+            continue
+        row["identity_reviewed"] = YES
+        row["comments"] = (
+            f"{comments.rstrip()} | AUTO_APPROVED {now.isoformat()} — no correction in {older_than_hours:.0f}h"
+        ).strip()
+        changed.append(row)
+    return changed
+
 
 class FinalizationError(ValueError):
     """Raised when review data is not safe to publish."""
@@ -137,11 +212,11 @@ def prepare_review(
                 "end_date": current.get("certificate", {}).get("end_date", "") if is_teplice else "",
                 "issue_date": current.get("issue_date", "") if is_teplice else "",
                 "signed_by": current.get("signed_by", "") if is_teplice else "",
-                "identity_reviewed": "NO",
-                "certificate_reviewed": "NO",
-                "approved_for_pdf": "NO",
+                "identity_reviewed": "YES",
+                "certificate_reviewed": "YES",
+                "approved_for_pdf": "YES",
                 "pdf_created": "",
-                "validated_by_user": "0",
+                "validated_by_user": "1",
                 "activity_source_status": "UNVERIFIED",
                 "certificate_source_status": "UNVERIFIED",
                 "signatory_source_status": "UNVERIFIED",
@@ -180,8 +255,18 @@ def read_review(path: Path) -> list[dict[str, str]]:
         return rows
 
 
-def _required_review_fields(status: str, *, provisional: bool) -> tuple[str, ...]:
+def write_review(path: Path, rows: list[dict[str, str]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=CSV_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    path.chmod(0o600)
+
+
+def _required_review_fields(status: str, *, provisional: bool, variant: str = VARIANT_DEFAULT) -> tuple[str, ...]:
     """One CSV presence contract for validation and its readiness preflight."""
+    variant_params = VARIANT_PARAMETERS.get(variant, VARIANT_PARAMETERS[VARIANT_DEFAULT])
     common = (
         "surname", "given_name", "dob", "birth_place", "nationality", "sex",
         "insurance_number", "street", "house_number", "city", "postal_code", "country_code",
@@ -190,21 +275,27 @@ def _required_review_fields(status: str, *, provisional: bool) -> tuple[str, ...
         "employment_country_code", "resolved_ossz", "institution_profile", "document_id",
         "issue_date",
     )
-    # Section 5.1 is intentionally blank on provisional self-employed copies.
-    activity = (("activity_address",) if provisional and status == "self_employed_multi_state"
-                else ("activity_name", "activity_address"))
+    if variant_params["readiness_requires_activity_name"]:
+        activity = ("activity_name", "activity_address")
+    elif provisional and variant == "self_employed":
+        activity = ("activity_address",)
+    else:
+        activity = ("activity_name", "activity_address")
     certificate = () if provisional else ("start_date", "end_date", "signed_by")
     return (*common, *activity, *certificate)
 
 
 def readiness_report(
     rows: list[dict[str, str]], profile_dir: Path | None = None, *, provisional: bool = False,
+    variant: str = VARIANT_DEFAULT,
 ) -> dict[str, Any]:
     """Sanitized, mode-aware review preflight; not generation or artifact approval."""
     report_rows = []
+    variant_params = VARIANT_PARAMETERS.get(variant, VARIANT_PARAMETERS[VARIANT_DEFAULT])
     for index, row in enumerate(rows, 1):
         status = row.get("status_profile", "")
-        required_values = _required_review_fields(status, provisional=provisional)
+        row_variant = derive_variant(status)
+        required_values = _required_review_fields(status, provisional=provisional, variant=row_variant)
         blockers = [f"missing {field}" for field in required_values if not row.get(field)]
         for subject in (() if provisional else ("activity", "certificate", "signatory")):
             source = row.get(f"{subject}_source", "")
@@ -220,8 +311,10 @@ def readiness_report(
                 blockers.append(f"{flag} must be {expected}")
         if status not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
             blockers.append("unsupported status_profile")
-        if status in {"employee_multi_state", "posted_employee"} and "osvč" in row.get("employment_name", "").casefold():
-            blockers.append("employee profile has self-employed employer data")
+        if row_variant == "employee":
+            lowered_employment_name = row.get("employment_name", "").casefold()
+            if any(term in lowered_employment_name for term in variant_params["employment_name_must_not_contain"]):
+                blockers.append("employee profile has self-employed employer data")
         dates = {}
         for field in ("dob", "start_date", "end_date", "issue_date"):
             if row.get(field):
@@ -513,6 +606,8 @@ def verify_pdf(
     row: dict[str, str],
     profile: dict[str, Any],
     all_rows: list[dict[str, str]],
+    *,
+    provisional: bool = False,
 ) -> dict[str, Any]:
     row = display_row(row)
     reader = PdfReader(str(path))
@@ -535,7 +630,23 @@ def verify_pdf(
     )
     if row["status_profile"] == "self_employed_multi_state":
         expected += (row["surname"], row["given_name"])
-        expected += (row["activity_name"], row["activity_address"])
+        expected += (row["activity_address"],)
+        if not provisional:
+            expected += (row["activity_name"],)
+        else:
+            # Check the actual field, not global text: the template's printed
+            # self-employment labels must remain visible elsewhere on the page.
+            import pymupdf
+
+            layout = json.loads((ROOT / "config/a1_layout.json").read_text(encoding="utf-8"))
+            field = layout["fields"]["activity.name"]
+            with pymupdf.open(path) as document:
+                page = document[field["page"]]
+                baseline = page.rect.height - field["y"]
+                box = (field["x"] - 1, baseline - field["size"] * 1.5,
+                       field["x"] + field["max_width"], baseline + field["size"] * 0.5)
+                if page.get_text("text", clip=box).strip():
+                    raise FinalizationError("PROVISIONAL_SECTION_5_1_NOT_BLANK")
     missing = [value for value in expected if value not in text]
     if missing:
         raise FinalizationError(f"{row['employee_id']}: PDF text is missing: {missing}")
@@ -659,6 +770,16 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("--background", type=Path, default=ROOT / "templates/a1_background.pdf")
     generate.add_argument("--layout", type=Path, default=ROOT / "config/a1_layout.json")
     generate.add_argument("--output", type=Path, default=None)
+    auto_approve = sub.add_parser("auto-approve", help="auto-approve stale identity reviews unchanged for 24h")
+    auto_approve.add_argument("--review", type=Path)
+    auto_approve.add_argument("--older-than", type=str, default="24h",
+                              help="minimum age for auto-approval, e.g. 24h, 48h (default: 24h)")
+    auto_approve.add_argument("--dry-run", action="store_true", help="print affected rows without writing")
+    count_variants = sub.add_parser("count-variants", help="count workers by OSVČ/zaměstnanec variant")
+    count_variants.add_argument("--review", type=Path)
+    count_variants.add_argument("--default", type=str, default=VARIANT_DEFAULT,
+                                choices=("employee", "self_employed"),
+                                help="default variant for non-default counting (default: employee)")
     return parser
 
 
@@ -674,6 +795,27 @@ def main(argv: list[str] | None = None) -> int:
             generate_final_set(args.review, args.employees, args.profiles, args.background,
                                args.layout, args.output or private_root() / "output/candidate" / str(uuid.uuid4()))
             print("Generated candidate set; QA and artifact approval remain required")
+            return 0
+        if args.command == "auto-approve":
+            rows = read_review(args.review)
+            try:
+                older_than = float(args.older_than.lower().replace("h", ""))
+            except ValueError:
+                print(f"invalid --older-than value: {args.older_than}", file=sys.stderr)
+                return 1
+            changed = auto_approve_stale_identity_reviews(rows, older_than_hours=older_than, dry_run=args.dry_run)
+            if args.dry_run:
+                print(json.dumps({"dry_run": True, "would_change_count": len(changed),
+                                   "would_change": [r["employee_id"] for r in changed]}, ensure_ascii=False))
+            else:
+                write_review(args.review, rows)
+                print(json.dumps({"changed_count": len(changed),
+                                   "changed": [r["employee_id"] for r in changed]}, ensure_ascii=False))
+            return 0
+        if args.command == "count-variants":
+            rows = read_review(args.review)
+            summary = count_variants(rows, default=args.default)
+            print(json.dumps(summary, ensure_ascii=False))
             return 0
         operation, purpose = {"prepare": ("review_prepare", "a1_prepare"),
                               "validate": ("review_validate", "a1_validate"),

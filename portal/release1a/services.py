@@ -2,7 +2,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 from allauth.mfa.models import Authenticator
 from prototypes.architecture.adr001.proof_contract import a1_prepare, stable_hash, validate_upload
 from src.document_core.serialization import result_hash
@@ -138,6 +138,17 @@ def current_a1_source(worker, organization):
         "assignments": normalized,
     })
     return profile, normalized, live_hash
+
+
+def count_workers_by_variant(organization, *, default="employee"):
+    qs = Worker.objects.filter(organization=organization, state=Worker.State.ACTIVE)
+    counts = qs.values("activity_profile").annotate(count=Count("pk"))
+    result = {item["activity_profile"]: item["count"] for item in counts}
+    for variant in ("employee", "self_employed"):
+        result.setdefault(variant, 0)
+    result["default"] = default
+    result["non_default_count"] = sum(v for k, v in result.items() if k != default and k != "default")
+    return result
 
 
 J4_IDENTITY_BINDING = "a1-j4-identity-v1"

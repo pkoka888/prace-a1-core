@@ -37,6 +37,7 @@ from .views import (
     a1_artifact_confirm,
     a1_evidence_intake,
     a1_list,
+    a1_variant_counts,
     # Intake wizard
     intake_wizard,
     intake_upload,
@@ -99,6 +100,7 @@ urlpatterns = [
 
     # J4 — A1
     path("a1/", a1_list, name="a1_list"),
+    path("a1/variant-counts/", a1_variant_counts, name="a1_variant_counts"),
     path("workers/<int:worker_pk>/a1/prepare/", a1_prepare, name="a1_prepare"),
     path("a1/<int:pk>/", a1_case_detail, name="a1_case_detail"),
     path("a1/<int:pk>/artifact/", a1_artifact_download, name="a1_artifact_download"),
