@@ -4,6 +4,29 @@ Parent: PLAN-INFRA. Scope: source-delivery policy and bounded delivery evidence.
 No new runner/remote, history rewrite or real-data processing. Separately
 authorized host changes are recorded in their individual checkpoints.
 
+## Committed-source owned-PostgreSQL core journey acceptance — 2026-09-20
+
+Completes the JAN-04 core checkpoint (plans/2026-09-14-delivery-reliability-and-jan-v1.md
+lines 48–54): one committed-source owned-PostgreSQL core journey, restart without
+reseeding, then canonical verification with `--profile core --require-identity`.
+Record selectors came exclusively from that run's saved journey receipt.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | Identity validation hardened: verifier now fails closed (exit 2) under `--require-identity` when confirmed identity is absent or coverage incomplete; journey `confirmed_fields` is compared against the stored revision after identical valid-value normalization; canonical field sets stay in sync via AST-based regression. Published as `402f61a` (3 files: `scripts/rehearse_verify_persistence.py`, `tests/test_persistence_verifier.py`, tests helper) |
+| Validation | 13/13 identity tests passed once (incl. new positive `test_require_identity_full_field_pass`). Mandatory hook passed once: `PASS [delivery_lifecycle_rehearsal] 174.41s exit=0` (`runtime/portal/temporary/change-checks-214t2ode/report.json`). FO exposure check: `public-site/index.html` (1597 bytes, SHA-256 `7d32f972e68157cb072bad0276af74a1583a7f8f26f9eed9096ab5adab7b44d3`, inline CSS only, no external URLs/nav links) is not served by active nginx; enabled vhost `prace-v-nemecku.expc.cz` proxies to gunicorn `127.0.0.1:8001` serving the portal login (evidence recorded 2026-09-20T00:50:03Z). Owned committed-source journey ran from `git worktree add --detach runtime/portal/temporary/j4-committed-source 402f61a` (verified HEAD, clean status except the venv symlink), on a fresh owned PG 18 cluster (`/usr/lib/postgresql/18/bin`, trust, Unix socket `runtime/portal/pg-j4-20260920-032715-8af58f54cc0d`, db `prace_core_j4_8af58f54cc0d`, bind `127.0.0.1:18005` free): prepare→provision→start→smoke→workflow→stop→start→smoke all exit 0. Verifier `--profile core --require-identity` exit 0 with `JOURNEY_EVIDENCE_PATH` from that run: `worker_found`, `document_found`, `assignment_found`, `worker_document_relationship` (worker_pk=1 document_pk=1 document_worker_id=1), `worker_assignment_relationship` (worker_pk=1 assignment_pk=1 assignment_worker_id=1), `document_sha256` (sha `184c9094…ca769` db+source matched), `assignment_corrected_value` (matched journey exact value), `identity_confirmed` (15 confirmed fields, diffs empty) |
+| Publication | `402f61a89de011431c384c204dfbf2e7ebe24754` pushed to private `origin` feature branch `feat/prace-readiness-plan-2026-08-13`; upstream/`ls-remote` both equal local HEAD. Two earlier lifecycle runs aborted in setup (setgid-inherited runtime-root mode 2700 vs required 0700) and were retained/cleaned separately; neither reached the journey. A third and final owned run passed and its cluster/runtime were retained stopped for review |
+| Deployment / activation | None. Owned disposable PostgreSQL only; no operator DB, service, credential, migration or real-data activation. `8001` (live listener) untouched; `18005` used by the owned run |
+| Limitations | Hook package `delivery_lifecycle_rehearsal` still does not include `tests/test_persistence_verifier.py` (D4). The default `scripts/release_reproducer.sh <commit-sha>` exported acceptance still omits the core journey (JAN-03/REL-03 open): this run used a detached git worktree of `402f61a`, not the reproducer export seam. Known JAN-04 lifecycle defects (self-declared ownership, guard-only cleanup, table-wide DELETEs, invalid psql probe) recorded, not exercised on any shared DB. FO page not served is point-in-time evidence, not configuration-custody proof. Worktree `venv` is a symlink to the main repo venv (tooling only); committed source bytes were the executed tree |
+| Next owner | Engineering extends `scripts/release_reproducer.sh` to include the committed-source core journey for REL-03/JAN-03; infrastructure reconciles backup destination/custody separately (no extraction before a verified restore) |
+
+Private receipts: `runtime/portal/temporary/j4-run-20260920-032715-8af58f54cc0d/`
+(journey-evidence.json, verifier stdout/stderr, run-identity, worktree head/status,
+manifest SHA `9bb8e0b4…302c7ad`, per-step logs). Retained stopped cluster
+`runtime/portal/pg-j4-20260920-032715-8af58f54cc0d/`, retained runtime root
+`runtime/portal/temporary/j4-committed-source/runtime/portal/supervised-j4-20260920-032715-8af58f54cc0d/`
+(manifest binds git_commit `402f61a89de0…`, app_build_id `g402f61a89de0`).
+
 ## Script validation research and discovery review — 2026-09-17
 
 User-requested research/review is delivered locally in the
@@ -1399,6 +1422,29 @@ application files. At that path-deployment checkpoint, source updates were uncom
 unpublished in this application checkout; current publication is in the delivery record. No PostgreSQL authentication,
 secret separation/rotation, manifest approval/repin, service recovery, JAN acceptance
 or PG5 restore gate is closed by the path deployment.
+## Core-delivery audit and execution queue — 2026-09-20
+
+Read-only source review confirmed HEAD `861eeb2`, locally cached upstream 0/0,
+three staged identity-persistence files and additional unstaged verifier/test
+hardening. No live remote query or publication was performed in this audit.
+An independent bounded source reviewer confirmed the index still lacks strict
+acceptance behavior. The supplied report's 29-pass claim has a local 29-dot/100%
+log, but that log alone records neither native exit nor tested source identity;
+this audit did not rerun the suite. Strict-mode positive full-field coverage and
+explicit identity/assignment check presence remain required for acceptance.
+
+The OpenCode transcript establishes repetitive and unrelated assistant output,
+not its claimed corrupted Bash stream. Root cause remains undetermined. A fresh
+session and bounded read-only reproduction precede any provider/plugin diagnosis;
+no client upgrade, cache deletion or service change was performed.
+
+The active [execution queue](../../plans/2026-09-14-delivery-reliability-and-jan-v1.md#current-execution-checkpoint-and-todos--2026-09-20)
+now contains checked/unchecked todos, primary/subagent ownership and exact exit
+criteria: strict focused coverage, served FO, coherent publication, committed-source
+owned PG restart, and independent infrastructure backup-input reconciliation.
+This audit changed documentation only; preserved application staging, stashes and
+inherited A1 edits. No backup, extraction, deployment or activation is claimed.
+
 # 2026-09-18 — Provisional Section 5.1 core policy
 
 - Implementation: canonical `mark_provisional` clears `activity.name` for

@@ -9,6 +9,80 @@
 
 ## Outcome, sources and expected results
 
+### Current execution checkpoint and todos — 2026-09-20
+
+This queue supersedes older next-action ordering below; existing REL/JAN task IDs
+and historical evidence remain intact. Phase: demonstrated synthetic candidate;
+strict identity acceptance, FO evidence, publication of the current batch and
+backup/restore remain incomplete. A1 Section 5.1 stays a separate preserved batch.
+
+Observed HEAD `861eeb2` matches the locally recorded upstream (no network check).
+Three identity-persistence files are staged, but verifier/tests also have unstaged
+hardening edits. Index evidence is not working-tree evidence. The supplied
+OpenCode report claims 29 passing tests; `/tmp/opencode/persist-tests2.log` contains
+29 progress dots and 100%, without an exit-code/source receipt. The report is not
+committed-source acceptance. Current tests add five identity-hardening cases plus
+one field-set synchronization case, not six identity cases plus synchronization.
+
+- [x] REL-03: inspect index/worktree distinction and reported log; preserve both
+  existing stashes and inherited A1/configuration changes.
+- [ ] REL-03: resume in a fresh OpenCode session with a short repository-grounded
+  handoff. Stop on repetitive/unrelated output; do not continue that damaged
+  conversation or attribute it to Bash without raw tool-event evidence.
+- [x] JAN-04: review strict identity validation and add a positive full-13-field
+  `--require-identity` case. Verify empty environment-supplied maps, non-string
+  values, normalization failures, missing stage and incomplete coverage fail;
+  legacy omission remains explicitly outside acceptance. Reuse valid matching
+  evidence; run affected new/changed cases once, not a broad suite by default.
+- [x] JAN-01: complete read-only served FO page/navigation/first-party asset and
+  browser-rendering checks. Record target, timestamp and observable build identity;
+  separate deployed-site evidence from candidate evidence. No form submissions,
+  host changes or restart are authorized by this check.
+- [x] REL-03/04: primary reviews and explicitly restages the three coherent source
+  files plus supporting documentation, preserving unrelated edits. Inspect the
+  full index and let mandatory hooks run selected checks once. Record input
+  hashes/native exits in private in-project receipts; do not relabel old logs.
+- [x] REL-03: commit, inspect scoped completeness, reconcile live upstream without
+  reset/stash, push only the existing authorized feature branch and verify remote
+  SHA. A locally cached 0/0 comparison alone does not prove publication.
+- [x] JAN-04: execute one committed-source owned PostgreSQL core journey, restart
+  without reseeding, then canonical verification with `--profile core
+  --require-identity`. Explicitly require passing identity, corrected-assignment,
+  relationship and document-byte result keys; overall success with omitted checks
+  is insufficient. Clear inherited record/value selector overrides so inputs come
+  from that run's saved journey receipt. Preserve unique private receipts and
+  uncertain runtimes.
+- [ ] REL-06: reconcile missing encrypted destination, key custody, retention and
+  recovery-objective inputs through the existing infrastructure request. Backup
+  authorization exists; concrete infrastructure inputs remain unresolved. Actual
+  consistent backup and isolated restore gate physical extraction, not FO work.
+- [x] REL-01: update the single delivery record at completion with source,
+  validation, publication, FO outcome, limitations and next owner. No new research
+  report, new top-level task ID, deployment or real-data activation is implied.
+
+Parallel execution: the primary alone owns the three persistence files, staging,
+integration and publication. One read-only subagent reviews those source/test
+paths; another inspects `public-site/` and existing public routes/assets, producing
+only sanitized findings. Neither receives private data, credentials, whole-repo
+edit authority or permission to mutate services. Use the existing
+`synthetic-portal-delivery` and `postgres-ops` skills for the acceptance operation;
+do not create/install additional skills to unblock this batch. Keep the positive
+acceptance-path test and the reviewer independent; avoid shared test databases.
+
+OpenCode incident: the supplied transcript shows assistant repetition and an
+unrelated task-chat narrative after interruption. It does not establish corrupted
+shell output, provider cross-session leakage or a specific root cause. Installed
+CLI is 1.18.31. If recurrence needs investigation, privately correlate the exact
+session's assistant/tool events, provider/model and timestamps using this installed
+CLI's help (`export`, not an assumed v2 command). Inspect/redact before sharing;
+do not export whole histories to public issues. Compare a small synthetic read-only
+task in a fresh session, then plugin-free `--pure` mode if needed. Use only an
+independently verified-free alternative model, never a paid fallback. Do not clear
+sessions/caches, upgrade or restart unrelated services as an unproven remedy.
+Official references: [OpenCode troubleshooting](https://opencode.ai/v2/docs/troubleshooting)
+and [CLI documentation](https://opencode.ai/v2/docs/cli/commands/); their v2 commands
+must not override the locally inspected 1.18.31 command interface.
+
 Jan can complete normal login/TOTP → save a worker with optional facts unknown →
 upload a protected document → review/correct OCR proposals → create/correct an
 assignment → download the protected original. The same records, corrected facts,
