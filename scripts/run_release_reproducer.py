@@ -194,17 +194,30 @@ raise SystemExit(bool(failed))
 '''
 
 
-def acceptance_commands(python, state):
-    return [
+ACCEPTANCE_COMMAND_TIMEOUT = 3600
+
+
+def acceptance_commands(python, state, repo, sha, include_a1=False):
+    commands = [
         [python, "-c", PLANNING_CHECK],
         [python, "-m", "pytest", "-p", "no:cacheprovider", "--basetemp", str(state / "pytest"),
          "tests/m2/test_synthetic_containment.py", "tests/test_release_reproducer.py",
          "tests/test_finalize_a1.py", "tests/test_a1_stabilization.py", "tests/test_a1_application_draft.py", "tests/test_a1_input_artifacts.py", "-q"],
         [python, "manage.py", "test", "tests.document_web.test_inbox", "tests.document_web.test_field_review", "tests.document_web.test_identity_review", "tests.document_web.test_legacy_reconciliation", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_cohort_exports", "tests.document_web.test_a1_input_publication", "tests.document_web.test_input_bundle_bo", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "--noinput", "--verbosity", "1"],
+        [python, "scripts/run_core_journey.py", "--repo-root", str(repo),
+         "--commit", sha, "--state", str(state / "core-journey"),
+         "--profile", "core"],
     ]
+    if include_a1:
+        commands.append(
+            [python, "scripts/run_core_journey.py", "--repo-root", str(repo),
+             "--commit", sha, "--state", str(state / "optional-a1-journey"),
+             "--profile", "optional-a1"]
+        )
+    return commands
 
 
-def reproduce(repo, revision, *, commands=None):
+def reproduce(repo, revision, *, commands=None, include_a1=False):
     """commands is an internal injection seam for synthetic unit fixtures only."""
     os.umask(0o077)
     started_at = datetime.now(timezone.utc).isoformat()
@@ -254,7 +267,14 @@ def reproduce(repo, revision, *, commands=None):
                  "PRACE_MIGRATION_DB_PASSWORD"):
         if name in os.environ:
             env[name] = os.environ[name]
-    commands = commands if commands is not None else acceptance_commands(sys.executable, state)
+    commands = commands if commands is not None else acceptance_commands(
+        sys.executable, state, repo, sha)
+    if include_a1:
+        commands = list(commands) + [
+            [sys.executable, "scripts/run_core_journey.py", "--repo-root", str(repo),
+             "--commit", sha, "--state", str(state / "optional-a1-journey"),
+             "--profile", "optional-a1"]
+        ]
     receipt = {"schema_version": "2.0", "commit_sha": sha, "git_tree": git(repo, "rev-parse", sha + "^{tree}").decode().strip(),
                "started_at": started_at,
                "export_dir": str(export), "test_cwd": str(work), "runner_sha256": digest(Path(__file__).read_bytes()),
@@ -267,10 +287,10 @@ def reproduce(repo, revision, *, commands=None):
         stdout, stderr = state / f"check-{index}.stdout", state / f"check-{index}.stderr"
         with stdout.open("wb") as out, stderr.open("wb") as err:
             try:
-                result = subprocess.run(argv, cwd=work, env=env, stdout=out, stderr=err, check=False, timeout=600)
+                result = subprocess.run(argv, cwd=work, env=env, stdout=out, stderr=err, check=False, timeout=ACCEPTANCE_COMMAND_TIMEOUT)
                 exit_code = result.returncode
             except subprocess.TimeoutExpired:
-                err.write(b"Acceptance command exceeded 600 seconds.\n")
+                err.write(f"Acceptance command exceeded {ACCEPTANCE_COMMAND_TIMEOUT} seconds.\n".encode())
                 exit_code = 124
             except OSError as exc:
                 err.write((str(exc) + "\n").encode())
@@ -285,7 +305,10 @@ def reproduce(repo, revision, *, commands=None):
         receipt["source_integrity_after_checks"] = True
     except ValueError:
         receipt["source_integrity_after_checks"] = False
-    receipt["passed"] = receipt["source_integrity_after_checks"] and all(c["exit_code"] == 0 for c in receipt["checks"])
+    receipt["passed"] = receipt["source_integrity_after_checks"] and all(
+        c["exit_code"] == 0 for c in receipt["checks"]
+        if not any("--profile" in str(a) and "optional-a1" in str(a) for a in c.get("argv", []))
+    )
     receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
     receipt_path = state / "receipt.json"
     receipt_path.write_text(json.dumps(receipt, indent=2) + "\n")
@@ -293,11 +316,13 @@ def reproduce(repo, revision, *, commands=None):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: release_reproducer.sh <commit-sha>", file=sys.stderr)
+    include_a1 = "--include-a1" in sys.argv
+    if len(sys.argv) < 2 or (len(sys.argv) == 2 and sys.argv[1] == "--include-a1"):
+        print("Usage: release_reproducer.sh <commit-sha> [--include-a1]", file=sys.stderr)
         return 2
     try:
-        path, receipt = reproduce(Path(__file__).resolve().parents[1], sys.argv[1])
+        path, receipt = reproduce(Path(__file__).resolve().parents[1], sys.argv[1],
+                                  include_a1=include_a1)
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

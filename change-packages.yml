@@ -570,6 +570,7 @@
         "scripts/build_release_manifest.py",
         "scripts/provision_synthetic_operator.py",
         "scripts/smoke_probe.py",
+        "scripts/run_core_journey.py",
         "tests/test_rehearse_synthetic_site.py",
         "tests/test_rehearse_synthetic_site_lifecycle.py",
         "tests/test_rehearse_workflow.py",
@@ -578,10 +579,11 @@
         "tests/test_persistence_verifier.py",
         "tests/test_disposable_pg_guard.py",
         "scripts/fix_nginx_static_alias.sh",
-        "tests/document_web/test_browser_debug5.py"
+        "tests/document_web/test_browser_debug5.py",
+        "tests/test_core_journey_runner.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_rehearse_workflow.py tests/test_ocr_worker_lifecycle.py tests/test_disposable_pg_guard.py -q"
+        "venv/bin/python -m pytest tests/test_rehearse_synthetic_site.py tests/test_rehearse_synthetic_site_lifecycle.py tests/test_ocr_worker_lifecycle.py tests/test_disposable_pg_guard.py tests/test_core_journey_runner.py tests/test_release_reproducer.py -q"
       ],
       "dependencies": [
         "Existing supervised settings module and wsgi/asgi entrypoints",

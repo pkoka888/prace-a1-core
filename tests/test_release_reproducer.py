@@ -217,3 +217,84 @@ def test_receipt_never_records_secret_values(repo, monkeypatch):
             f"{receipt['environment'].get(name)!r}")
     assert "JOURNEY_EVIDENCE_PATH" in receipt["environment"]
     assert receipt["passed"]
+
+
+def test_acceptance_commands_include_core_journey_and_timeout():
+    """The default acceptance commands must include the core journey with correct args and timeout."""
+    from scripts.run_release_reproducer import acceptance_commands, ACCEPTANCE_COMMAND_TIMEOUT
+    import sys
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        state = Path(tmp) / "state"
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        sha = "0" * 40
+        commands = acceptance_commands(sys.executable, state, repo, sha)
+        # Default: four commands (planning, pytest, django, core journey)
+        assert len(commands) == 4
+        core_cmd = commands[-1]
+        assert core_cmd[0] == sys.executable
+        assert core_cmd[1] == "scripts/run_core_journey.py"
+        assert "--repo-root" in core_cmd
+        assert str(repo) in core_cmd
+        assert "--commit" in core_cmd
+        assert sha in core_cmd
+        assert "--state" in core_cmd
+        assert str(state / "core-journey") in core_cmd
+        assert "--profile" in core_cmd
+        assert "core" in core_cmd
+        assert ACCEPTANCE_COMMAND_TIMEOUT >= 3600
+        assert ACCEPTANCE_COMMAND_TIMEOUT == 3600
+
+
+def test_acceptance_commands_include_a1_when_requested():
+    """--include-a1 must add the optional-a1 journey as a separate check."""
+    from scripts.run_release_reproducer import acceptance_commands
+    import sys
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        state = Path(tmp) / "state"
+        repo = Path(tmp) / "repo"
+        repo.mkdir()
+        sha = "0" * 40
+        commands = acceptance_commands(sys.executable, state, repo, sha, include_a1=True)
+        assert len(commands) == 5
+        a1_cmd = commands[-1]
+        assert a1_cmd[0] == sys.executable
+        assert a1_cmd[1] == "scripts/run_core_journey.py"
+        assert "--profile" in a1_cmd
+        assert "optional-a1" in a1_cmd
+        assert str(state / "optional-a1-journey") in a1_cmd
+
+
+def test_reproduce_default_excludes_a1(repo):
+    """By default, reproduce runs only core acceptance (no A1 journey)."""
+    sha = commit(repo, "fixture")
+    commands = [[sys.executable, "-c", "print('ok')"]]
+    path, receipt = reproduce(repo, sha, commands=commands)
+    assert receipt["passed"]
+    assert len(receipt["checks"]) == 1
+
+
+def test_reproduce_include_a1_adds_a1_journey(repo):
+    """When include_a1=True, the A1 journey command is appended."""
+    sha = commit(repo, "fixture")
+    path, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", "print('ok')"]],
+                             include_a1=True)
+    # 1 synthetic command + the A1 core-journey command
+    assert len(receipt["checks"]) == 2
+    a1_check = receipt["checks"][-1]
+    assert "optional-a1" in " ".join(a1_check["argv"])
+
+
+def test_reproduce_core_passes_despite_a1_failure(repo):
+    """Core acceptance is independent: A1 journey failure must not invalidate core."""
+    sha = commit(repo, "fixture")
+    core_ok = [sys.executable, "-c", "print('core-ok')"]
+    a1_fail = [sys.executable, "-c", "import sys; sys.exit(1)"]
+    path, receipt = reproduce(repo, sha, commands=[core_ok, a1_fail], include_a1=True)
+    assert len(receipt["checks"]) == 3
+    assert receipt["checks"][0]["exit_code"] == 0
+    assert receipt["checks"][2]["exit_code"] != 0
+    assert "optional-a1" in " ".join(receipt["checks"][2]["argv"])
+    assert receipt["checks"][0]["exit_code"] == 0

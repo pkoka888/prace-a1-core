@@ -1,8 +1,8 @@
 #!/bin/bash
 # Export exactly the requested Git tree; acceptance state stays outside source.
 set -euo pipefail
-if [ "$#" -ne 1 ]; then
-    echo "Usage: release_reproducer.sh <commit-sha>" >&2
+if [ "$#" -lt 1 ]; then
+    echo "Usage: release_reproducer.sh <commit-sha> [--include-a1]" >&2
     exit 2
 fi
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
