@@ -1,0 +1,387 @@
+[
+  {
+    "name": "person.insurance_number",
+    "source": "person.insurance_number",
+    "page": 0,
+    "origin": [
+      163.7,
+      388.5
+    ],
+    "max_width": 376.3,
+    "size": 9
+  },
+  {
+    "name": "person.surname",
+    "source": "person.surname",
+    "page": 0,
+    "origin": [
+      143.9,
+      404.4
+    ],
+    "max_width": 396.1,
+    "size": 9
+  },
+  {
+    "name": "person.given_name",
+    "source": "person.given_name",
+    "page": 0,
+    "origin": [
+      137.7,
+      418.2
+    ],
+    "max_width": 402.3,
+    "size": 9
+  },
+  {
+    "name": "person.maiden_name",
+    "source": "person.maiden_name",
+    "page": 0,
+    "origin": [
+      177.5,
+      433.1
+    ],
+    "max_width": 362.5,
+    "size": 9
+  },
+  {
+    "name": "person.dob",
+    "source": "person.dob",
+    "page": 0,
+    "origin": [
+      169.0,
+      446.9
+    ],
+    "max_width": 371.0,
+    "size": 9
+  },
+  {
+    "name": "person.nationality",
+    "source": "person.nationality",
+    "page": 0,
+    "origin": [
+      385.9,
+      446.9
+    ],
+    "max_width": 154.1,
+    "size": 9
+  },
+  {
+    "name": "person.birth_place",
+    "source": "person.birth_place",
+    "page": 0,
+    "origin": [
+      167.1,
+      461.7
+    ],
+    "max_width": 372.9,
+    "size": 9
+  },
+  {
+    "name": "residence.address",
+    "source": "residence.address",
+    "page": 0,
+    "origin": [
+      143.7,
+      490.6
+    ],
+    "max_width": 396.3,
+    "size": 9
+  },
+  {
+    "name": "residence.postal_code",
+    "source": "residence.postal_code",
+    "page": 0,
+    "origin": [
+      344.5,
+      490.6
+    ],
+    "max_width": 195.5,
+    "size": 9
+  },
+  {
+    "name": "residence.city",
+    "source": "residence.city",
+    "page": 0,
+    "origin": [
+      126.1,
+      505.3
+    ],
+    "max_width": 413.9,
+    "size": 9
+  },
+  {
+    "name": "residence.country_code",
+    "source": "residence.country_code",
+    "page": 0,
+    "origin": [
+      364.3,
+      505.3
+    ],
+    "max_width": 175.7,
+    "size": 9
+  },
+  {
+    "name": "certificate.member_state",
+    "source": "certificate.member_state",
+    "page": 0,
+    "origin": [
+      149.3,
+      630.1
+    ],
+    "max_width": 390.7,
+    "size": 9
+  },
+  {
+    "name": "certificate.start_date",
+    "source": "certificate.start_date",
+    "page": 0,
+    "origin": [
+      172.7,
+      643.9
+    ],
+    "max_width": 367.3,
+    "size": 9
+  },
+  {
+    "name": "certificate.end_date",
+    "source": "certificate.end_date",
+    "page": 0,
+    "origin": [
+      396.8,
+      643.9
+    ],
+    "max_width": 143.2,
+    "size": 9
+  },
+  {
+    "name": "document_id_p1",
+    "source": "document_id_p1",
+    "page": 0,
+    "origin": [
+      104.8,
+      76.0
+    ],
+    "max_width": 435.2,
+    "size": 9
+  },
+  {
+    "name": "employment.employer_id",
+    "source": "employment.employer_id",
+    "page": 1,
+    "origin": [
+      329.1,
+      450.7
+    ],
+    "max_width": 210.9,
+    "size": 9
+  },
+  {
+    "name": "employment.employer_name",
+    "source": "employment.employer_name",
+    "page": 1,
+    "origin": [
+      198.3,
+      465.6
+    ],
+    "max_width": 341.7,
+    "size": 9
+  },
+  {
+    "name": "employment.address",
+    "source": "employment.address",
+    "page": 1,
+    "origin": [
+      136.3,
+      494.3
+    ],
+    "max_width": 403.7,
+    "size": 9
+  },
+  {
+    "name": "employment.country_code",
+    "source": "employment.country_code",
+    "page": 1,
+    "origin": [
+      354.1,
+      494.3
+    ],
+    "max_width": 185.9,
+    "size": 9
+  },
+  {
+    "name": "employment.city",
+    "source": "employment.city",
+    "page": 1,
+    "origin": [
+      118.8,
+      509.2
+    ],
+    "max_width": 421.2,
+    "size": 9
+  },
+  {
+    "name": "employment.postal_code",
+    "source": "employment.postal_code",
+    "page": 1,
+    "origin": [
+      331.0,
+      509.2
+    ],
+    "max_width": 209.0,
+    "size": 9
+  },
+  {
+    "name": "document_id_p2",
+    "source": "document_id_p2",
+    "page": 1,
+    "origin": [
+      98.9,
+      75.9
+    ],
+    "max_width": 441.1,
+    "size": 9
+  },
+  {
+    "name": "activity.address",
+    "source": "activity.address",
+    "page": 2,
+    "origin": [
+      97.6,
+      242.3
+    ],
+    "max_width": 442.4,
+    "size": 9
+  },
+  {
+    "name": "institution.name",
+    "source": "institution.name",
+    "page": 2,
+    "origin": [
+      127.6,
+      527.2
+    ],
+    "max_width": 412.4,
+    "size": 9
+  },
+  {
+    "name": "institution.address",
+    "source": "institution.address",
+    "page": 2,
+    "origin": [
+      136.3,
+      542.0
+    ],
+    "max_width": 403.7,
+    "size": 9
+  },
+  {
+    "name": "institution.city",
+    "source": "institution.city",
+    "page": 2,
+    "origin": [
+      124.7,
+      555.8
+    ],
+    "max_width": 415.3,
+    "size": 9
+  },
+  {
+    "name": "institution.postal_code",
+    "source": "institution.postal_code",
+    "page": 2,
+    "origin": [
+      118.2,
+      570.8
+    ],
+    "max_width": 421.8,
+    "size": 9
+  },
+  {
+    "name": "institution.country_code",
+    "source": "institution.country_code",
+    "page": 2,
+    "origin": [
+      362.6,
+      570.8
+    ],
+    "max_width": 177.4,
+    "size": 9
+  },
+  {
+    "name": "institution.code",
+    "source": "institution.code",
+    "page": 2,
+    "origin": [
+      146.3,
+      585.6
+    ],
+    "max_width": 393.7,
+    "size": 9
+  },
+  {
+    "name": "institution.phone_fax",
+    "source": "institution.phone_fax",
+    "page": 2,
+    "origin": [
+      175.6,
+      600.5
+    ],
+    "max_width": 364.4,
+    "size": 9
+  },
+  {
+    "name": "institution.phone_tel",
+    "source": "institution.phone_tel",
+    "page": 2,
+    "origin": [
+      183.2,
+      614.3
+    ],
+    "max_width": 356.8,
+    "size": 9
+  },
+  {
+    "name": "institution.email",
+    "source": "institution.email",
+    "page": 2,
+    "origin": [
+      128.2,
+      629.2
+    ],
+    "max_width": 411.8,
+    "size": 9
+  },
+  {
+    "name": "institution.issue_date",
+    "source": "institution.issue_date",
+    "page": 2,
+    "origin": [
+      129.5,
+      643.8
+    ],
+    "max_width": 410.5,
+    "size": 9
+  },
+  {
+    "name": "institution.signed_by",
+    "source": "institution.signed_by",
+    "page": 2,
+    "origin": [
+      125.1,
+      657.9
+    ],
+    "max_width": 414.9,
+    "size": 9
+  },
+  {
+    "name": "document_id_p3",
+    "source": "document_id_p3",
+    "page": 2,
+    "origin": [
+      99.9,
+      72.8
+    ],
+    "max_width": 440.1,
+    "size": 9
+  }
+]

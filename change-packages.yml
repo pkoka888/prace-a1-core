@@ -198,10 +198,12 @@
         "tests/test_a1_stabilization.py",
         "tests/test_a1_application_draft.py",
         "tests/test_finalize_a1.py",
-        "config/institutions/louny.json"
+        "config/institutions/louny.json",
+        "scripts/a1_completion_preview.py",
+        "tests/test_a1_completion_preview.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_finalize_a1.py tests/test_a1_stabilization.py tests/test_a1_application_draft.py -q"
+        "venv/bin/python -m pytest tests/test_finalize_a1.py tests/test_a1_completion_preview.py tests/test_a1_stabilization.py tests/test_a1_application_draft.py -q"
       ],
       "dependencies": [
         "Existing canonical renderer and finalization code; no employee regeneration or promotion"
@@ -478,10 +480,16 @@
       "intended_commit": "test: quarantine stale plan-ac synthetic checkpoint"
     },
     "a1_named_field_experiment": {
-      "purpose": "Named PDF token experiment and shared personal-name display casing. No canonical template migration or employee publication.",
+      "purpose": "v1 token template rebuilt from original output/A1 2025.pdf (pinned SHA, blanked values, blank checkboxes) + single generate routine; no canonical switch or employee publication.",
       "paths": [
         "scripts/pdf_named_fields.py",
-        "tests/test_pdf_named_fields.py"
+        "tests/test_pdf_named_fields.py",
+        "scripts/build_a1_template_v1.py",
+        "scripts/a1_generate.py",
+        "templates/a1_background_v1.pdf",
+        "templates/a1_template_v1.pdf",
+        "templates/a1_template_v1_fields.json",
+        "config/a1_template_v1_receipt.json"
       ],
       "checks": [
         "venv/bin/python -m pytest tests/test_pdf_named_fields.py tests/test_a1_core.py -q"
