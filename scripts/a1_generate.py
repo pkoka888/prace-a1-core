@@ -22,7 +22,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from finalize_a1 import row_to_form, load_profile  # noqa: E402
 from generate_a1_placeholder import flatten_form_data  # noqa: E402
-from pdf_named_fields import replace_placeholders  # noqa: E402
+from pdf_named_fields import (  # noqa: E402
+    replace_placeholders, draw_checkbox_x, CHECKBOX_X_MARKS,
+    SECTION3_BOXES, SECTION4_BOXES,
+)
 from a1_core import (  # noqa: E402
     FONT_CANDIDATES, provisional_one_year_period,
 )
@@ -52,6 +55,29 @@ def generate_worker(worker_id: str, output_dir: Path) -> Path:
     font = str(next(p for p in FONT_CANDIDATES if p.exists()))
     fields = json.loads(FIELDS.read_text(encoding="utf-8"))
     result = replace_placeholders(TEMPLATE.read_bytes(), fields, values, font)
+    # self-employed: gender + 3.4 + 4.1.2 (original majority: unchecked boxes)
+    import pymupdf
+    sex = (row.get("sex", "") or "").strip().upper()
+    marks = []
+    if row.get("status_profile") == "self_employed_multi_state":
+        marks += [("3.4", 1), ("4.1.2", 1)]
+    if sex == "M":
+        marks.append(("gender_male", 0))
+    elif sex == "F":
+        marks.append(("gender_female", 0))
+    if marks:
+        doc = pymupdf.open(stream=result, filetype="pdf")
+        for key, _ in marks:
+            if key in CHECKBOX_X_MARKS:
+                cfg = CHECKBOX_X_MARKS[key]
+                draw_checkbox_x(doc[cfg["page"]], cfg["rect"],
+                                cfg["color"])
+            elif key in SECTION3_BOXES:
+                draw_checkbox_x(doc[1], SECTION3_BOXES[key], (0, 0, 0))
+            elif key in SECTION4_BOXES:
+                draw_checkbox_x(doc[1], SECTION4_BOXES[key], (0, 0, 0))
+        result = doc.tobytes(garbage=4, deflate=True)
+        doc.close()
     output_dir.mkdir(parents=True, exist_ok=True)
     out = output_dir / f"A1_{worker_id}.pdf"
     out.write_bytes(result)
