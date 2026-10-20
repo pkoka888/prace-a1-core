@@ -223,7 +223,13 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset(
         "docs/architecture/a1-gap-analysis.md",
         "docs/architecture/a1-block-options.md",
         "docs/architecture/a1-automation-scenarios.md",
+        "docs/architecture/a1-data-architecture-variants.md",
         "docs/architecture/solutions/a1-topic-data-architecture-solution.md",
+        # Close tests for the status default and the country vocabulary. They
+        # assert the rule that an unstated status never becomes a legal
+        # status, and that the country codes are ISO 3166-1 alpha-2.
+        "tests/test_a1_status_default.py",
+        "tests/test_a1_country_codes.py",
         # Secret-scanning baseline. Contains only hashed_secret values, never
         # a plaintext secret, and is generated from the tracked tree alone.
         ".secrets.baseline",

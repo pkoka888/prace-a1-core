@@ -20,7 +20,7 @@ Ownership: *Engineering* may act; *Jan* supplies the missing business fact;
 | # | Gap | Severity | Owner | Topic |
 |---|---|---|---|---|
 | G1 | Status 3.3 (posted self-employed) cannot be expressed | S1 | Jan → Engineering | E |
-| G2 | 15 of 55 official field positions are not rendered | S3 | Engineering | W, C, O |
+| G2 | 17 of 55 official field positions are not rendered | S3 | Engineering | W, C, O |
 | G3 | No `LegalEntity` master; employer facts are unqueryable JSON | S2 | Engineering | E |
 | G4 | No `Institution` master; OSSZ data is files only | S2 | Engineering | O |
 | G5 | The `status_profile` enum is coarser than the official status set | S1 | Jan → Engineering | E |
@@ -34,6 +34,8 @@ Ownership: *Engineering* may act; *Jan* supplies the missing business fact;
 | G13 | Business facts absent from the model (NACE, replacing worker, 1.9) | S2 | Jan | E, W |
 | G14 | Local-override policy conflates display defaults with content defaults | S2 | Engineering | A, C |
 | G15 | Review flags remain flat strings without actor/time/scope | S2 | Engineering | P |
+| G16 | A sole trader's business-registration identifier was committed in three documents | S1 | Engineering — **fixed in this increment** | P, E |
+| G17 | Country and territory codes are unvalidated free text | S2 | Engineering | A, O, W |
 
 ## 2. Topic W — person identity
 
@@ -69,12 +71,16 @@ decision needed from Jan: **does the agency ever issue posted-self-employed
 A1 forms?** If yes, the enum grows with a tested case; if no, the generator
 should fail closed on such a row and the fact can be recorded once.
 
-The full activation path is **12 code sites**, listed with the failure mode of
+The full activation path is **23 code sites**, listed with the failure mode of
 each in [the field mapping §15](a1-field-source-mapping.md#15-status-33-switchable-design-default-no).
-Three of the twelve fail *silently* rather than raising — `mark_provisional`'s
-Section 5.1 blanking, the per-variant `status_profiles` and the preview
-profile choices — so an incomplete activation list produces a wrong
-certificate rather than an error. That is why the count matters.
+**Sixteen** of the twenty-three fail *silently* rather than raising, so an
+incomplete activation list produces a wrong certificate rather than an error.
+That is why the count matters. The raising sites are the accepted set in
+`a1_core.py`, the `validate_form_data` set, the three `finalize_a1.py`
+guards, the preview `PROFILES` map and the portal input whitelist; the
+silent ones include the `employment["kind"]` mappings, the Section 5.1
+blanking, the per-variant `status_profiles`, the preview profile choices, the
+assignment-facts choice list and the quality-gate branches.
 
 ### G5 — the status enum is coarser than the official set
 
@@ -97,10 +103,15 @@ queryable without changing a single rendered value.
 
 ### G13 — business facts with no home in the model
 
-Three official or mandatory facts have nowhere to live:
+Six official or mandatory facts have nowhere to live. The first three are
+the situation facts that D10 introduces; the last three are the business
+facts G13 has always carried:
 
 | Fact | Where the authority requires it | Today |
 |---|---|---|
+| Legal basis (Art. 11 / 12 / 13 / 16) | the situation decides which legislation applies | absent |
+| Posting start and end | Art. 12: the activity does not exceed 24 months | absent |
+| Prior activity start | Art. 14(3) Reg. 987/2009: the self-employed must already have pursued the activity; two months is normally sufficient | absent |
 | Replacing another posted worker | ČSSZ: "Údaj o nahrazování jiného vyslaného pracovníka je povinný v situaci vyslání" | absent |
 | NACE main activity | ČSSZ: "povinně označte jeden (hlavní) obor činnosti" | absent |
 | State of stay (1.9) | official form 1.9.1–1.9.4 | absent |
@@ -118,7 +129,7 @@ That is honest about the versioned-relationship part, but it means:
 - the same employer repeated across 30 workers exists 30 times with no shared
   identity;
 - "which clients work for employer X" is a JSON scan, not a query;
-- ARES enrichment (`a1/employer-17511267-ares.json`) has no key to attach to;
+- ARES enrichment (the ARES-enriched employer record under `a1/`) has no key to attach to;
 - 4.2 cannot be checked for uniqueness or cross-checked against a registry.
 
 Severity S2: it does not block a correct certificate, but it blocks reuse,
@@ -194,8 +205,10 @@ orphans must be classified first.
 `validated_by_user` carry a value but no actor, time or scope. The
 [field mapping](release-1a-field-mapping.md) already specifies the target
 (typed entries in `A1Case.evidence_notes` with kind, subject, actor, time,
-revision/hash, result). The gap is that the DB still has only the legacy
-flag columns, so a YES cannot be attributed. Severity S2: it weakens the
+revision/hash, result). The gap is that the four flags are only **CSV and
+export row keys** (`portal/release1a/a1_exports.py`, `scripts/finalize_a1.py`),
+not model columns, so they carry no actor, time or scope and no typed
+decision backs them: a YES cannot be attributed. Severity S2: it weakens the
 evidence chain, and the field-mapping contract already treats the flat flags
 as historical claims rather than authority.
 
@@ -255,6 +268,54 @@ agent-ops workflow proves durable resume and recovery semantics against a
 SQLite checkpoint. So the *capability* is proven; the *A1 workflow's* resume
 is not wired. Severity S2: an operator told "resuming" would believe the run
 continued when it did not.
+
+### G16 — a business-registration identifier was committed (S1, fixed)
+
+Three architecture documents cited the ARES-enriched employer record by its
+file name, and the file name embeds the employer's **IČO**. For a sole trader
+the IČO *is* a natural person's identity: it is the person's registration in
+the commercial register, it is publicly searchable in ARES, and it resolves
+to a name. The repository's own rule places `a1/` and `evidence/` outside
+version control, and the evidence files that carry this identifier are
+untracked — so the identifier in a committed document contradicted the
+repository's own treatment of the same identifier elsewhere.
+
+The fix removed the identifier from the three documents and from a fourth
+written earlier, and extended `scripts/check_git_content.py` — the existing
+guard that already scans HEAD blobs for credential signatures — with a
+business-registration check. The detector is deliberately narrow, because a
+bare eight-digit check-digit test is far too noisy: over HEAD it produced 60
+hits, almost all dates in `YYYYMMDD` form and synthetic benchmark ids. The
+shipped rule is: eight digits, word-bounded, not a calendar date, passing
+the IČO check digit, within 80 characters of a registration keyword
+(`IČO`, `ico`, ARES, *identifikační*, *obchodní jméno*, `employer_id`), and
+not under `research/synthetic/`, which is synthetic by construction. On the
+pre-fix tree that rule matched exactly the three offending documents and
+nothing else in the repository, so it is a usable regression guard rather
+than a noise generator. The guard reports the path only, never the value.
+
+### G17 — country and territory codes are unvalidated free text (S2)
+
+Every "Country code" field on the official form — 1.8.4, 1.9.4, 4.4.2, 6.5 —
+is an ISO 3166-1 alpha-2 code, and the form's own footnote fixes the domain
+of a "State": *"any European Union country, plus Iceland, Liechtenstein,
+Norway and Switzerland"*, with the United Kingdom added for the Withdrawal
+Agreement bilateral cases. The repository uses the two-letter convention
+(`"country_code": "CZ"` in the institution profiles, `kodStatu` in the ARES
+records) but validates it nowhere: a typo in `activity.address` or
+`employment.country_code` would render as an unknown territory with no
+diagnostic.
+
+The two codes in the policy default are unambiguous and were verified against
+the repository's own evidence: **DE is Germany and CZ is Czechia**; Denmark
+would be DK, and the repository contains no reference to Denmark or DK
+anywhere. Its posting scenario settles the meaning — `cz_employee_to_de`
+sets field 2.1 to `CZ`, field 4.4.2 to `CZ` and field 5.2 to `DE`, which is a
+Czech worker posted to **Germany**. The default `DE, CZ` is therefore a
+territory list of Germany and Czechia, and it already includes the home
+State; its real deficiencies are that it is an untyped comma-joined string,
+that it is a labelled policy proposal rather than a reviewed value, and that
+nothing checks the codes against the closed State domain.
 
 ## 8. What is explicitly not a gap
 

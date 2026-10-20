@@ -29,6 +29,15 @@ except ImportError:  # Direct CLI execution.
 DEFAULT_VARIANT = "self_employed"
 PROFILES = {"posted_employee": "employee", "employee_multi_state": "employee",
             "self_employed_multi_state": "self_employed"}
+# A coarse activity_profile that leaked into the fine A1 field fixes the
+# variant but never the situation: posted vs multi-state stays undecided.
+COARSE_VARIANTS = {
+    "employee": "employee", "zaměstnanec": "employee", "zamestnanec": "employee",
+    "self_employed": "self_employed", "osvc": "self_employed", "osvč": "self_employed",
+    "živnostník": "self_employed", "zivnostnik": "self_employed",
+}
+STATUS_PROFILE_CHOICES = ["posted_employee", "employee_multi_state",
+                          "self_employed_multi_state"]
 
 
 def build_preview(source: dict, *, variant: str | None = None,
@@ -42,26 +51,32 @@ def build_preview(source: dict, *, variant: str | None = None,
     status = a1.get("status_profile", "")
     if variant is not None and variant not in {"employee", "self_employed"}:
         raise ValueError("UNSUPPORTED_VARIANT")
-    # A coarse activity_profile that leaked into the fine A1 field fixes the
-    # variant but not the situation: posted vs multi-state stays undecided.
-    undecided_employee_profile = False
+    undecided_status = False
     if status and status not in PROFILES:
-        if status.strip().casefold() in {"employee", "zaměstnanec", "zamestnanec"}:
-            if variant is not None and variant != "employee":
+        coarse = status.strip().casefold()
+        if coarse in COARSE_VARIANTS:
+            if variant is not None and variant != COARSE_VARIANTS[coarse]:
                 raise ValueError("VARIANT_CONFLICT_WITH_SOURCE")
-            variant = "employee"
+            variant = COARSE_VARIANTS[coarse]
             a1["status_profile"] = status = ""
-            undecided_employee_profile = True
+            undecided_status = True
         else:
             raise ValueError("UNSUPPORTED_STATUS_PROFILE")
     if status and variant and PROFILES[status] != variant:
         raise ValueError("VARIANT_CONFLICT_WITH_SOURCE")
-    if not status and not undecided_employee_profile:
+    if not status:
+        # A missing status is an undecided situation, never a default. The
+        # variant says which application form applies; it does not say whether
+        # the person is posted or works in two or more States, and those
+        # carry different legal consequences. Article 16(2) of Regulation
+        # 987/2009 provides for this case by making the institution's initial
+        # determination provisional, not by defaulting the applicant.
         variant = variant or DEFAULT_VARIANT
-        # Employee category does not establish posted vs multi-state employment.
-        if variant == "employee":
-            raise ValueError("EMPLOYEE_STATUS_PROFILE_REQUIRED")
-        a1["status_profile"] = "self_employed_multi_state"
+        a1["status_profile"] = ""
+        undecided_status = True
+        # The role is known from the variant even when the situation is not,
+        # so Section 4.1 stays exactly-one. The situation alone is undecided.
+        employee.setdefault("employment", {})["kind"] = variant
     omitted = []
     def clean(value, path=""):
         if isinstance(value, dict):
@@ -97,7 +112,7 @@ def build_preview(source: dict, *, variant: str | None = None,
 
     missing = set(form["meta"]["missing_fields"])
     missing.update(omitted)
-    if undecided_employee_profile:
+    if undecided_status:
         # Report the reviewed choice the worksheet still needs instead of guessing it.
         missing.add("a1.status_profile")
     missing.update(f"activity.{field}" for field in ("name", "address")
@@ -115,9 +130,9 @@ def build_preview(source: dict, *, variant: str | None = None,
             missing.add("activity.workplace_address")
     form["meta"]["missing_fields"] = sorted(missing)
     form["meta"]["variant"] = PROFILES.get(employee["a1"]["status_profile"]) or variant
-    if undecided_employee_profile:
+    if undecided_status:
         form["meta"]["status_profile_undecided"] = True
-        form["meta"]["status_profile_choices"] = ["posted_employee", "employee_multi_state", "self_employed_multi_state"]
+        form["meta"]["status_profile_choices"] = list(STATUS_PROFILE_CHOICES)
     return form
 
 

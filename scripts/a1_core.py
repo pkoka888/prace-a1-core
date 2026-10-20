@@ -8,7 +8,6 @@ import hashlib
 import json
 import random
 import re
-import secrets
 import unicodedata
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -90,7 +89,9 @@ def validate_provisional_issue_date(value: str, reference: str) -> str:
     if issued.weekday() not in {0, 2}:
         raise A1ValidationError("Provisional issue date must be Monday or Wednesday")
     if not 61 <= age_days <= 180:
-        raise A1ValidationError("Provisional issue date must be 61–180 days before reference")
+        raise A1ValidationError(
+            "Provisional issue date must be 61–180 days before reference"
+        )
     return normalized
 
 
@@ -101,8 +102,9 @@ ISSUE_DATE_MIN_AGE_DAYS = 61
 ISSUE_DATE_MAX_AGE_DAYS = 180
 
 
-def generate_provisional_issue_date(reference: str | None = None,
-                                     rng: random.Random | None = None) -> str:
+def generate_provisional_issue_date(
+    reference: str | None = None, rng: random.Random | None = None
+) -> str:
     """Generate a provisional issue date in DD.MM.YYYY form.
 
     The date is a Monday or Wednesday within the 2-6 month window ending on the
@@ -112,7 +114,8 @@ def generate_provisional_issue_date(reference: str | None = None,
     rng = rng or random.Random()
     reference_day = (
         datetime.strptime(normalize_date(reference), "%d.%m.%Y")
-        if reference else datetime.now()
+        if reference
+        else datetime.now()
     )
     # Enumerate every Mon and Wed in the policy window, then pick one randomly.
     candidates: list[datetime] = []
@@ -132,10 +135,12 @@ def generate_provisional_issue_date(reference: str | None = None,
 DOCUMENT_ID_PATTERN = re.compile(r"^N\d{5}S\d{3}/(\d{4})/([A-Z]{2})$")
 
 
-def generate_provisional_document_id(issue_date: str,
-                                      member_state: str = "DE",
-                                      rng: random.Random | None = None,
-                                      office_code: int = 65023) -> str:
+def generate_provisional_document_id(
+    issue_date: str,
+    member_state: str = "DE",
+    rng: random.Random | None = None,
+    office_code: int = 65023,
+) -> str:
     """Generate a provisional Czech OSSZ certificate number for an issue date.
 
     Format: N{office_code}S{sequence}/{year}/{member_state}, e.g.
@@ -183,7 +188,11 @@ def provisional_one_year_period(start_value: str) -> tuple[str, str]:
 
 def _key(value: Any) -> str:
     text = unicodedata.normalize("NFKD", str(value or ""))
-    return "".join(char for char in text if not unicodedata.combining(char)).casefold().strip()
+    return (
+        "".join(char for char in text if not unicodedata.combining(char))
+        .casefold()
+        .strip()
+    )
 
 
 def czech_display_case(value: str | None) -> str:
@@ -191,7 +200,22 @@ def czech_display_case(value: str | None) -> str:
     if not value:
         return ""
     keep_upper = {"CZ", "DE", "EU", "OSSZ", "ÚSSZ", "SRN"}
-    lower_inside = {"a", "i", "k", "ke", "na", "nad", "od", "pod", "pro", "u", "v", "ve", "z", "ze"}
+    lower_inside = {
+        "a",
+        "i",
+        "k",
+        "ke",
+        "na",
+        "nad",
+        "od",
+        "pod",
+        "pro",
+        "u",
+        "v",
+        "ve",
+        "z",
+        "ze",
+    }
     words = []
     for index, word in enumerate(value.strip().split()):
         if word.upper() in keep_upper:
@@ -217,11 +241,15 @@ def enrich_residence(
     for rule in rules_config.get("rules", []):
         if _key(rule.get("city")) != _key(result.get("city")):
             continue
-        if rule.get("district") and _key(rule["district"]) != _key(result.get("district")):
+        if rule.get("district") and _key(rule["district"]) != _key(
+            result.get("district")
+        ):
             continue
         if rule.get("street") and _key(rule["street"]) != _key(result.get("street")):
             continue
-        if rule.get("house_number") and _key(rule["house_number"]) != _key(result.get("house_number")):
+        if rule.get("house_number") and _key(rule["house_number"]) != _key(
+            result.get("house_number")
+        ):
             continue
         for field in ("postal_code", "administrative_district", "ossz"):
             if rule.get(field) and not result.get(field):
@@ -253,13 +281,20 @@ def _full_address(data: dict[str, Any]) -> str:
 # - person: surname, given_name, maiden_name, birth_place
 # - residence / employment: street, city, district, employer_name
 _DISPLAY_CASE_FIELDS = (
-    "surname", "given_name", "maiden_name", "birth_place",
-    "street", "city", "district",
+    "surname",
+    "given_name",
+    "maiden_name",
+    "birth_place",
+    "street",
+    "city",
+    "district",
     "employer_name",
 )
 
 
-def _apply_display_casing(section: dict[str, Any], fields: tuple[str, ...] = _DISPLAY_CASE_FIELDS) -> None:
+def _apply_display_casing(
+    section: dict[str, Any], fields: tuple[str, ...] = _DISPLAY_CASE_FIELDS
+) -> None:
     """Apply Czech display casing to text fields in-place.
 
     Defensive guard so any caller of ``build_form_data`` gets the same display
@@ -273,14 +308,24 @@ def _apply_display_casing(section: dict[str, Any], fields: tuple[str, ...] = _DI
 
 
 def build_form_data(
-    employee: dict[str, Any], institution_config: dict[str, Any], *, application_draft: bool = False
+    employee: dict[str, Any],
+    institution_config: dict[str, Any],
+    *,
+    application_draft: bool = False,
+    completion_preview: bool = False,
 ) -> dict[str, Any]:
     """Create the only flat data model accepted by the renderer."""
+    if completion_preview and not application_draft:
+        raise A1ValidationError(
+            "Completion previews require an unverified draft notice"
+        )
     person = deepcopy(employee.get("person", {}))
     source_nationality = person.get("nationality", "")
     if _key(source_nationality) in {"ceska republika", "czech republic", "cz", "cze"}:
         person["nationality"] = "CZ"
-    _apply_display_casing(person, ("surname", "given_name", "maiden_name", "birth_place"))
+    _apply_display_casing(
+        person, ("surname", "given_name", "maiden_name", "birth_place")
+    )
     residence = deepcopy(employee.get("residence", {}))
     employment = deepcopy(employee.get("employment", {}))
     _apply_display_casing(residence, ("street", "city", "district"))
@@ -293,9 +338,20 @@ def build_form_data(
     # checkboxes. It is never guessed from other employee fields.
     a1 = employee.get("a1") or {}
     status_profile = str(a1.get("status_profile", "")).strip()
-    if status_profile not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
-        raise A1ValidationError(
-            f"Missing or unsupported a1.status_profile: {status_profile!r}"
+    if status_profile not in {
+        "self_employed_multi_state",
+        "employee_multi_state",
+        "posted_employee",
+    }:
+        if completion_preview and not status_profile:
+            # Undecided completion worksheet: no status checkbox is selected and
+            # no situation is claimed; the choice is reported as a missing field.
+            pass
+        else:
+            raise A1ValidationError(
+                f"Missing or unsupported a1.status_profile: {status_profile!r}; expected one of "
+                "posted_employee, employee_multi_state, self_employed_multi_state "
+                "(a coarse activity_profile such as 'employee' is not an A1 status profile)"
             )
     # Enrich residence with address rules
     address_rules = load_json(ROOT / "config" / "address_enrichment.json")
@@ -312,7 +368,9 @@ def build_form_data(
     if status_profile == "self_employed_multi_state":
         if not employment.get("employer_id"):
             employment["employer_id"] = person.get("insurance_number", "")
-        employer_name = f"{person.get('surname', '')} {person.get('given_name', '')}".strip()
+        employer_name = (
+            f"{person.get('surname', '')} {person.get('given_name', '')}".strip()
+        )
         if employer_name:
             employment["employer_name"] = czech_display_case(employer_name)
         for field in ("street", "house_number", "city", "postal_code", "country_code"):
@@ -323,13 +381,18 @@ def build_form_data(
         _apply_display_casing(employment, ("employer_name", "street", "city"))
         employment.setdefault("kind", "self_employed")
 
-    employment["kind"] = "self_employed" if status_profile == "self_employed_multi_state" else "employee"
-    document_id = certificate.get("document_id") or certificate.get("document_id_prefix", "")
+    employment["kind"] = (
+        "self_employed" if status_profile == "self_employed_multi_state" else "employee"
+    )
+    document_id = certificate.get("document_id") or certificate.get(
+        "document_id_prefix", ""
+    )
     institution_profile = str(a1.get("institution_profile", "")).strip()
     form = {
         "meta": {
             "employee_id": employee.get("id", ""),
             "application_draft": application_draft,
+            "completion_preview": completion_preview,
             "status_profile": status_profile,
             "resolved_ossz": residence.get("ossz", ""),
             "institution_source": (
@@ -374,19 +437,28 @@ def build_form_data(
             "contact_title_1": employee.get("institution", {}).get("contact_title_1")
             or institution_config.get("contact_title_1", ""),
         },
-        "activity": deepcopy(employee.get("activity", {})) if status_profile in {"self_employed_multi_state", "employee_multi_state", "posted_employee"} else {},
+        "activity": deepcopy(employee.get("activity", {}))
+        if (
+            status_profile
+            in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}
+            or completion_preview
+        )
+        else {},
         # Checkboxes: derived from the reviewed status profile.
         "status_posted_employee": status_profile == "posted_employee",
         "status_employee_multistate": status_profile == "employee_multi_state",
         "status_posted_self_employed": False,  # Not derivable from current profiles.
         "status_osv_c_multistate": status_profile == "self_employed_multi_state",
-        "employer_type_employee": status_profile in {"employee_multi_state", "posted_employee"},
+        "employer_type_employee": status_profile
+        in {"employee_multi_state", "posted_employee"},
         "employer_type_self_employed": status_profile == "self_employed_multi_state",
         # Gender: from person
         "gender_male": person.get("sex") == "M",
         "gender_female": person.get("sex") == "F",
         # Valid duration: checked when certificate has a specific validity period.
-        "valid_duration": bool(certificate.get("start_date") and certificate.get("end_date")),
+        "valid_duration": bool(
+            certificate.get("start_date") and certificate.get("end_date")
+        ),
         "provisional": False,
         "transitional_rules": False,
         # No reviewed source field exists for this checkbox yet.
@@ -396,7 +468,9 @@ def build_form_data(
     return form
 
 
-def mark_provisional(form: dict[str, Any], reason: str, visible_notice: bool = False) -> dict[str, Any]:
+def mark_provisional(
+    form: dict[str, Any], reason: str, visible_notice: bool = False
+) -> dict[str, Any]:
     """Mark a form as non-final when certificate facts are temporary placeholders.
 
     Jurisdiction may be resolved from exact address evidence by ``enrich_residence``.
@@ -407,12 +481,27 @@ def mark_provisional(form: dict[str, Any], reason: str, visible_notice: bool = F
     result.setdefault("meta", {})["provisional"] = True
     result["meta"]["provisional_reason"] = reason
     result["meta"]["provisional_notice_visible"] = visible_notice
+    # Client-copy presentation only: retain reviewed activity in the source and
+    # in application drafts, but leave Section 5.1 blank on provisional copies.
+    if (
+        result["meta"].get("status_profile") == "self_employed_multi_state"
+        and result["meta"].get("application_draft") is not True
+    ):
+        result.setdefault("activity", {})["name"] = ""
     return result
 
 
 def validate_form_data(form: dict[str, Any]) -> None:
     required = {
-        "person": ("insurance_number", "surname", "given_name", "dob", "birth_place", "nationality", "sex"),
+        "person": (
+            "insurance_number",
+            "surname",
+            "given_name",
+            "dob",
+            "birth_place",
+            "nationality",
+            "sex",
+        ),
         "residence": ("street", "house_number", "city", "postal_code", "country_code"),
         "certificate": ("member_state", "start_date", "end_date", "document_id"),
     }
@@ -425,19 +514,39 @@ def validate_form_data(form: dict[str, Any]) -> None:
         if not form.get(section, {}).get(field)
     ]
     employment = form.get("employment", {})
-    for field in ("employer_id", "employer_name", "street", "house_number", "city", "postal_code", "country_code"):
+    for field in (
+        "employer_id",
+        "employer_name",
+        "street",
+        "house_number",
+        "city",
+        "postal_code",
+        "country_code",
+    ):
         if not employment.get(field):
             missing.append(f"employment.{field}")
+    if form.get("meta", {}).get("completion_preview") is True:
+        if form["meta"].get("application_draft") is not True:
+            raise A1ValidationError(
+                "Completion previews require an unverified draft notice"
+            )
+        form["meta"]["missing_fields"] = sorted(missing)
+        missing = [field for field in missing if field.startswith("person.")]
     if missing:
-        raise A1ValidationError("Missing required A1 fields: " + ", ".join(sorted(missing)))
+        raise A1ValidationError(
+            "Missing required A1 fields: " + ", ".join(sorted(missing))
+        )
     if form.get("person", {}).get("sex") not in {"M", "F"}:
         raise A1ValidationError("person.sex must be M or F")
-    if form.get("meta", {}).get("status_profile") not in {
-        "self_employed_multi_state", "employee_multi_state", "posted_employee"
-    }:
-        raise A1ValidationError(
-            "Unsupported status_profile for this visual template"
-        )
+    status_profile = form.get("meta", {}).get("status_profile")
+    if status_profile not in {
+        "self_employed_multi_state",
+        "employee_multi_state",
+        "posted_employee",
+    } and not (
+        form.get("meta", {}).get("completion_preview") is True and status_profile == ""
+    ):
+        raise A1ValidationError("Unsupported status_profile for this visual template")
 
 
 def _get_path(data: dict[str, Any], path: str) -> str:
@@ -456,8 +565,11 @@ def _register_font(*, require_current: bool = False) -> str:
     """Pin cached reportlab font bytes for reproducible application drafts."""
     global _A1_FONT_SIGNATURE
     candidate = next((path for path in FONT_CANDIDATES if path.exists()), None)
-    signature = ((str(candidate), hashlib.sha256(candidate.read_bytes()).hexdigest())
-                 if candidate is not None else None)
+    signature = (
+        (str(candidate), hashlib.sha256(candidate.read_bytes()).hexdigest())
+        if candidate is not None
+        else None
+    )
     if "A1Sans" in pdfmetrics.getRegisteredFontNames():
         if require_current and (signature is None or signature != _A1_FONT_SIGNATURE):
             raise A1ValidationError("APPLICATION_DRAFT_FONT_CACHE_CHANGED")
@@ -465,7 +577,10 @@ def _register_font(*, require_current: bool = False) -> str:
     if candidate is not None:
         pdfmetrics.registerFont(TTFont("A1Sans", str(candidate)))
         _A1_FONT_SIGNATURE = signature
-        if require_current and hashlib.sha256(candidate.read_bytes()).hexdigest() != signature[1]:
+        if (
+            require_current
+            and hashlib.sha256(candidate.read_bytes()).hexdigest() != signature[1]
+        ):
             raise A1ValidationError("APPLICATION_DRAFT_FONT_CHANGED")
         return "A1Sans"
     if require_current:
@@ -553,7 +668,9 @@ def _draw_field(c: canvas.Canvas, value: str, cfg: dict[str, Any], font: str) ->
         c.drawString(float(cfg["x"]), float(cfg["y"]) - index * line_height, line)
 
 
-def _draw_form_header(c: canvas.Canvas, page_number: int, doc_id: str, font: str) -> None:
+def _draw_form_header(
+    c: canvas.Canvas, page_number: int, doc_id: str, font: str
+) -> None:
     """Draw only dynamic form data not present in the static background template.
 
     The A1 2025 background template already includes the title, subtitle,
@@ -569,10 +686,15 @@ def _draw_form_header(c: canvas.Canvas, page_number: int, doc_id: str, font: str
 
 
 def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
-    font = _register_font(require_current=form.get("meta", {}).get("application_draft") is True)
+    font = _register_font(
+        require_current=form.get("meta", {}).get("application_draft") is True
+    )
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=PAGE_SIZE,
-                      invariant=form.get("meta", {}).get("application_draft") is True)
+    c = canvas.Canvas(
+        buffer,
+        pagesize=PAGE_SIZE,
+        invariant=form.get("meta", {}).get("application_draft") is True,
+    )
     fields_by_page: dict[int, list[tuple[str, dict[str, Any]]]] = {}
     for field_name, cfg in layout["fields"].items():
         fields_by_page.setdefault(int(cfg["page"]), []).append((field_name, cfg))
@@ -586,21 +708,30 @@ def render_overlay(form: dict[str, Any], layout: dict[str, Any]) -> BytesIO:
     doc_id = form.get("certificate", {}).get("document_id", "")
     for page_number in range(page_count):
         for field_name, cfg in fields_by_page.get(page_number, []):
-            value = computed.get(field_name, _get_path(form, cfg.get("source", field_name)))
-            _draw_field(c, display_value(cfg.get("source", field_name), value), cfg, font)
+            value = computed.get(
+                field_name, _get_path(form, cfg.get("source", field_name))
+            )
+            _draw_field(
+                c, display_value(cfg.get("source", field_name), value), cfg, font
+            )
         c.saveState()
         _draw_form_header(c, page_number, doc_id, font)
         _draw_checkboxes_for_page(c, layout, form, page_number, font)
         c.restoreState()
-        if (form.get("meta", {}).get("application_draft") is True
-                or form.get("meta", {}).get("provisional_notice_visible")):
+        if form.get("meta", {}).get("application_draft") is True or form.get(
+            "meta", {}
+        ).get("provisional_notice_visible"):
             c.saveState()
             c.setFillColorRGB(0.78, 0.12, 0.12)
             c.setFillAlpha(0.75)
             c.setFont(font, 7)
-            c.drawRightString(PAGE_SIZE[0] - 35, 18,
-                              APPLICATION_DRAFT_NOTICE if form.get("meta", {}).get("application_draft") is True
-                              else PROVISIONAL_NOTICE)
+            c.drawRightString(
+                PAGE_SIZE[0] - 35,
+                18,
+                APPLICATION_DRAFT_NOTICE
+                if form.get("meta", {}).get("application_draft") is True
+                else PROVISIONAL_NOTICE,
+            )
             c.restoreState()
         c.showPage()
     c.save()
@@ -656,16 +787,24 @@ def generate_a1_pdf(
         if not isinstance(obj, StreamObject) or obj.get("/Subtype") != "/Image":
             continue
         filters = obj.get("/Filter")
-        filters = list(filters) if isinstance(filters, ArrayObject) else ([filters] if filters else [])
+        filters = (
+            list(filters)
+            if isinstance(filters, ArrayObject)
+            else ([filters] if filters else [])
+        )
         params = obj.get("/DecodeParms")
         if params is not None:
             params = list(params) if isinstance(params, ArrayObject) else [params]
             obj[NameObject("/DecodeParms")] = ArrayObject([NullObject(), *params])
         obj._data = base64.a85encode(obj._data, adobe=True)[2:]
-        obj[NameObject("/Filter")] = ArrayObject([NameObject("/ASCII85Decode"), *filters])
+        obj[NameObject("/Filter")] = ArrayObject(
+            [NameObject("/ASCII85Decode"), *filters]
+        )
     with output.open("wb") as stream:
         writer.write(stream)
     reopened = PdfReader(str(output))
     if len(reopened.pages) != 3 or reopened.get_fields():
-        raise A1ValidationError("Generated A1 failed static-PDF structural verification")
+        raise A1ValidationError(
+            "Generated A1 failed static-PDF structural verification"
+        )
     return output

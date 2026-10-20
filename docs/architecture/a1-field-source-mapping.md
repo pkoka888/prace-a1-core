@@ -231,7 +231,7 @@ That is why they can never disagree, and it is why neither is stored. Today
 the shared source is `Assignment.a1_facts_json["status_profile"]`, whose
 accepted values are `posted_employee`, `employee_multi_state` and
 `self_employed_multi_state`; `scripts/a1_core.py:299` rejects anything else
-with an explicit "undecided completion worksheet" error.
+with an explicit "Missing or unsupported a1.status_profile" error.
 
 **The "4.1 OR 4.2" question resolves to 4.1.1 XOR 4.1.2.** The employer/
 self-employed *kind* is exactly one of; 4.2 is the employer *code* value
@@ -314,7 +314,7 @@ real, who confirmed it, and from which source?* It owns no form field.
 | Human decision | `FieldDecision` | binds actor, time, scope and reason |
 | Accepted identity | `WorkerIdentityRevision.confirmed_fields` | the export authority; missing key means *unknown*, not empty evidence |
 | Case snapshot | `A1Case.source_snapshot_json` | pins the values used for one export |
-| Typed evidence | `A1Case.evidence_notes` (free text today) | planned typed entries: kind, subject, actor, time, revision/hash, result |
+| Typed evidence | `A1Case.evidence_notes` (a JSON list with no schema; `A1Case.notes` is the free-text field) | planned typed entries: kind, subject, actor, time, revision/hash, result |
 | Review flags | `identity_reviewed`, `certificate_reviewed`, `approved_for_pdf`, `validated_by_user` | both current validators require YES/YES/YES/1; provisional mode does not waive them |
 | Artifact state | `A1Case.artifact_reference`, `prepared_artifact_hash`, `visual_confirmed*` | artifact presence is separate from freshness, submission and issuance |
 | Authority status | `activity_source_status`, `certificate_source_status`, `signatory_source_status` | `AUTHORITATIVE` only with an evidenced assessment; a policy default or OCR success never promotes authority |
@@ -373,7 +373,7 @@ across tenants, each carrying where it came from and when it was verified.
 That is exactly the shape the current `config/institutions/*.json` profiles
 already have (`source_url`, `verified_on`, runtime sha256) and exactly what
 `config/address_enrichment.json` produces for employers via ARES
-(`a1/employer-17511267-ares.json`).
+(the ARES-enriched employer record under `a1/`).
 
 The consequence for the current code: the JSON files stop being the database.
 They become **immutable seed/import inputs with provenance**, projected into
@@ -483,7 +483,7 @@ two months is normally sufficient, per the Commission's Practical Guide), and
 the activity must not exceed **24 months**. The same three conditions apply
 to 3.1, with the addition of the "does not replace another person" test that
 *C-527/16* (*Alpenrind*) examined and that the ČSSZ employee form makes
-mandatory. Activating either 3.1 or 3.3 therefore needs **twelve code sites
+mandatory. Activating either 3.1 or 3.3 therefore needs **twenty-three code sites
 and six data fields** — `legal_basis`, `posting_start`, `posting_end`,
 `prior_activity_start`, `replaces_worker` and `nace_code` — which is gate
 D10. The full analysis, with the decision tree and the alternatives per
@@ -712,16 +712,17 @@ needs it and never blocks the rest of the application.
 | D4 | Render 2.5 provisional checkbox? | **YES, but derived** — ticked exactly when the situation is an Art. 13 one | Engineering | Yes | Layout coordinate + situation record |
 | D5 | Keep 2.6 transitional rules FALSE? | YES (until source) | Engineering | Yes | Hardcoded FALSE |
 | D6 | Render 6.7–6.9 contact block? | **YES** | Engineering | Yes | Add layout coordinates |
-| D7 | 5.2 default "DE, CZ" stays? | **YES, but the list must include the home State** | Engineering | Yes | `config/a1_provisional.json` |
-| D8 | Self-employed employer = person derivation? | **Replaced by a `sole_trader` `LegalEntity` row** | Engineering | Yes | `LegalEntity` master (D11) |
+| D7 | 5.2 default "DE, CZ" stays? | **YES, but as a typed list of ISO 3166-1 alpha-2 codes validated against the A1 State domain** (DE = Germany, CZ = Czechia; Denmark would be DK) | Engineering | Yes | `config/a1_provisional.json` |
+| D8 | Self-employed employer = person derivation? | **Replaced by a `sole_trader` `LegalEntity` row** | Engineering | Yes | `LegalEntity` master (D11a seed path) |
 | D9 | 5.3 no-fixed-address branch? | NO (hardcoded FALSE) | Engineering | Yes | Nullable source field + review |
 | D10 | Carry a situation record (`legal_basis`, `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker`, `nace_code`)? | **YES** | Jan | Yes | Model + `build_form_data()` |
-| D11 | Permit an outbound ARES lookup from the server? | NO | Jan | Yes | `LegalEntity` import path |
+| D11a | Permit an operator-initiated **offline** ARES import of a reviewed employer record? | **YES** | Jan | Yes | `LegalEntity` seed path |
+| D11b | Permit **runtime server-side egress** to `ares.gov.cz`? | NO | Jan (host/network decision) | Yes | `LegalEntity` refresh path |
 | D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
 
 D1 was split into D1a and D1b, and D10 was added, after the legal reading
 in [the block options §1](a1-block-options.md#1-the-status-33-default-answered):
-activating official status 3.3 needs **twelve code sites and six data
+activating official status 3.3 needs **twenty-three code sites and six data
 fields**, because Article 12(2) of Regulation 883/2004 only applies when the
 activity abroad is a *similar activity*, when the self-employed has already
 pursued the activity for some time (two months is normally sufficient), and
@@ -746,26 +747,52 @@ an undetermined situation by making the institution's initial determination
 
 **Current state:** `status_posted_self_employed` = `False` at `scripts/a1_core.py:450`. `status_profile` accepts only `{posted_employee, employee_multi_state, self_employed_multi_state}`. Generator fails closed on any other value at `scripts/a1_core.py:541-549` and `scripts/finalize_a1.py:476`.
 
-**When Jan provides data (switch to YES) — 12 sites to change:**
+**When Jan provides data (switch to YES) — 23 sites to change.** The set was
+wrong in two ways, and both were found by review rather than by reading: it
+omitted seven required sites, and it claimed that three of the sites failed
+silently when **sixteen** do. A silent site is the dangerous kind: the row
+renders, and the document is wrong rather than refused. A raising site
+refuses the row, so the omission is loud.
 
 | # | File | Line | Change | If missed |
 |---|---|---|---|---|
-| 1 | `scripts/a1_core.py` | 341 | Add `"posted_self_employed"` to accepted `status_profile` set | `build_form_data` raises "Missing or unsupported a1.status_profile" |
-| 2 | `scripts/a1_core.py` | 368–381 | Extend self-employed employer derivation block to cover `posted_self_employed` | Section 4.3 employer name is the raw employee name, not the person's own |
-| 3 | `scripts/a1_core.py` | 443 | Add `posted_self_employed` to activity applicability set | Section 5 renders empty for a posted self-employed |
-| 4 | `scripts/a1_core.py` | 450 | Change `False` → `status_profile == "posted_self_employed"` | Section 3.3 is never ticked; the certificate claims 3.1 or 3.4 |
-| 5 | `scripts/a1_core.py` | 454 | Change `employer_type_self_employed` to include `posted_self_employed` | 4.1.1 and 4.1.2 both unticked — Section 4 contradicts Section 3 |
-| 6 | `scripts/a1_core.py` | 485–490 | `mark_provisional` Section 5.1 blanking: include `posted_self_employed` | A provisional copy prints Section 5.1, breaking the Section 5 policy that blanks it for self-employed multi-state |
-| 7 | `scripts/a1_core.py` | 541–545 | Add `"posted_self_employed"` to `validate_form_data` accepted set | **Hard fail** — "Unsupported status_profile for this visual template" at render time |
-| 8 | `scripts/finalize_a1.py` | 152 / 160 | `VARIANT_PARAMETERS` `status_profiles` per variant: add `posted_self_employed` to the self-employed variant | The row matches no variant, so the wrong variant policy applies |
-| 9 | `scripts/finalize_a1.py` | 476–483 | `validate_review` blockers: add `posted_self_employed` to supported set | The row is rejected as an unsupported status profile |
-| 10 | `scripts/finalize_a1.py` | 869 | `employment.kind` mapping: add `posted_self_employed` → `"self_employed"` | The employment kind stays `"employee"` and contradicts 4.1.2 |
-| 11 | `scripts/finalize_a1.py` | 888 | Activity default `DE, CZ`: add `posted_self_employed` to default set | No host-State territory is proposed for 5.2 |
-| 12 | `scripts/a1_completion_preview.py` | 120 | `status_profile_choices`: include `posted_self_employed` | The undecided worksheet never offers the posted-self-employed option |
+| A1 | `scripts/a1_core.py` | 341 | Add `"posted_self_employed"` to the accepted `status_profile` set | **raises** — "Missing or unsupported a1.status_profile" |
+| A2 | `scripts/a1_core.py` | 368–381 | Extend the self-employed employer derivation to cover `posted_self_employed` | silent — Section 4.3 employer name is the raw employee name, not the person's own |
+| A3 | `scripts/a1_core.py` | 384–386 | `employment["kind"]`: include `posted_self_employed` | silent — the kind is forced to `"employee"`, contradicting 4.1.2 |
+| A4 | `scripts/a1_core.py` | 443 | Add `posted_self_employed` to the activity applicability set | silent — Section 5 renders empty |
+| A5 | `scripts/a1_core.py` | 450 | Change `False` → `status_profile == "posted_self_employed"` | silent — 3.3 is never ticked; the certificate claims 3.1 or 3.4 |
+| A6 | `scripts/a1_core.py` | 454 | `employer_type_self_employed`: include `posted_self_employed` | silent — 4.1.1 and 4.1.2 both unticked, so Section 4 contradicts Section 3 |
+| A7 | `scripts/a1_core.py` | 486–489 | `mark_provisional` Section 5.1 blanking: include `posted_self_employed` | silent — a provisional copy prints Section 5.1, breaking the Section 5 policy |
+| A8 | `scripts/a1_core.py` | 541–549 | Add `"posted_self_employed"` to the `validate_form_data` accepted set | **raises** — "Unsupported status_profile for this visual template" |
+| B1 | `scripts/finalize_a1.py` | 151 | `VARIANT_PARAMETERS["employee"]["status_profiles"]` | silent — the row matches no variant, so the wrong variant policy applies |
+| B2 | `scripts/finalize_a1.py` | 159 | `VARIANT_PARAMETERS["self_employed"]["status_profiles"]` | silent — the row matches no variant, so the wrong variant policy applies |
+| B3 | `scripts/finalize_a1.py` | 471–481 | `validate_review` supported set | **raises** — "unsupported status_profile" |
+| B4 | `scripts/finalize_a1.py` | 717–725 | the second `unsupported status_profile` guard | **raises** |
+| B5 | `scripts/finalize_a1.py` | 726–728 | the "osvč in employment_name" guard | silent — fires in the wrong direction |
+| B6 | `scripts/finalize_a1.py` | 794–801 | the third guard, `APPLICATION_DRAFT_PROFILE_INVALID` | **raises** |
+| B7 | `scripts/finalize_a1.py` | 804–806 | the second "osvč in employment_name" guard | silent — fires in the wrong direction |
+| B8 | `scripts/finalize_a1.py` | 867–869 | `employment["kind"]` mapping: `posted_self_employed` → `"self_employed"` | silent — the kind stays `"employee"` and contradicts 4.1.2 |
+| B9 | `scripts/finalize_a1.py` | 886–891 | the `DE, CZ` activity default set | silent — no host-State territory is proposed for 5.2 |
+| B10 | `scripts/finalize_a1.py` | 970–972 | `_required_review_fields`: include `posted_self_employed` | silent — the required-field set is wrong |
+| C1 | `scripts/a1_completion_preview.py` | 30 | the `PROFILES` map | **raises** — `UNSUPPORTED_STATUS_PROFILE` |
+| C2 | `scripts/a1_completion_preview.py` | 39 | `STATUS_PROFILE_CHOICES` | silent — the undecided worksheet never offers the new option |
+| D1 | `portal/release1a/a1_exports.py` | 78–83 | the portal input whitelist | **raises** — the row is rejected at the portal input boundary |
+| D2 | `portal/release1a/assignment_facts.py` | 87 | the choice list offered in the assignment-facts UI | silent — the option is never offered |
+| E1 | `scripts/a1_quality_gate.py` | 455, 467 | the `status_profile` branches that decide `activity_name`/`activity_address` requiredness and `employer_name` derivation | silent — the gate judges the wrong required fields |
 
-Layout already declares `status_posted_self_employed` checkbox at page 1 (section 3.3) — coordinate exists, no layout change needed.
+**Seven sites raise and sixteen are silent.** The silent ones are why the site
+list matters: an implementation that changes only the raising sites produces
+certificates that pass every check and are still wrong.
 
-Three of these (6, 8, 12) are *silent* failures: the row renders, but with a wrong or missing value. The rest raise. Sites 6, 8 and 12 are the ones a five-step activation list would miss.
+Layout already declares the `status_posted_self_employed` checkbox at page 1
+(section 3.3) — the coordinate exists, so no layout change is needed.
+
+**The structural fix, and why it beats a longer table:** the supported set is
+written out in six places (A1/A4/A8, B1/B2/B3/B4/B6/B10, C1/C2, D1/D2, E1).
+A single module-level constant imported by all of them would remove the
+duplication, and `tests/test_a1_status_default.py` already asserts that the six
+sites agree, so a future addition cannot drift silently. Until that constant
+exists, this table is the checklist.
 
 ---
 
@@ -777,7 +804,7 @@ Three of these (6, 8, 12) are *silent* failures: the row renders, but with a wro
 - The seven A1 suites hold **124 tests** (21 + 7 + 22 + 18 + 23 + 26 + 7), not 71
 - `certificate.document_id` and `meta.*` entries are not layout keys — document_id is drawn in the page header, meta entries are form metadata
 - `tests/test_a1_completion_preview.py` is registered under `a1_audit_path_dependencies` package in `change-packages.yml`
-- Status 3.3 requires **12** code changes, not 5 and not 9 — the count of 9 omitted `mark_provisional` 5.1 blanking (`a1_core.py:485–490`), the per-variant `status_profiles` (`finalize_a1.py:152/160`) and the preview profile choices (`a1_completion_preview.py:120`). Three of the twelve fail *silently* rather than raising, so an incomplete activation list produces a wrong certificate rather than an error
+- Status 3.3 requires **23** code changes, not 5, not 9 and not 12 — the earlier counts omitted the portal input whitelist (`portal/release1a/a1_exports.py:78–83`), the assignment-facts choice list (`portal/release1a/assignment_facts.py:87`), the `employment["kind"]` mappings (`a1_core.py:384–386`, `finalize_a1.py:867–869`), the quality-gate branches (`a1_quality_gate.py:455, 467`) and the two further finalizer guards (`finalize_a1.py:717–725`, `794–801`). **Seven** of the twenty-three raise and **sixteen** fail silently, so an incomplete activation list produces a wrong certificate rather than an error
 - Real defect found and fixed: `a1_completion_preview.py:120` omitted `self_employed_multi_state` from `status_profile_choices` — now includes all three supported profiles
 
 This document is registered under the `governance_truth` package in `change-packages.yml`.

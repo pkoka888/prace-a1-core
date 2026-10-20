@@ -99,7 +99,7 @@ the cost of a wrong field is not a cosmetic defect.
   correct — but the point where it is wrong is "the employer moved and the
   registry has not caught up".
 - **Feasibility** — partially implemented. ARES enrichment exists
-  (`a1/employer-17511267-ares.json`); there is no `LegalEntity` master to
+  (the ARES-enriched employer record under `a1/`); there is no `LegalEntity` master to
   attach it to (G3).
 
 ### E2 — the same employer across a whole cohort

@@ -6,7 +6,7 @@ answers the status-3.3 default question, then for each of the six data blocks
 sets out the analysis, at least two suggestions from **different perspectives**,
 the dependencies of each suggestion, and a comparison. It refines
 [the field mapping](a1-field-source-mapping.md) and
-[the gap analysis](a1-gap-analysis.md) and feeds the decision gates D1–D9.
+[the gap analysis](a1-gap-analysis.md) and feeds the decision gates D1a, D1b and D2–D12.
 
 Every suggestion is backed by a source listed in §11, and by the repository
 history where the decision is this repository's own.
@@ -61,21 +61,45 @@ The reasoning is not a preference; it follows from what the status *is*.
 | Situation | Section 3 | What happens |
 |---|---|---|
 | The applicant stated the situation | exactly one box ticked | the certificate is rendered for that situation |
-| The applicant stated a self-employed posting (Art. 12(2)) | **3.3** ticked, 4.1.2 ticked | the 12-site activation path runs — but see §1.1, it is not 12 sites alone |
+| The applicant stated a self-employed posting (Art. 12(2)) | **3.3** ticked, 4.1.2 ticked | the 19-site activation path runs — but see §1.1, it is not code sites alone |
 | The applicant stated nothing | **no box ticked** | the case is rendered as an undecided worksheet with the status listed as a missing field, and **no A1 is issued** |
 | The coarse worker profile is `employee` or `self_employed` | **no box ticked** | the profile selects the *application variant* and the worksheet's offered choices; it is never promoted to a status |
 
-That last row is already the repository's behaviour: `a1_completion_preview.py`
-converts a coarse profile into `status_profile = ""` and an undecided
-worksheet, and `scripts/a1_core.py` renders all four Section 3 boxes false
-with the status in `missing_fields`. **This is correct and must be kept.** The
-defect is not the default; it is that `status_posted_self_employed` is
-hardcoded `False` so the *stated* Art. 12(2) situation cannot be expressed
-either.
+**This rule was not what the code did, and the discrepancy was found by
+review rather than by reading.** The completion preview assigned a status when
+none was supplied: for the self-employed variant it set
+`status_profile = "self_employed_multi_state"`, which ticked official status
+**3.4** and left the status out of `missing_fields`; for the employee variant
+it raised `EMPLOYEE_STATUS_PROFILE_REQUIRED`; and a coarse `self_employed`
+profile raised `UNSUPPORTED_STATUS_PROFILE`. In other words the repository did
+precisely what point 4 above forbids — it silently turned an unstated status
+into a legal status — and the rule above was written as if it did not.
 
-### 1.1 The activation path is larger than 12 code sites
+That behaviour is now corrected, and the correction is enforced by tests
+rather than by prose:
 
-The 12-site activation path in [the field mapping §15](a1-field-source-mapping.md#15-status-33-switchable-design-default-no)
+- `scripts/a1_completion_preview.py` no longer assigns a status when none was
+  supplied, and accepts a coarse `self_employed` profile the same way it
+  accepts a coarse `employee` one — as a **variant**, with the situation left
+  undecided.
+- `tests/test_a1_status_default.py` asserts that no Section 3 box is ticked
+  for every unstated-status and coarse-profile case, that the status is
+  reported as a missing field, and that the supported profile set is
+  enumerated consistently in all six places that name it.
+
+The undecided worksheet still asserts **nothing**: no Section 3 box and no
+Section 4.1 box. That is deliberate and pre-existing — the worksheet is a
+request for the reviewed choice, and it must not assert an employment kind
+that the determination has not settled. The role is carried in
+`meta.variant` and in `employment.kind`, not in a rendered checkbox.
+
+The remaining defect is the one this document was written to describe:
+`status_posted_self_employed` is hardcoded `False`, so the *stated* Art. 12(2)
+situation cannot be expressed either.
+
+### 1.1 The activation path is larger than 23 code sites
+
+The activation path in [the field mapping §15](a1-field-source-mapping.md#15-status-33-switchable-design-default-no)
 is a list of **code** sites. The legal reading adds **data** sites, and this
 is the finding that should change D1's framing.
 
@@ -135,8 +159,10 @@ The two are orthogonal in every block, and in five of six the recommendation
 is to take **both**, in the order given. Where they conflict, the legal
 option wins on the value and the engineering option wins on the mechanism.
 
-A third option appears in blocks E and O where the two perspectives offer
-genuinely different structures rather than different depths.
+A third option appears in blocks **E, A, W and P**, where a third
+perspective is genuinely different rather than a restatement: a *vocabulary*
+perspective for A, an *adjudication* perspective for W, an *operational and
+retention* perspective for P, and a *depth* alternative for E.
 
 ## 3. Block C — the certificate
 
@@ -173,8 +199,8 @@ repository does not yet enforce the constraints:
 | 2.2/2.3 | For a posting, the activity "does not exceed twenty-four months" | Art. 12(1) and 12(2) Reg. 883/2004 | unbounded; the provisional default is a policy one-year period |
 | 2.3 | Beyond 24 months, the posting State requires an **Art. 16 agreement**; without one, the legislation of the State of work applies from the end of the 24 months | Practical Guide, point 12 | not modelled |
 | 2.4 | "The certificate applies for the duration of the activity" — the alternative to a bounded period | official form 2.4 | rendered, derived from 2.2/2.3 presence |
-| 2.5 | **Mandatory** where the initial determination is provisional, i.e. the Art. 13 situations | Art. 16(2) and 16(3) Reg. 987/2009 | hardcoded `False` |
-| 2.6 | Transitional rules under Reg. 883/2004 | official form 2.6 | hardcoded `False`, no source |
+| 2.5 | **Mandatory** where the initial determination is provisional, i.e. the Art. 13 situations | Art. 16(2) and 16(3) Reg. 987/2009 | not rendered; derived from `form["meta"]["provisional"]` |
+| 2.6 | Transitional rules under Reg. 883/2004 | official form 2.6 | not rendered; derived from `form["transitional_rules"]`, no source |
 | 6.10 | The date the determination was made | official form 6.10 | provisional policy date (Mon/Wed, 61–180 day window) |
 
 **Dependencies.** C-L cannot be implemented before the E block's situation
@@ -285,9 +311,31 @@ itself an identity fact with the same re-examination property.
 | Depends on | D3, O-block competence, P-block evidence | P-block ledger, E-block employer identity |
 | Recommendation | **take** | **take, after P** |
 
-**Recommendation: take both, W-L first.** W-L is the official-contract
-change and is cheap. W-E is the durable mechanism and is best done once, for
-all three fact-bearing blocks, rather than three times.
+### W-A — adjudication: who re-decides a contested identity fact, and on what authority
+
+A third perspective, distinct from W-L (which fields exist and who decides
+them) and from W-E (which records the decision): a contested identity fact has
+to be **re-decided** by somebody, and the form of that re-decision is a
+different constraint again. A name is disputed because two records disagree;
+the resolution needs a named authority, a defined evidentiary threshold, a
+record of which side prevailed, and a rule for what happens to a certificate
+already issued against the losing side. None of that is a field on the A1,
+and none of it is a data-structure question.
+
+This is the part of the P block's requirement that W-E does not answer: W-E
+says the evidence is *typed*, but it does not say who may re-decide. Without
+that, "re-examinable" means "re-readable", which is a weaker property than
+the law asks for.
+
+**Dependencies.** Needs W-E's typed evidence and the P block's decision
+ledger. It also needs the O block, because an identity dispute and an issuing
+institution's competence question can arrive together.
+
+**Recommendation: take W-L, then W-A, then W-E.** W-L is the
+official-contract change and is cheap. W-A states the adjudication rule, which
+is cheap to state and expensive to leave implicit. W-E is the durable
+mechanism and is best done once, for all three fact-bearing blocks, rather
+than three times.
 
 ## 5. Block E — employer, role and situation
 
@@ -321,6 +369,48 @@ and `POST /standardizovane-adresy/vyhledat` converts a free-text address into
 a RÚIAN-standardised address with a municipality code. The documented
 operating limit is 500 queries per minute with no daily cap, and the guidance
 is to cache, because register data changes rarely.
+
+**What the ARES claims rest on.** The repository records exactly one ARES
+artefact — the employer record under `a1/` and the single point-lookup URL in
+`a1/employees_normalized.json`. Everything else in this section — the
+`/ekonomicke-subjekty-res/{ico}` view, the change-notification endpoint, the
+RÚIAN address standardisation, the 500-queries-per-minute limit, and the
+"free and key-free" characterisation — is **external research** from the ARES
+Swagger UI and technical catalogue, cited in §11, and is not evidenced by the
+repository. The E-E/E-X trade-off leans on the notification channel, so that
+part of the argument is external; the offline-import path in D11a is not.
+
+**What the ARES authorisation is actually for.** An earlier draft of this
+document had a single gate, "permit an outbound ARES lookup from the
+server?". That was over-scoped, and it conflated three unrelated things.
+Separating them is the useful result:
+
+| | What crosses a boundary | What is decided | Gate |
+|---|---|---|---|
+| **ARES is not a model provider** | nothing | — | AGENTS.md's provider rules are about LLM providers, key handling, billing and data egress to model endpoints. ARES is a **public register of the Ministry of Finance**: free, no key, no registration, no billing, no quota to buy. It is inside the "verified-free endpoints" envelope by inspection, and it is not a model call, so the OpenRouter `:free` rule and the paid-fallback rules do not apply | none |
+| **D11a — offline import** | nothing at runtime; a human runs the lookup on their own machine and reviews the result before it becomes a record | whether the *agency* accepts the register data as a source of employer facts, and how a sole trader's record is handled as personal data | Jan; **default YES** |
+| **D11b — runtime server egress** | the request itself (an IČO, which is already a business fact the agency holds); **no worker PII crosses the boundary** | whether the *service* may make outbound HTTPS calls to a third-party host. AGENTS.md puts "networking" and host services with the sysadmin, and this repository's rule is that the durable workspace is the only thing the application owns | sysadmin; **default NO** |
+
+So the honest answer to "what is the ARES authorisation for?" is: **it is not
+about ARES at all.** It is about whether the *server* is allowed to make
+outbound network calls. The register data itself is free, public,
+key-free and inside the verified-free envelope. What needs deciding is a
+host question — and it only becomes relevant if the agency wants a *live*
+lookup at data-entry time rather than a reviewed import.
+
+Two consequences worth stating plainly:
+
+1. **A reviewed offline import needs no new authorisation.** It is the same
+   mechanism the institution profiles already use: a human retrieves the
+   record, reviews it, and commits the result with its source and hash. The
+   repository's ARES-derived employer record under `a1/` is exactly that, and
+   the E-E master can be seeded the same way.
+2. **D11b is not a blocker for the master data work.** If the answer is no,
+   E-E still works with an operator import; only the *automatic refresh* is
+   lost, and the change-notification channel — which is the part that
+   actually needs the network — is the part that would be deferred. The
+   master would then carry a "verified on" date that a human set, which is
+   precisely what the institution profiles already do.
 
 ### E-L — legal: make the situation a first-class record with a closed decision tree
 
@@ -440,11 +530,45 @@ activity is performed in Member States.
 
 5.1 (host entity + code), 5.2 (territory list) and 5.3 (no fixed address) are
 three different facts, and today the repository has 5.1 and 5.2 but no
-source for 5.3. The territory is also **not free text**: it is a list of
-Member States, and the form requires the home State to be included when
-true. The `DE, CZ` provisional default is a *territory list* that omits the
-home State when the home State is CZ — which is a substantive gap, not a
-cosmetic one.
+source for 5.3.
+
+**The territory is a list of States, in ISO 3166-1 alpha-2 codes, from a
+closed domain.** The official form's own footnote fixes the domain: *"A
+'State' or a 'Member State' is any European Union country, plus Iceland,
+Liechtenstein, Norway and Switzerland."* The Czech application adds the
+United Kingdom, because the Withdrawal Agreement keeps a bilateral form in
+force for cases involving it. So the list is at most EU-27 + IS + LI + NO +
+CH, plus GB for a bilateral case — roughly thirty-two values, not free
+text. The form's other country fields (1.8.4, 1.9.4, 4.4.2, 6.5) are
+labelled *"Country code"*, and the repository already uses that convention
+(`"country_code": "CZ"` in the institution profiles, `kodStatu` in the ARES
+records). The two-letter form is therefore the correct representation, and
+the codes are unambiguous: **DE is Germany (Deutschland), CZ is Czechia
+(whose previous ISO name was "Czech Republic"), and Denmark is DK.** The
+repository contains no reference to Denmark or DK anywhere, and its own
+posting scenario settles what the two codes mean: `cz_employee_to_de` sets
+`certificate.member_state = "CZ"` (field 2.1), `employment.country_code =
+"CZ"` (field 4.4.2) and `activity.address = "DE"` (field 5.2) — a Czech
+worker posted to **Germany**, with the Czech State included in the
+territory list. The scenario also adds `activity.workplace_address` to the
+missing fields when the address is a bare `"DE"`, which is the correct
+treatment: a territory code is not a workplace address.
+
+**Correction.** An earlier draft of this document claimed that the `DE, CZ`
+provisional default "omits the home State". That was wrong: `DE, CZ` is
+Germany **and** Czechia, so the home State *is* in the list. The real
+deficiencies are different, and smaller:
+
+1. it is a **labelled policy proposal**, not a reviewed value, and it lives
+   as a comma-joined **string** rather than a typed list, so nothing in the
+   record distinguishes it from a reviewed territory;
+2. whether Czechia belongs in the list at all depends on whether the person
+   also performs activity there — which is the operator's fact, not a policy
+   default. The `cz_employee_to_de` scenario correctly uses `"DE"` alone
+   because it is an explicit operator selection, and that is the shape a
+   reviewed value should have;
+3. nothing validates the codes against the closed State domain, so a typo
+   would render as an unknown territory.
 
 **Dependencies.** Needs D7 (whether the `DE, CZ` default stays) and D9
 (whether 5.3 is ever reachable). Needs the E block's situation record for
@@ -474,15 +598,31 @@ binding document must be distinguishable in the record.
 |---|---|---|
 | Kind | constraint on what each field means | choice on representation |
 | Cost | medium — separate host entity, territory and 5.3 sources | low–medium — a country master, a typed list |
-| Risk if skipped | 5.1 prints the Section 4 employer; 5.2 omits the home State; 5.3 is unreachable | a policy default and a reviewed value are indistinguishable in the record |
+| Risk if skipped | 5.1 prints the Section 4 employer; 5.3 is unreachable | a policy default and a reviewed value are indistinguishable in the record; a mistyped code renders as an unknown territory |
 | Reversibility | high | high |
 | Depends on | D7, D9, E-block situation | C-block 2.5, P-block |
 | Recommendation | **take** | **take** |
 
-**Recommendation: take both.** A-L is a correctness fix with a visible
-consequence — the `DE, CZ` default should be `CZ, DE` (home State first) or
-otherwise include the home State, because the ČSSZ form requires it. A-E
-makes the default distinguishable.
+### A-V — vocabulary: one country list for the whole form, not per-field text
+
+A third perspective, genuinely different from both A-L (which separates three
+facts) and A-E (which types the territory list): the form uses country
+references in **six** places — 2.1 (Member State), 1.8.4 and 1.9.4
+(Country code), 4.4.2 (Country code), 6.5 (Country code) and the 5.2
+territory list — and today each is free text validated nowhere. A single
+reference list, checked against ISO 3166-1 alpha-2 and against the A1's own
+definition of a "State", would make all six consistent by construction and
+would make a mistyped territory impossible rather than merely detectable.
+
+**Dependencies.** Needs the country master of A-E, and the State-domain
+definition from A-L. It is a *validation* concern rather than a *storage*
+concern, which is why it is neither of the other two.
+
+**Recommendation: take A-L, A-E and A-V.** A-L is a correctness fix with a
+visible consequence — the `DE, CZ` default should list the home State first,
+because the ČSSZ form requires the home State to be listed when it is true.
+A-E makes the default distinguishable from a reviewed value, and A-V makes the
+whole vocabulary consistent. The three are cheap and do not compete.
 
 ## 7. Block O — the institution
 
@@ -573,7 +713,7 @@ the document. Three legal requirements converge on it:
 
 The repository has the right primitives — `FieldProposal`, `FieldDecision`,
 `A1Case.evidence_notes`, `source_snapshot_json`, `artifact_reference` — but
-`evidence_notes` is free text, and the review flags
+`evidence_notes` is a JSON list without a schema, and the review flags
 (`identity_reviewed`, `certificate_reviewed`, `approved_for_pdf`,
 `validated_by_user`) are flat strings with no actor, time or scope.
 
@@ -597,8 +737,14 @@ and the flags **derived** from it — so a flag can only be YES if a decision
 exists, and the decision says who, when and why.
 
 **Dependencies.** Needs the P block's own consumers to move off the flat
-flags — the two `validate_review` gates, the `A1Case` import path, and the
-`generate_provisional_a1` promotion path. Needs a migration of the existing
+flags — the two `validate_review` gates, the `A1Case` import path, the
+`generate_provisional_a1` promotion path, and the two paths that set a flag
+to YES **without any actor**: `finalize_a1.auto_approve_stale_identity_reviews()`
+marks a row `identity_reviewed = YES` after 24 h with only an
+`AUTO_APPROVED <timestamp>` comment, and the row-seeding path sets
+`identity_reviewed`, `certificate_reviewed`, `approved_for_pdf` and
+`validated_by_user` wholesale. Those two are the strongest instance of the
+problem the ledger exists to close, so they belong in the migration list. Needs a migration of the existing
 flags into typed decisions, or an explicit decision to grandfather them as
 legacy claims.
 
@@ -613,38 +759,78 @@ legacy claims.
 | Depends on | W-E, E-E, O-E | P-L, and the gate migration |
 | Recommendation | **take** | **take, last** |
 
-**Recommendation: take P-L as the requirement, and P-E as the last
-engineering step.** P-L states what the record must be able to do; P-E is
-the mechanism. Doing P-E first would encode today's flat flags as authority,
-which is the opposite of the requirement.
+### P-O — operational: what an auditor or the host institution must be able to retrieve, and for how long
+
+A third perspective, and the one that exposes a dimension neither P-L nor P-E
+touches. P-L asks whether the record can be re-examined; P-E asks what shape
+it has. Neither asks the question an *external* party actually asks: given a
+certificate that was relied upon in another Member State three years ago,
+what can that institution obtain, in what form, and under what retention
+obligation? That is a *retention and disclosure* constraint, and it can
+demand things the structure does not: a preserved copy of the exact bytes
+that were relied upon, a record of who was told what and when, and a rule for
+the period after which the agency's own retention expires while the
+obligation to answer a question does not.
+
+It also explains why the withdrawal cases matter: *C-422/22* requires the
+issuing institution to inform the other institutions and the person, and
+*C-410/21* contemplates an A1 whose binding effects are suspended. Both
+assume a record that outlives the transaction that produced it.
+
+**Dependencies.** Needs P-E's ledger and the C block's artifact storage. It
+also constrains the retention policy that the other blocks' snapshots assume.
+
+**Recommendation: take P-L as the requirement, P-O alongside it, and P-E as
+the last engineering step.** P-L states what the record must be able to do and
+P-O states for whom; P-E is the mechanism. Doing P-E first would encode
+today's flat flags as authority, which is the opposite of the requirement.
 
 ## 9. Cross-block comparison and the ordering
 
-The six recommendations form a dependency order, and it is not the order of
-the form:
+There is **no single total order**, and an earlier draft of this document
+claimed one. The honest shape is two chains with explicit cross-chain edges.
 
-| Order | Item | Kind | Why here |
-|---|---|---|---|
-| 1 | **E-L** situation record and decision tree | legal | makes 3.1 and 3.3 defensible; everything else depends on knowing the situation |
-| 2 | **A-L** 5.1/5.2/5.3 separation, territory incl. home State | legal | depends on E-L for which territory is correct |
-| 3 | **W-L** three addresses, residence as a determination | legal | depends on E-L for competence, and on the A block's territory |
-| 4 | **O-L** competence selection rule, signatory separation | legal | depends on W-L and E-L |
-| 5 | **C-L** 24-month bound, 2.5 derived from the situation | legal | depends on E-L for whether the situation is Art. 12 or Art. 13 |
-| 6 | **A-E** country master and typed territory | engineering | depends on C-L for 2.5 |
-| 7 | **E-E** `LegalEntity` master from ARES | engineering | depends on O-E's master-data landing, and on the ARES authorisation |
-| 8 | **O-E** institution master from the reviewed profiles | engineering | depends on the reviewed files being confirmed |
-| 9 | **W-E** typed identity evidence | engineering | depends on P-L's requirement |
-| 10 | **P-L then P-E** ledger, flags demoted to projections | legal then engineering | last, because it records what the others produce |
+**The legal chain** changes *what is true*. It needs no migration, is
+reversible, and can start immediately.
 
-Two independent chains run through it: the **legal** chain (1–5) changes what
-is true, and the **engineering** chain (6–10) changes where it is true. The
-legal chain can start immediately, needs no migration, and is reversible. The
-engineering chain needs migrations and should follow.
+| Order | Item | Depends on |
+|---|---|---|
+| L1 | **E-L** situation record and decision tree | — |
+| L2 | **A-L** 5.1/5.2/5.3 separation, typed territory | E-L (which territory is correct) |
+| L3 | **O-L** competence selection rule, signatory separation | E-L (the employer's country) and A-L (the territory) |
+| L4 | **W-L** three addresses, residence as a determination | O-L (competence reads the residence) and A-L (the territory) |
+| L5 | **C-L** 24-month bound, 2.5 derived from the situation | E-L (whether the situation is an Art. 12 or an Art. 13 one) |
+
+L3 precedes L4 on purpose: the competence *rule* can be implemented while the
+residence fact is still empty — it reads a field that may be blank. That is
+what breaks the W↔O cycle an earlier draft had.
+
+**The engineering chain** changes *where it is true*. It needs migrations and
+follows the legal chain.
+
+| Order | Item | Depends on |
+|---|---|---|
+| E1 | **P-L** the re-examination, information and suspension requirements | — (a requirement statement, so it comes first) |
+| E2 | **O-E** institution master, projected from the reviewed profiles | the reviewed files being confirmed |
+| E3 | **E-E** `LegalEntity` master, seeded from ARES | E2 (the master-data landing) and D11a |
+| E4 | **A-E** country master and typed territory | L5 (for 2.5) and E1 (provenance) |
+| E5 | **W-E** typed identity evidence | E1 |
+| E6 | **P-E** append-only ledger, flags demoted to projections | E1, and the migration of every gate that reads the flags |
+
+**Cross-chain edges:** A-E (E4) also needs L5, because 2.5 is what makes a
+territory provisional; P-E (E6) needs E2, because an institution is itself an
+identity fact with the same re-examination property.
+
+**What this ordering buys.** The legal chain needs no migration and is
+reversible, so it can start before any decision about the data model. The
+engineering chain is one migration per step, and each step is independently
+acceptable.
 
 **The one thing that can be decided now and needs no data:** the default for
 an unstated status stays **"undecided"**, and no status is ever inferred from
-the coarse worker profile. That is already the behaviour; it needs to be
-*stated* as a rule so a later change cannot quietly alter it.
+the coarse worker profile. That is now the behaviour, enforced by
+`tests/test_a1_status_default.py`; it needed a code change to become so, and
+the change is recorded in the delivery record.
 
 ## 10. What this changes in the decision gates
 
@@ -656,11 +842,12 @@ the coarse worker profile. That is already the behaviour; it needs to be
 | D4 | Render 2.5: NO | **YES, but derived** — ticked exactly when the situation is an Art. 13 one | Art. 16(2) makes the initial determination provisional for Art. 13; 2.5 is not a free choice |
 | D5 | 2.6 stays FALSE | unchanged | no source exists; the gate correctly records that |
 | D6 | Render 6.7–6.9: NO | **YES** | O-L: the contact block is institution data the profile already holds, and 6.11 is a different fact |
-| D7 | `DE, CZ` default stays | **YES, but the list must include the home State** | the ČSSZ form requires the home State to be listed when true |
+| D7 | `DE, CZ` default stays? | **YES, but as a typed list of ISO 3166-1 alpha-2 codes, validated against the State domain** | the default already includes the home State; what it lacks is typing, validation and separation from a reviewed value |
 | D8 | Self-employed employer derivation: YES | **replaced by E-E** — a `sole_trader` `LegalEntity` row | the current derivation is renderer-internal and therefore not reproducible |
 | D9 | 5.3 branch: NO | unchanged for now; A-L requires a source before it can ever be ticked | a fact, not a default |
 | **D10** | — | **new** — carry the situation record (`legal_basis`, `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker`, `nace_code`)? | §1.1, E-L |
-| **D11** | — | **new** — permit an outbound ARES lookup from the server? | E-E needs it; AGENTS.md requires an authorisation decision for a third-party provider |
+| **D11a** | — | **new** — permit an **operator-initiated offline** ARES import (a human runs the lookup and reviews the record)? **YES** | it needs no host egress and no provider decision; it needs the same data-protection care as any employer fact |
+| **D11b** | — | **new** — permit **runtime server-side egress** to `ares.gov.cz`? **NO** | it is a host/network decision, which AGENTS.md places with the sysadmin |
 | **D12** | — | **new** — model the certificate as a lifecycle with withdrawal and suspension states? | C-E and P-L; the states exist in the case law |
 
 ## 11. Sources
@@ -722,7 +909,7 @@ the coarse worker profile. That is already the behaviour; it needs to be
 **Repository artefacts**
 
 - `docs/architecture/a1-field-source-mapping.md` — the per-field contract,
-  the topic partition, the 12-site 3.3 activation path, gates D1–D9.
+  the topic partition, the 23-site 3.3 activation path, gates D1a, D1b and D2–D12.
 - `docs/architecture/a1-gap-analysis.md` — G1–G15 with severity and owner.
 - `docs/architecture/solutions/a1-topic-data-architecture-solution.md` — the
   master-data landing sequence.

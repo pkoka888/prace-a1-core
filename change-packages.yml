@@ -533,10 +533,12 @@
         "readme-scan-to-employees.md",
         "scripts/a1_quality_gate.py",
         "tests/test_comprehensive.py",
-        "tests/test_a1_quality_gate.py"
+        "tests/test_a1_quality_gate.py",
+        "tests/test_a1_country_codes.py",
+        "tests/test_a1_status_default.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py -q"
+        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py tests/test_a1_country_codes.py tests/test_a1_status_default.py -q"
       ],
       "dependencies": [
         "Private CSV seven-field update before regeneration"
@@ -560,6 +562,7 @@
         "ruff.toml",
         ".pre-commit-config.yaml",
         "scripts/check_git_content.py",
+        "tests/test_check_git_content.py",
         "scripts/evaluate_a1_pdf_tools.py",
         "scripts/release_reproducer.sh",
         "scripts/run_release_reproducer.py",
@@ -583,7 +586,7 @@
         "tests/__init__.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_automation_entrypoints.py tests/test_document_intake_runner.py tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_release_export_sensitive_paths.py -q",
+        "venv/bin/python -m pytest tests/test_automation_entrypoints.py tests/test_document_intake_runner.py tests/test_validate_change_packages.py tests/test_release_reproducer.py tests/test_release_export_sensitive_paths.py tests/test_check_git_content.py -q",
         "venv/bin/python scripts/validate_change_packages.py --staged --json",
         "scripts/select_infrastructure_git_workflow_checks.py"
       ],

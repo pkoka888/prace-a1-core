@@ -43,13 +43,22 @@ def test_employee_missing_facts_remain_blank_and_do_not_gain_approval(tmp_path):
 
 
 def test_variant_default_conflicts_and_multistate_are_explicit():
-    assert build_preview(source(""))["employer_type_self_employed"]
+    # An empty status is an undecided situation, never a default. No Section 3
+    # box is ticked, the status is reported as missing, and the worksheet
+    # asserts nothing about the employment kind either.
+    undecided = build_preview(source(""))
+    assert not any((undecided["status_posted_employee"],
+                    undecided["status_employee_multistate"],
+                    undecided["status_osv_c_multistate"],
+                    undecided["status_posted_self_employed"]))
+    assert not undecided["employer_type_employee"]
+    assert not undecided["employer_type_self_employed"]
+    assert "a1.status_profile" in undecided["meta"]["missing_fields"]
+    assert undecided["meta"]["status_profile_undecided"] is True
     form = build_preview(source("employee_multi_state"), variant="employee")
     assert form["status_employee_multistate"] and not form["status_posted_employee"]
     with pytest.raises(ValueError, match="CONFLICT"):
         build_preview(source(), variant="self_employed")
-    with pytest.raises(ValueError, match="EMPLOYEE_STATUS"):
-        build_preview(source(""), variant="employee")
     with pytest.raises(ValueError, match="UNSUPPORTED_STATUS"):
         build_preview(source("not_employee"))
 
