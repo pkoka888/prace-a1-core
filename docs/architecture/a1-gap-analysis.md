@@ -2,7 +2,8 @@
 
 Status: proposed, 2026-10-20. Companion to the
 [field → source mapping](a1-field-source-mapping.md) (one hood per topic),
-the [automation scenarios](a1-automation-scenarios.md), and the
+the [automation scenarios](a1-automation-scenarios.md), the
+[block options](a1-block-options.md), and the
 [LangGraph integration guide](langgraph-integration.md). No schema, migration,
 record import, evidence acceptance or real-data activation is proposed or
 performed here.

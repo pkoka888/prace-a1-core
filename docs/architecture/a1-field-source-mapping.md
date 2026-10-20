@@ -474,6 +474,21 @@ period. Until it is answered, the generator should **refuse** a
 posted-self-employed row rather than emit a certificate that claims 3.4 or
 3.1.
 
+The legal reading sharpens this further, and it is why D1 was split into
+D1a and D1b. Article 12(2) of Regulation 883/2004 does not apply to every
+self-employed person who goes abroad: the activity abroad must be a
+*"similar activity"* (Art. 14(4) Reg. 987/2009), the person must have
+*"already pursued his activity for some time"* before moving (Art. 14(3);
+two months is normally sufficient, per the Commission's Practical Guide), and
+the activity must not exceed **24 months**. The same three conditions apply
+to 3.1, with the addition of the "does not replace another person" test that
+*C-527/16* (*Alpenrind*) examined and that the ČSSZ employee form makes
+mandatory. Activating either 3.1 or 3.3 therefore needs **twelve code sites
+and six data fields** — `legal_basis`, `posting_start`, `posting_end`,
+`prior_activity_start`, `replaces_worker` and `nace_code` — which is gate
+D10. The full analysis, with the decision tree and the alternatives per
+block, is in [the block options](a1-block-options.md#1-the-status-33-default-answered).
+
 ### 11.3 Mandatory-ness is situation-dependent, not field-dependent
 
 A fixed per-field "required" column is only true for Section 1 and Section 6.
@@ -683,17 +698,47 @@ Tracked per field: proposal → decision → actor → time → source hash → 
 
 ## 14. Decision gates register
 
+The gates below are the questions that block an A1. Each has a default that
+holds when the question is unanswered, and the defaults are all
+**fail-closed**: an unanswered business fact blocks the one operation that
+needs it and never blocks the rest of the application.
+
 | # | Question | Default | Owner | Switchable | Location |
 |---|---|---|---|---|---|
-| D1 | Agency issues posted-self-employed A1s (3.3)? | NO | Jan | Yes | `status_profile` enum |
+| D1a | Agency issues posted-self-employed A1s (official status 3.3)? | NO | Jan | Yes | `status_profile` enum |
+| D1b | If D1a is yes: is the agency willing to capture the situation facts Art. 12 requires? | NO | Jan | Yes | Situation record (D10) |
 | D2 | Client-confirmation copy: page-level provisional marker? | NO (`visible_notice=False`) | Jan | Yes | `mark_provisional(visible_notice=...)` |
-| D3 | Add `stay_*` nullable fields for 1.9? | NO | Jan | Yes (additive migration) | Model + `build_form_data()` |
-| D4 | Render 2.5 provisional checkbox? | NO | Jan | Yes | Layout coordinate + `meta.provisional` |
+| D3 | Add `stay_*` nullable fields for 1.9? | **YES** | Jan | Yes (additive migration) | Model + `build_form_data()` |
+| D4 | Render 2.5 provisional checkbox? | **YES, but derived** — ticked exactly when the situation is an Art. 13 one | Engineering | Yes | Layout coordinate + situation record |
 | D5 | Keep 2.6 transitional rules FALSE? | YES (until source) | Engineering | Yes | Hardcoded FALSE |
-| D6 | Render 6.7–6.9 contact block? | NO (no coordinates) | Engineering | Yes | Add layout coordinates |
-| D7 | 5.2 default "DE, CZ" stays? | YES (labelled policy proposal) | Engineering | Yes | `config/a1_provisional.json` |
-| D8 | Self-employed employer = person derivation? | YES (labelled policy) | Engineering | Yes | `build_form_data()` lines 368–381 |
+| D6 | Render 6.7–6.9 contact block? | **YES** | Engineering | Yes | Add layout coordinates |
+| D7 | 5.2 default "DE, CZ" stays? | **YES, but the list must include the home State** | Engineering | Yes | `config/a1_provisional.json` |
+| D8 | Self-employed employer = person derivation? | **Replaced by a `sole_trader` `LegalEntity` row** | Engineering | Yes | `LegalEntity` master (D11) |
 | D9 | 5.3 no-fixed-address branch? | NO (hardcoded FALSE) | Engineering | Yes | Nullable source field + review |
+| D10 | Carry a situation record (`legal_basis`, `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker`, `nace_code`)? | **YES** | Jan | Yes | Model + `build_form_data()` |
+| D11 | Permit an outbound ARES lookup from the server? | NO | Jan | Yes | `LegalEntity` import path |
+| D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
+
+D1 was split into D1a and D1b, and D10 was added, after the legal reading
+in [the block options §1](a1-block-options.md#1-the-status-33-default-answered):
+activating official status 3.3 needs **twelve code sites and six data
+fields**, because Article 12(2) of Regulation 883/2004 only applies when the
+activity abroad is a *similar activity*, when the self-employed has already
+pursued the activity for some time (two months is normally sufficient), and
+when the activity does not exceed 24 months. The same conditions apply to
+3.1, with the addition of the "does not replace another person" test, which
+is why D10 is needed whichever way D1a goes.
+
+**The default for an unstated status is "undecided", and it never changes.**
+No Section 3 box is ticked, the status is listed as a missing field, and no
+A1 is issued. The coarse `Worker.activity_profile`
+(`employee` / `self_employed`) selects the *application variant* and the
+worksheet's offered choices; it is never promoted to a legal status. That is
+already the behaviour of the completion-preview path, and it is the only
+correct answer: the status is a legal determination under Title II of
+Regulation 883/2004, and Article 16(2) of Regulation 987/2009 provides for
+an undetermined situation by making the institution's initial determination
+*provisional* (official field 2.5) rather than by defaulting the applicant.
 
 ---
 
