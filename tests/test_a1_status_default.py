@@ -125,7 +125,12 @@ def test_the_supported_profile_set_is_enumerated_consistently():
                        ("a1_quality_gate.py", gate), ("a1_exports.py", exports),
                        ("assignment_facts.py", facts),
                        ("a1_completion_preview.py", preview)):
-        found = set(re.findall(r'"(posted_employee|employee_multi_state|self_employed_multi_state)"', text))
+        found = set(
+            re.findall(
+                r"""['"](posted_employee|employee_multi_state|self_employed_multi_state)['"]""",
+                text,
+            )
+        )
         assert found == supported, (
             f"{name} enumerates {sorted(found)} but the supported set is "
             f"{sorted(supported)}"
@@ -148,7 +153,7 @@ def test_no_module_outside_the_six_enumerates_the_profile_set():
         text = path.read_text(encoding="utf-8")
         # A file that names all three is enumerating the set. A single
         # membership test against one profile is not an enumeration.
-        if all(f'"{name}"' in text for name in literals):
+        if all(re.search(rf"""['"]{name}['"]""", text) for name in literals):
             offenders.append(rel)
     assert not offenders, (
         f"the status set is enumerated outside the known sites: {offenders}"
