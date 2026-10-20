@@ -4,6 +4,7 @@ Shared approval register loader and validator.
 Used by both the CLI validator (scripts/validate_approvals.py) and Django
 (portal.release1a.views). All gate-state decisions flow through this module.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -18,16 +19,20 @@ from jsonschema import Draft7Validator
 
 def _git_environment():
     # Local root-bound inspections must not inherit a hook/caller's repository.
-    return {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    return {
+        key: value for key, value in os.environ.items() if not key.startswith("GIT_")
+    }
 
 
 class ApprovalRegisterError(Exception):
     """Raised when the approval register is invalid."""
+
     pass
 
 
 class GateTransitionError(ApprovalRegisterError):
     """Raised when a gate transition is not allowed."""
+
     pass
 
 
@@ -48,8 +53,12 @@ def validate_schema(register: dict) -> list[str]:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
     except (IOError, json.JSONDecodeError) as e:
         return [f"cannot load schema: {e}"]
-    for error in sorted(Draft7Validator(schema).iter_errors(register), key=lambda e: list(e.path)):
-        errors.append("schema: " + "/".join(map(str, error.path)) + ": " + error.message)
+    for error in sorted(
+        Draft7Validator(schema).iter_errors(register), key=lambda e: list(e.path)
+    ):
+        errors.append(
+            "schema: " + "/".join(map(str, error.path)) + ": " + error.message
+        )
     return errors
 
 
@@ -76,28 +85,50 @@ def validate(
     except ApprovalRegisterError as e:
         return {"result": "fail", "records": 0, "errors": [str(e)], "warnings": []}
 
-    return _validate_register(root, register, require_clean, expected_commit, expected_approvals_hash)
+    return _validate_register(
+        root, register, require_clean, expected_commit, expected_approvals_hash
+    )
 
 
-def _validate_register(root, register, require_clean=False, expected_commit=None,
-                       expected_approvals_hash=None):
+def _validate_register(
+    root,
+    register,
+    require_clean=False,
+    expected_commit=None,
+    expected_approvals_hash=None,
+):
     """Validate the same in-memory snapshot that will be used for a gate decision."""
     errors: list[str] = []
     warnings: list[str] = []
     schema_errors = validate_schema(register)
     errors.extend(schema_errors)
     if schema_errors:
-        return {"result": "fail", "records": (len(register["records"]) if isinstance(register, dict) and isinstance(register.get("records"), list) else 0), "errors": errors, "warnings": warnings}
+        return {
+            "result": "fail",
+            "records": (
+                len(register["records"])
+                if isinstance(register, dict)
+                and isinstance(register.get("records"), list)
+                else 0
+            ),
+            "errors": errors,
+            "warnings": warnings,
+        }
 
     try:
-        catalog = json.loads((root / "planning/catalog.json").read_text(encoding="utf-8"))
+        catalog = json.loads(
+            (root / "planning/catalog.json").read_text(encoding="utf-8")
+        )
         catalog_by_id = {item["id"]: item for item in catalog["items"]}
     except (OSError, ValueError, KeyError, TypeError):
-        return {"result": "fail", "records": len(register["records"]),
-                "errors": ["cannot load planning catalog"], "warnings": []}
+        return {
+            "result": "fail",
+            "records": len(register["records"]),
+            "errors": ["cannot load planning catalog"],
+            "warnings": [],
+        }
 
     records = register.get("records", [])
-    record_by_id = {r["id"]: r for r in records}
     ids = [r.get("id") for r in records]
     known = set(ids)
 
@@ -149,27 +180,44 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
         # Check statuses
         statuses = {c.get("status") for c in checks}
         derived = (
-            "failed" if "failed" in statuses
-            else ("passed" if checks and statuses <= {"passed", "not-required"} else "pending")
+            "failed"
+            if "failed" in statuses
+            else (
+                "passed"
+                if checks and statuses <= {"passed", "not-required"}
+                else "pending"
+            )
         )
         if validation != derived:
-            errors.append(f"{rid}: validation is {validation} but checks derive {derived}")
+            errors.append(
+                f"{rid}: validation is {validation} but checks derive {derived}"
+            )
 
         # Gate transition rules
         if impl_gate == "open":
             if human != "approved":
-                errors.append(f"{rid}: implementation_gate is open but human_decision is {human} (must be approved)")
+                errors.append(
+                    f"{rid}: implementation_gate is open but human_decision is {human} (must be approved)"
+                )
             if derived != "passed":
-                errors.append(f"{rid}: implementation_gate is open but checks derive {derived} (must be passed)")
+                errors.append(
+                    f"{rid}: implementation_gate is open but checks derive {derived} (must be passed)"
+                )
         if act_gate == "open":
             if impl_gate != "open":
-                errors.append(f"{rid}: activation_gate is open but implementation_gate is {impl_gate}")
+                errors.append(
+                    f"{rid}: activation_gate is open but implementation_gate is {impl_gate}"
+                )
         if impl_gate == "blocked" and not record.get("implementation_gate_reason"):
             errors.append(f"{rid}: implementation_gate is blocked but has no reason")
         if impl_gate == "open" and (human != "approved" or derived != "passed"):
-            errors.append(f"{rid}: implementation gate cannot open without approval and passed checks")
+            errors.append(
+                f"{rid}: implementation gate cannot open without approval and passed checks"
+            )
         if act_gate == "open" and impl_gate != "open":
-            errors.append(f"{rid}: activation gate cannot open before implementation gate")
+            errors.append(
+                f"{rid}: activation gate cannot open before implementation gate"
+            )
 
         # Human decision rules
         if human == "approved":
@@ -183,17 +231,30 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
 
         # Deviation rules
         for choice in choices:
-            if choice.get("selected") != choice.get("recommended") and not choice.get("deviation_reason"):
+            if choice.get("selected") != choice.get("recommended") and not choice.get(
+                "deviation_reason"
+            ):
                 errors.append(f"{rid}/{choice.get('id')}: deviation lacks reason")
 
             catalog_item = catalog_by_id.get(choice.get("id"))
-            expected_state = "accepted" if choice.get("approval") == "approved" else choice.get("approval")
+            expected_state = (
+                "accepted"
+                if choice.get("approval") == "approved"
+                else choice.get("approval")
+            )
             if not catalog_item:
                 errors.append(f"{rid}/{choice.get('id')}: missing catalog decision")
             elif catalog_item.get("decision_state") != expected_state:
-                errors.append(f"{rid}/{choice.get('id')}: approval conflicts with catalog state")
-            elif choice.get("approval") == "approved" and catalog_item.get("decision_date") != approved_at:
-                errors.append(f"{rid}/{choice.get('id')}: approval date conflicts with catalog")
+                errors.append(
+                    f"{rid}/{choice.get('id')}: approval conflicts with catalog state"
+                )
+            elif (
+                choice.get("approval") == "approved"
+                and catalog_item.get("decision_date") != approved_at
+            ):
+                errors.append(
+                    f"{rid}/{choice.get('id')}: approval date conflicts with catalog"
+                )
 
         # Dependencies exist (informational — unmet dependencies in initial state are expected)
         for dep in record.get("dependencies", []):
@@ -241,8 +302,11 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
     if require_clean or expected_commit:
         try:
             git_root = subprocess.check_output(
-                ["git", "rev-parse", "--show-toplevel"], cwd=root,
-                text=True, stderr=subprocess.DEVNULL, env=_git_environment(),
+                ["git", "rev-parse", "--show-toplevel"],
+                cwd=root,
+                text=True,
+                stderr=subprocess.DEVNULL,
+                env=_git_environment(),
             ).strip()
             if Path(git_root).resolve() != root.resolve():
                 errors.append("review root is not the Git repository root")
@@ -252,14 +316,23 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
         try:
             tracked = subprocess.check_output(
                 ["git", "status", "--porcelain", "--"] + REVIEW_SCOPE_PATTERNS,
-                text=True, stderr=subprocess.DEVNULL, cwd=root, env=_git_environment(),
+                text=True,
+                stderr=subprocess.DEVNULL,
+                cwd=root,
+                env=_git_environment(),
             ).strip()
             untracked = subprocess.check_output(
-                ["git", "ls-files", "--others", "--exclude-standard", "--"] + REVIEW_SCOPE_PATTERNS,
-                text=True, stderr=subprocess.DEVNULL, cwd=root, env=_git_environment(),
+                ["git", "ls-files", "--others", "--exclude-standard", "--"]
+                + REVIEW_SCOPE_PATTERNS,
+                text=True,
+                stderr=subprocess.DEVNULL,
+                cwd=root,
+                env=_git_environment(),
             ).strip()
             if tracked or untracked:
-                errors.append(f"review scope is dirty: tracked={bool(tracked)} untracked={bool(untracked)}")
+                errors.append(
+                    f"review scope is dirty: tracked={bool(tracked)} untracked={bool(untracked)}"
+                )
         except (subprocess.CalledProcessError, OSError):
             errors.append("could not check git status for cleanliness")
 
@@ -267,19 +340,29 @@ def _validate_register(root, register, require_clean=False, expected_commit=None
     if expected_commit:
         try:
             head = subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, cwd=root, env=_git_environment()
+                ["git", "rev-parse", "HEAD"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                cwd=root,
+                env=_git_environment(),
             ).strip()
             if head != expected_commit:
-                errors.append(f"HEAD {head[:8]} does not match expected commit {expected_commit[:8]}")
+                errors.append(
+                    f"HEAD {head[:8]} does not match expected commit {expected_commit[:8]}"
+                )
         except (subprocess.CalledProcessError, OSError):
             errors.append("could not read HEAD for commit verification")
 
     # Optional approvals hash check — treated as error for runtime gate decisions
     if expected_approvals_hash:
-        register_bytes = json.dumps(register, sort_keys=True, ensure_ascii=False).encode()
+        register_bytes = json.dumps(
+            register, sort_keys=True, ensure_ascii=False
+        ).encode()
         actual = hashlib.sha256(register_bytes).hexdigest()
         if actual != expected_approvals_hash:
-            errors.append(f"approvals hash {actual[:8]} does not match expected {expected_approvals_hash[:8]}")
+            errors.append(
+                f"approvals hash {actual[:8]} does not match expected {expected_approvals_hash[:8]}"
+            )
 
     return {
         "result": "fail" if errors else "pass",
@@ -362,13 +445,19 @@ def check_gate(
     except ApprovalRegisterError as e:
         return False, f"cannot load register: {e}"
     validation = _validate_register(
-        root, register, require_clean, expected_commit, expected_approvals_hash,
+        root,
+        register,
+        require_clean,
+        expected_commit,
+        expected_approvals_hash,
     )
     if validation["result"] == "fail":
         errors = "; ".join(validation["errors"][:3])
         return False, f"{record_id}: register validation failed — {errors}"
 
-    record = next((r for r in register.get("records", []) if r.get("id") == record_id), None)
+    record = next(
+        (r for r in register.get("records", []) if r.get("id") == record_id), None
+    )
     if not record:
         return False, f"{record_id} not found in approvals register"
 
@@ -380,7 +469,9 @@ def check_gate(
             dep_record = record_by_id[dep_id]
             met, detail = _dep_state_met(dep, dep_record)
             if not met:
-                return f"{candidate['id']}: dependency {dep_id} not satisfied — {detail}"
+                return (
+                    f"{candidate['id']}: dependency {dep_id} not satisfied — {detail}"
+                )
             if dep.get("required_gate") in {"implementation-open", "activation-open"}:
                 reason = unmet_dependency(dep_record)
                 if reason:

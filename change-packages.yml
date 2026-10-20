@@ -11,6 +11,7 @@
         "templates/a1_background.pdf",
         "scripts/a1_core.py",
         "scripts/a1_restore_checkbox_outlines.py",
+        "scripts/extract_a1_checkbox_positions.py",
         "tests/test_a1_core.py"
       ],
       "checks": [
@@ -177,7 +178,8 @@
         "portal/release1a/migrations/0018_a1_generation_confirmation.py",
         "portal/release1a/migrations/0019_worker_legacy_key.py",
         "portal/release1a/migrations/0020_a1case_identity_binding.py",
-        "tests/test_release1a_migration_chain.py"
+        "tests/test_release1a_migration_chain.py",
+        "tests/m2/test_migration_0003.py"
       ],
       "checks": [
         "venv/bin/python -m pytest tests/test_release1a_migration_chain.py -q"
@@ -195,6 +197,7 @@
         "scripts/a1_audit.py",
         "scripts/finalize_a1.py",
         "scripts/generate_provisional_a1.py",
+        "scripts/generate_a1_incremental.py",
         "tests/test_a1_stabilization.py",
         "tests/test_a1_application_draft.py",
         "tests/test_finalize_a1.py",
@@ -282,7 +285,20 @@
         "docs/operations/s62-operator-triage-report-2026-09-16.md",
         "docs/master-plan-automation-deployment-testing-2026-09-17.md",
         "docs/ansible-best-practices-research.md",
-        "docs/research/2026-09-17-agent-workflow-framework-skills-research.md"
+        "docs/research/2026-09-17-agent-workflow-framework-skills-research.md",
+        "plans/2026-09-18-backup-and-project-separation.md",
+        "docs/research/2026-09-18-project-separation.md",
+        "docs/research/2026-09-18-git-extraction-evidence.md",
+        "docs/research/2026-09-18-comprehensive-gap-analysis.md",
+        "docs/research/2026-09-18-gap-analysis-evidence.json",
+        "docs/architecture/project-directory-map.md",
+        "docs/architecture/a1-data-architecture-variants.md",
+        "docs/architecture/a1-field-source-mapping.md",
+        "docs/architecture/a1-gap-analysis.md",
+        "docs/architecture/a1-automation-scenarios.md",
+        "docs/architecture/langgraph-integration.md",
+        "docs/architecture/solutions/a1-topic-data-architecture-solution.md",
+        "docs/architecture/solutions/README.md"
       ],
       "prefixes": [
         "plans/2026-"
@@ -319,10 +335,16 @@
         "config/agent_ops_workflow.v1.requirements.txt",
         "scripts/research_agent_ops_workflow.py",
         "tests/test_agent_ops_workflow.py",
-        "docs/architecture/agent-operations-workflow.md"
+        "docs/architecture/agent-operations-workflow.md",
+        "scripts/langgraph_a1_orchestrator.py",
+        "scripts/test_langgraph_install.py",
+        "scripts/visualize_workflow.py",
+        "scripts/research_ossz.py",
+        "tests/test_langgraph_a1_orchestrator.py"
       ],
       "checks": [
-        "venv/bin/python scripts/research_agent_ops_workflow.py --validate-contract"
+        "venv/bin/python scripts/research_agent_ops_workflow.py --validate-contract",
+        "venv/bin/python -m pytest tests/test_langgraph_a1_orchestrator.py -q"
       ],
       "dependencies": [
         "Graph runtime changes also require the focused test suite in the documented isolated pinned environment; structural hook checks are not runtime evidence. Canonical application dependencies are unchanged."
@@ -433,6 +455,8 @@
         "scripts/score_research_results.py",
         "scripts/validate_collector_execution.py",
         "scripts/validate_collector_execution_v12.py",
+        "verification/web_search.py",
+        "docs/research/2026-09-17-script-validation-research/README.md",
         "scripts/validate_field_normalization.py",
         "scripts/validate_research_review_response.py",
         "scripts/validate_research_schema.py",
@@ -531,6 +555,9 @@
         "scripts/select_shared_document_portal_checks.py",
         "scripts/select_infrastructure_git_workflow_checks.py",
         "scripts/install-git-hooks.sh",
+        ".secrets.baseline",
+        "ruff.toml",
+        ".pre-commit-config.yaml",
         "scripts/check_git_content.py",
         "scripts/evaluate_a1_pdf_tools.py",
         "scripts/release_reproducer.sh",

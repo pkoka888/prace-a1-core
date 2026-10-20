@@ -15,11 +15,11 @@ Exit contract:
 The validator never prints sensitive staged content; it reports only the
 matched forbidden token and a count.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -31,21 +31,43 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 VALID_KINDS = {"plan", "decision", "roadmap_milestone", "lane", "checkpoint"}
 VALID_STATUSES = {
-    "planned", "active", "blocked", "awaiting-review", "accepted",
-    "completed", "superseded", "historical", "archived",
+    "planned",
+    "active",
+    "blocked",
+    "awaiting-review",
+    "accepted",
+    "completed",
+    "superseded",
+    "historical",
+    "archived",
 }
 VALID_DECISION_STATES = {
-    "proposed-default", "variant-selection-required", "prototype-required",
-    "awaiting-pavel", "awaiting-jan", "accepted", "rejected", "superseded",
+    "proposed-default",
+    "variant-selection-required",
+    "prototype-required",
+    "awaiting-pavel",
+    "awaiting-jan",
+    "accepted",
+    "rejected",
+    "superseded",
     "not-applicable",
 }
 VALID_EVIDENCE_STATES = {
-    "none", "provisional", "synthetic-tested", "primary-source-verified",
-    "operator-verified", "specialist-verified",
+    "none",
+    "provisional",
+    "synthetic-tested",
+    "primary-source-verified",
+    "operator-verified",
+    "specialist-verified",
 }
 VALID_GATES = {
-    "may-begin", "may-be-accepted", "may-be-implemented", "activation-gate",
-    "specialist-gate", "separate-exact-approval", "evidence-only",
+    "may-begin",
+    "may-be-accepted",
+    "may-be-implemented",
+    "activation-gate",
+    "specialist-gate",
+    "separate-exact-approval",
+    "evidence-only",
 }
 # Gates that block acceptance/implementation. "evidence-only" edges are
 # explicitly excluded from cycle detection.
@@ -58,16 +80,43 @@ BLOCKING_GATES = VALID_GATES - {"evidence-only"}
 # They are validated through parent-plan source_links and the index entry.
 REQUIRED_IDS = [
     # Milestones
-    "M0", "M1A", "M1B", "M2", "M3", "M4", "M5", "M6",
+    "M0",
+    "M1A",
+    "M1B",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "M6",
     # Plans (consolidated set)
-    "PLAN-INFRA", "PLAN-A1", "PLAN-WORKERS", "PLAN-INVOICE",
-    "PLAN-LEGAL", "PLAN-FREE-MODEL", "PLAN-HISTORY",
+    "PLAN-INFRA",
+    "PLAN-A1",
+    "PLAN-WORKERS",
+    "PLAN-INVOICE",
+    "PLAN-LEGAL",
+    "PLAN-FREE-MODEL",
+    "PLAN-HISTORY",
     # Decisions
-    "DEC-001", "DEC-002", "DEC-003", "DEC-004", "DEC-005", "DEC-006",
-    "DEC-007", "DEC-008", "DEC-009", "DEC-010", "DEC-011", "DEC-012",
-    "DEC-013", "DEC-014", "DEC-015", "DEC-016",
+    "DEC-001",
+    "DEC-002",
+    "DEC-003",
+    "DEC-004",
+    "DEC-005",
+    "DEC-006",
+    "DEC-007",
+    "DEC-008",
+    "DEC-009",
+    "DEC-010",
+    "DEC-011",
+    "DEC-012",
+    "DEC-013",
+    "DEC-014",
+    "DEC-015",
+    "DEC-016",
     # Lanes
-    "critical-path", "parallel", "a1-lane",
+    "critical-path",
+    "parallel",
+    "a1-lane",
 ]
 
 # Forbidden stale source-link fragments (legacy / superseded paths).
@@ -83,9 +132,24 @@ FORBIDDEN_STALE_FRAGMENTS = (
 # Substrings that, if present in a staged path, indicate forbidden PII/secret
 # handling. Only the matched token (not the path) is ever reported.
 FORBIDDEN_PATH_TOKENS = (
-    "a1", "scans", "ocr", "evidence", "output", "runtime", "secrets",
-    "private", ".env", "review.csv", "employees", "cohort", "payroll",
-    "credential", "password", "token", "apikey", "api_key",
+    "a1",
+    "scans",
+    "ocr",
+    "evidence",
+    "output",
+    "runtime",
+    "secrets",
+    "private",
+    ".env",
+    "review.csv",
+    "employees",
+    "cohort",
+    "payroll",
+    "credential",
+    "password",
+    "token",
+    "apikey",
+    "api_key",
 )
 
 # Plan governance paths are text-only planning/archive documentation, and the
@@ -95,141 +159,197 @@ FORBIDDEN_PATH_TOKENS = (
 # (e.g. "a1", "evidence", "employees", "payroll") that never live under these
 # documentation paths. The token guard stays fully active for every other staged path.
 APPROVED_STAGED_PATH_PREFIXES = ("plans/", "readme-")
+
+# The tracked WF-A1 workflow documentation lives under workflows/a1/. The
+# directory name contains a protected component word ("a1"), so the token
+# guard would refuse it even though these are reviewed, text-only documents.
+# The exemption is prefix-scoped to workflows/a1/ and limited to markdown, so
+# a sibling prefix (workflows/a2/) and any non-document file beside it stay
+# refused.
+APPROVED_STAGED_WORKFLOW_DOC_PREFIX = "workflows/a1/"
+
+
+def is_approved_workflow_doc(path: str) -> bool:
+    if not path.startswith(APPROVED_STAGED_WORKFLOW_DOC_PREFIX):
+        return False
+    if not path.endswith(".md"):
+        return False
+    return "/.archive/" not in path
+
+
 # Exact reviewed architecture documents, also owned by change-packages.yml.
 # Do not exempt the whole directory: nearby private files still fail below.
-APPROVED_STAGED_DOCUMENT_PATHS = frozenset({
-    "config/a1_checkbox_fix_receipt.json",
-    "config/a1_template_repair_2026-09-06.json",
-    "docs/architecture/A1_FRAMEWORKS.md",
-    "docs/architecture/readme-a1-forms.md",
-    "docs/architecture/release-1a-field-mapping.md",
-    "docs/architecture/operator-a1-workflow.md",
-    "docs/operations/runtime-manifest.md",
-    "docs/operations/infra-return-work-order-2026-09-07.md",
-    "docs/operations/infra-review-20260907T0230Z/HOST-READINESS.md",
-    "docs/operations/infra-review-20260907T0230Z/INFRA-HANDOFF.md",
-    "docs/operations/infra-review-20260907T0230Z/OCR-ROLLOUT.md",
-    "docs/operations/infra-review-20260907T0230Z/PROMPT.md",
-    "docs/operations/infra-review-20260907T0230Z/SECRETS-DATABASE.md",
-    "docs/operations/infra-review-20260907T0230Z/SHA256SUMS",
-    "docs/operations/infra-review-20260907T0230Z/VALIDATION.json",
-    "docs/operations/wsgi-deployment-recipe.md",
-    "docs/operations/opencode-work-orders/README.md",
-    "docs/operations/opencode-work-orders/artifact-and-j4.md",
-    "docs/operations/opencode-work-orders/organization-audit.md",
-    "docs/operations/opencode-work-orders/provider-safety.md",
-    "docs/operations/opencode-work-orders/release-audit.md",
-    "docs/operations/opencode-work-orders/review-and-tests.md",
-    "docs/research/2026-09-06-a1-engineering-delivery.md",
-    "docs/research/2026-09-06-a1-session-architect-review.md",
-    "docs/research/2026-09-06-ocr-local-web-workflow-report.md",
-    "docs/research/2026-09-07-a1-stabilization.md",
-    "docs/research/2026-09-07-infra-application-review.md",
-    "docs/research/2026-09-07-research-audit.md",
-    "docs/research/2026-09-07-runtime-j4-engineering.md",
-    "docs/research/2026-09-08-agents-md-audit-and-skill-plan.md",
-    "docs/research/2026-09-08-consolidation-plan-feedback.md",
-    "docs/research/2026-09-08-local-a1-automation-review.md",
-})
+APPROVED_STAGED_DOCUMENT_PATHS = frozenset(
+    {
+        "config/a1_checkbox_fix_receipt.json",
+        "config/a1_template_repair_2026-09-06.json",
+        "docs/architecture/A1_FRAMEWORKS.md",
+        "docs/architecture/readme-a1-forms.md",
+        "docs/architecture/release-1a-field-mapping.md",
+        "docs/architecture/operator-a1-workflow.md",
+        "docs/operations/runtime-manifest.md",
+        "docs/operations/infra-return-work-order-2026-09-07.md",
+        "docs/operations/infra-review-20260907T0230Z/HOST-READINESS.md",
+        "docs/operations/infra-review-20260907T0230Z/INFRA-HANDOFF.md",
+        "docs/operations/infra-review-20260907T0230Z/OCR-ROLLOUT.md",
+        "docs/operations/infra-review-20260907T0230Z/PROMPT.md",
+        "docs/operations/infra-review-20260907T0230Z/SECRETS-DATABASE.md",
+        "docs/operations/infra-review-20260907T0230Z/SHA256SUMS",
+        "docs/operations/infra-review-20260907T0230Z/VALIDATION.json",
+        "docs/operations/wsgi-deployment-recipe.md",
+        "docs/operations/opencode-work-orders/README.md",
+        "docs/operations/opencode-work-orders/artifact-and-j4.md",
+        "docs/operations/opencode-work-orders/organization-audit.md",
+        "docs/operations/opencode-work-orders/provider-safety.md",
+        "docs/operations/opencode-work-orders/release-audit.md",
+        "docs/operations/opencode-work-orders/review-and-tests.md",
+        "docs/research/2026-09-06-a1-engineering-delivery.md",
+        "docs/research/2026-09-06-a1-session-architect-review.md",
+        "docs/research/2026-09-06-ocr-local-web-workflow-report.md",
+        "docs/research/2026-09-07-a1-stabilization.md",
+        "docs/research/2026-09-07-infra-application-review.md",
+        "docs/research/2026-09-07-research-audit.md",
+        "docs/research/2026-09-07-runtime-j4-engineering.md",
+        "docs/research/2026-09-08-agents-md-audit-and-skill-plan.md",
+        "docs/research/2026-09-08-consolidation-plan-feedback.md",
+        "docs/research/2026-09-08-local-a1-automation-review.md",
+        # Governance evidence files for the 2026-09-18 backup/project-separation plan.
+        "docs/research/2026-09-18-project-separation.md",
+        # A1 data contract: the registered field mapping and its companions.
+        # Each is a reviewed, synthetic-only document owned by a
+        # change-packages.yml package; the mapping is the single owner of the
+        # official field logic.
+        "docs/architecture/a1-field-source-mapping.md",
+        "docs/architecture/a1-gap-analysis.md",
+        "docs/architecture/a1-automation-scenarios.md",
+        "docs/architecture/solutions/a1-topic-data-architecture-solution.md",
+        # Secret-scanning baseline. Contains only hashed_secret values, never
+        # a plaintext secret, and is generated from the tracked tree alone.
+        ".secrets.baseline",
+        "docs/research/2026-09-18-git-extraction-evidence.md",
+        "docs/research/2026-09-18-comprehensive-gap-analysis.md",
+        "docs/research/2026-09-18-gap-analysis-evidence.json",
+        "docs/architecture/project-directory-map.md",
+    }
+)
 # Tracked source skill files. Skills are versioned agent instructions, not PII;
 # their filenames legitimately embed pipeline words. The token guard stays active
 # for any non-listed file under these skill directories.
-APPROVED_STAGED_SKILL_PATHS = frozenset({
-    ".agents/skills/a1-pdf-production/SKILL.md",
-    ".agents/skills/a1-pdf-production/references/field-policy.md",
-    ".opencode/skills/market-research-evidence/SKILL.md",
-})
+APPROVED_STAGED_SKILL_PATHS = frozenset(
+    {
+        ".agents/skills/a1-pdf-production/SKILL.md",
+        ".agents/skills/a1-pdf-production/references/field-policy.md",
+        ".opencode/skills/market-research-evidence/SKILL.md",
+    }
+)
 # Tracked source scripts/templates. Filenames legitimately embed pipeline words
 # (ocr, evidence, scans, etc.). The token guard stays active for any non-listed
 # file under scripts/.
-APPROVED_STAGED_SCRIPT_PATHS = frozenset({
-    "portal/release1a/runtime_safety.py",
-    "portal/templates/portal/a1_case_detail.html",
-    "portal/templates/portal/a1_list.html",
-    "portal/templates/portal/a1_prepare.html",
-    "portal/templates/portal/partials/a1_prepare_form.html",
-    "portal/templates/portal/partials/ocr_proposals.html",
-    "portal/templates/portal/a1_generation_confirm.html",
-    "scripts/a1_core.py",
-    "scripts/a1_quality_gate.py",
-    "scripts/a1_audit.py",
-    "scripts/finalize_a1.py",
-    "scripts/generate_provisional_a1.py",
-    "portal/release1a/inbox.py",
-    "portal/release1a/identity.py",
-    "portal/release1a/a1_exports.py",
-    "portal/release1a/a1_drafts.py",
-    "portal/release1a/a1_generation_access.py",
-    "portal/release1a/a1_generation_confirmation.py",
-    "portal/release1a/migrations/0016_a1_draft_reservation.py",
-    "portal/release1a/migrations/0017_a1_draft_generation.py",
-    "portal/release1a/migrations/0018_a1_generation_confirmation.py",
-    "portal/release1a/management/commands/a1_prepare_draft.py",
-    "portal/release1a/migrations/0015_assignment_a1_facts.py",
-    "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
-    "portal/release1a/management/commands/a1_process_inbox.py",
-    "scripts/run_ocr_benchmark.py",
-    "scripts/run_ocr_worker_lifecycle.py",
-    "portal/release1a/management/commands/process_ocr.py",
-    "scripts/evaluate_a1_pdf_tools.py",
-    "scripts/seed_release1a_dev.py",
-    "scripts/release_verifier.py",
-    "scripts/seed_verification_db.py",
-    "scripts/repair_a1_template_checkboxes.py",
-    "scripts/reset_synthetic_reviewer_password.py",
-    "scripts/playwright_smoke.py",
-    "scripts/smoke_synthetic_review_ui.mjs",
-    "scripts/rehearse_synthetic_site.sh",
-    "scripts/build_release_manifest.py",
-    "scripts/provision_synthetic_operator.py",
-    "scripts/smoke_probe.py",
-    "scripts/rehearse_verify_persistence.py",
-    "portal/release1a/migrations/0020_a1case_identity_binding.py",
-})
+APPROVED_STAGED_SCRIPT_PATHS = frozenset(
+    {
+        "portal/release1a/runtime_safety.py",
+        "portal/templates/portal/a1_case_detail.html",
+        "portal/templates/portal/a1_list.html",
+        "portal/templates/portal/a1_prepare.html",
+        "portal/templates/portal/partials/a1_prepare_form.html",
+        "portal/templates/portal/partials/ocr_proposals.html",
+        "portal/templates/portal/a1_generation_confirm.html",
+        "scripts/a1_core.py",
+        "scripts/a1_quality_gate.py",
+        "scripts/a1_audit.py",
+        "scripts/finalize_a1.py",
+        "scripts/generate_provisional_a1.py",
+        "portal/release1a/inbox.py",
+        "portal/release1a/identity.py",
+        "portal/release1a/a1_exports.py",
+        "portal/release1a/a1_drafts.py",
+        "portal/release1a/a1_generation_access.py",
+        "portal/release1a/a1_generation_confirmation.py",
+        "portal/release1a/migrations/0016_a1_draft_reservation.py",
+        "portal/release1a/migrations/0017_a1_draft_generation.py",
+        "portal/release1a/migrations/0018_a1_generation_confirmation.py",
+        "portal/release1a/management/commands/a1_prepare_draft.py",
+        "portal/release1a/migrations/0015_assignment_a1_facts.py",
+        "portal/release1a/migrations/0014_identity_evaluation_and_draft_claim.py",
+        "portal/release1a/management/commands/a1_process_inbox.py",
+        "scripts/run_ocr_benchmark.py",
+        "scripts/run_ocr_worker_lifecycle.py",
+        "portal/release1a/management/commands/process_ocr.py",
+        "scripts/evaluate_a1_pdf_tools.py",
+        "scripts/seed_release1a_dev.py",
+        "scripts/release_verifier.py",
+        "scripts/seed_verification_db.py",
+        "scripts/repair_a1_template_checkboxes.py",
+        "scripts/reset_synthetic_reviewer_password.py",
+        "scripts/playwright_smoke.py",
+        "scripts/smoke_synthetic_review_ui.mjs",
+        # A1 generation and checkbox tooling. Reviewed source; the orchestrator
+        # is a research experiment and imports no real data.
+        "scripts/a1_completion_preview.py",
+        "scripts/extract_a1_checkbox_positions.py",
+        "scripts/generate_a1_incremental.py",
+        "scripts/langgraph_a1_orchestrator.py",
+        "scripts/rehearse_synthetic_site.sh",
+        "scripts/build_release_manifest.py",
+        "scripts/provision_synthetic_operator.py",
+        "scripts/smoke_probe.py",
+        "scripts/rehearse_verify_persistence.py",
+        "portal/release1a/migrations/0020_a1case_identity_binding.py",
+    }
+)
 # Tracked source settings modules. Filenames legitimately embed pipeline words.
-APPROVED_STAGED_SETTINGS_PATHS = frozenset({
-    "portal/settings_browser_tests.py",
-    "portal/settings_verification.py",
-})
+APPROVED_STAGED_SETTINGS_PATHS = frozenset(
+    {
+        "portal/settings_browser_tests.py",
+        "portal/settings_verification.py",
+    }
+)
 # Tracked source test files. Filenames legitimately embed pipeline words.
-APPROVED_STAGED_TEST_PATHS = frozenset({
-    "tests/test_runtime_safety.py",
-    "tests/test_runtime_hardening.py",
-    "tests/document_web/test_a1_exports.py",
-    "tests/document_web/test_a1_cohort_exports.py",
-    "tests/document_web/test_a1_input_publication.py",
-    "tests/test_a1_input_artifacts.py",
-    "portal/release1a/management/commands/a1_export_inputs.py",
-    "tests/document_web/test_a1_drafts.py",
-    "tests/document_web/test_a1_generation_access.py",
-    "tests/document_web/test_a1_generation_confirmation.py",
-    "tests/document_web/test_a1_drafts_postgres.py",
-    "tests/test_a1_application_draft.py",
-    "tests/document_web/test_a1_exports_postgres.py",
-    "tests/document_web/test_browser_journey.py",
-    "tests/test_a1_cli_journey.py",
-    "tests/test_a1_employee_delivery.py",
-    "tests/test_playwright_smoke.py",
-    "tests/test_release_verifier.py",
-    "tests/test_ocr_benchmark_contract.py",
-    "tests/test_ocr_worker_lifecycle.py",
-    "tests/document_web/test_ocr_worker.py",
-    "tests/test_j4_minimum.py",
-    "tests/test_rehearse_synthetic_site.py",
-    "tests/test_rehearse_workflow.py",
-    "tests/_rehearse_workflow_browser.py",
-    "tests/_rehearse_workflow_data_path.py",
-    "tests/test_persistence_verifier.py",
-})
+APPROVED_STAGED_TEST_PATHS = frozenset(
+    {
+        "tests/test_runtime_safety.py",
+        # A1 preview and orchestrator tests. Synthetic fixtures only.
+        "tests/test_a1_completion_preview.py",
+        "tests/test_langgraph_a1_orchestrator.py",
+        "tests/test_runtime_hardening.py",
+        "tests/document_web/test_a1_exports.py",
+        "tests/document_web/test_a1_cohort_exports.py",
+        "tests/document_web/test_a1_input_publication.py",
+        "tests/test_a1_input_artifacts.py",
+        "portal/release1a/management/commands/a1_export_inputs.py",
+        "tests/document_web/test_a1_drafts.py",
+        "tests/document_web/test_a1_generation_access.py",
+        "tests/document_web/test_a1_generation_confirmation.py",
+        "tests/document_web/test_a1_drafts_postgres.py",
+        "tests/test_a1_application_draft.py",
+        "tests/document_web/test_a1_exports_postgres.py",
+        "tests/document_web/test_browser_journey.py",
+        "tests/test_a1_cli_journey.py",
+        "tests/test_a1_employee_delivery.py",
+        "tests/test_playwright_smoke.py",
+        "tests/test_release_verifier.py",
+        "tests/test_ocr_benchmark_contract.py",
+        "tests/test_ocr_worker_lifecycle.py",
+        "tests/document_web/test_ocr_worker.py",
+        "tests/test_j4_minimum.py",
+        "tests/test_rehearse_synthetic_site.py",
+        "tests/test_rehearse_workflow.py",
+        "tests/_rehearse_workflow_browser.py",
+        "tests/_rehearse_workflow_data_path.py",
+        "tests/test_persistence_verifier.py",
+    }
+)
 # Tracked synthetic fixture files. Synthetic personal identifiers under
 # tests/fixtures/release_1a/orgonik_zivot_* are conspicuously fictional and
 # belong to the explicit orgonik_zivot_pdfs cohort in the same directory.
-APPROVED_STAGED_FIXTURE_PATHS = frozenset({
-    "tests/fixtures/release_1a/workers_orgonik_zivot.json",
-    "tests/fixtures/release_1a/assignments_orgonik_zivot.json",
-    "tests/fixtures/release_1a/a1_inputs_orgonik_zivot.json",
-    "tests/fixtures/release_1a/review_orgonik_zivot.csv",
-})
+APPROVED_STAGED_FIXTURE_PATHS = frozenset(
+    {
+        "tests/fixtures/release_1a/workers_orgonik_zivot.json",
+        "tests/fixtures/release_1a/assignments_orgonik_zivot.json",
+        "tests/fixtures/release_1a/a1_inputs_orgonik_zivot.json",
+        "tests/fixtures/release_1a/review_orgonik_zivot.csv",
+    }
+)
 
 DEFAULT_CATALOG = "planning/catalog.json"
 DEFAULT_SCHEMA = "planning/catalog.schema.json"
@@ -339,7 +459,9 @@ def parse_index_statuses(root: Path) -> dict:
     if not idx.is_file():
         return {}
     out = {}
-    pat = re.compile(r"\[Plan ([A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)\b[^\]]*\]\(([^)]+)\)\s*\|\s*(\w+)")
+    pat = re.compile(
+        r"\[Plan ([A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)\b[^\]]*\]\(([^)]+)\)\s*\|\s*(\w+)"
+    )
     for line in idx.read_text(encoding="utf-8").splitlines():
         m = pat.search(line)
         if m:
@@ -384,7 +506,9 @@ def scan_skill_links(root: Path):
     for skills_root in (root / ".agents" / "skills", root / ".opencode" / "skills"):
         if not skills_root.is_dir():
             continue
-        is_experimental = skills_root.name == "skills" and skills_root.parent.name == ".opencode"
+        is_experimental = (
+            skills_root.name == "skills" and skills_root.parent.name == ".opencode"
+        )
         for skill_dir in sorted(skills_root.iterdir()):
             if not skill_dir.is_dir():
                 continue
@@ -393,7 +517,9 @@ def scan_skill_links(root: Path):
                 continue
             refs = []
             if skill_md.is_file():
-                for target in iter_markdown_links(skill_md.read_text(encoding="utf-8", errors="ignore")):
+                for target in iter_markdown_links(
+                    skill_md.read_text(encoding="utf-8", errors="ignore")
+                ):
                     rel = strip_link_target(target)
                     if not rel or rel.startswith(("http://", "https://", "mailto:")):
                         continue
@@ -414,7 +540,9 @@ def _skill_tracked(root: Path, skill_md: Path) -> bool:
     try:
         proc = subprocess.run(
             ["git", "-C", str(root), "ls-files", "--error-unmatch", "--", rel],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
     except (OSError, subprocess.SubprocessError):
         return True
@@ -425,7 +553,9 @@ def get_staged_paths(root: Path):
     try:
         proc = subprocess.run(
             ["git", "-C", str(root), "diff", "--cached", "--name-only"],
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         raise EnvironmentalError("git unavailable for staged-path check: " + str(exc))
@@ -445,8 +575,10 @@ def check_schema_validity(catalog, jsonschema, schema):
     validator = jsonschema.Draft7Validator(schema)
     errors = sorted(validator.iter_errors(catalog), key=lambda e: list(e.path))
     if errors:
-        msgs = [("%s: %s" % ("/".join(str(p) for p in e.path) or "<root>", e.message))
-                for e in errors[:8]]
+        msgs = [
+            ("%s: %s" % ("/".join(str(p) for p in e.path) or "<root>", e.message))
+            for e in errors[:8]
+        ]
         return False, "catalog failed schema: " + " | ".join(msgs)
     return True, "catalog conforms to schema"
 
@@ -488,15 +620,21 @@ def check_controlled_vocabularies(catalog):
         if item.get("status") not in VALID_STATUSES:
             problems.append("%s: invalid status '%s'" % (iid, item.get("status")))
         if item.get("decision_state") not in VALID_DECISION_STATES:
-            problems.append("%s: invalid decision_state '%s'" % (iid, item.get("decision_state")))
+            problems.append(
+                "%s: invalid decision_state '%s'" % (iid, item.get("decision_state"))
+            )
         if item.get("evidence_state") not in VALID_EVIDENCE_STATES:
-            problems.append("%s: invalid evidence_state '%s'" % (iid, item.get("evidence_state")))
+            problems.append(
+                "%s: invalid evidence_state '%s'" % (iid, item.get("evidence_state"))
+            )
         for d in item.get("dependencies", []):
             if not isinstance(d, dict):
                 problems.append("%s: dependency is not an object" % iid)
                 continue
             if d.get("gate") not in VALID_GATES:
-                problems.append("%s: invalid dependency gate '%s'" % (iid, d.get("gate")))
+                problems.append(
+                    "%s: invalid dependency gate '%s'" % (iid, d.get("gate"))
+                )
     if problems:
         return False, "; ".join(problems[:8])
     return True, "all controlled vocabularies valid"
@@ -529,11 +667,16 @@ def check_accepted_no_placeholder_evidence(catalog):
         if item.get("status") == "accepted":
             ev_state = item.get("evidence_state")
             if ev_state == "none":
-                problems.append("%s: accepted status requires evidence_state != 'none'" % iid)
+                problems.append(
+                    "%s: accepted status requires evidence_state != 'none'" % iid
+                )
             elif ev_state == "synthetic-tested":
                 kind = item.get("kind")
                 if kind in ("plan", "checkpoint"):
-                    problems.append("%s: accepted %s with synthetic-tested evidence needs review before acceptance" % (iid, kind))
+                    problems.append(
+                        "%s: accepted %s with synthetic-tested evidence needs review before acceptance"
+                        % (iid, kind)
+                    )
     if problems:
         return False, "; ".join(problems[:8])
     return True, "accepted items have verified evidence state"
@@ -594,7 +737,9 @@ def check_gate_aware_cycles(catalog):
     for node in adj:
         if color[node] == WHITE:
             if visit(node, []):
-                return False, "prohibited blocking-gate cycle: " + " -> ".join(cycle_path)
+                return False, "prohibited blocking-gate cycle: " + " -> ".join(
+                    cycle_path
+                )
     return True, "no prohibited (blocking-gate) cycles"
 
 
@@ -614,14 +759,23 @@ def check_plan_header_index_coherence(catalog, root):
         # status coherence: catalog vs header vs index
         hstatus = header.get("status")
         if hstatus and item.get("status") != hstatus:
-            problems.append("%s: catalog status '%s' != header '%s'" % (iid, item.get("status"), hstatus))
+            problems.append(
+                "%s: catalog status '%s' != header '%s'"
+                % (iid, item.get("status"), hstatus)
+            )
         istatus = index_status.get(iid)
         if istatus and item.get("status") != istatus:
-            problems.append("%s: catalog status '%s' != index '%s'" % (iid, item.get("status"), istatus))
+            problems.append(
+                "%s: catalog status '%s' != index '%s'"
+                % (iid, item.get("status"), istatus)
+            )
         # milestone coherence: catalog vs header
         hmil = header.get("milestone")
         if hmil and normalize_dash(hmil) != normalize_dash(item.get("milestone", "")):
-            problems.append("%s: catalog milestone '%s' != header '%s'" % (iid, item.get("milestone"), hmil))
+            problems.append(
+                "%s: catalog milestone '%s' != header '%s'"
+                % (iid, item.get("milestone"), hmil)
+            )
     if problems:
         return False, "; ".join(problems[:8])
     return True, "plan header/index/catalog coherent"
@@ -646,7 +800,10 @@ def check_decision_register_coherence(catalog, root):
             problems.append("%s: absent from decision register" % iid)
             continue
         if norm(row["state"]) != norm(item.get("decision_state")):
-            problems.append("%s: decision_state '%s' != register '%s'" % (iid, item.get("decision_state"), row["state"]))
+            problems.append(
+                "%s: decision_state '%s' != register '%s'"
+                % (iid, item.get("decision_state"), row["state"])
+            )
         reg_date = norm(row["date"])
         cat_date = item.get("decision_date")
         if reg_date in none_tokens:
@@ -654,12 +811,17 @@ def check_decision_register_coherence(catalog, root):
                 problems.append("%s: register has no date but catalog date set" % iid)
         else:
             if norm(cat_date) != reg_date:
-                problems.append("%s: decision_date '%s' != register '%s'" % (iid, cat_date, reg_date))
+                problems.append(
+                    "%s: decision_date '%s' != register '%s'"
+                    % (iid, cat_date, reg_date)
+                )
         reg_ev = norm(row["evidence"])
         cat_ev = norm(item.get("decision_evidence"))
         if reg_ev in none_tokens:
             if cat_ev not in none_tokens:
-                problems.append("%s: register has no evidence but catalog evidence set" % iid)
+                problems.append(
+                    "%s: register has no evidence but catalog evidence set" % iid
+                )
         else:
             if cat_ev != reg_ev:
                 problems.append("%s: decision_evidence mismatch" % iid)
@@ -715,7 +877,9 @@ def check_markdown_links(catalog, root):
     problems = []
     for md in sorted(md_files):
         base = md.parent
-        for target in iter_markdown_links(md.read_text(encoding="utf-8", errors="ignore")):
+        for target in iter_markdown_links(
+            md.read_text(encoding="utf-8", errors="ignore")
+        ):
             rel = strip_link_target(target)
             if not rel or rel.startswith(("http://", "https://", "mailto:")):
                 continue
@@ -733,10 +897,16 @@ def check_historical_policy(catalog):
         if item.get("status") in ("historical", "superseded"):
             iid = item.get("id")
             if item.get("executable") is not False:
-                return False, "%s: %s requires executable=false" % (iid, item.get("status"))
+                return False, "%s: %s requires executable=false" % (
+                    iid,
+                    item.get("status"),
+                )
             succ = item.get("successor")
             if not succ or succ not in ids:
-                return False, "%s: %s requires an existing successor" % (iid, item.get("status"))
+                return False, "%s: %s requires an existing successor" % (
+                    iid,
+                    item.get("status"),
+                )
     return True, "historical/superseded items non-executable with successors"
 
 
@@ -769,7 +939,9 @@ def check_decision_state_accepted(catalog):
         if not item.get("decision_date"):
             problems.append("%s: accepted decision_state missing decision_date" % iid)
         if not item.get("decision_evidence"):
-            problems.append("%s: accepted decision_state missing decision_evidence" % iid)
+            problems.append(
+                "%s: accepted decision_state missing decision_evidence" % iid
+            )
     if problems:
         return False, "; ".join(problems[:8])
     return True, "accepted decision_state carries approver/date/evidence"
@@ -794,7 +966,11 @@ def check_active_plan_index_presence(catalog, root):
         # title is shortened.
         source_links = item.get("source_links", []) or []
         source_claimed = any(strip_link_target(link) in text for link in source_links)
-        if not source_claimed and ("Plan %s" % iid) not in text and ("plan-%s" % iid.lower()) not in text.lower():
+        if (
+            not source_claimed
+            and ("Plan %s" % iid) not in text
+            and ("plan-%s" % iid.lower()) not in text.lower()
+        ):
             problems.append("%s: active plan not claimed in INDEX" % iid)
     if problems:
         return False, "; ".join(problems[:8])
@@ -804,7 +980,11 @@ def check_active_plan_index_presence(catalog, root):
 def check_specialist_gates(catalog):
     """specialist-gate dependencies target a plan or decision, never a lane/milestone."""
     ids = {i.get("id") for i in catalog.get("items", []) if isinstance(i, dict)}
-    kinds = {i.get("id"): i.get("kind") for i in catalog.get("items", []) if isinstance(i, dict)}
+    kinds = {
+        i.get("id"): i.get("kind")
+        for i in catalog.get("items", [])
+        if isinstance(i, dict)
+    }
     problems = []
     for item in catalog.get("items", []):
         iid = item.get("id", "?")
@@ -818,7 +998,10 @@ def check_specialist_gates(catalog):
                 continue  # existence checked elsewhere
             k = kinds.get(dep_id)
             if k in ("lane", "roadmap_milestone", "checkpoint"):
-                problems.append("%s: specialist-gate dependency '%s' targets a %s" % (iid, dep_id, k))
+                problems.append(
+                    "%s: specialist-gate dependency '%s' targets a %s"
+                    % (iid, dep_id, k)
+                )
     if problems:
         return False, "; ".join(problems[:8])
     return True, "specialist-gate dependencies target plans/decisions"
@@ -851,10 +1034,13 @@ def check_forbidden_stale_and_prototype(catalog):
                 if frag in low:
                     problems.append("%s: forbidden stale path: %s" % (iid, frag))
             if "docs/prototypes/" in low and not any(
-                (l.lower().startswith("docs/prototypes/") is False) and ("docs/prototypes/" not in l.lower())
-                for l in links
+                (link.lower().startswith("docs/prototypes/") is False)
+                and ("docs/prototypes/" not in link.lower())
+                for link in links
             ):
-                problems.append("%s: prototype item without authority source link" % iid)
+                problems.append(
+                    "%s: prototype item without authority source link" % iid
+                )
     if problems:
         return False, "; ".join(problems[:8])
     return True, "no forbidden stale paths; prototype items carry authority links"
@@ -864,20 +1050,25 @@ def check_staged_forbidden_and_pii(catalog, root):
     staged = get_staged_paths(root)
     matched_tokens = set()
     for path in staged:
-        if (path.startswith(APPROVED_STAGED_PATH_PREFIXES)
-                or path in APPROVED_STAGED_DOCUMENT_PATHS
-                or path in APPROVED_STAGED_SKILL_PATHS
-                or path in APPROVED_STAGED_SCRIPT_PATHS
-                or path in APPROVED_STAGED_SETTINGS_PATHS
-                or path in APPROVED_STAGED_TEST_PATHS
-                or path in APPROVED_STAGED_FIXTURE_PATHS):
+        if (
+            path.startswith(APPROVED_STAGED_PATH_PREFIXES)
+            or path in APPROVED_STAGED_DOCUMENT_PATHS
+            or path in APPROVED_STAGED_SKILL_PATHS
+            or path in APPROVED_STAGED_SCRIPT_PATHS
+            or path in APPROVED_STAGED_SETTINGS_PATHS
+            or path in APPROVED_STAGED_TEST_PATHS
+            or path in APPROVED_STAGED_FIXTURE_PATHS
+            or is_approved_workflow_doc(path)
+        ):
             continue
         low = path.lower()
         for tok in FORBIDDEN_PATH_TOKENS:
             if tok in low:
                 matched_tokens.add(tok)
     if matched_tokens:
-        return False, "staged paths match forbidden tokens: " + ",".join(sorted(matched_tokens))
+        return False, "staged paths match forbidden tokens: " + ",".join(
+            sorted(matched_tokens)
+        )
     return True, "no forbidden/staged PII or secret paths"
 
 
@@ -890,32 +1081,59 @@ def check_prototype_start_gate(catalog, root):
     if not approvals_path.is_file():
         return False, "approval register missing"
     approvals = json.loads(approvals_path.read_text(encoding="utf-8"))
-    adr = next((record for record in approvals.get("records", []) if record.get("id") == "ADR-001"), None)
+    adr = next(
+        (
+            record
+            for record in approvals.get("records", [])
+            if record.get("id") == "ADR-001"
+        ),
+        None,
+    )
     if not adr:
         return False, "ADR-001 approval record missing"
     if plan.get("executable"):
-        if adr.get("validation") != "passed" or adr.get("implementation_gate") != "open":
+        if (
+            adr.get("validation") != "passed"
+            or adr.get("implementation_gate") != "open"
+        ):
             return False, "PLAN-INFRA executable before ADR-001 validation gate opens"
         if by_id.get("PLAN-WORKERS", {}).get("decision_state") != "accepted":
-            return False, "PLAN-INFRA executable before PLAN-WORKERS Release 1A slice acceptance"
-    return True, "PLAN-INFRA preparation active; scaffold remains bound to machine-readable gates"
+            return (
+                False,
+                "PLAN-INFRA executable before PLAN-WORKERS Release 1A slice acceptance",
+            )
+    return (
+        True,
+        "PLAN-INFRA preparation active; scaffold remains bound to machine-readable gates",
+    )
 
 
 def check_approval_asset_and_provenance(catalog, root):
     approvals_path = root / "planning/approvals.json"
     asset_path = root / "docs/prototypes/roadmap-portal/approval-data.js"
     provenance_path = root / "docs/mock-data-provenance.md"
-    if not approvals_path.is_file() or not asset_path.is_file() or not provenance_path.is_file():
+    if (
+        not approvals_path.is_file()
+        or not asset_path.is_file()
+        or not provenance_path.is_file()
+    ):
         return False, "approval asset or provenance contract missing"
     approvals = json.loads(approvals_path.read_text(encoding="utf-8"))
-    expected = "window.APPROVAL_REGISTER = " + json.dumps(approvals, ensure_ascii=False, indent=2, sort_keys=True) + ";\n"
+    expected = (
+        "window.APPROVAL_REGISTER = "
+        + json.dumps(approvals, ensure_ascii=False, indent=2, sort_keys=True)
+        + ";\n"
+    )
     if asset_path.read_text(encoding="utf-8") != expected:
         return False, "approval asset is stale"
     provenance = provenance_path.read_text(encoding="utf-8")
     forbidden = "create a separate `tests/fixtures/production/` directory"
     if forbidden in provenance:
         return False, "provenance suggests tracked production fixtures"
-    return True, "approval asset current; provenance prohibits tracked real-data fixtures"
+    return (
+        True,
+        "approval asset current; provenance prohibits tracked real-data fixtures",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -927,39 +1145,87 @@ def build_checks(catalog, root, jsonschema, schema):
         ("exact required ID coverage", lambda: check_required_ids(catalog)),
         ("duplicate IDs", lambda: check_duplicate_ids(catalog)),
         ("controlled vocabularies", lambda: check_controlled_vocabularies(catalog)),
-        ("owners/approvers/gates/evidence", lambda: check_owners_approvers_gates_evidence(catalog)),
-        ("accepted no placeholder evidence", lambda: check_accepted_no_placeholder_evidence(catalog)),
+        (
+            "owners/approvers/gates/evidence",
+            lambda: check_owners_approvers_gates_evidence(catalog),
+        ),
+        (
+            "accepted no placeholder evidence",
+            lambda: check_accepted_no_placeholder_evidence(catalog),
+        ),
         ("dependency existence", lambda: check_dependency_existence(catalog)),
         ("self-dependencies", lambda: check_self_dependencies(catalog)),
         ("gate-aware cycle rules", lambda: check_gate_aware_cycles(catalog)),
-        ("plan header/index/catalog coherence", lambda: check_plan_header_index_coherence(catalog, root)),
-        ("decision register/catalog coherence", lambda: check_decision_register_coherence(catalog, root)),
-        ("accepted-decision approver/date/evidence", lambda: check_accepted_decision_approver_date_evidence(catalog)),
-        ("accepted decision_state approver/date/evidence", lambda: check_decision_state_accepted(catalog)),
-        ("actual source-link existence", lambda: check_source_link_existence(catalog, root)),
-        ("Markdown relative-link validation", lambda: check_markdown_links(catalog, root)),
+        (
+            "plan header/index/catalog coherence",
+            lambda: check_plan_header_index_coherence(catalog, root),
+        ),
+        (
+            "decision register/catalog coherence",
+            lambda: check_decision_register_coherence(catalog, root),
+        ),
+        (
+            "accepted-decision approver/date/evidence",
+            lambda: check_accepted_decision_approver_date_evidence(catalog),
+        ),
+        (
+            "accepted decision_state approver/date/evidence",
+            lambda: check_decision_state_accepted(catalog),
+        ),
+        (
+            "actual source-link existence",
+            lambda: check_source_link_existence(catalog, root),
+        ),
+        (
+            "Markdown relative-link validation",
+            lambda: check_markdown_links(catalog, root),
+        ),
         ("historical/superseded policy", lambda: check_historical_policy(catalog)),
-        ("referenced command/file existence", lambda: check_referenced_files_commands(catalog, root)),
+        (
+            "referenced command/file existence",
+            lambda: check_referenced_files_commands(catalog, root),
+        ),
         ("skill metadata and one-level references", lambda: check_skill_metadata(root)),
-        ("active plans claimed in INDEX", lambda: check_active_plan_index_presence(catalog, root)),
+        (
+            "active plans claimed in INDEX",
+            lambda: check_active_plan_index_presence(catalog, root),
+        ),
         ("specialist-gate dependency targets", lambda: check_specialist_gates(catalog)),
-        ("forbidden stale paths and prototype-source links", lambda: check_forbidden_stale_and_prototype(catalog)),
-        ("prototype-start gate consistency", lambda: check_prototype_start_gate(catalog, root)),
-        ("approval asset and fixture provenance", lambda: check_approval_asset_and_provenance(catalog, root)),
-        ("staged forbidden-path and PII/secret indicators", lambda: check_staged_forbidden_and_pii(catalog, root)),
+        (
+            "forbidden stale paths and prototype-source links",
+            lambda: check_forbidden_stale_and_prototype(catalog),
+        ),
+        (
+            "prototype-start gate consistency",
+            lambda: check_prototype_start_gate(catalog, root),
+        ),
+        (
+            "approval asset and fixture provenance",
+            lambda: check_approval_asset_and_provenance(catalog, root),
+        ),
+        (
+            "staged forbidden-path and PII/secret indicators",
+            lambda: check_staged_forbidden_and_pii(catalog, root),
+        ),
     ]
 
 
 def build_next_actions(failed_checks):
     actions = []
     for name, detail in failed_checks:
-        severity = "high" if ("schema" in name or "staged" in name or "PII" in name) else "medium"
-        actions.append({
-            "when": "before re-running ./venv/bin/python scripts/validate_planning.py",
-            "command": "inspect the failing catalog item and authoritative source; fix the data or source, then re-run the validator",
-            "purpose": "resolve check '%s': %s" % (name, detail),
-            "severity": severity,
-        })
+        severity = (
+            "high"
+            if ("schema" in name or "staged" in name or "PII" in name)
+            else "medium"
+        )
+        actions.append(
+            {
+                "when": "before re-running ./venv/bin/python scripts/validate_planning.py",
+                "command": "inspect the failing catalog item and authoritative source; fix the data or source, then re-run the validator",
+                "purpose": "resolve check '%s': %s" % (name, detail),
+                "severity": severity,
+            }
+        )
     return actions
 
 
@@ -968,7 +1234,9 @@ def main(argv=None):
     parser.add_argument("--catalog", default=DEFAULT_CATALOG)
     parser.add_argument("--root", default=".")
     parser.add_argument("--schema", default=DEFAULT_SCHEMA)
-    parser.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    parser.add_argument(
+        "--json", action="store_true", help="emit machine-readable JSON"
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root).resolve()

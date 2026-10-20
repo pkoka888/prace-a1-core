@@ -71,22 +71,30 @@ def main() -> int:
             .values_list("user_id", flat=True)
             .distinct()
         )
-        users = user_model.objects.filter(id__in=user_ids, is_active=True).order_by("username")
+        users = user_model.objects.filter(id__in=user_ids, is_active=True).order_by(
+            "username"
+        )
         for user in users:
             print(user.username)
         return 0
 
     users = list(
-        user_model.objects.filter(Q(username=args.login) | Q(email__iexact=args.login))[:2]
+        user_model.objects.filter(Q(username=args.login) | Q(email__iexact=args.login))[
+            :2
+        ]
     )
     if len(users) != 1:
         raise RuntimeError("login did not resolve to exactly one account")
 
     user = users[0]
     if not user.is_active:
-        raise RuntimeError("reviewer is inactive; use the invitation activation flow instead")
+        raise RuntimeError(
+            "reviewer is inactive; use the invitation activation flow instead"
+        )
     if Membership.objects.filter(user=user, active=True).count() != 1:
-        raise RuntimeError("reviewer must have exactly one active organization membership")
+        raise RuntimeError(
+            "reviewer must have exactly one active organization membership"
+        )
 
     temporary_pwd = secrets.token_urlsafe(20)
     user.set_password(temporary_pwd)
@@ -101,7 +109,7 @@ def main() -> int:
 
     print("Synthetic reviewer password reset successfully.")
     print(f"Login: {user.username}")
-    print(f"Temporary password: {temporary_password}")
+    print(f"Temporary password: {temporary_pwd}")
     if args.show_totp_code:
         try:
             authenticator = Authenticator.objects.get(

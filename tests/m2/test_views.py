@@ -1,23 +1,23 @@
 """M2 Sprint tests — View-layer validation for J1–J4 journeys."""
+
 import os
 import time
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
 import django
+
 django.setup()
 
 
 from datetime import date
-import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.backends.db import SessionStore
 from django.test import Client, TransactionTestCase, override_settings
 import tempfile
 from tests.test_document_core.helpers import OP, card, png
 from allauth.mfa.models import Authenticator
-from portal.release1a.models import (
-    AuditEvent, Membership, Organization, Worker,
-    Document, Assignment, A1Case
-)
+from portal.release1a.models import AuditEvent, Membership, Organization, Worker
+
 
 def _mfa_login(client, user):
     """
@@ -27,7 +27,9 @@ def _mfa_login(client, user):
     """
     client.login(username=user.username, password="test-m2")
     sk = client.session.session_key
-    if not Authenticator.objects.filter(user=user, type=Authenticator.Type.TOTP).exists():
+    if not Authenticator.objects.filter(
+        user=user, type=Authenticator.Type.TOTP
+    ).exists():
         Authenticator.objects.create(
             user=user,
             type=Authenticator.Type.TOTP,
@@ -48,13 +50,13 @@ class M2ViewTests(TransactionTestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         config = override_settings(DOCUMENT_STORAGE_ROOT=temporary.name)
-        config.enable(); self.addCleanup(config.disable)
+        config.enable()
+        self.addCleanup(config.disable)
         self.org_alpha = Organization.objects.create(key="alpha-m2", label="Alpha M2")
         self.org_beta = Organization.objects.create(key="beta-m2", label="Beta M2")
         self.user = get_user_model().objects.create_user("m2user", password="test-m2")
         self.membership = Membership.objects.create(
-            user=self.user, organization=self.org_alpha,
-            role="jan_planner"
+            user=self.user, organization=self.org_alpha, role="jan_planner"
         )
         self.client = Client()
 
@@ -122,7 +124,8 @@ class M2ViewTests(TransactionTestCase):
         """J2: Document upload requires login."""
         worker = Worker.objects.create(
             organization=self.org_alpha,
-            given_name="Test", family_name="Worker",
+            given_name="Test",
+            family_name="Worker",
             birth_date=date(1990, 1, 1),
             activity_profile="self_employed",
         )
@@ -134,7 +137,8 @@ class M2ViewTests(TransactionTestCase):
         _mfa_login(self.client, self.user)
         worker = Worker.objects.create(
             organization=self.org_alpha,
-            given_name="Test", family_name="Worker",
+            given_name="Test",
+            family_name="Worker",
             birth_date=date(1990, 1, 1),
             activity_profile="self_employed",
         )
@@ -146,7 +150,8 @@ class M2ViewTests(TransactionTestCase):
         _mfa_login(self.client, self.user)
         worker = Worker.objects.create(
             organization=self.org_alpha,
-            given_name="Test", family_name="Worker",
+            given_name="Test",
+            family_name="Worker",
             birth_date=date(1990, 1, 1),
             activity_profile="self_employed",
         )
@@ -158,7 +163,8 @@ class M2ViewTests(TransactionTestCase):
         _mfa_login(self.client, self.user)
         worker_beta = Worker.objects.create(
             organization=self.org_beta,
-            given_name="Beta", family_name="Worker",
+            given_name="Beta",
+            family_name="Worker",
             birth_date=date(1990, 1, 1),
             activity_profile="self_employed",
         )
@@ -169,10 +175,16 @@ class M2ViewTests(TransactionTestCase):
     def test_audit_events_for_j1_j2_j3_j4(self):
         """AuditEvent records for all J1–J4 actions."""
         from portal.release1a.services import (
-            create_worker, upload_document, create_assignment, prepare_a1
+            create_worker,
+            upload_document,
+            create_assignment,
+            prepare_a1,
         )
+
         # Ensure user has a TOTP authenticator (service functions require MFA)
-        if not Authenticator.objects.filter(user=self.user, type=Authenticator.Type.TOTP).exists():
+        if not Authenticator.objects.filter(
+            user=self.user, type=Authenticator.Type.TOTP
+        ).exists():
             Authenticator.objects.create(
                 user=self.user,
                 type=Authenticator.Type.TOTP,
@@ -180,20 +192,31 @@ class M2ViewTests(TransactionTestCase):
             )
 
         worker = create_worker(
-            self.user, self.org_alpha,
-            given_name="Syntetický", family_name="Pracovník",
-            birth_date=date(1990, 1, 1), activity_profile="self_employed",
+            self.user,
+            self.org_alpha,
+            given_name="Syntetický",
+            family_name="Pracovník",
+            birth_date=date(1990, 1, 1),
+            activity_profile="self_employed",
         )
-        document = upload_document(
-            self.user, self.org_alpha, worker,
-            "fixture.png", "image/png", png(card(OP)),
+        upload_document(
+            self.user,
+            self.org_alpha,
+            worker,
+            "fixture.png",
+            "image/png",
+            png(card(OP)),
         )
         _, _ = create_assignment(
-            self.user, self.org_alpha, worker,
-            start=date(2026, 8, 1), end=date(2026, 8, 15),
-            workplace_label="Test", activity_label="Test",
+            self.user,
+            self.org_alpha,
+            worker,
+            start=date(2026, 8, 1),
+            end=date(2026, 8, 15),
+            workplace_label="Test",
+            activity_label="Test",
         )
-        case = prepare_a1(self.user, self.org_alpha, worker)
+        prepare_a1(self.user, self.org_alpha, worker)
 
         # All 4 audit events present
         event_types = list(AuditEvent.objects.values_list("event_type", flat=True))
@@ -220,7 +243,8 @@ class M2NavigationRegressionTests(TransactionTestCase):
         _mfa_login(self.client, self.user)
         self.worker = Worker.objects.create(
             organization=self.org,
-            given_name="Navigace", family_name="Test",
+            given_name="Navigace",
+            family_name="Test",
             birth_date=date(1990, 1, 1),
             activity_profile="employee",
         )
@@ -281,10 +305,20 @@ class M2NavigationRegressionTests(TransactionTestCase):
     def test_planned_pages_render(self):
         """Planned module pages show inactive message."""
         planned_modules = [
-            "/partners/", "/jobs/", "/candidates/", "/requests/",
-            "/capacity/", "/attendance/", "/communications/", "/finance/",
-            "/invoices/", "/payroll-cz/", "/payroll-de/", "/integrations/",
-            "/privacy/", "/admin/"
+            "/partners/",
+            "/jobs/",
+            "/candidates/",
+            "/requests/",
+            "/capacity/",
+            "/attendance/",
+            "/communications/",
+            "/finance/",
+            "/invoices/",
+            "/payroll-cz/",
+            "/payroll-de/",
+            "/integrations/",
+            "/privacy/",
+            "/admin/",
         ]
         for url in planned_modules:
             response = self.client.get(url)
@@ -315,17 +349,30 @@ class WorkerAuthorizationTests(TransactionTestCase):
 
     def setUp(self):
         self.org = Organization.objects.create(key="auth-org", label="Auth Org")
-        self.admin_user = get_user_model().objects.create_user("admin", password="test-m2")
-        self.operator_user = get_user_model().objects.create_user("operator", password="test-m2")
-        self.privacy_user = get_user_model().objects.create_user("privacy", password="test-m2")
+        self.admin_user = get_user_model().objects.create_user(
+            "admin", password="test-m2"
+        )
+        self.operator_user = get_user_model().objects.create_user(
+            "operator", password="test-m2"
+        )
+        self.privacy_user = get_user_model().objects.create_user(
+            "privacy", password="test-m2"
+        )
 
-        Membership.objects.create(user=self.admin_user, organization=self.org, role="organization_admin")
-        Membership.objects.create(user=self.operator_user, organization=self.org, role="operator")
-        Membership.objects.create(user=self.privacy_user, organization=self.org, role="privacy_admin")
+        Membership.objects.create(
+            user=self.admin_user, organization=self.org, role="organization_admin"
+        )
+        Membership.objects.create(
+            user=self.operator_user, organization=self.org, role="operator"
+        )
+        Membership.objects.create(
+            user=self.privacy_user, organization=self.org, role="privacy_admin"
+        )
 
         self.worker = Worker.objects.create(
             organization=self.org,
-            given_name="Auth", family_name="Test",
+            given_name="Auth",
+            family_name="Test",
             birth_date=date(1990, 1, 1),
             activity_profile="employee",
         )
@@ -334,13 +381,16 @@ class WorkerAuthorizationTests(TransactionTestCase):
     def test_worker_edit_requires_update_capability(self):
         """Worker edit requires worker:update capability."""
         _mfa_login(self.client, self.admin_user)
-        response = self.client.post(f"/workers/{self.worker.pk}/edit/", {
-            "given_name": "Updated",
-            "family_name": "Test",
-            "birth_date": "1990-01-01",
-            "activity_profile": "employee",
-            "state": "draft",
-        })
+        response = self.client.post(
+            f"/workers/{self.worker.pk}/edit/",
+            {
+                "given_name": "Updated",
+                "family_name": "Test",
+                "birth_date": "1990-01-01",
+                "activity_profile": "employee",
+                "state": "draft",
+            },
+        )
         self.assertEqual(response.status_code, 302)
         self.worker.refresh_from_db()
         self.assertEqual(self.worker.given_name, "Updated")
@@ -380,14 +430,18 @@ class WorkerAuthorizationTests(TransactionTestCase):
 
     def _edit_data(self, state="draft"):
         return {
-            "given_name": "Changed", "family_name": "Test",
-            "birth_date": "1990-01-01", "activity_profile": "employee",
+            "given_name": "Changed",
+            "family_name": "Test",
+            "birth_date": "1990-01-01",
+            "activity_profile": "employee",
             "state": state,
         }
 
     def test_operator_can_edit_worker_without_archiving(self):
         _mfa_login(self.client, self.operator_user)
-        response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data())
+        response = self.client.post(
+            f"/workers/{self.worker.pk}/edit/", self._edit_data()
+        )
         self.assertEqual(response.status_code, 302)
         self.worker.refresh_from_db()
         self.assertEqual(self.worker.given_name, "Changed")
@@ -395,22 +449,33 @@ class WorkerAuthorizationTests(TransactionTestCase):
 
     def test_operator_cannot_archive_or_restore_through_edit(self):
         _mfa_login(self.client, self.operator_user)
-        for original, requested in [(Worker.State.DRAFT, Worker.State.ARCHIVED),
-                                    (Worker.State.ARCHIVED, Worker.State.DRAFT)]:
+        for original, requested in [
+            (Worker.State.DRAFT, Worker.State.ARCHIVED),
+            (Worker.State.ARCHIVED, Worker.State.DRAFT),
+        ]:
             with self.subTest(original=original, requested=requested):
                 Worker.objects.filter(pk=self.worker.pk).update(state=original)
                 before = Worker.objects.values().get(pk=self.worker.pk)
-                audits_before = AuditEvent.objects.filter(event_type="worker.updated").count()
-                response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data(requested))
+                audits_before = AuditEvent.objects.filter(
+                    event_type="worker.updated"
+                ).count()
+                response = self.client.post(
+                    f"/workers/{self.worker.pk}/edit/", self._edit_data(requested)
+                )
                 self.assertEqual(response.status_code, 403)
                 self.assertEqual(Worker.objects.values().get(pk=self.worker.pk), before)
-                self.assertEqual(AuditEvent.objects.filter(event_type="worker.updated").count(), audits_before)
+                self.assertEqual(
+                    AuditEvent.objects.filter(event_type="worker.updated").count(),
+                    audits_before,
+                )
 
     def test_admin_can_archive_and_restore_through_edit(self):
         _mfa_login(self.client, self.admin_user)
         for requested in (Worker.State.ARCHIVED, Worker.State.DRAFT):
             with self.subTest(requested=requested):
-                response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data(requested))
+                response = self.client.post(
+                    f"/workers/{self.worker.pk}/edit/", self._edit_data(requested)
+                )
                 self.assertEqual(response.status_code, 302)
                 self.worker.refresh_from_db()
                 self.assertEqual(self.worker.state, requested)
@@ -418,26 +483,39 @@ class WorkerAuthorizationTests(TransactionTestCase):
     def test_privacy_role_cannot_mutate_worker_through_post(self):
         _mfa_login(self.client, self.privacy_user)
         before = Worker.objects.values().get(pk=self.worker.pk)
-        response = self.client.post(f"/workers/{self.worker.pk}/edit/", self._edit_data())
+        response = self.client.post(
+            f"/workers/{self.worker.pk}/edit/", self._edit_data()
+        )
         self.assertEqual(response.status_code, 403)
         self.assertEqual(Worker.objects.values().get(pk=self.worker.pk), before)
 
     def test_cross_org_actions_cannot_read_or_modify_worker(self):
-        other = Organization.objects.create(key="auth-other", label="Other synthetic org")
-        foreign = Worker.objects.create(organization=other, given_name="Foreign", family_name="Worker",
-                                        birth_date=date(1990, 1, 1), activity_profile="employee")
+        other = Organization.objects.create(
+            key="auth-other", label="Other synthetic org"
+        )
+        foreign = Worker.objects.create(
+            organization=other,
+            given_name="Foreign",
+            family_name="Worker",
+            birth_date=date(1990, 1, 1),
+            activity_profile="employee",
+        )
         _mfa_login(self.client, self.admin_user)
         before = Worker.objects.values().get(pk=foreign.pk)
         for suffix in ("edit", "archive", "delete"):
             with self.subTest(action=suffix):
-                response = self.client.post(f"/workers/{foreign.pk}/{suffix}/", self._edit_data("archived"))
+                response = self.client.post(
+                    f"/workers/{foreign.pk}/{suffix}/", self._edit_data("archived")
+                )
                 self.assertEqual(response.status_code, 404)
                 self.assertEqual(Worker.objects.values().get(pk=foreign.pk), before)
         response = self.client.get("/workers/")
         self.assertNotContains(response, "Foreign")
 
     def test_worker_list_requires_read_capability(self):
-        Membership.objects.filter(user=self.operator_user, organization=self.org).update(role="system_worker")
+        Membership.objects.filter(
+            user=self.operator_user, organization=self.org
+        ).update(role="system_worker")
         _mfa_login(self.client, self.operator_user)
         for headers in ({}, {"HTTP_HX_REQUEST": "true"}):
             with self.subTest(headers=headers):
@@ -453,13 +531,19 @@ class WorkerAuthorizationTests(TransactionTestCase):
                 with self.subTest(user=user.pk, method=method.__name__):
                     response = method(f"/workers/{self.worker.pk}/delete/")
                     self.assertEqual(response.status_code, 403)
-                    self.assertEqual(Worker.objects.values().get(pk=self.worker.pk), before)
-        self.assertFalse(AuditEvent.objects.filter(event_type="worker.deleted").exists())
-
+                    self.assertEqual(
+                        Worker.objects.values().get(pk=self.worker.pk), before
+                    )
+        self.assertFalse(
+            AuditEvent.objects.filter(event_type="worker.deleted").exists()
+        )
 
     def test_planner_cannot_create_worker_in_archived_state(self):
         from portal.release1a.services import Forbidden, create_worker
-        Membership.objects.filter(user=self.operator_user, organization=self.org).update(role="jan_planner")
+
+        Membership.objects.filter(
+            user=self.operator_user, organization=self.org
+        ).update(role="jan_planner")
         _mfa_login(self.client, self.operator_user)
         before_workers = Worker.objects.count()
         before_audits = AuditEvent.objects.count()
@@ -478,4 +562,8 @@ class WorkerAuthorizationTests(TransactionTestCase):
         _mfa_login(self.client, self.admin_user)
         response = self.client.post("/workers/new/", self._edit_data("archived"))
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(Worker.objects.filter(organization=self.org, given_name="Changed", state="archived").exists())
+        self.assertTrue(
+            Worker.objects.filter(
+                organization=self.org, given_name="Changed", state="archived"
+            ).exists()
+        )

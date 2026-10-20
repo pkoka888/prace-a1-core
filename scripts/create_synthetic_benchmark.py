@@ -9,6 +9,7 @@ Uses fixed --as-of and --seed for reproducibility. The current engine adapters
 are NOT executed here (see run_ocr_benchmark.py); this only produces ground truth
 + renders.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,7 +27,6 @@ META_PATH = ROOT / "research" / "synthetic" / "artifact_manifest.json"
 
 # Simple layout renderer using reportlab (text-based invoice)
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 
@@ -36,18 +36,25 @@ def render_clean_pdf(inv: dict, path: Path):
     y = h - 40
     c.setFont("Helvetica", 11)
     lines = [
-        inv["supplier_name"], inv["supplier_address"],
+        inv["supplier_name"],
+        inv["supplier_address"],
         f"IČO: {inv['supplier_ico'] or '—'}   DIČ: {inv['supplier_dic'] or '—'}",
         "",
         f"Odběratel: {inv['buyer_name']} ({inv['buyer_ico']})",
-        inv["buyer_address"], "", f"Faktura č.: {inv['invoice_number']}",
+        inv["buyer_address"],
+        "",
+        f"Faktura č.: {inv['invoice_number']}",
         f"Datum vystavení: {inv['issue_date'] or '—'}   DUZP: {inv['duzp']}   Splatnost: {inv['due_date']}",
-        f"Variabilní symbol: {inv['variable_symbol'] or '—'}", "",
+        f"Variabilní symbol: {inv['variable_symbol'] or '—'}",
+        "",
     ]
     for li in inv["line_items"]:
-        lines.append(f"  {li['desc']}  {li['qty']} {li['unit']}  {li['unit_price']} {inv['currency']}  DPH {li['vat_rate']}")
+        lines.append(
+            f"  {li['desc']}  {li['qty']} {li['unit']}  {li['unit_price']} {inv['currency']}  DPH {li['vat_rate']}"
+        )
     lines += [
-        "", f"Základ daně: {inv['vat_base']} {inv['currency']}",
+        "",
+        f"Základ daně: {inv['vat_base']} {inv['currency']}",
         f"{inv['vat_rate_label']}: {inv['vat_amount']} {inv['currency']}",
         f"CEL KEM K ÚHRADĚ: {inv['total']} {inv['currency']}",
     ]
@@ -60,7 +67,9 @@ def render_clean_pdf(inv: dict, path: Path):
     c.save()
 
 
-def render_with_degradation(inv: dict, variation: str, out_dir: Path, seed: int) -> dict:
+def render_with_degradation(
+    inv: dict, variation: str, out_dir: Path, seed: int
+) -> dict:
     """Render a clean PDF then apply controlled degradation; return metadata."""
     base = out_dir / f"{inv['synthetic_id']}"
     base.mkdir(parents=True, exist_ok=True)
@@ -82,14 +91,22 @@ def render_with_degradation(inv: dict, variation: str, out_dir: Path, seed: int)
         "artifacts": {"clean_pdf": str(pdf_path.relative_to(ROOT))},
     }
 
-    rng = random.Random(seed + inv["synthetic_id"].__hash__() % (10**8))
+    _rng = random.Random(seed + inv["synthetic_id"].__hash__() % (10**8))
     # Degradation simulation (metadata only; rasterization deferred to local run)
     if variation in ("scanned_300dpi", "scanned_200dpi"):
         meta["dpi"] = 300 if "300" in variation else 200
         meta["transforms"].append("rasterize")
     if variation in ("rotated_90", "rotated_180"):
         meta["transforms"].append(variation)
-    if variation in ("blurred", "compressed", "noisy", "low_contrast", "poor_alignment", "folded", "stamped"):
+    if variation in (
+        "blurred",
+        "compressed",
+        "noisy",
+        "low_contrast",
+        "poor_alignment",
+        "folded",
+        "stamped",
+    ):
         meta["transforms"].append(variation)
     if variation == "multi_page":
         meta["pages"] = 2
@@ -101,7 +118,9 @@ def render_with_degradation(inv: dict, variation: str, out_dir: Path, seed: int)
 def main():
     parser = argparse.ArgumentParser(description="Render synthetic invoice artifacts")
     parser.add_argument("--root", default=".", help="Repository root")
-    parser.add_argument("--as-of", default=date.today().isoformat(), help="Explicit as-of date")
+    parser.add_argument(
+        "--as-of", default=date.today().isoformat(), help="Explicit as-of date"
+    )
     parser.add_argument("--seed", type=int, default=20260814, help="Deterministic seed")
     args = parser.parse_args()
 
@@ -116,10 +135,16 @@ def main():
         m = render_with_degradation(inv, inv["variation"], OUT_DIR, args.seed)
         manifest["artifacts"].append(m)
 
-    META_PATH.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"Rendered {len(manifest['artifacts'])} invoice artifacts (clean PDFs) to {OUT_DIR}")
+    META_PATH.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"Rendered {len(manifest['artifacts'])} invoice artifacts (clean PDFs) to {OUT_DIR}"
+    )
     print(f"Manifest: {META_PATH}")
-    print("NOTE: rasterization/degradation bitmaps are produced at local benchmark run time to keep repo light.")
+    print(
+        "NOTE: rasterization/degradation bitmaps are produced at local benchmark run time to keep repo light."
+    )
     return 0
 
 

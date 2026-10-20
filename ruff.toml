@@ -1,0 +1,29 @@
+# Repository-wide ruff configuration.
+#
+# The pre-commit hook runs ruff with its default rule set (E4, E7, E9, F).
+# Two patterns in this repository are deliberate and are not violations:
+#
+#   E402 — the isolated Django test modules set DJANGO_SETTINGS_MODULE and
+#     call django.setup() before importing models, and the standalone scripts
+#     adjust sys.path before importing the project packages. Module-level
+#     code before the remaining imports is the intended shape of those files,
+#     not an accident. Moving the imports would change what they do.
+#
+#   F403/F405 — the isolated settings modules re-export the base settings by
+#     star import on purpose, so that a test settings module exposes the same
+#     names as the base one.
+#
+# Everything else stays enforced. F401 (unused import), F841 (unused local),
+# E741 (ambiguous name) and F402 (import shadowed by a loop variable) are real
+# findings and are fixed rather than ignored.
+#
+# This file is a lint configuration only. It does not affect pytest, Django or
+# any runtime behaviour.
+
+[lint]
+ignore = ["E402"]
+
+[lint.per-file-ignores]
+"portal/settings_browser_tests.py" = ["F403", "F405"]
+"portal/settings_synthetic_review.py" = ["F403", "F405"]
+"portal/settings_verification.py" = ["F403", "F405"]

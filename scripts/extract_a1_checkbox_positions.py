@@ -6,6 +6,7 @@ converts from PDF display-coordinate system (top-left origin) to ReportLab
 bottom-left origin for use in config/a1_layout.json, and outputs a JSON
 structure compatible with the layout checker and generator.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,7 +45,9 @@ def extract_positions(template_path: Path = ORIGINAL_TEMPLATE) -> dict:
         "coordinate_system": "ReportLab bottom-left points on 595.2 x 841.92",
         "checkboxes": {},
     }
-    result["source_sha256"] = __import__("hashlib").sha256(template_path.read_bytes()).hexdigest()
+    result["source_sha256"] = (
+        __import__("hashlib").sha256(template_path.read_bytes()).hexdigest()
+    )
 
     for page_index, page in enumerate(doc):
         # Collect small rects (checkbox outlines) from vector drawings
@@ -55,11 +58,16 @@ def extract_positions(template_path: Path = ORIGINAL_TEMPLATE) -> dict:
                 if item[0] == "re":
                     rect = item[1]
                     if 3 < rect.width < 15 and 3 < rect.height < 15:
-                        rects.append({
-                            "x0": rect.x0, "y0": rect.y0,
-                            "x1": rect.x1, "y1": rect.y1,
-                            "width": rect.width, "height": rect.height,
-                        })
+                        rects.append(
+                            {
+                                "x0": rect.x0,
+                                "y0": rect.y0,
+                                "x1": rect.x1,
+                                "y1": rect.y1,
+                                "width": rect.width,
+                                "height": rect.height,
+                            }
+                        )
 
         # Collect line drawings (X marks)
         x_lines = []
@@ -70,10 +78,14 @@ def extract_positions(template_path: Path = ORIGINAL_TEMPLATE) -> dict:
                     dx = abs(pt2.x - pt1.x)
                     dy = abs(pt2.y - pt1.y)
                     if 5 < dx < 20 and 5 < dy < 20:
-                        x_lines.append({
-                            "x1": pt1.x, "y1": pt1.y,
-                            "x2": pt2.x, "y2": pt2.y,
-                        })
+                        x_lines.append(
+                            {
+                                "x1": pt1.x,
+                                "y1": pt1.y,
+                                "x2": pt2.x,
+                                "y2": pt2.y,
+                            }
+                        )
 
         # Collect text words to match labels to rects
         words = page.get_text("words")
@@ -81,7 +93,13 @@ def extract_positions(template_path: Path = ORIGINAL_TEMPLATE) -> dict:
         # Match each checkbox rect to a label text
         for name, label_text in CHECKBOX_MAP.items():
             for word in words:
-                w_text, w_x0, w_y0, w_x1, w_y1 = word[4], word[0], word[1], word[2], word[3]
+                w_text, w_x0, w_y0, _w_x1, _w_y1 = (
+                    word[4],
+                    word[0],
+                    word[1],
+                    word[2],
+                    word[3],
+                )
                 if w_text.strip() == label_text:
                     # Find the rect closest to this label
                     best_rect = None
@@ -90,7 +108,7 @@ def extract_positions(template_path: Path = ORIGINAL_TEMPLATE) -> dict:
                         # Distance from label's top-left to rect's top-right corner
                         dx = abs(r["x1"] - w_x0)
                         dy = abs(r["y0"] - w_y0)
-                        dist = (dx ** 2 + dy ** 2) ** 0.5
+                        dist = (dx**2 + dy**2) ** 0.5
                         if dist < best_dist:
                             best_dist = dist
                             best_rect = r
@@ -116,10 +134,14 @@ def main():
         output_path = ROOT / "config" / "checkbox_reference.json"
     positions = extract_positions()
     output_path.write_text(json.dumps(positions, indent=2) + "\n", encoding="utf-8")
-    print(f"Extracted {len(positions['checkboxes'])} checkbox positions to {output_path}")
+    print(
+        f"Extracted {len(positions['checkboxes'])} checkbox positions to {output_path}"
+    )
     print(f"Source SHA256: {positions['source_sha256']}")
     for name, cfg in positions["checkboxes"].items():
-        print(f"  {name}: page={cfg['page']}, x={cfg['x']}, y={cfg['y']}, size={cfg['size']}")
+        print(
+            f"  {name}: page={cfg['page']}, x={cfg['x']}, y={cfg['y']}, size={cfg['size']}"
+        )
 
 
 if __name__ == "__main__":

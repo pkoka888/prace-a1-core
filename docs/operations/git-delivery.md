@@ -6,6 +6,13 @@ authorized host changes are recorded in their individual checkpoints.
 
 ## Committed-source owned-PostgreSQL core journey acceptance — 2026-09-20
 
+Independent follow-up: [source/receipt audit and next queue](../research/2026-09-20-core-delivery-acceptance-audit.md)
+confirms the required passing receipt keys and live advertised `c99cb44` SHA;
+credential storage still emitted a lock diagnostic. Identity evidence contains
+13 expected canonical fields; the verifier's 15 counts all stored revision fields.
+FO exposure diagnosis is complete, but served FO acceptance remains open. This
+follow-up ran only read-only receipt/source/status checks, not another journey.
+
 Completes the JAN-04 core checkpoint (plans/2026-09-14-delivery-reliability-and-jan-v1.md
 lines 48–54): one committed-source owned-PostgreSQL core journey, restart without
 reseeding, then canonical verification with `--profile core --require-identity`.
@@ -26,6 +33,33 @@ manifest SHA `9bb8e0b4…302c7ad`, per-step logs). Retained stopped cluster
 `runtime/portal/pg-j4-20260920-032715-8af58f54cc0d/`, retained runtime root
 `runtime/portal/temporary/j4-committed-source/runtime/portal/supervised-j4-20260920-032715-8af58f54cc0d/`
 (manifest binds git_commit `402f61a89de0…`, app_build_id `g402f61a89de0`).
+
+## Core journey integrated into release reproducer — 2026-09-20
+
+**Status correction after independent review:** implementation is worktree-only;
+HEAD remains `c99cb44`, index is empty, and the new runner/test are untracked.
+The reviewer reproduced 36 passing runner/reproducer unit tests in 3.01 seconds,
+native exit 0, using `venv/bin/python -m pytest tests/test_core_journey_runner.py
+tests/test_release_reproducer.py -q -o addopts=''`. This was not a PG/browser or
+committed-source export run. Cancellation/exception receipts, verifier-result
+presence checks and A1-independent core verdict remain open; see the updated
+[acceptance audit](../research/2026-09-20-core-delivery-acceptance-audit.md).
+
+The working-tree release reproducer (`scripts/release_reproducer.sh`) includes the
+committed-source core browser journey (login/TOTP → worker/document/OCR/assignment
+→ correction/download → restart → strict persistence verification) as its fourth
+acceptance command. The journey selects profile `core`, but earlier mandatory
+reproducer suites still include A1-only tests, so default acceptance is not yet
+A1-independent. The proposed journey uses
+the isolated export seam. The orchestrator `scripts/run_core_journey.py` owns a
+disposable PostgreSQL cluster and a supervised runtime root, drives the canonical
+rehearsal lifecycle, and runs the strict persistence verifier with
+`--profile core --require-identity`. Unit tests for the orchestrator
+(`tests/test_core_journey_runner.py`) and for the reproducer integration
+(`tests/test_release_reproducer.py::test_acceptance_commands_include_core_journey_and_timeout`)
+are added and registered in the working-tree `delivery_lifecycle_rehearsal` change
+package. The package now also includes verifier tests (D4 source repair), pending
+dispatch validation and publication. No new acceptance/deployment is claimed.
 
 ## Script validation research and discovery review — 2026-09-17
 
@@ -1506,3 +1540,202 @@ inherited A1 edits. No backup, extraction, deployment or activation is claimed.
 [Authoritative Git research and actual-plan comparison](../research/2026-09-18-git-extraction-evidence.md) adds GitHub splitting guidance, upstream filter-repo/subtree documentation, alternatives and a generated synthetic experiment. Eight assertions pass with Git 2.47.3/filter-repo `31ebad4c8fb3`; receipt and reproducer: `runtime/portal/temporary/separation-research-79fqh0w9/`. Initial harness failure (`FETCH_HEAD` after bundle clone) remains documented at `runtime/portal/temporary/separation-research-9fcyrrm8/`; retry uses the known fixture commit ID. No application history was copied.
 
 Actual package inspection found site/release/A1 helpers mixed into `cli_agent_tooling` and a consumed registry JSON absent from that package's path list. The child plan now requires exact-file extraction and retains these product helpers. Three research/plan documents pass relative-file-link and whitespace checks. This is mechanism evidence, not application migration, backup/restore or deployment acceptance. No source relocation, publication or activation; infrastructure recovery facts remain pending.
+
+## A1 completion preview and variant review — 2026-09-20
+
+Local implementation adds `python -m scripts.a1_completion_preview --employee-id
+<existing-id> --variant employee` with `A1_PRIVATE_DIR` set to the project root.
+It selects exactly one normalized source and writes an incomplete, visibly
+unverified three-page form plus previews, a manifest and missing-fields list under
+protected `output/provisional/`. The source must explicitly distinguish posted
+from multi-state employee status. OSVČ is the preview default for unclassified
+inputs. No review/approval flags or operational source files are changed.
+
+Preparation now preserves supplied normalized employer/activity/certificate/office
+facts, and required-field validation derives the variant from each row's status.
+97 tests plus 32 subtests passed across completion preview/core/finalization/
+application-draft/stabilization/quality-gate tests. Eighteen synthetic complete-form
+pages were pixel-identical before/after the renderer change at 110 DPI; the existing
+renderer receipt records that comparison. An initial comparison harness hit the
+font-cache guard when loading two renderer modules; sharing the already verified
+font signature resolved the harness issue. Initial tests also reproduced the
+inherited per-variant validation failure, subsequently fixed. The generated
+single-record preview received local all-page visual inspection; human approval
+and completed application/issuance remain pending.
+
+Published branch `feat/a1-variant-system-and-default-flags` was verified at
+`54695012b634fc370358404dd00c910bed9c6ddb`. Its auto-approval age/dry-run behavior,
+automatic human-review flags, overwrite behavior, batch-wide variant selection,
+and missing committed renderer dependency remain review findings. Review details:
+`/var/www/prace/docs/plans/2026-09-20-a1-variant-review.md` (architecture workspace).
+Follow-up source and tests are uncommitted; no push, deployment, portal activation,
+cohort publication or final approval occurred. Next: correct the reviewed commit
+findings and resolve missing business facts from authoritative worker/assignment
+sources. Local searchable inputs and the empty default SQLite database were checked;
+no claim is made about another served PostgreSQL database.
+
+### Czech employer posting to Germany — preview refinement
+
+The user supplied the intended section mapping for a Czech employer posting an
+employee to Germany. Added the explicit preview-only scenario
+`--posting-scenario cz_employee_to_de`: section 2 member state CZ, section 4
+employer country CZ, section 5 territory DE where the workplace is unknown.
+The concrete host company/address remains a missing fact; a country alone does not
+complete section 5. This scenario is restricted to posted_employee and does not
+change generic employee/OSVČ defaults or normalized sources. It is an operator
+scenario, not confirmation of statutory eligibility or underlying business facts.
+Four focused preview/propagation tests passed; the regenerated three-page preview
+received local all-page inspection with a protected hash-bound review receipt.
+Official background checked: https://www.cssz.gov.cz/vyslani-pracovnici .
+Changes remain local and uncommitted; no deployment or approval-state changes.
+
+### Employer supplied and shared OSVČ baseline reused
+
+The user supplied employer details and requested unchanged fields to follow the
+OSVČ variant. Employer identity/address were checked against the public ARES API;
+the protected normalized record now carries the supplied employer plus the registry
+address enrichment and provenance. Prior normalized bytes were retained privately.
+No per-person data was added to source control.
+
+Added explicit `--use-osvc-shared-defaults` to completion previews. It reads only
+canonical `config/institution.json`, hashes that dependency, and carries office
+fields plus validity dates/member state into the unverified draft. Employee status,
+employer facts and the selected CZ-to-DE scenario remain independent. Certificate
+number/prefix, signature and issue date are excluded from inheritance. Worker
+residence and concrete host workplace still need their own facts. The baseline's
+actual period is displayed unchanged; it is not recalculated from today's date.
+A requested reference-form clarification was not required for the selected shared
+configuration baseline and remains available if the user meant another package.
+Five focused tests passed, including no copying of issuance identity and unchanged
+employee checkboxes. The resulting three pages were visually checked, with the
+receipt and source/registry/package files confined to protected storage. No
+publication, deployment, approval-flag changes or final issuance occurred.
+
+## A1 official field → source mapping with authority rules — 2026-10-20
+
+Added `docs/architecture/a1-field-source-mapping.md` (530 lines). It maps every
+official A1 form field position to its owning source, applicability rule,
+default and write action, and records the official authority basis for the
+mandatory/conditional statements. It complements, and does not replace, the
+existing [44-column CSV mapping](../architecture/release-1a-field-mapping.md):
+that document is the export contract, this one is the official-form contract.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | New document only — no code, schema, migration, config or data change. Six source classes (W worker identity, E employer/activity facts in `Assignment.a1_facts_json`, O issuing institution, C issuance decision, D derived, P provenance) replace the three-store assumption in the request. Field tables cover official positions 1.1–6.11 with per-field source, rule, default and write action. Ten conditional rules (R1–R10) are stated from the official form and the ČSSZ application instructions |
+| Validation | Documentation acceptance script embedded in §9 and executed: 40 layout keys and 38 rendered numbered positions all present in the mapping; official total 55 positions and the 17-position gap re-derived and asserted; the 44-row CSV contract re-asserted unchanged. `venv/bin/python scripts/validate_planning.py` → 24 passed, 0 failed. `scripts/validate_change_packages.py` reports 101 errors, all pre-existing inherited untracked WIP — the new document contributes 0 (it is registered in the `governance_truth` package) |
+| Publication | None. `docs/architecture/a1-field-source-mapping.md` and the one-line `change-packages.yml` registration are uncommitted working-tree changes on branch `a1form-generator`. No push, no tag, no release |
+| Deployment / activation | None. Documentation checkpoint only. No operator database, no service, no credential, no migration, no real-data activation, no PDF regenerated |
+| Limitations | Documentation acceptance proves coverage **of what the generator renders today**, not coverage of the 17 official positions the project does not render, and proves nothing about runtime behaviour, issuance authority or operator acceptance. Official mandatory-ness is quoted from ČSSZ application instructions (the applicant-side form), because the A1 certificate itself is issued by the institution — the two are not the same instrument. Two business facts remain unanswered and are recorded as open questions in §7: whether the agency ever issues posted-self-employed A1s (official status 3.3, the most common OSVČ case, which no current `status_profile` value can express), and whether 6.7/6.8/6.9 and 2.5/2.6 receive layout coordinates now or later. The employer and OSSZ stores named in the request do not exist as tables today; §7.3 records the actual locations and the recommendation, and no normalisation was performed |
+| Next owner | Jan answers the §7.2 posted-self-employed question (business fact, blocks extending the status enum). Engineering decides §7.1 layout coordinates and §7.3 table-vs-file targets. DB-MIG remains the implementation gate; the new document adds no migration, no acceptance state and no change to the CSV contract, validation gates, provisional notice or issuance workflow |
+
+Official sources are cited in §2.5: DG EMPL "A1 Certificate concerning the
+Social Security legislation which applies to the holder" (field structure and
+numbering), ČSSZ "A1 form" and "Miscellaneous situations" (issuing competence,
+situations, legal bases), ČSSZ "Pokyny k vyplnění" for the employee and OSVČ
+applications (mandatory and conditional statements), CLEISS (the 2018-08-03
+addition of 3.12 and the E101/E103/E102 supersession), and EUR-Lex
+*62015CJ0356* (*Bouman*) and C-527/16 (*Alpenrind*) (binding force of the
+certificate; strict construction of the Art. 12–13 derogations). No protected
+data was read to produce the document.
+
+## A1 topic data architecture, gap analysis and LangGraph alignment — 2026-10-20
+
+Follow-up to the field-mapping checkpoint above. Restructured the A1 data
+contract into six topics with one owner each, added the consolidated gap
+analysis and the what-if/automation brainstorm, and measured the LangGraph
+layer by running it. Three orchestrator defects were found and fixed; one
+side effect on a published artifact was found, repaired and recorded.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | **Documents:** `docs/architecture/a1-field-source-mapping.md` rewritten into six topics (C certificate, W person, E employer/role/situation, A activity, O institution, P provenance) with a machine-checked partition of the 40 layout keys; `docs/architecture/a1-gap-analysis.md` (G1–G15 with severity and owner); `docs/architecture/a1-automation-scenarios.md` (per-topic what-if with trigger, automation, human gate, failure mode); `docs/architecture/solutions/a1-topic-data-architecture-solution.md`; `docs/architecture/langgraph-integration.md` rewritten with the measured state. **Code:** `scripts/langgraph_a1_orchestrator.py` — fixed the `UnboundLocalError` (module function shadowed by a later local rebinding), renamed the reserved LangGraph state channel `checkpoint_id` → `workflow_run_id`, and made a dry run write nothing into the protected output tree. **Tests:** new `tests/test_langgraph_a1_orchestrator.py` (4 tests) |
+| Validation | New orchestrator tests: 4 passed. Agent-ops LangGraph suite: **37 passed in 176.67s** after installing the already-pinned `langgraph-checkpoint-sqlite==3.1.1` (it was declared in `config/agent_ops_workflow.v1.json` but absent from the venv, so all 37 previously failed at setup). `scripts/test_langgraph_install.py` passes: ephemeral PostgreSQL cluster, `PostgresSaver` created, checkpoint saved and retrieved. `venv/bin/python scripts/validate_planning.py` → 24 passed, 0 failed. `scripts/validate_change_packages.py` → 100 errors, all pre-existing inherited WIP; the `agent_operations_experiment` package was extended to own the whole LangGraph layer, resolving 6 pre-existing errors and adding none. The field-mapping verification script (embedded in the document) passes: 40 layout keys / 38 rendered positions mapped into six disjoint topics, 17 official positions declared missing, 44-column CSV contract intact |
+| Publication | None. All changes are uncommitted working-tree changes on branch `a1form-generator`. No push, tag or release. New package registration in `change-packages.yml` is additive |
+| Deployment / activation | None. No operator database, no service, no credential, no migration, no real-data activation, no PDF regenerated. The LangGraph venv change is a local `pip install` of a version already pinned in a repository file; the main `requirements.txt` is unchanged and still declares no LangGraph, so the canonical generator remains independent of it |
+| Limitations | A **published artifact was damaged and repaired**: the first `--dry-run` overwrote `output/provisional/generation_manifest.json` (8183 bytes) with a 130-byte stub and created `output/qa_report.json`. The manifest was restored from the in-tree preserved copy of the 2026-09-16 canonical run (`run_id eb257cfb-…`, receipt `a1/receipts/eb257cfb-….json`, status `completed`); the restored file is 8183 bytes, mode 0600, byte-identical to `output/provisional/5214b64f-7646-4764-8dde-cd95ed30d6c7/generation_manifest.json`, and matches the discovery inventory's 2026-09-17 record of the same file. The created `output/qa_report.json` was removed. The exact bytes of the earlier 2026-09-08 manifest are **not recoverable**: no surviving copy describes the current root PDFs, which are a legacy mixed set including two V6-path orphans. The quality gate cannot validate the tree root of `output/provisional` — that was already true before the damage and is recorded as G7. The orchestrator's `--resume` remains a stub that exits 0 without resuming (G10). `langgraph-checkpoint-postgres 3.1.2` is installed and used but declared in no pinned file. The agent-ops suite needs the documented in-repository `--basetemp`; pytest's default `/tmp` is refused by the `private_directory` guard by design. Two business facts remain unanswered: whether the agency ever issues posted-self-employed A1 forms (official status 3.3, G1), and the layout-coordinate decision for 6.7–6.9 and 2.5–2.6 (G2) |
+| Next owner | Jan answers the G1 posted-self-employed question (business fact; blocks the `Employment.situation` enum). Engineering decides G2 layout coordinates, G3/G4 master tables, and G10 orchestrator resume. The employer-as-organization decision is an engineering decision recorded in the solution doc: the employer is a legal entity in its own `LegalEntity` master table, never the tenant `Organization`, because `Organization` is the isolation boundary and carries only `key`/`label` while Section 4 needs a legal name, registration id, address and country code |
+
+No protected data was read to produce any of these documents. The official
+authority sources (DG EMPL A1 form, ČSSZ "A1 form" and "Miscellaneous
+situations", ČSSZ "Pokyny k vyplnění" for the employee and OSVČ applications,
+CLEISS, EUR-Lex 62015CJ0356 and C-527/16) are cited in
+`docs/architecture/a1-field-source-mapping.md` §1.5.
+
+## Application-draft renderer aligned to the canonical path — 2026-10-20
+
+A required check in the `a1_audit_path_dependencies` package was failing:
+`tests/test_a1_application_draft.py::test_three_page_notice_and_deterministic_recovery`
+raised `FinalizationError: APPLICATION_DRAFT_NOTICE_MISSING`. The failure was
+**pre-existing inherited work**, not a regression from this session: the two
+files in its dependency path (`scripts/a1_core.py`, `scripts/finalize_a1.py`)
+were last modified at 10:11–10:12 on 2026-10-20, before this session's first
+write at 13:34.
+
+**Root cause.** `generate_provisional_a1.py::render_application_draft` rendered
+the draft through `generate_a1_placeholder_technique`, which draws no notice.
+The mandatory draft notice is drawn by the canonical overlay renderer
+(`a1_core.render_overlay`, `scripts/a1_core.py:617-626`), which stamps
+`APPLICATION_DRAFT_NOTICE` on every page when `form["meta"]["application_draft"]
+is True`. The draft path therefore asserted a marker its renderer never
+produced.
+
+Three facts show the overlay was the intended renderer for drafts:
+`generate_a1_pdf` was already imported into the module but unused by that
+path; `a1_core` carries dedicated application-draft font pinning
+(`APPLICATION_DRAFT_FONT_CACHE_CHANGED`, `APPLICATION_DRAFT_FONT_CHANGED`,
+`APPLICATION_DRAFT_FONT_UNAVAILABLE`) that triggers only for
+`application_draft=True`; and the other draft-like path
+(`a1_completion_preview.py`) already uses the overlay.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | `scripts/generate_provisional_a1.py::render_application_draft` now renders through the canonical overlay (`generate_a1_pdf` with `templates/a1_background.pdf` and `config/a1_layout.json`) instead of the placeholder technique. The canonical publisher path at line ~208 is unchanged. No model, schema, contract, gate or notice text changed |
+| Validation | `tests/test_a1_application_draft.py` → 7 passed. `a1_audit_path_dependencies` package checks (`test_finalize_a1.py`, `test_a1_completion_preview.py`, `test_a1_stabilization.py`, `test_a1_application_draft.py`) → all passed. `a1_policy` package checks (`test_a1_core.py`, `test_a1_private.py`, `test_a1_quality_gate.py`, `test_comprehensive.py`) → all passed. Direct render check: 3 pages, `UNVERIFIED DRAFT – NEOVĚŘENÝ NÁVRH, NENÍ VYDANÉ A1` present on **every** page, `canonical_qa.passed: True`, `application_draft: True`, `notice_on_all_pages: True`, `issued: False`, `visual_review: pending`. The pre-reserved `0600` file mode is preserved because the renderer truncates rather than recreates the file |
+| Publication | None. Uncommitted working-tree change on branch `a1form-generator` |
+| Deployment / activation | None. No operator database, service, credential, migration or real-data activation. No published artifact was regenerated |
+| Limitations | The change alters the *renderer* used for application drafts, so a draft produced after this commit differs in bytes from one produced by the placeholder technique. Drafts are unverified and unpublished, so no issued or client-delivered artifact is affected, but any stored draft bytes from the previous renderer are no longer reproducible. The private file mode is preserved, but the draft's font is now pinned by `a1_core`'s application-draft rules, so a draft render fails closed if the current font is unavailable — this is intended, and it is why the placeholder route was used previously. Separately observed and **not** changed: the canonical publisher's client-confirmation copies carry no page-level provisional marker, because `mark_provisional` is called with the default `visible_notice=False` and the placeholder renderer draws none. The provisional marking lives in the package (manifest status `PROVISIONAL_NOT_FOR_OFFICIAL_USE`, the manifest `notice` field and `CLIENT_CONFIRMATION_CHECKLIST.md`). A PDF that leaves the package loses that marker; recorded as a boundary to confirm with Jan, not a defect fixed here |
+| Next owner | Jan confirms whether a client-confirmation copy should carry a page-level provisional marker. Engineering decides whether the published client copy and the application draft should share one renderer permanently |
+
+## A1 architecture consolidation and latent-defect repair — 2026-10-20
+
+Third increment on the A1 data contract. A competing draft architecture
+document was consolidated into the registered mapping, its activation path was
+corrected against the code, and four latent defects found while validating were
+repaired.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | **Documents:** `docs/architecture/a1-field-source-mapping.md` (registered) is the single owner of the field logic; the competing `docs/architecture/a1-form-architecture.md` was removed. The 3.3 activation table was corrected from 9 to **12 sites**, each with the failure mode of omitting it, and a note that three of the twelve fail *silently* rather than raising. `docs/architecture/a1-gap-analysis.md` G1 updated to the same count. **Code:** `scripts/a1_completion_preview.py` now offers all three supported statuses in the undecided worksheet (it previously offered two, omitting `self_employed_multi_state`); `portal/release1a/views.py` gained the module-level `from django.conf import settings`, so the J4 confirmation receipt records the real build id instead of always `""`; `scripts/reset_synthetic_reviewer_password.py` referenced an undefined `temporary_password` (the variable is `temporary_pwd`); `scripts/generate_provisional_a1.py` imported the undefined `Any` used in an annotation; `tests/document_web/test_browser_debug5.py` is now opt-in behind `A1_BROWSER_DEBUG=1`. **Tests:** `tests/test_a1_completion_preview.py` expectation updated to the three-status list |
+| Code quality | `portal/release1a/views.py` now passes the repository's own `ruff` default rules (E4, E7, E9, F) with **no findings**, against 15 at HEAD: two review loops unpacked `_`, shadowing the module's `gettext_lazy as _` alias (a `gettext` call inside those loops would have raised), and the module-level `from django.conf import settings` was missing entirely. `tests/test_a1_completion_preview.py` and `tests/test_langgraph_a1_orchestrator.py` had unused imports and two `E702` semicolon statements; all removed. The remaining `ruff` findings in the working tree are pre-existing inherited WIP in `scripts/generate_provisional_a1.py` (8 unused imports, 1 unused local) and `scripts/langgraph_a1_orchestrator.py` (1 unused local) |
+| Validation | Scoped package checks, each run once against the delivered source: `a1_policy` (test_a1_core, test_a1_private, test_a1_quality_gate, test_finalize_a1, test_comprehensive) passed; `a1_audit_path_dependencies` (test_finalize_a1, test_a1_completion_preview, test_a1_stabilization, test_a1_application_draft) passed; `a1_checkbox_alignment` (test_a1_core, test_pdf_named_fields) passed; `j4_confirmation_evidence_repair` (`manage.py test tests.m2.test_j4_delivery`) 17 tests OK in 67.2 s; `cli_agent_tooling` (test_verify_cli_claims, test_release_verifier, test_check_readiness, test_no_networkidle_regression) passed; `delivery_lifecycle_rehearsal` 106 tests passed in 1 m 47 s. The seven A1 suites together hold **124 passed + 1 skipped** (21+7+22+18+23+26+7), not the 71 previously reported. `ruff check --select F821` over the three repaired files: all checks passed (was 3 findings). The browser diagnostic skips by default and still runs on demand (`A1_BROWSER_DEBUG=1` → 1 passed). The mapping's embedded verification passes: 40 layout keys / 38 positions / 55 official / 17 gaps / 44 CSV columns, and the doc's rendered table cross-checks against `config/a1_layout.json` with 0 mismatches |
+| Publication | None. All changes are uncommitted working-tree changes on branch `a1form-generator`. No push, tag or release. The `change-packages.yml` edit was reverted after it broke the rehearsal check, leaving that package's check list unchanged |
+| Deployment / activation | None. No operator database, service, credential, migration, seed, record import or real-data activation. No PDF or published artifact regenerated. The build-id repair changes the J4 confirmation receipt payload from `""` to the manifest build id **only where `PRACE_RELEASE_MANIFEST` is configured**; without it the value stays `""`, so the default path is unchanged |
+| Limitations | The 3.3 activation path is a specification, not an implementation: status 3.3 remains inexpressible and the generator still fails closed on it. `A1_BROWSER_DEBUG=1` must be set to run the OCR-polling diagnostic; it is deliberately not in any package check set, because the rehearsal check runs without a Django settings module and cannot collect it, and because the test asserts nothing. The build-id repair was verified by `override_settings` rather than by a new regression test, because `portal/release1a/views.py` and `tests/m2/test_j4_delivery.py` sit in the same package and the existing J4 suite does not assert the receipt's build id. A repo-wide formatter pass reformatted 372 files in the same working tree: 238 of the 282 changed Python files are exactly `ruff format` plus `ruff --fix` output on HEAD, which is what the repository's own `.pre-commit-config.yaml` mandates on commit, and only 44 carry behavioural changes. That pass is **not** part of this increment and belongs to its own delivery unit with its own scoped checks |
+| Next owner | Jan answers the D1/G1 business fact: does the agency ever issue posted-self-employed A1s (official status 3.3)? The answer gates the 12-site activation, which is fully specified and needs no further design. Jan confirms D2 (whether the client-confirmation copy should carry a page-level provisional marker). Engineering commits the formatter pass separately from A1 work, and decides whether `tests/document_web/test_browser_debug5.py` should be promoted to a real assertion-bearing guard or retired |
+
+No protected data was read to produce or validate this increment. The official
+authority sources (DG EMPL A1 form, ČSSZ "A1 form" and "Miscellaneous
+situations", ČSSZ "Pokyny k vyplnění" for the employee and OSVČ applications,
+CLEISS, EUR-Lex 62015CJ0356 and C-527/16) are cited in
+`docs/architecture/a1-field-source-mapping.md` §1.5.
+
+## Commit gate unblocked: secret baseline, ruff configuration, lint debt — 2026-10-20
+
+The three pre-commit failures reported after the CLI-agent drift review were
+verified rather than accepted as "pre-existing and unrelated". All three are
+now resolved, and the whole hook set passes. No A1 field logic, contract,
+gate, notice or issuance behaviour changed in this increment.
+
+| Field | Evidence / state |
+|---|---|
+| Implementation | **detect-secrets baseline (S1).** `.pre-commit-config.yaml` has configured `--baseline .secrets.baseline` since the hook was added, but the file has never existed in the repository history and is not gitignored — the secret-scanning gate therefore could not run at all. A baseline was generated with the hook's own pinned detector (detect-secrets 1.5.0 from the pre-commit cache) over **exactly the 823 git-tracked files**. The 161 resulting findings were reviewed before baselining: every one is benign — SHA-256 model and template hashes, synthetic test passwords, the explicitly labelled insecure local default in `portal/settings_supervised_synthetic.py`, a placeholder PostgreSQL connection URL in a docstring, and test-fixture credential strings. The baseline stores `hashed_secret` only; no plaintext is present. **ruff configuration.** Added `ruff.toml` recording the two deliberate repository patterns the default rule set flags: E402 (the isolated Django test modules must call `django.setup()` before importing models, and the standalone scripts adjust `sys.path` first) and F403/F405 (the three isolated settings modules re-export the base settings by star import). F401, F841, E741 and F402 stay enforced. **40 real lint findings fixed** across 20 files: 11 unused imports (verified absent from the `except ImportError` fallback blocks before removal), 21 unused locals (side-effect-only calls kept, the binding dropped; deferred-intent values underscore-prefixed so the gap stays visible), 7 ambiguous `l` names, and 1 import shadowed by a loop variable. **Root-owned directory.** `public-site/` is owned by root and is not writable by the commit user; pre-commit's `trailing-whitespace` and `end-of-file-fixer` open every file they are given in read-write mode even when the content is already correct, so they failed with `PermissionError`. Both are now excluded, consistent with the directory's existing `quarantined_unrelated` classification (no checks). **CI pin.** `.github/workflows/ci.yml` installed ruff unpinned, so CI resolved to a newer release with a broader default rule set than the hook's pinned `v0.8.0` — the hook and CI could disagree about what passes. CI now installs `ruff==0.8.0`, the same version the hook uses. **One real defect surfaced while cleaning the lint debt:** `scripts/generate_a1_incremental.py` loads the cohort it is given through `--cohort` and never uses it, so the incremental generator does not gate its output against the authoritative cohort, unlike `generate_provisional_a1.build_provisional_rows`. The binding is underscore-prefixed with an explanatory comment so the gap stays visible rather than being silently deleted; the fix itself is a behaviour change to an inherited generator and is recorded as a defect, not made here |
+| Validation | `pre-commit run --all-files`: **all hooks pass** — trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files, check-merge-conflict, ruff, ruff-format, detect-secrets, CLI Agent Config Drift Check. `detect-secrets` passes against the new baseline. The pinned ruff v0.8.0 reports **All checks passed** across all 304 tracked Python files, against 176 findings before this increment and 885 at HEAD. `ruff.toml` parses as valid TOML. Scoped package checks re-run after the lint edits: `a1_policy` passed; `a1_audit_path_dependencies` passed; `a1_checkbox_alignment` passed; `planning_cockpit` **failed** (see Limitations); `infrastructure_git_workflow` passed; `cli_agent_tooling` passed. `scripts/validate_planning.py` on the working tree: 24 passed, 0 failed. `git diff --check`: clean |
+| Publication | None. All changes are uncommitted working-tree changes on branch `a1form-generator`. The new `ruff.toml` and `.secrets.baseline` are registered in the `infrastructure_git_workflow` package in `change-packages.yml`; the `planning_cockpit` and `infrastructure_git_workflow` checks were extended accordingly |
+| Deployment / activation | None. No operator database, service, credential, migration, seed, record import or real-data activation. No PDF or published artifact regenerated. The secret scan was read-only and its findings were summarised by detector type and file path only; no secret value was printed, copied or recorded |
+| Limitations | **The `planning_cockpit` check fails for a reason that predates this increment and that no working-tree change can fix.** `tests/test_validate_planning.py` builds its fixture from the **committed** tree (`git ls-tree HEAD`), and the committed `plans/INDEX.md`, `plans/PLAN-INFRA.md` and `roadmap.md` each link to `plans/2026-09-18-backup-and-project-separation.md`, which exists on disk as untracked working-tree material and is **not in the committed tree**. The committed tree therefore contains three broken relative links, and the validator's Markdown relative-link check fails on the committed snapshot while passing on the working tree (24/24). The fix is to include that plan in the commit; the plan is already registered in the `governance_truth` package and is non-PII. **A full sweep of the committed tree found 29 relative-link targets that are absent from it.** Beyond the three above, the ones that exist on disk and would be repaired by committing are `docs/architecture/a1-field-source-mapping.md`, `a1-gap-analysis.md`, `a1-automation-scenarios.md`, `docs/architecture/project-directory-map.md`, `docs/research/2026-09-17-script-validation-research/README.md`, `docs/research/2026-09-18-git-extraction-evidence.md`, `docs/research/2026-09-18-project-separation.md`, `docs/research/2026-09-20-core-delivery-acceptance-audit.md`, `scripts/a1_completion_preview.py` and `workflows/a1/a1form-generator-PLAN.md`. The remainder are permanently broken paths that need their link text corrected, not a commit: `decisions/ADR-001-...`, `operations/gitlab-integration.md`, `security/real-data-rules.md` and `plans/.agents/skills/postgres-ops/SKILL.md` all omit the `docs/` prefix; `.agents/docs/architecture/A1_FRAMEWORKS.md` and four `docs/research/plans/2026-08-1*.md` files do not exist at all; `tests/fixtures/planning/this-file-does-not-exist.md` is a deliberate negative-test fixture. Separately, the 372-file formatter reformat remains outside this increment. **The secret baseline is a scope decision, not a proof.** It blesses the 161 findings that the tracked tree currently contains; a secret introduced later in a tracked file is still reported, because a finding not present in the baseline is reported as new |
+| Next owner | Jan decides the commit scope: the A1 increment, the formatter reformat, and the untracked files the committed tree already references are three separable units, and the `planning_cockpit` check stays red until the referenced plan is committed. Engineering corrects the permanently broken link paths, and implements the `generate_a1_incremental.py` cohort gate as a behaviour change with its own test. Jan should also confirm the handling of the workspace `.env` file: it is untracked, gitignored and mode 0600 with live-looking API keys for several providers and a GitHub token, so it is correctly protected and deliberately excluded from the baseline, but the credential inventory behind it is outside this increment's scope |
+
+The workspace `.env` was inspected without printing any value: only key names,
+value lengths and a placeholder-shape boolean were read. No secret was
+copied into a report, a commit or the baseline.

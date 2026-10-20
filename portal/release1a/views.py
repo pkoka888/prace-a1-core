@@ -1,4 +1,5 @@
 """Views for Release 1A M2 vertical slice — J1–J4 journeys."""
+
 from __future__ import annotations
 
 from django.views.decorators.cache import never_cache
@@ -7,9 +8,9 @@ import json
 import os
 import subprocess
 import uuid
-from hashlib import sha256
 from pathlib import Path
 
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.db import transaction
@@ -23,7 +24,6 @@ from allauth.mfa.models import Authenticator
 from .forms import (
     WorkerForm,
     DocumentUploadForm,
-    OcrConfirmationForm,
     AssignmentForm,
     A1PrepareForm,
     A1ApprovalForm,
@@ -40,7 +40,6 @@ from .models import (
     Release1aReviewSession,
     Release1aAcceptance,
     FieldProposal,
-    FieldDecision,
     StatusEvent,
 )
 from . import security_audit
@@ -117,6 +116,7 @@ def _eng001_gate_open():
     Returns (open, reason) using the shared approval_register module.
     """
     from planning.approval_register import check_gate, approvals_hash
+
     root = Path(__file__).resolve().parents[2]
 
     head = None
@@ -137,6 +137,7 @@ def _eng001_gate_open():
         expected_commit=head,
         expected_approvals_hash=approv_hash,
     )
+
 
 REVIEW_SCOPE_PATTERNS = [
     "portal/",
@@ -179,16 +180,17 @@ def _scoped_tree_clean():
     try:
         tracked = subprocess.check_output(
             ["git", "status", "--porcelain", "--"] + REVIEW_SCOPE_PATTERNS,
-            text=True, stderr=subprocess.DEVNULL,
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
         untracked_out = subprocess.check_output(
-            ["git", "ls-files", "--others", "--exclude-standard", "--"] + REVIEW_SCOPE_PATTERNS,
-            text=True, stderr=subprocess.DEVNULL,
+            ["git", "ls-files", "--others", "--exclude-standard", "--"]
+            + REVIEW_SCOPE_PATTERNS,
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
         if tracked or untracked_out:
-            detail = "\n".join(
-                filter(None, [tracked, "# Untracked:", untracked_out])
-            )
+            detail = "\n".join(filter(None, [tracked, "# Untracked:", untracked_out]))
             return False, detail
         return True, ""
     except subprocess.CalledProcessError:
@@ -201,8 +203,7 @@ def _require_mfa(request):
         return False
     session_methods = request.session.get("account_authentication_methods", [])
     mfa_passed = any(
-        isinstance(r, dict) and r.get("method") == "mfa"
-        for r in session_methods
+        isinstance(r, dict) and r.get("method") == "mfa" for r in session_methods
     )
     if not mfa_passed:
         return False
@@ -223,9 +224,11 @@ def get_user_organization(request):
     """
     if not request.user.is_authenticated:
         return None, "not_authenticated"
-    memberships = list(Membership.objects.filter(
-        user=request.user, active=True
-    ).select_related("organization"))
+    memberships = list(
+        Membership.objects.filter(user=request.user, active=True).select_related(
+            "organization"
+        )
+    )
     if len(memberships) == 0:
         return None, "no_membership"
     if len(memberships) > 1:
@@ -239,50 +242,68 @@ def require_org_membership(view_func):
     Records authorization denials via security_audit (loop-protected).
     Anonymous redirects to login are not recorded (ordinary auth-required behavior).
     """
+
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             if request.headers.get("HX-Request"):
                 return HttpResponseForbidden(_("Přihlášení je vyžadováno."))
             from django.contrib.auth.views import redirect_to_login
+
             return redirect_to_login(request.get_full_path())
         if not _require_mfa(request):
             security_audit.record_authorization_denial(
-                request, request.user,
+                request,
+                request.user,
                 reason_code="mfa_required",
                 object_ref=request.path,
             )
             if request.headers.get("HX-Request"):
-                return HttpResponseForbidden(_("Vyžadováno aktivní MFA (TOTP). Dokončete aktivaci účtu a registraci aplikace pro autentifikaci."))
+                return HttpResponseForbidden(
+                    _(
+                        "Vyžadováno aktivní MFA (TOTP). Dokončete aktivaci účtu a registraci aplikace pro autentifikaci."
+                    )
+                )
             return redirect("mfa_index")
         org, org_error = get_user_organization(request)
         if org_error == "no_membership":
             security_audit.record_authorization_denial(
-                request, request.user,
+                request,
+                request.user,
                 reason_code="membership_inactive",
                 object_ref=request.path,
             )
             if request.headers.get("HX-Request"):
-                return HttpResponseForbidden(_("Aktivní členství v organizaci je vyžadováno."))
+                return HttpResponseForbidden(
+                    _("Aktivní členství v organizaci je vyžadováno.")
+                )
             return redirect("dashboard")
         if org_error == "multiple_memberships":
             security_audit.record_authorization_denial(
-                request, request.user,
+                request,
+                request.user,
                 reason_code="multiple_memberships",
                 object_ref=request.path,
             )
             if request.headers.get("HX-Request"):
-                return HttpResponseForbidden(_("Více aktivních členství v organizaci není povoleno."))
+                return HttpResponseForbidden(
+                    _("Více aktivních členství v organizaci není povoleno.")
+                )
             return redirect("dashboard")
         request.organization = org
         return view_func(request, *args, **kwargs)
+
     return wrapper
 
 
 def _readiness_passed():
     if not os.path.exists(READINESS_FILE):
-        return False, "readiness.json chybí — spusťte verify_synthetic_review_readiness.sh"
+        return (
+            False,
+            "readiness.json chybí — spusťte verify_synthetic_review_readiness.sh",
+        )
     try:
         import time
+
         stat = os.stat(READINESS_FILE)
         if time.time() - stat.st_mtime > 3600:
             return False, "readiness.json je starší než 1 hodina — přegenerujte"
@@ -292,7 +313,10 @@ def _readiness_passed():
         current_build = _get_build_id()
         stored_build = data.get("app_build_id", "")
         if stored_build != current_build:
-            return False, f"build mismatch: readiness je pro {stored_build[:12]}, aktuální {current_build[:12]}"
+            return (
+                False,
+                f"build mismatch: readiness je pro {stored_build[:12]}, aktuální {current_build[:12]}",
+            )
         return True, data.get("summary", "OK")
     except Exception as e:
         return False, str(e)
@@ -302,10 +326,12 @@ def _readiness_passed():
 # J1 — Worker CRUD
 # =============================================================================
 
+
 @require_org_membership
 def worker_list(request):
     """J1: Worker list with pagination and HTMX support."""
     from .services import require_capability, Forbidden
+
     try:
         require_capability(request.user, request.organization, "worker:read")
     except Forbidden:
@@ -316,7 +342,9 @@ def worker_list(request):
     page_obj = paginator.get_page(page_number)
 
     if request.headers.get("HX-Request"):
-        return render(request, "portal/partials/worker_list.html", {"page_obj": page_obj})
+        return render(
+            request, "portal/partials/worker_list.html", {"page_obj": page_obj}
+        )
 
     return render(request, "portal/worker_list.html", {"page_obj": page_obj})
 
@@ -325,13 +353,20 @@ def worker_list(request):
 def worker_create(request):
     """J1: Worker create — success, duplicate, invalid, forbidden, interrupted."""
     from .services import Forbidden
+
     if request.method == "POST":
-        form = WorkerForm(request.POST, organization=request.organization, user=request.user)
+        form = WorkerForm(
+            request.POST, organization=request.organization, user=request.user
+        )
         if form.is_valid():
             try:
-                worker = create_worker(request.user, request.organization, **form.cleaned_data)
+                worker = create_worker(
+                    request.user, request.organization, **form.cleaned_data
+                )
                 if request.headers.get("HX-Request"):
-                    return render(request, "portal/partials/worker_row.html", {"worker": worker})
+                    return render(
+                        request, "portal/partials/worker_row.html", {"worker": worker}
+                    )
                 return redirect("worker_detail", pk=worker.pk)
             except Forbidden:
                 return HttpResponse(status=403)
@@ -352,21 +387,41 @@ def worker_detail(request, pk):
     from .services import require_capability, Forbidden
     from .models import WorkerIdentityRevision
     from .document_labels import FIELD_LABELS
+
     try:
         require_capability(request.user, request.organization, "worker:read")
     except Forbidden:
         return HttpResponse(status=403)
     worker = get_object_or_404(Worker, pk=pk, organization=request.organization)
-    documents = Document.objects.filter(organization=request.organization).filter(Q(worker=worker) | Q(ocrrun__documentregionassociation__worker=worker)).distinct().order_by("-id")
-    assignments = Assignment.objects.filter(organization=request.organization, worker=worker).order_by("-id")
-    a1_cases = A1Case.objects.filter(organization=request.organization, worker=worker).order_by("-id")
+    documents = (
+        Document.objects.filter(organization=request.organization)
+        .filter(Q(worker=worker) | Q(ocrrun__documentregionassociation__worker=worker))
+        .distinct()
+        .order_by("-id")
+    )
+    assignments = Assignment.objects.filter(
+        organization=request.organization, worker=worker
+    ).order_by("-id")
+    a1_cases = A1Case.objects.filter(
+        organization=request.organization, worker=worker
+    ).order_by("-id")
     tab = request.GET.get("tab", "")
 
     a1_readiness = worker_a1_readiness(worker, request.organization)
 
-    revision = WorkerIdentityRevision.objects.filter(organization=request.organization, worker=worker).order_by("-revision_number").first()
+    revision = (
+        WorkerIdentityRevision.objects.filter(
+            organization=request.organization, worker=worker
+        )
+        .order_by("-revision_number")
+        .first()
+    )
     ctx = {
-        "accepted_identity": [(FIELD_LABELS.get(k, k), v) for k, v in revision.confirmed_fields.items()] if revision else [],
+        "accepted_identity": [
+            (FIELD_LABELS.get(k, k), v) for k, v in revision.confirmed_fields.items()
+        ]
+        if revision
+        else [],
         "worker": worker,
         "documents": documents,
         "assignments": assignments,
@@ -382,33 +437,55 @@ def worker_detail(request, pk):
 def worker_edit(request, pk):
     """J1: Worker edit — interrupted save, validation, duplicate check."""
     from .services import require_capability, Forbidden
+
     try:
         require_capability(request.user, request.organization, "worker:update")
     except Forbidden:
         return HttpResponse(status=403)
-    workers = Worker.objects.select_for_update() if request.method == "POST" else Worker.objects.all()
+    workers = (
+        Worker.objects.select_for_update()
+        if request.method == "POST"
+        else Worker.objects.all()
+    )
     worker = get_object_or_404(workers, pk=pk, organization=request.organization)
     # ModelForm validation mutates its instance before save; retain persisted state.
     original_state = worker.state
 
     if request.method == "POST":
-        form = WorkerForm(request.POST, instance=worker, organization=request.organization, user=request.user)
+        form = WorkerForm(
+            request.POST,
+            instance=worker,
+            organization=request.organization,
+            user=request.user,
+        )
         if form.is_valid():
             try:
                 new_state = form.cleaned_data.get("state")
-                if new_state != original_state and Worker.State.ARCHIVED in (original_state, new_state):
+                if new_state != original_state and Worker.State.ARCHIVED in (
+                    original_state,
+                    new_state,
+                ):
                     try:
-                        require_capability(request.user, request.organization, "worker:archive")
+                        require_capability(
+                            request.user, request.organization, "worker:archive"
+                        )
                     except Forbidden:
                         return HttpResponse(status=403)
-                duplicate = Worker.objects.filter(
-                    organization=request.organization,
-                    given_name=form.cleaned_data["given_name"],
-                    family_name=form.cleaned_data["family_name"],
-                    birth_date=form.cleaned_data["birth_date"],
-                ).exclude(pk=worker.pk).first()
+                duplicate = (
+                    Worker.objects.filter(
+                        organization=request.organization,
+                        given_name=form.cleaned_data["given_name"],
+                        family_name=form.cleaned_data["family_name"],
+                        birth_date=form.cleaned_data["birth_date"],
+                    )
+                    .exclude(pk=worker.pk)
+                    .first()
+                )
                 if duplicate:
-                    form.add_error(None, _("Pracovník se stejným jménem a datem narození už existuje."))
+                    form.add_error(
+                        None,
+                        _("Pracovník se stejným jménem a datem narození už existuje."),
+                    )
                 else:
                     form.save()
                     AuditEvent.objects.create(
@@ -419,12 +496,18 @@ def worker_edit(request, pk):
                         outcome="success",
                     )
                     if request.headers.get("HX-Request"):
-                        return render(request, "portal/partials/worker_row.html", {"worker": worker})
+                        return render(
+                            request,
+                            "portal/partials/worker_row.html",
+                            {"worker": worker},
+                        )
                     return redirect("worker_detail", pk=worker.pk)
             except Exception as e:
                 form.add_error(None, str(e))
     else:
-        form = WorkerForm(instance=worker, organization=request.organization, user=request.user)
+        form = WorkerForm(
+            instance=worker, organization=request.organization, user=request.user
+        )
 
     ctx = {"form": form, "worker": worker, "action": "edit"}
     if request.headers.get("HX-Request"):
@@ -437,6 +520,7 @@ def worker_edit(request, pk):
 def worker_delete(request, pk):
     """Hard deletion stays disabled until a scoped retention/deletion policy is wired."""
     from .services import require_capability, Forbidden
+
     try:
         require_capability(request.user, request.organization, "worker:read")
     except Forbidden:
@@ -451,7 +535,9 @@ def worker_delete(request, pk):
         outcome="denied",
     )
     return HttpResponse(
-        _("Trvalé smazání není dostupné. Požádejte správce o řízené vyřízení žádosti o výmaz."),
+        _(
+            "Trvalé smazání není dostupné. Požádejte správce o řízené vyřízení žádosti o výmaz."
+        ),
         status=403,
         content_type="text/plain; charset=utf-8",
     )
@@ -461,6 +547,7 @@ def worker_delete(request, pk):
 # J2 — Document / OCR
 # =============================================================================
 
+
 @require_org_membership
 def document_upload(request, worker_pk):
     """J2: Document upload — valid, mismatch, executable, oversize, duplicate."""
@@ -468,7 +555,8 @@ def document_upload(request, worker_pk):
 
     if request.method == "POST":
         form = DocumentUploadForm(
-            request.POST, request.FILES,
+            request.POST,
+            request.FILES,
             organization=request.organization,
             worker=worker,
             user=request.user,
@@ -489,13 +577,21 @@ def document_upload(request, worker_pk):
                 )
 
                 if request.headers.get("HX-Request"):
-                    return render(request, "portal/partials/document_row.html", {"document": document})
+                    return render(
+                        request,
+                        "portal/partials/document_row.html",
+                        {"document": document},
+                    )
                 return redirect("document_detail", pk=document.pk)
 
             except Exception:
-                form.add_error(None, _("Dokument nelze přijmout. Zkontrolujte formát a oprávnění."))
+                form.add_error(
+                    None, _("Dokument nelze přijmout. Zkontrolujte formát a oprávnění.")
+                )
     else:
-        form = DocumentUploadForm(organization=request.organization, worker=worker, user=request.user)
+        form = DocumentUploadForm(
+            organization=request.organization, worker=worker, user=request.user
+        )
 
     ctx = {"form": form, "worker": worker}
     if request.headers.get("HX-Request"):
@@ -506,30 +602,35 @@ def document_upload(request, worker_pk):
 @require_org_membership
 def document_detail(request, pk):
     from .intake_views import detail
+
     return detail(request, pk)
 
 
 @require_org_membership
 def document_download(request, pk):
     from .intake_views import original
+
     return original(request, pk)
 
 
 @require_org_membership
 def document_intake_unassigned(request):
     from .intake_views import upload_unassigned
+
     return upload_unassigned(request)
 
 
 @require_org_membership
 def document_crop(request, run_id, region_id, variant):
     from .intake_views import crop
+
     return crop(request, run_id, region_id, variant)
 
 
 # =============================================================================
 # J3 — Assignment
 # =============================================================================
+
 
 @require_org_membership
 def assignment_create(request, worker_pk):
@@ -555,15 +656,22 @@ def assignment_create(request, worker_pk):
                     activity_label=form.cleaned_data["activity_label"],
                 )
                 if request.headers.get("HX-Request"):
-                    return render(request, "portal/partials/assignment_row.html", {
-                        "assignment": assignment,
-                        "overlap_warning": overlap or getattr(form, "overlap_warning", False),
-                    })
+                    return render(
+                        request,
+                        "portal/partials/assignment_row.html",
+                        {
+                            "assignment": assignment,
+                            "overlap_warning": overlap
+                            or getattr(form, "overlap_warning", False),
+                        },
+                    )
                 return redirect("worker_detail", pk=worker.pk)
             except Exception as e:
                 form.add_error(None, str(e))
     else:
-        form = AssignmentForm(organization=request.organization, worker=worker, user=request.user)
+        form = AssignmentForm(
+            organization=request.organization, worker=worker, user=request.user
+        )
 
     ctx = {"form": form, "worker": worker, "action": "create"}
     if request.headers.get("HX-Request"):
@@ -577,13 +685,16 @@ def assignment_edit(request, worker_pk, pk):
     """J3: Assignment edit — stale concurrent edit, overlap, A1 ambiguity."""
     from .identity import _authorize, _lock_organization
     from .services import Forbidden
+
     try:
         _authorize(request.user, request.organization, "assignment:update")
     except Forbidden:
         return HttpResponseForbidden("ACCESS_DENIED")
     _lock_organization(request.organization)
     worker = get_object_or_404(Worker, pk=worker_pk, organization=request.organization)
-    assignment = get_object_or_404(Assignment, pk=pk, organization=request.organization, worker=worker)
+    assignment = get_object_or_404(
+        Assignment, pk=pk, organization=request.organization, worker=worker
+    )
 
     if request.method == "POST":
         form = AssignmentForm(
@@ -598,7 +709,12 @@ def assignment_edit(request, worker_pk, pk):
                 # Optimistic locking: reject stale concurrent edits.
                 submitted_version = form.cleaned_data.get("version")
                 if submitted_version is None or submitted_version != assignment.version:
-                    form.add_error(None, _("Přiřazení bylo změněno jiným uživatelem. Načtěte prosím znovu."))
+                    form.add_error(
+                        None,
+                        _(
+                            "Přiřazení bylo změněno jiným uživatelem. Načtěte prosím znovu."
+                        ),
+                    )
                 else:
                     with transaction.atomic():
                         form.instance.version = assignment.version + 1
@@ -610,19 +726,35 @@ def assignment_edit(request, worker_pk, pk):
                             object_ref=f"assignment:{assignment.pk}",
                             outcome="success",
                         )
-                        A1Case.objects.filter(organization=request.organization, worker=worker).update(is_stale=True)
+                        A1Case.objects.filter(
+                            organization=request.organization, worker=worker
+                        ).update(is_stale=True)
                     if request.headers.get("HX-Request"):
-                        return render(request, "portal/partials/assignment_row.html", {
-                            "assignment": assignment,
-                            "overlap_warning": getattr(form, "overlap_warning", False),
-                        })
+                        return render(
+                            request,
+                            "portal/partials/assignment_row.html",
+                            {
+                                "assignment": assignment,
+                                "overlap_warning": getattr(
+                                    form, "overlap_warning", False
+                                ),
+                            },
+                        )
                     return redirect("worker_detail", pk=worker.pk)
             except Exception:
-                form.add_error(None, _("Změnu nelze uložit. Obnovte formulář a zkuste to znovu."))
+                form.add_error(
+                    None, _("Změnu nelze uložit. Obnovte formulář a zkuste to znovu.")
+                )
     else:
         # Include current version for optimistic locking
         initial = {"version": assignment.version}
-        form = AssignmentForm(instance=assignment, organization=request.organization, worker=worker, user=request.user, initial=initial)
+        form = AssignmentForm(
+            instance=assignment,
+            organization=request.organization,
+            worker=worker,
+            user=request.user,
+            initial=initial,
+        )
 
     ctx = {"form": form, "worker": worker, "assignment": assignment, "action": "edit"}
     if request.headers.get("HX-Request"):
@@ -634,12 +766,17 @@ def assignment_edit(request, worker_pk, pk):
 # J4 — A1
 # =============================================================================
 
+
 @require_org_membership
 def a1_prepare(request, worker_pk):
     """J4: A1 readiness & preparation — snapshot, generation trigger, retry, staleness."""
     worker = get_object_or_404(Worker, pk=worker_pk, organization=request.organization)
-    existing_cases = A1Case.objects.filter(organization=request.organization, worker=worker)
-    assignments = Assignment.objects.filter(organization=request.organization, worker=worker)
+    existing_cases = A1Case.objects.filter(
+        organization=request.organization, worker=worker
+    )
+    assignments = Assignment.objects.filter(
+        organization=request.organization, worker=worker
+    )
 
     if request.method == "POST":
         form = A1PrepareForm(request.POST)
@@ -649,7 +786,9 @@ def a1_prepare(request, worker_pk):
                 # (services layer is authoritative; no duplicate here).
                 case = prepare_a1(request.user, request.organization, worker)
                 if request.headers.get("HX-Request"):
-                    return render(request, "portal/partials/a1_case_row.html", {"case": case})
+                    return render(
+                        request, "portal/partials/a1_case_row.html", {"case": case}
+                    )
                 return redirect("a1_case_detail", pk=case.pk)
             except Exception as e:
                 form.add_error(None, str(e))
@@ -670,7 +809,6 @@ def a1_prepare(request, worker_pk):
 @require_org_membership
 def a1_case_detail(request, pk):
     """J4: A1 case detail — approval denial, manual external status distinction."""
-    from .a1_drafts import DraftInputBlocked
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
 
     # An "application draft" is any case that has been prepared through
@@ -681,8 +819,7 @@ def a1_case_detail(request, pk):
     # click through the legacy approve/reject form before generating
     # the unverified draft.
     is_application_draft = (
-        hasattr(case, "draft_reservation")
-        or case.readiness == A1Case.Readiness.READY
+        hasattr(case, "draft_reservation") or case.readiness == A1Case.Readiness.READY
     )
 
     # A reserved-but-not-yet-published generation is a protected intermediate
@@ -691,19 +828,26 @@ def a1_case_detail(request, pk):
     # creates the generation row together with the reservation; publication is
     # what stamps ``artifact_reference`` onto it.
     from .models import A1DraftGeneration, A1DraftReservation
+
     has_reservation = A1DraftReservation.objects.filter(case=case).exists()
-    has_published_generation = A1DraftGeneration.objects.filter(
-        reservation__case=case
-    ).exclude(prepared_artifact_hash="").exists()
+    has_published_generation = (
+        A1DraftGeneration.objects.filter(reservation__case=case)
+        .exclude(prepared_artifact_hash="")
+        .exists()
+    )
     pending_draft = has_reservation and not has_published_generation
     if is_application_draft and request.method == "POST" and pending_draft:
-        return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
+        return JsonResponse(
+            {"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409
+        )
 
     if request.method == "POST":
         form = A1ApprovalForm(request.POST)
         if form.is_valid():
             decision = form.cleaned_data["decision"]
-            external_status = form.cleaned_data.get("external_status") or "not_submitted"
+            external_status = (
+                form.cleaned_data.get("external_status") or "not_submitted"
+            )
             notes = (form.cleaned_data.get("notes") or "").strip()
 
             if decision == "approve":
@@ -730,7 +874,9 @@ def a1_case_detail(request, pk):
                 )
 
             if request.headers.get("HX-Request"):
-                return render(request, "portal/partials/a1_case_row.html", {"case": case})
+                return render(
+                    request, "portal/partials/a1_case_row.html", {"case": case}
+                )
             return redirect("a1_case_detail", pk=case.pk)
     else:
         form = A1ApprovalForm()
@@ -748,11 +894,19 @@ def a1_case_detail(request, pk):
             return HttpResponseForbidden("ACCESS_DENIED")
         except (ObjectDoesNotExist, StaleWrite, ValueError, OSError, ArtifactError):
             pass
-        response = render(request, "portal/a1_case_detail.html", {
-            "case": case, "worker": case.worker, "is_application_draft": True,
-            "generation": generation, "has_reservation": has_reservation,
-        })
+        response = render(
+            request,
+            "portal/a1_case_detail.html",
+            {
+                "case": case,
+                "worker": case.worker,
+                "is_application_draft": True,
+                "generation": generation,
+                "has_reservation": has_reservation,
+            },
+        )
         from django.utils.cache import add_never_cache_headers
+
         add_never_cache_headers(response)
         return response
 
@@ -769,20 +923,27 @@ def a1_regenerate(request, pk):
     was prepared, the existing case is reused (and is_stale is cleared). When
     the source differs, a new A1Case is created via prepare_a1().
     """
-    from prototypes.architecture.adr001.proof_contract import stable_hash
 
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
 
     if hasattr(case, "draft_reservation"):
-        return JsonResponse({"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409)
+        return JsonResponse(
+            {"error": "GENERATION_CONFIRMATION_NOT_AVAILABLE"}, status=409
+        )
 
     if case.external_status in ("issued", "submitted"):
-        return JsonResponse({"error": "Nelze regenerovat již vydané/předané A1."}, status=400)
+        return JsonResponse(
+            {"error": "Nelze regenerovat již vydané/předané A1."}, status=400
+        )
 
     worker = case.worker
     from .services import current_artifact_dependencies, current_case_source
+
     current_hash = current_case_source(case)
-    artifact_changed = bool(case.artifact_reference) and current_artifact_dependencies(case) != case.artifact_dependencies
+    artifact_changed = (
+        bool(case.artifact_reference)
+        and current_artifact_dependencies(case) != case.artifact_dependencies
+    )
 
     if current_hash == case.source_hash and not artifact_changed:
         was_stale = case.is_stale
@@ -833,24 +994,36 @@ def a1_draft_generate(request, pk):
 
     case = get_object_or_404(A1Case, pk=pk, organization=request.organization)
     try:
-        generation = prepare_application_draft(request.user, request.organization, case.pk)
+        generation = prepare_application_draft(
+            request.user, request.organization, case.pk
+        )
     except DraftInputBlocked as exc:
         AuditEvent.objects.create(
-            organization=request.organization, actor_ref=f"user:{request.user.pk}",
-            event_type="a1.draft_blocked", object_ref=f"a1:{case.pk}",
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.draft_blocked",
+            object_ref=f"a1:{case.pk}",
             outcome="blocked",
         )
-        return JsonResponse({"error": "A1_DRAFT_BLOCKED", "reason": str(exc)}, status=409)
+        return JsonResponse(
+            {"error": "A1_DRAFT_BLOCKED", "reason": str(exc)}, status=409
+        )
     except (Forbidden, StaleWrite, ValueError, OSError) as exc:
         AuditEvent.objects.create(
-            organization=request.organization, actor_ref=f"user:{request.user.pk}",
-            event_type="a1.draft_failed", object_ref=f"a1:{case.pk}",
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.draft_failed",
+            object_ref=f"a1:{case.pk}",
             outcome="failed",
         )
-        return JsonResponse({"error": "A1_DRAFT_FAILED", "reason": str(exc)}, status=409)
+        return JsonResponse(
+            {"error": "A1_DRAFT_FAILED", "reason": str(exc)}, status=409
+        )
     AuditEvent.objects.create(
-        organization=request.organization, actor_ref=f"user:{request.user.pk}",
-        event_type="a1.draft_generated", object_ref=f"generation:{generation.pk}",
+        organization=request.organization,
+        actor_ref=f"user:{request.user.pk}",
+        event_type="a1.draft_generated",
+        object_ref=f"generation:{generation.pk}",
         outcome="success",
     )
     return redirect("a1_case_detail", pk=case.pk)
@@ -859,6 +1032,7 @@ def a1_draft_generate(request, pk):
 # =============================================================================
 # Health & Dashboard
 # =============================================================================
+
 
 @never_cache
 @require_safe
@@ -899,6 +1073,7 @@ def readiness(request):
     import time
     from django.conf import settings
     from . import readiness_runner, runtime_contract
+
     started = time.monotonic()
     budget = int(getattr(settings, "PRACE_READINESS_BUDGET_MS", 2000))
     if getattr(settings, "PRACE_SUPERVISED", False):
@@ -907,15 +1082,20 @@ def readiness(request):
         # In-memory test DBs cannot be inspected from a separate process.
         # These settings are never supported supervised service targets.
         body = readiness_runner.collect_checks()
-    elapsed = round((time.monotonic()-started)*1000)
+    elapsed = round((time.monotonic() - started) * 1000)
     if elapsed > budget:
         body.update(status="not_ready", reason="deadline_exceeded")
-    body.update(mode=runtime_contract.runtime_mode(), supervised=runtime_contract.is_supervised(),
-                synthetic_only=runtime_contract.synthetic_only(),
-                real_data=False,
-                build_id=runtime_contract.build_identity()[0], git_commit=runtime_contract.build_identity()[1],
-                budget_ms=budget, elapsed_ms=elapsed)
-    return JsonResponse(body, status=200 if body['status']=='ready' else 503)
+    body.update(
+        mode=runtime_contract.runtime_mode(),
+        supervised=runtime_contract.is_supervised(),
+        synthetic_only=runtime_contract.synthetic_only(),
+        real_data=False,
+        build_id=runtime_contract.build_identity()[0],
+        git_commit=runtime_contract.build_identity()[1],
+        budget_ms=budget,
+        elapsed_ms=elapsed,
+    )
+    return JsonResponse(body, status=200 if body["status"] == "ready" else 503)
 
 
 def dashboard(request):
@@ -952,30 +1132,36 @@ def dashboard(request):
 def attention_queue(request):
     """Dashboard attention queue: documents awaiting review, incomplete workers,
     assignment conflicts, stale/blocked A1 cases, expiring documents."""
-    from django.db.models import Q
 
-    docs_awaiting_review = Document.objects.filter(
-        organization=request.organization,
-        state=Document.State.QUARANTINED
-    ).select_related("worker").order_by("-id")[:10]
+    docs_awaiting_review = (
+        Document.objects.filter(
+            organization=request.organization, state=Document.State.QUARANTINED
+        )
+        .select_related("worker")
+        .order_by("-id")[:10]
+    )
 
     incomplete_workers = Worker.objects.filter(
-        organization=request.organization,
-        state=Worker.State.DRAFT
+        organization=request.organization, state=Worker.State.DRAFT
     ).order_by("-id")[:10]
 
-    workers_without_docs = Worker.objects.filter(
-        organization=request.organization
-    ).exclude(
-        id__in=Document.objects.filter(
-            organization=request.organization
-        ).values_list("worker_id", flat=True)
-    ).order_by("-id")[:10]
+    workers_without_docs = (
+        Worker.objects.filter(organization=request.organization)
+        .exclude(
+            id__in=Document.objects.filter(
+                organization=request.organization
+            ).values_list("worker_id", flat=True)
+        )
+        .order_by("-id")[:10]
+    )
 
-    a1_blocked = A1Case.objects.filter(
-        organization=request.organization,
-        readiness=A1Case.Readiness.BLOCKED
-    ).select_related("worker").order_by("-id")[:10]
+    a1_blocked = (
+        A1Case.objects.filter(
+            organization=request.organization, readiness=A1Case.Readiness.BLOCKED
+        )
+        .select_related("worker")
+        .order_by("-id")[:10]
+    )
 
     ctx = {
         "docs_awaiting_review": docs_awaiting_review,
@@ -989,7 +1175,11 @@ def attention_queue(request):
 @require_org_membership
 def document_list(request):
     """Global document list with filters."""
-    documents = Document.objects.filter(organization=request.organization).select_related("worker").order_by("-id")
+    documents = (
+        Document.objects.filter(organization=request.organization)
+        .select_related("worker")
+        .order_by("-id")
+    )
     state_filter = request.GET.get("state")
     if state_filter:
         documents = documents.filter(state=state_filter)
@@ -1010,12 +1200,15 @@ def document_list(request):
 def assignment_list(request):
     """Global assignment list with filters and grouping."""
     import datetime
+
     today = datetime.date.today()
 
     state_filter = request.GET.get("state")
     group = request.GET.get("group")
 
-    base_qs = Assignment.objects.filter(organization=request.organization).select_related("worker")
+    base_qs = Assignment.objects.filter(
+        organization=request.organization
+    ).select_related("worker")
 
     if state_filter:
         base_qs = base_qs.filter(state=state_filter)
@@ -1059,7 +1252,11 @@ def assignment_list(request):
 @require_org_membership
 def a1_list(request):
     """Global A1 case list with filters."""
-    cases = A1Case.objects.filter(organization=request.organization).select_related("worker").order_by("-id")
+    cases = (
+        A1Case.objects.filter(organization=request.organization)
+        .select_related("worker")
+        .order_by("-id")
+    )
     readiness_filter = request.GET.get("readiness")
     if readiness_filter:
         cases = cases.filter(readiness=readiness_filter)
@@ -1077,7 +1274,8 @@ def a1_list(request):
 
 @require_org_membership
 def a1_variant_counts(request):
-    from .services import count_workers_by_variant, require_capability, Forbidden
+    from .services import count_workers_by_variant, require_capability
+
     require_capability(request.user, request.organization, "a1:prepare")
     data = count_workers_by_variant(request.organization)
     return JsonResponse(data)
@@ -1090,7 +1288,9 @@ def intake_wizard(request):
     Upload and Paste require an existing worker. Manual creates a new worker.
     """
     if request.method == "POST":
-        form = IntakeWizardForm(request.POST, organization=request.organization, user=request.user)
+        form = IntakeWizardForm(
+            request.POST, organization=request.organization, user=request.user
+        )
         if form.is_valid():
             intake_type = form.cleaned_data.get("intake_type")
             if intake_type == "upload":
@@ -1110,6 +1310,7 @@ def intake_wizard(request):
 @require_org_membership
 def intake_upload(request, worker_pk):
     from .intake_views import upload_unassigned
+
     worker = get_object_or_404(Worker, pk=worker_pk, organization=request.organization)
     return upload_unassigned(request, worker)
 
@@ -1130,6 +1331,7 @@ def intake_paste(request):
 # =============================================================================
 # Kontrola Release 1A — Review Surface
 # =============================================================================
+
 
 def _get_or_create_review_session(request):
     """Find or create a review session for (user, org, build_id)."""
@@ -1155,7 +1357,7 @@ def _get_review_session_readonly(request):
 def _get_section_rows(session):
     """Get or create section rows for a session (for POST use)."""
     rows = {}
-    for section_key, _, _ in REVIEW_SECTIONS:
+    for section_key, _label, _url in REVIEW_SECTIONS:
         row, _ = Release1aReview.objects.get_or_create(
             session=session,
             section=section_key,
@@ -1168,8 +1370,10 @@ def _get_section_rows(session):
 def _get_section_rows_readonly(session):
     """Get existing section rows (for GET use, no creation)."""
     rows = {}
-    for section_key, _, _ in REVIEW_SECTIONS:
-        row = Release1aReview.objects.filter(session=session, section=section_key).first()
+    for section_key, _label, _url in REVIEW_SECTIONS:
+        row = Release1aReview.objects.filter(
+            session=session, section=section_key
+        ).first()
         if row:
             rows[section_key] = row
     return rows
@@ -1192,27 +1396,31 @@ def review_dashboard(request):
     ]:
         if session and key in review_rows:
             row = review_rows[key]
-            sections_data.append({
-                "key": key,
-                "label": label,
-                "status": row.status,
-                "status_display": row.get_status_display(),
-                "note": row.note,
-                "url": url,
-                "done": row.status == Release1aReview.Status.DONE,
-                "needs_change": row.status == Release1aReview.Status.NEEDS_CHANGE,
-            })
+            sections_data.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "status": row.status,
+                    "status_display": row.get_status_display(),
+                    "note": row.note,
+                    "url": url,
+                    "done": row.status == Release1aReview.Status.DONE,
+                    "needs_change": row.status == Release1aReview.Status.NEEDS_CHANGE,
+                }
+            )
         else:
-            sections_data.append({
-                "key": key,
-                "label": label,
-                "status": None,
-                "status_display": "Nezahájeno",
-                "note": "",
-                "url": url,
-                "done": False,
-                "needs_change": False,
-            })
+            sections_data.append(
+                {
+                    "key": key,
+                    "label": label,
+                    "status": None,
+                    "status_display": "Nezahájeno",
+                    "note": "",
+                    "url": url,
+                    "done": False,
+                    "needs_change": False,
+                }
+            )
 
     ctx = {
         "sections": sections_data,
@@ -1265,8 +1473,7 @@ def review_check_answers(request):
     session = _get_or_create_review_session(request)
     review_rows = _get_section_rows(session)
     all_done = all(
-        r.status == Release1aReview.Status.DONE
-        for r in review_rows.values()
+        r.status == Release1aReview.Status.DONE for r in review_rows.values()
     )
     readiness_passed, readiness_reason = _readiness_passed()
     gate_open, gate_reason = _eng001_gate_open()
@@ -1282,7 +1489,11 @@ def review_check_answers(request):
             }
             for key, label, _ in [
                 (Release1aReview.Section.WORKER, "Pracovník", "workers/"),
-                (Release1aReview.Section.DOCUMENT_OCR, "Dokument a kontrola OCR", "workers/"),
+                (
+                    Release1aReview.Section.DOCUMENT_OCR,
+                    "Dokument a kontrola OCR",
+                    "workers/",
+                ),
                 (Release1aReview.Section.ASSIGNMENT, "Přiřazení", "workers/"),
                 (Release1aReview.Section.A1, "Příprava a kontrola A1", "workers/"),
             ]
@@ -1312,8 +1523,7 @@ def review_approve(request):
 
     review_rows = _get_section_rows(session)
     all_done = all(
-        r.status == Release1aReview.Status.DONE
-        for r in review_rows.values()
+        r.status == Release1aReview.Status.DONE for r in review_rows.values()
     )
     readiness_passed, readiness_reason = _readiness_passed()
 
@@ -1330,7 +1540,8 @@ def review_approve(request):
             {
                 "error": "tree not clean at approval time — commit scoped changes first",
                 "detail": scoped_detail,
-            }, status=400
+            },
+            status=400,
         )
 
     gate_open, gate_reason = _eng001_gate_open()
@@ -1400,8 +1611,9 @@ def review_return(request):
 @require_org_membership
 def review_receipt(request):
     acceptance = (
-        Release1aAcceptance.objects
-        .filter(user=request.user, organization=request.organization)
+        Release1aAcceptance.objects.filter(
+            user=request.user, organization=request.organization
+        )
         .order_by("-accepted_at")
         .first()
     )
@@ -1426,6 +1638,7 @@ def review_receipt(request):
 # Reviewer activation (one-time invitation URL)
 # =============================================================================
 
+
 def reviewer_activate(request, token):
     import os
     import time
@@ -1446,24 +1659,32 @@ def reviewer_activate(request, token):
         password2 = request.POST.get("password2", "")
 
         if password1 != password2:
-            return render(request, "portal/reviewer_activate.html", {
-                "token": token, "error": "Hesla se neshodují."
-            })
+            return render(
+                request,
+                "portal/reviewer_activate.html",
+                {"token": token, "error": "Hesla se neshodují."},
+            )
         if len(password1) < 12:
-            return render(request, "portal/reviewer_activate.html", {
-                "token": token, "error": "Heslo musí mít alespoň 12 znaků."
-            })
+            return render(
+                request,
+                "portal/reviewer_activate.html",
+                {"token": token, "error": "Heslo musí mít alespoň 12 znaků."},
+            )
 
         if not os.path.exists(token_file):
-            return render(request, "portal/reviewer_activate.html", {
-                "token": token, "error": "Odkaz je neplatný nebo již byl použit."
-            })
+            return render(
+                request,
+                "portal/reviewer_activate.html",
+                {"token": token, "error": "Odkaz je neplatný nebo již byl použit."},
+            )
 
         payload = json.loads(open(token_file).read())
         if payload.get("used") or payload.get("expires_at", 0) < time.time():
-            return render(request, "portal/reviewer_activate.html", {
-                "token": token, "error": "Odkaz vypršel nebo byl již použit."
-            })
+            return render(
+                request,
+                "portal/reviewer_activate.html",
+                {"token": token, "error": "Odkaz vypršel nebo byl již použit."},
+            )
 
         user = User.objects.get(pk=payload["user_pk"])
         user.is_active = True
@@ -1474,21 +1695,28 @@ def reviewer_activate(request, token):
         os.chmod(token_file, 0o600)
 
         from django.contrib.auth import logout
+
         logout(request)
         return redirect("mfa_activate_totp")  # redirect to allauth TOTP enrollment
 
     if not os.path.exists(token_file):
-        return render(request, "portal/reviewer_activate.html", {
-            "token": token, "error": "Odkaz je neplatný nebo již byl použit."
-        })
+        return render(
+            request,
+            "portal/reviewer_activate.html",
+            {"token": token, "error": "Odkaz je neplatný nebo již byl použit."},
+        )
 
     payload = json.loads(open(token_file).read())
     if payload.get("used") or payload.get("expires_at", 0) < time.time():
-        return render(request, "portal/reviewer_activate.html", {
-            "token": token, "error": "Odkaz vypršel nebo byl již použit."
-        })
+        return render(
+            request,
+            "portal/reviewer_activate.html",
+            {"token": token, "error": "Odkaz vypršel nebo byl již použit."},
+        )
 
-    return render(request, "portal/reviewer_activate.html", {"token": token, "error": None})
+    return render(
+        request, "portal/reviewer_activate.html", {"token": token, "error": None}
+    )
 
 
 def budget_week(request):
@@ -1509,14 +1737,14 @@ def budget_week(request):
 
     categories = [
         {"key": "ubyt", "label": "Ubytování"},
-        {"key": "zal",  "label": "Zálohy"},
-        {"key": "naf",  "label": "Nafta"},
-        {"key": "pok",  "label": "Pokuty"},
-        {"key": "jid",  "label": "Jídlo"},
-        {"key": "myt",  "label": "Mýto"},
-        {"key": "mzd",  "label": "Mzda"},
-        {"key": "opv",  "label": "Opravy"},
-        {"key": "ost",  "label": "Ostatní"},
+        {"key": "zal", "label": "Zálohy"},
+        {"key": "naf", "label": "Nafta"},
+        {"key": "pok", "label": "Pokuty"},
+        {"key": "jid", "label": "Jídlo"},
+        {"key": "myt", "label": "Mýto"},
+        {"key": "mzd", "label": "Mzda"},
+        {"key": "opv", "label": "Opravy"},
+        {"key": "ost", "label": "Ostatní"},
     ]
     cat_keys = [c["key"] for c in categories]
     cat_label = {c["key"]: c["label"] for c in categories}
@@ -1524,34 +1752,45 @@ def budget_week(request):
     sample_workers = _SYNTHETIC_WORKERS
 
     raw = [
-        ("Novák Jan",    today,                          "ubyt", 85,   "Ubytování Mnichov"),
-        ("Novák Jan",    today,                          "zal",  200,  "Záloha na cestu"),
-        ("Novák Jan",    today,                          "naf",  120,  "Tankování Hannover"),
-        ("Novák Jan",    today + datetime.timedelta(1),  "ubyt", 85,   ""),
-        ("Novák Jan",    today + datetime.timedelta(1),  "naf",  95.4, "Diesel DE"),
-        ("Novák Jan",    today + datetime.timedelta(2),  "jid",  35,   "Oběd"),
-        ("Dvořák Pavel", today,                          "ubyt", 85,   ""),
-        ("Dvořák Pavel", today,                          "zal",  150,  ""),
-        ("Dvořák Pavel", today,                          "pok",  120,  "Překročení rychlosti"),
-        ("Dvořák Pavel", today,                          "jid",  30,   ""),
-        ("Dvořák Pavel", today,                          "myt",  12.5, "Mýto A9"),
-        ("Dvořák Pavel", today + datetime.timedelta(3),  "mzd",  1250, "Týdenní výplata"),
-        ("Svoboda Tomáš",today,                          "ubyt", 85,   ""),
-        ("Svoboda Tomáš",today,                          "zal",  100,  ""),
-        ("Svoboda Tomáš",today,                          "naf",  110,  ""),
-        ("Svoboda Tomáš",today + datetime.timedelta(2),  "opv",  85,   "Servis brzdy Augsburg"),
+        ("Novák Jan", today, "ubyt", 85, "Ubytování Mnichov"),
+        ("Novák Jan", today, "zal", 200, "Záloha na cestu"),
+        ("Novák Jan", today, "naf", 120, "Tankování Hannover"),
+        ("Novák Jan", today + datetime.timedelta(1), "ubyt", 85, ""),
+        ("Novák Jan", today + datetime.timedelta(1), "naf", 95.4, "Diesel DE"),
+        ("Novák Jan", today + datetime.timedelta(2), "jid", 35, "Oběd"),
+        ("Dvořák Pavel", today, "ubyt", 85, ""),
+        ("Dvořák Pavel", today, "zal", 150, ""),
+        ("Dvořák Pavel", today, "pok", 120, "Překročení rychlosti"),
+        ("Dvořák Pavel", today, "jid", 30, ""),
+        ("Dvořák Pavel", today, "myt", 12.5, "Mýto A9"),
+        ("Dvořák Pavel", today + datetime.timedelta(3), "mzd", 1250, "Týdenní výplata"),
+        ("Svoboda Tomáš", today, "ubyt", 85, ""),
+        ("Svoboda Tomáš", today, "zal", 100, ""),
+        ("Svoboda Tomáš", today, "naf", 110, ""),
+        (
+            "Svoboda Tomáš",
+            today + datetime.timedelta(2),
+            "opv",
+            85,
+            "Servis brzdy Augsburg",
+        ),
     ]
 
     pivot = defaultdict(lambda: {k: 0.0 for k in cat_keys})
     entries_for_js = []
     for name, d, cat, amt, note in raw:
         pivot[name][cat] += amt
-        entries_for_js.append({
-            "worker_name": name, "category": cat, "category_label": cat_label[cat],
-            "amount": amt, "date_iso": d.isoformat(),
-            "date_label": d.strftime("%-d.%-m."),
-            "note": note,
-        })
+        entries_for_js.append(
+            {
+                "worker_name": name,
+                "category": cat,
+                "category_label": cat_label[cat],
+                "amount": amt,
+                "date_iso": d.isoformat(),
+                "date_label": d.strftime("%-d.%-m."),
+                "note": note,
+            }
+        )
 
     def fmt(n):
         return f"{n:,.2f}".replace(",", " ").replace(".", ",")
@@ -1561,12 +1800,14 @@ def budget_week(request):
         name = f"{w.family_name} {w.given_name}"
         cells = pivot.get(name, {k: 0.0 for k in cat_keys})
         total = sum(cells.values())
-        pivot_rows.append({
-            "worker_name": name,
-            "cells": {k: (fmt(v) if v else "") for k, v in cells.items()},
-            "total": fmt(total),
-            "_cells_num": cells,
-        })
+        pivot_rows.append(
+            {
+                "worker_name": name,
+                "cells": {k: (fmt(v) if v else "") for k, v in cells.items()},
+                "total": fmt(total),
+                "_cells_num": cells,
+            }
+        )
 
     col_totals_num = {k: 0.0 for k in cat_keys}
     for row in pivot_rows:
@@ -1577,7 +1818,11 @@ def budget_week(request):
     col_totals["grand"] = fmt(grand)
 
     pivot_for_js = [
-        {"worker_name": r["worker_name"], "cells": r["_cells_num"], "total": sum(r["_cells_num"].values())}
+        {
+            "worker_name": r["worker_name"],
+            "cells": r["_cells_num"],
+            "total": sum(r["_cells_num"].values()),
+        }
         for r in pivot_rows
     ]
 
@@ -1697,12 +1942,15 @@ def planned_page(request):
     """Planned landing page for future modules - shows purpose, target release,
     dependencies and inactive status message."""
     module_key = request.resolver_match.url_name.replace("planned_", "")
-    module = PLANNED_MODULES.get(module_key, {
-        "title": "Modul",
-        "description": "Funkce zatím není aktivní.",
-        "target_release": "Plánováno",
-        "dependencies": [],
-    })
+    module = PLANNED_MODULES.get(
+        module_key,
+        {
+            "title": "Modul",
+            "description": "Funkce zatím není aktivní.",
+            "target_release": "Plánováno",
+            "dependencies": [],
+        },
+    )
     ctx = {
         "module": module,
         "module_key": module_key,
@@ -1722,14 +1970,26 @@ def _canonical_field(ocr_field):
 
 
 WORKER_COMPLETION_REQUIRED_FIELDS = [
-    "given_name", "family_name", "birth_date", "activity_profile", "state"
+    "given_name",
+    "family_name",
+    "birth_date",
+    "activity_profile",
+    "state",
 ]
 
 WORKER_A1_REQUIRED_FIELDS = [
-    "surname", "given_name", "dob", "birth_place",
-    "nationality", "sex", "insurance_number",
-    "street", "house_number", "city",
-    "postal_code", "country_code",
+    "surname",
+    "given_name",
+    "dob",
+    "birth_place",
+    "nationality",
+    "sex",
+    "insurance_number",
+    "street",
+    "house_number",
+    "city",
+    "postal_code",
+    "country_code",
 ]
 
 
@@ -1768,23 +2028,41 @@ def worker_a1_readiness(worker, organization):
         - has_assignment: bool
         - has_confirmed_identity: bool
     """
-    from .models import FieldProposal
 
     from .models import WorkerIdentityRevision
-    revision = WorkerIdentityRevision.objects.filter(organization=organization, worker=worker).order_by("-revision_number").first()
+
+    revision = (
+        WorkerIdentityRevision.objects.filter(organization=organization, worker=worker)
+        .order_by("-revision_number")
+        .first()
+    )
     confirmed_fields = set(revision.confirmed_fields) if revision else set()
-    confirmed_fields |= {key for key, canonical in OCR_TO_CANONICAL.items() if canonical in confirmed_fields}
+    confirmed_fields |= {
+        key
+        for key, canonical in OCR_TO_CANONICAL.items()
+        if canonical in confirmed_fields
+    }
 
     missing = []
     for field in WORKER_A1_REQUIRED_FIELDS:
         if field not in confirmed_fields:
             canonical = _canonical_field(field)
             worker_value = getattr(worker, canonical, None)
-            if not worker_value or (isinstance(worker_value, str) and not worker_value.strip()):
+            if not worker_value or (
+                isinstance(worker_value, str) and not worker_value.strip()
+            ):
                 missing.append(field)
 
-    has_assignment = Assignment.objects.filter(organization=organization, worker=worker).exists()
-    has_confirmed_doc = bool(revision and all(revision.confirmed_fields.get(k) for k in ("family_name", "given_name", "birth_date")))
+    has_assignment = Assignment.objects.filter(
+        organization=organization, worker=worker
+    ).exists()
+    has_confirmed_doc = bool(
+        revision
+        and all(
+            revision.confirmed_fields.get(k)
+            for k in ("family_name", "given_name", "birth_date")
+        )
+    )
 
     return {
         "ready": len(missing) == 0 and has_assignment and has_confirmed_doc,
@@ -1797,17 +2075,24 @@ def worker_a1_readiness(worker, organization):
 @require_org_membership
 def ocr_review_queue(request):
     """Queue of documents with OCR proposals pending human review."""
-    from .models import FieldProposal, DocumentClassification
+    from .models import DocumentClassification
 
-    pending_proposals = FieldProposal.objects.filter(
-        organization=request.organization,
-        state__in=[FieldProposal.State.PROPOSED, FieldProposal.State.CONFLICT]
-    ).select_related("document", "document__worker").order_by("-id")[:50]
+    pending_proposals = (
+        FieldProposal.objects.filter(
+            organization=request.organization,
+            state__in=[FieldProposal.State.PROPOSED, FieldProposal.State.CONFLICT],
+        )
+        .select_related("document", "document__worker")
+        .order_by("-id")[:50]
+    )
 
-    classified_docs = DocumentClassification.objects.filter(
-        organization=request.organization,
-        is_human_confirmed=False
-    ).select_related("document", "document__worker").order_by("-id")[:50]
+    classified_docs = (
+        DocumentClassification.objects.filter(
+            organization=request.organization, is_human_confirmed=False
+        )
+        .select_related("document", "document__worker")
+        .order_by("-id")[:50]
+    )
 
     ctx = {
         "pending_proposals": pending_proposals,
@@ -1821,8 +2106,8 @@ def ocr_review_queue(request):
 @require_org_membership
 def ocr_field_review(request, document_pk):
     from .intake_views import detail
-    return detail(request, document_pk)
 
+    return detail(request, document_pk)
 
 
 @require_org_membership
@@ -1832,6 +2117,7 @@ def document_supersede(request, pk):
 
     from .document_intake import authorize, supersede
     from .services import Forbidden, MAX_UPLOAD_BYTES
+
     try:
         authorize(request.user, request.organization, "document:supersede")
     except Forbidden:
@@ -1843,12 +2129,24 @@ def document_supersede(request, pk):
         if new_file.size > MAX_UPLOAD_BYTES:
             return JsonResponse({"error": "Soubor je příliš velký."}, status=400)
         try:
-            supersede(request.user, request.organization, document.pk,
-                      new_file.name, new_file.content_type, new_file.read(MAX_UPLOAD_BYTES + 1), _sync=False)
+            supersede(
+                request.user,
+                request.organization,
+                document.pk,
+                new_file.name,
+                new_file.content_type,
+                new_file.read(MAX_UPLOAD_BYTES + 1),
+                _sync=False,
+            )
         except Forbidden:
             return HttpResponse(status=403)
         except (ValueError, OSError):
-            return JsonResponse({"error": "Dokument se nepodařilo uložit. Zkontrolujte soubor a opakujte akci."}, status=400)
+            return JsonResponse(
+                {
+                    "error": "Dokument se nepodařilo uložit. Zkontrolujte soubor a opakujte akci."
+                },
+                status=400,
+            )
         return redirect("document_detail", pk=document.pk)
 
     ctx = {"document": document}
@@ -1871,7 +2169,7 @@ def assignment_conflicts(request):
     seen_pairs = set()
     conflicts = []
     for i, a in enumerate(assignments):
-        for b in assignments[i + 1:]:
+        for b in assignments[i + 1 :]:
             if a.worker_id != b.worker_id:
                 continue
             if a.start <= b.end and a.end >= b.start:
@@ -1890,6 +2188,7 @@ def assignment_conflicts(request):
 def worker_archive(request, pk):
     """Archive a worker - soft delete that preserves audit trail."""
     from .services import require_capability, Forbidden
+
     try:
         require_capability(request.user, request.organization, "worker:archive")
     except Forbidden:
@@ -1922,9 +2221,9 @@ def worker_archive(request, pk):
 
 
 _SYNTHETIC_WORKERS = [
-    type("_W", (), {"pk": 1, "family_name": "Novák",  "given_name": "Jan"})(),
+    type("_W", (), {"pk": 1, "family_name": "Novák", "given_name": "Jan"})(),
     type("_W", (), {"pk": 2, "family_name": "Dvořák", "given_name": "Pavel"})(),
-    type("_W", (), {"pk": 3, "family_name": "Svoboda","given_name": "Tomáš"})(),
+    type("_W", (), {"pk": 3, "family_name": "Svoboda", "given_name": "Tomáš"})(),
 ]
 
 
@@ -1937,16 +2236,27 @@ def a1_artifact_download(request, pk, page=None):
     from django.http import HttpResponse, Http404
     from .services import require_capability, current_artifact_dependencies, Forbidden
     from .j4_artifacts import verify_artifact, ArtifactError, _hash
+
     try:
-        require_capability(request.user, request.organization, 'a1:prepare')
+        require_capability(request.user, request.organization, "a1:prepare")
     except Forbidden:
-        AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
-                                  event_type='a1.artifact_read',object_ref=f'a1:{pk}',outcome='denied')
-        return HttpResponseForbidden('ACCESS_DENIED')
+        AuditEvent.objects.create(
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.artifact_read",
+            object_ref=f"a1:{pk}",
+            outcome="denied",
+        )
+        return HttpResponseForbidden("ACCESS_DENIED")
     case = A1Case.objects.filter(pk=pk, organization=request.organization).first()
     if case is None:
-        AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
-                                  event_type='a1.artifact_read',object_ref=f'a1:{pk}',outcome='denied')
+        AuditEvent.objects.create(
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.artifact_read",
+            object_ref=f"a1:{pk}",
+            outcome="denied",
+        )
         raise Http404()
     if page is not None and page not in (1, 2, 3):
         raise Http404()
@@ -1958,19 +2268,38 @@ def a1_artifact_download(request, pk, page=None):
         generation_id = None
         if "generation" in request.GET:
             raw = request.GET.getlist("generation")
-            if (len(raw) != 1 or not raw[0].isascii() or not raw[0].isdigit()
-                    or len(raw[0]) > 19 or int(raw[0]) < 1 or int(raw[0]) > 9223372036854775807):
+            if (
+                len(raw) != 1
+                or not raw[0].isascii()
+                or not raw[0].isdigit()
+                or len(raw[0]) > 19
+                or int(raw[0]) < 1
+                or int(raw[0]) > 9223372036854775807
+            ):
                 return JsonResponse({"error": "INVALID_GENERATION"}, status=400)
             generation_id = int(raw[0])
         try:
             generation, data = read_generation(
-                request.user, request.organization, case.pk,
-                generation_id=generation_id, page=page,
+                request.user,
+                request.organization,
+                case.pk,
+                generation_id=generation_id,
+                page=page,
             )
-        except (Forbidden, ObjectDoesNotExist, StaleWrite, ValueError, OSError, ArtifactError) as exc:
+        except (
+            Forbidden,
+            ObjectDoesNotExist,
+            StaleWrite,
+            ValueError,
+            OSError,
+            ArtifactError,
+        ) as exc:
             AuditEvent.objects.create(
-                organization=request.organization, actor_ref=f"user:{request.user.pk}",
-                event_type="a1.artifact_read", object_ref=f"a1:{case.pk}", outcome="denied",
+                organization=request.organization,
+                actor_ref=f"user:{request.user.pk}",
+                event_type="a1.artifact_read",
+                object_ref=f"a1:{case.pk}",
+                outcome="denied",
             )
             if isinstance(exc, Forbidden):
                 return HttpResponseForbidden("ACCESS_DENIED")
@@ -1978,41 +2307,63 @@ def a1_artifact_download(request, pk, page=None):
                 raise Http404() from None
             return JsonResponse({"error": "ARTIFACT_UNAVAILABLE_OR_STALE"}, status=409)
         AuditEvent.objects.create(
-            organization=request.organization, actor_ref=f"user:{request.user.pk}",
-            event_type="a1.artifact_read", object_ref=f"a1:{case.pk}", outcome="success",
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.artifact_read",
+            object_ref=f"a1:{case.pk}",
+            outcome="success",
         )
         name = f"page-{page}.png" if page else "artifact.pdf"
-        response = HttpResponse(data, content_type="image/png" if page else "application/pdf")
-        response["Content-Disposition"] = f'{"inline" if page else "attachment"}; filename="review-{name}"'
+        response = HttpResponse(
+            data, content_type="image/png" if page else "application/pdf"
+        )
+        response["Content-Disposition"] = (
+            f'{"inline" if page else "attachment"}; filename="review-{name}"'
+        )
         response["X-Content-Type-Options"] = "nosniff"
         return response
     if not case.artifact_reference or (page is not None and page not in (1, 2, 3)):
         raise Http404()
     dependencies = current_artifact_dependencies(case)
-    root = Path(settings.DOCUMENT_STORAGE_ROOT)/'j4'
+    root = Path(settings.DOCUMENT_STORAGE_ROOT) / "j4"
     try:
         verified = verify_artifact(root, case.artifact_reference, dependencies)
-        if case.is_stale or verified['stale']:
-            raise ArtifactError('ARTIFACT_STALE')
-        name = f'page-{page}.png' if page else 'artifact.pdf'
-        data = (root/case.artifact_reference['key']/name).read_bytes()
+        if case.is_stale or verified["stale"]:
+            raise ArtifactError("ARTIFACT_STALE")
+        name = f"page-{page}.png" if page else "artifact.pdf"
+        data = (root / case.artifact_reference["key"] / name).read_bytes()
         if page is None and _hash(data) != case.prepared_artifact_hash:
-            raise ArtifactError('ARTIFACT_CHANGED')
+            raise ArtifactError("ARTIFACT_CHANGED")
     except (ArtifactError, OSError):
-        AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
-                                  event_type='a1.artifact_read',object_ref=f'a1:{case.pk}',outcome='denied')
-        return JsonResponse({'error':'ARTIFACT_UNAVAILABLE_OR_STALE'},status=409)
-    AuditEvent.objects.create(organization=request.organization,actor_ref=f'user:{request.user.pk}',
-                              event_type='a1.artifact_read',object_ref=f'a1:{case.pk}',outcome='success')
-    response=HttpResponse(data,content_type='image/png' if page else 'application/pdf')
-    response['Content-Disposition']=f'{"inline" if page else "attachment"}; filename="review-{name}"'
-    response['X-Content-Type-Options']='nosniff'
+        AuditEvent.objects.create(
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.artifact_read",
+            object_ref=f"a1:{case.pk}",
+            outcome="denied",
+        )
+        return JsonResponse({"error": "ARTIFACT_UNAVAILABLE_OR_STALE"}, status=409)
+    AuditEvent.objects.create(
+        organization=request.organization,
+        actor_ref=f"user:{request.user.pk}",
+        event_type="a1.artifact_read",
+        object_ref=f"a1:{case.pk}",
+        outcome="success",
+    )
+    response = HttpResponse(
+        data, content_type="image/png" if page else "application/pdf"
+    )
+    response["Content-Disposition"] = (
+        f'{"inline" if page else "attachment"}; filename="review-{name}"'
+    )
+    response["X-Content-Type-Options"] = "nosniff"
     return response
 
 
 # =============================================================================
 # J4 Visual Confirmation & Evidence Intake
 # =============================================================================
+
 
 def _a1_generation_confirm(request, case):
     from django.core.exceptions import ObjectDoesNotExist
@@ -2025,8 +2376,12 @@ def _a1_generation_confirm(request, case):
 
     def denied(status, code):
         AuditEvent.objects.create(
-            organization=request.organization, actor_ref=f"user:{request.user.pk}",
-            event_type="a1.generation_visual_confirmed", object_ref=f"a1:{case.pk}", outcome="denied")
+            organization=request.organization,
+            actor_ref=f"user:{request.user.pk}",
+            event_type="a1.generation_visual_confirmed",
+            object_ref=f"a1:{case.pk}",
+            outcome="denied",
+        )
         return JsonResponse({"error": code}, status=status)
 
     try:
@@ -2035,8 +2390,13 @@ def _a1_generation_confirm(request, case):
         raw = values.getlist(key)
         generation_id = None
         if raw:
-            if (len(raw) != 1 or not raw[0].isascii() or not raw[0].isdigit() or
-                    len(raw[0]) > 19 or not 1 <= int(raw[0]) <= 9223372036854775807):
+            if (
+                len(raw) != 1
+                or not raw[0].isascii()
+                or not raw[0].isdigit()
+                or len(raw[0]) > 19
+                or not 1 <= int(raw[0]) <= 9223372036854775807
+            ):
                 raise InvalidConfirmation("INVALID_GENERATION")
             generation_id = int(raw[0])
         if request.method == "POST":
@@ -2045,20 +2405,37 @@ def _a1_generation_confirm(request, case):
             tokens = {}
             for field in ("source_hash", "fingerprint", "receipt_sha256", "pdf_sha256"):
                 entries = values.getlist("expected_" + field)
-                if (len(entries) != 1 or len(entries[0]) != 64 or
-                        any(c not in "0123456789abcdef" for c in entries[0])):
+                if (
+                    len(entries) != 1
+                    or len(entries[0]) != 64
+                    or any(c not in "0123456789abcdef" for c in entries[0])
+                ):
                     raise InvalidConfirmation("INVALID_CONFIRMATION_TOKEN")
                 tokens["expected_" + field] = entries[0]
             if any(values.getlist(f"check_{page}") != ["on"] for page in (1, 2, 3)):
                 raise InvalidConfirmation("ALL_PAGES_REQUIRED")
-            confirm_generation(request.user, request.organization, case.pk,
-                               generation_id=generation_id, pages=[1, 2, 3], **tokens)
+            confirm_generation(
+                request.user,
+                request.organization,
+                case.pk,
+                generation_id=generation_id,
+                pages=[1, 2, 3],
+                **tokens,
+            )
             return redirect("a1_case_detail", pk=case.pk)
         generation, expected = confirmation_context(
-            request.user, request.organization, case.pk, generation_id=generation_id)
-        return render(request, "portal/a1_generation_confirm.html", {
-            "case": case, "generation": generation, "expected": expected, "pages": [1, 2, 3],
-        })
+            request.user, request.organization, case.pk, generation_id=generation_id
+        )
+        return render(
+            request,
+            "portal/a1_generation_confirm.html",
+            {
+                "case": case,
+                "generation": generation,
+                "expected": expected,
+                "pages": [1, 2, 3],
+            },
+        )
     except Forbidden:
         return denied(403, "ACCESS_DENIED")
     except ObjectDoesNotExist:
@@ -2088,23 +2465,33 @@ def a1_artifact_confirm(request, pk):
         return JsonResponse({"error": "No artifact attached to this case"}, status=400)
 
     if case.external_status in ("issued", "submitted"):
-        return JsonResponse({"error": "Cannot confirm already issued/submitted A1"}, status=400)
+        return JsonResponse(
+            {"error": "Cannot confirm already issued/submitted A1"}, status=400
+        )
 
     from django.conf import settings
     from .services import require_capability, current_artifact_dependencies
-    from .j4_artifacts import verify_artifact, ArtifactError, _hash, _root, _write, _json
+    from .j4_artifacts import (
+        verify_artifact,
+        ArtifactError,
+        _hash,
+        _root,
+        _write,
+        _json,
+    )
 
     require_capability(request.user, request.organization, "document:confirm")
 
-
     try:
         dependencies = current_artifact_dependencies(case)
-        root = Path(settings.DOCUMENT_STORAGE_ROOT) / 'j4'
+        root = Path(settings.DOCUMENT_STORAGE_ROOT) / "j4"
         verified = verify_artifact(root, case.artifact_reference, dependencies)
 
-        if case.is_stale or verified.get('stale'):
-            return JsonResponse({"error": "Artifact is stale, source has changed"}, status=409)
-    except (ArtifactError, OSError) as e:
+        if case.is_stale or verified.get("stale"):
+            return JsonResponse(
+                {"error": "Artifact is stale, source has changed"}, status=409
+            )
+    except (ArtifactError, OSError):
         return JsonResponse({"error": "Artifact verification failed"}, status=409)
 
     if request.method == "POST":
@@ -2115,7 +2502,8 @@ def a1_artifact_confirm(request, pk):
             # Server-side validation of required confirmation checkboxes
             if not all(request.POST.get(f"check_{i}") for i in (1, 2, 3)):
                 return JsonResponse(
-                    {"error": "All three confirmation checkboxes must be ticked"}, status=400
+                    {"error": "All three confirmation checkboxes must be ticked"},
+                    status=400,
                 )
 
             # Build receipt and persist atomically with case update + audit
@@ -2136,9 +2524,11 @@ def a1_artifact_confirm(request, pk):
                     "visual_confirmation": True,
                 }
 
-                confirmation_dir = _root(
-                    Path(settings.DOCUMENT_STORAGE_ROOT) / "j4"
-                ) / "confirmations" / uuid.uuid4().hex
+                confirmation_dir = (
+                    _root(Path(settings.DOCUMENT_STORAGE_ROOT) / "j4")
+                    / "confirmations"
+                    / uuid.uuid4().hex
+                )
                 confirmation_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
                 _write(confirmation_dir / "confirmation.json", _json(receipt_data))
                 _write(
@@ -2170,7 +2560,9 @@ def a1_artifact_confirm(request, pk):
                 )
 
             if request.headers.get("HX-Request"):
-                return render(request, "portal/partials/a1_case_row.html", {"case": case})
+                return render(
+                    request, "portal/partials/a1_case_row.html", {"case": case}
+                )
             return redirect("a1_case_detail", pk=case.pk)
 
         elif action == "reject":
@@ -2198,17 +2590,23 @@ def a1_artifact_confirm(request, pk):
                 )
 
             if request.headers.get("HX-Request"):
-                return render(request, "portal/partials/a1_case_row.html", {"case": case})
+                return render(
+                    request, "portal/partials/a1_case_row.html", {"case": case}
+                )
             return redirect("a1_case_detail", pk=case.pk)
 
         else:
             return JsonResponse({"error": "Invalid action"}, status=400)
 
     # GET: show confirmation page
-    return render(request, "portal/a1_artifact_confirm.html", {
-        "case": case,
-        "pages": [1, 2, 3],
-    })
+    return render(
+        request,
+        "portal/a1_artifact_confirm.html",
+        {
+            "case": case,
+            "pages": [1, 2, 3],
+        },
+    )
 
 
 @require_org_membership

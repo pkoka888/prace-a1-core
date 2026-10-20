@@ -5,6 +5,7 @@ Emits docs/prototypes/roadmap-portal/planning-data.js which assigns a global
 variable so the prototype works under file:// without fetch/CORS. The asset is
 the single derived source of status truth for the prototype.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,7 @@ def derive_view(catalog: dict) -> dict:
     by_id = {i["id"]: i for i in items}
 
     def links(item):
-        return [l for l in item.get("source_links", []) if l]
+        return [link for link in item.get("source_links", []) if link]
 
     plans = []
     decisions = []
@@ -31,27 +32,54 @@ def derive_view(catalog: dict) -> dict:
     for it in items:
         kind = it.get("kind")
         if kind == "plan" or kind == "checkpoint":
-            plans.append({
-                "id": it["id"], "title": it.get("title"), "status": it.get("status"),
-                "milestone": it.get("milestone"), "owner": it.get("owner"),
-                "decision_state": it.get("decision_state"),
-                "sources": links(it), "executable": it.get("executable"),
-            })
+            plans.append(
+                {
+                    "id": it["id"],
+                    "title": it.get("title"),
+                    "status": it.get("status"),
+                    "milestone": it.get("milestone"),
+                    "owner": it.get("owner"),
+                    "decision_state": it.get("decision_state"),
+                    "sources": links(it),
+                    "executable": it.get("executable"),
+                }
+            )
         elif kind == "decision":
-            decisions.append({
-                "id": it["id"], "title": it.get("title"),
-                "state": it.get("decision_state"), "status": it.get("status"),
-                "date": it.get("decision_date"), "approver": it.get("approver"),
-            })
+            decisions.append(
+                {
+                    "id": it["id"],
+                    "title": it.get("title"),
+                    "state": it.get("decision_state"),
+                    "status": it.get("status"),
+                    "date": it.get("decision_date"),
+                    "approver": it.get("approver"),
+                }
+            )
         elif kind == "roadmap_milestone":
-            milestones.append({"id": it["id"], "title": it.get("title"), "status": it.get("status")})
+            milestones.append(
+                {"id": it["id"], "title": it.get("title"), "status": it.get("status")}
+            )
         elif kind == "lane":
-            lanes.append({
-                "id": it["id"], "title": it.get("title"), "status": it.get("status"),
-                "deps": [d.get("id") for d in it.get("dependencies", []) if isinstance(d, dict)],
-            })
+            lanes.append(
+                {
+                    "id": it["id"],
+                    "title": it.get("title"),
+                    "status": it.get("status"),
+                    "deps": [
+                        d.get("id")
+                        for d in it.get("dependencies", [])
+                        if isinstance(d, dict)
+                    ],
+                }
+            )
         if it.get("status") in ("historical", "superseded"):
-            historical.append({"id": it["id"], "status": it.get("status"), "successor": it.get("successor")})
+            historical.append(
+                {
+                    "id": it["id"],
+                    "status": it.get("status"),
+                    "successor": it.get("successor"),
+                }
+            )
         if (not it.get("quality_gates")) or it.get("evidence_state") in (None, "none"):
             missing_gate.append(it["id"])
 

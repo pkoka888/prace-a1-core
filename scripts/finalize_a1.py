@@ -9,9 +9,7 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -19,14 +17,52 @@ from typing import Any
 from pypdf import PdfReader
 
 try:
-    from .a1_core import A1ValidationError, build_form_data, czech_display_case, enrich_residence, generate_a1_pdf
-    from .a1_paths import PathValidationError, validate_output_path, unique_staging_path, cleanup_staging_only, protected_path, destination_lock, publish_package
-    from .a1_audit import AuditWriteError, audited, audited_operation, current_run_id, write_failure_receipt, write_private_json
+    from .a1_core import (
+        build_form_data,
+        czech_display_case,
+        enrich_residence,
+        generate_a1_pdf,
+    )
+    from .a1_paths import (
+        PathValidationError,
+        validate_output_path,
+        unique_staging_path,
+        cleanup_staging_only,
+        protected_path,
+        destination_lock,
+        publish_package,
+    )
+    from .a1_audit import (
+        audited,
+        audited_operation,
+        current_run_id,
+        write_failure_receipt,
+        write_private_json,
+    )
     from .a1_private import A1PrivateInputError, private_path, private_root
 except ImportError:  # Direct CLI execution.
-    from a1_core import A1ValidationError, build_form_data, czech_display_case, enrich_residence, generate_a1_pdf
-    from a1_paths import PathValidationError, validate_output_path, unique_staging_path, cleanup_staging_only, protected_path, destination_lock, publish_package
-    from a1_audit import AuditWriteError, audited, audited_operation, current_run_id, write_failure_receipt, write_private_json
+    from a1_core import (
+        build_form_data,
+        czech_display_case,
+        enrich_residence,
+        generate_a1_pdf,
+    )
+    from a1_paths import (
+        PathValidationError,
+        validate_output_path,
+        unique_staging_path,
+        cleanup_staging_only,
+        protected_path,
+        destination_lock,
+        publish_package,
+    )
+    from a1_audit import (
+        audited,
+        audited_operation,
+        current_run_id,
+        write_failure_receipt,
+        write_private_json,
+    )
     from a1_private import A1PrivateInputError, private_path, private_root
 
 
@@ -38,27 +74,75 @@ PROFILE_BY_OSSZ = {
     "OSSZ Teplice": "teplice",
     "OSSZ Most": "most",
     "OSSZ Louny": "louny",
-        "OSSZ Frýdek-Místek": "frydek-mistek",
+    "OSSZ Frýdek-Místek": "frydek-mistek",
     "OSSZ Nový Jičín": "novy-jicin",
     "OSSZ Praha": "praha",
     "OSSZ Brno": "brno",
 }
 CSV_FIELDS = (
-    "employee_id", "source_scans", "surname", "given_name", "dob", "birth_place",
-    "nationality", "sex", "insurance_number", "street", "house_number", "city",
-    "district", "postal_code", "country_code", "status_profile", "activity_name",
-    "activity_address", "employment_id", "employment_name", "employment_street",
-    "employment_house_number", "employment_city", "employment_postal_code",
-    "employment_country_code", "resolved_ossz", "institution_profile", "document_id",
-    "start_date", "end_date", "issue_date", "signed_by", "identity_reviewed",
-    "certificate_reviewed", "approved_for_pdf", "pdf_created", "validated_by_user",
-    "activity_source", "activity_source_status", "certificate_source",
-    "certificate_source_status", "signatory_source", "signatory_source_status",
+    "employee_id",
+    "source_scans",
+    "surname",
+    "given_name",
+    "dob",
+    "birth_place",
+    "nationality",
+    "sex",
+    "insurance_number",
+    "street",
+    "house_number",
+    "city",
+    "district",
+    "postal_code",
+    "country_code",
+    "status_profile",
+    "activity_name",
+    "activity_address",
+    "employment_id",
+    "employment_name",
+    "employment_street",
+    "employment_house_number",
+    "employment_city",
+    "employment_postal_code",
+    "employment_country_code",
+    "resolved_ossz",
+    "institution_profile",
+    "document_id",
+    "start_date",
+    "end_date",
+    "issue_date",
+    "signed_by",
+    "identity_reviewed",
+    "certificate_reviewed",
+    "approved_for_pdf",
+    "pdf_created",
+    "validated_by_user",
+    "activity_source",
+    "activity_source_status",
+    "certificate_source",
+    "certificate_source_status",
+    "signatory_source",
+    "signatory_source_status",
     "comments",
 )
-PROFILE_FIELDS = ("name", "street", "house_number", "city", "postal_code", "country_code", "code")
+PROFILE_FIELDS = (
+    "name",
+    "street",
+    "house_number",
+    "city",
+    "postal_code",
+    "country_code",
+    "code",
+)
 AUTHORITATIVE = "AUTHORITATIVE"
-UNVERIFIED_SOURCE_MARKERS = ("assum", "copied", "assigned", "example", "placeholder", "template")
+UNVERIFIED_SOURCE_MARKERS = (
+    "assum",
+    "copied",
+    "assigned",
+    "example",
+    "placeholder",
+    "template",
+)
 
 VARIANT_DEFAULT = "employee"
 
@@ -93,18 +177,22 @@ def derive_variant(status_profile: str) -> str:
     return VARIANT_DEFAULT
 
 
-def count_variants(rows: list[dict[str, str]], *, default: str = VARIANT_DEFAULT) -> dict[str, Any]:
+def count_variants(
+    rows: list[dict[str, str]], *, default: str = VARIANT_DEFAULT
+) -> dict[str, Any]:
     totals: dict[str, int] = {VARIANT_DEFAULT: 0, "self_employed": 0}
     non_default_rows = []
     for row in rows:
         variant = derive_variant(row.get("status_profile", ""))
         totals[variant] = totals.get(variant, 0) + 1
         if variant != default:
-            non_default_rows.append({
-                "employee_id": row.get("employee_id", ""),
-                "variant": variant,
-                "reason": f"status_profile={row.get('status_profile', '')}",
-            })
+            non_default_rows.append(
+                {
+                    "employee_id": row.get("employee_id", ""),
+                    "variant": variant,
+                    "reason": f"status_profile={row.get('status_profile', '')}",
+                }
+            )
     return {
         "default_variant": default,
         "totals": totals,
@@ -138,8 +226,6 @@ def auto_approve_stale_identity_reviews(
 
 class FinalizationError(ValueError):
     """Raised when review data is not safe to publish."""
-
-
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -191,7 +277,9 @@ def prepare_review(
         row.update(
             {
                 "employee_id": employee.get("id", ""),
-                "source_scans": ";".join(employee.get("provenance", {}).get("scans", [])),
+                "source_scans": ";".join(
+                    employee.get("provenance", {}).get("scans", [])
+                ),
                 "surname": person.get("surname", ""),
                 "given_name": person.get("given_name", ""),
                 "dob": person.get("dob", ""),
@@ -208,8 +296,12 @@ def prepare_review(
                 "status_profile": employee.get("a1", {}).get("status_profile", ""),
                 "resolved_ossz": resolved,
                 "institution_profile": PROFILE_BY_OSSZ.get(resolved, ""),
-                "start_date": current.get("certificate", {}).get("start_date", "") if is_teplice else "",
-                "end_date": current.get("certificate", {}).get("end_date", "") if is_teplice else "",
+                "start_date": current.get("certificate", {}).get("start_date", "")
+                if is_teplice
+                else "",
+                "end_date": current.get("certificate", {}).get("end_date", "")
+                if is_teplice
+                else "",
                 "issue_date": current.get("issue_date", "") if is_teplice else "",
                 "signed_by": current.get("signed_by", "") if is_teplice else "",
                 "identity_reviewed": "YES",
@@ -223,6 +315,33 @@ def prepare_review(
                 "comments": "REVIEW REQUIRED: add activity and unique document ID",
             }
         )
+        # Preserve supplied worker/assignment facts. Preparation is an adapter,
+        # not a reason to ask for already-recorded employer and posting values.
+        mappings = {
+            "employment": {
+                "employer_id": "employment_id",
+                "employer_name": "employment_name",
+                **{
+                    f: "employment_" + f
+                    for f in (
+                        "street",
+                        "house_number",
+                        "city",
+                        "postal_code",
+                        "country_code",
+                    )
+                },
+            },
+            "activity": {"name": "activity_name", "address": "activity_address"},
+            "certificate": {f: f for f in ("document_id", "start_date", "end_date")},
+            "institution": {f: f for f in ("issue_date", "signed_by")},
+            "a1": {"institution_profile": "institution_profile"},
+        }
+        for section, fields in mappings.items():
+            for source_field, column in fields.items():
+                value = employee.get(section, {}).get(source_field)
+                if value:
+                    row[column] = value
         rows.append(row)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8-sig", newline="") as stream:
@@ -235,15 +354,21 @@ def prepare_review(
 def read_review(path: Path) -> list[dict[str, str]]:
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
-        missing = [field for field in CSV_FIELDS if field not in (reader.fieldnames or [])]
+        missing = [
+            field for field in CSV_FIELDS if field not in (reader.fieldnames or [])
+        ]
         if missing:
-            raise FinalizationError("review CSV is missing columns: " + ", ".join(missing))
+            raise FinalizationError(
+                "review CSV is missing columns: " + ", ".join(missing)
+            )
         if len(reader.fieldnames) != len(set(reader.fieldnames)):
             raise FinalizationError("review CSV has duplicate columns")
         rows = []
         for index, row in enumerate(reader, start=2):
             if None in row or any(value is None for value in row.values()):
-                raise FinalizationError(f"review CSV row {index}: field count differs from header")
+                raise FinalizationError(
+                    f"review CSV row {index}: field count differs from header"
+                )
             rows.append({key: value.strip() for key, value in row.items()})
         if not rows:
             raise FinalizationError("review CSV contains no records")
@@ -264,15 +389,36 @@ def write_review(path: Path, rows: list[dict[str, str]]) -> None:
     path.chmod(0o600)
 
 
-def _required_review_fields(status: str, *, provisional: bool, variant: str = VARIANT_DEFAULT) -> tuple[str, ...]:
+def _required_review_fields(
+    status: str, *, provisional: bool, variant: str | None = None
+) -> tuple[str, ...]:
     """One CSV presence contract for validation and its readiness preflight."""
-    variant_params = VARIANT_PARAMETERS.get(variant, VARIANT_PARAMETERS[VARIANT_DEFAULT])
+    variant = derive_variant(status) if variant is None else variant
+    variant_params = VARIANT_PARAMETERS[variant]
     common = (
-        "surname", "given_name", "dob", "birth_place", "nationality", "sex",
-        "insurance_number", "street", "house_number", "city", "postal_code", "country_code",
-        "status_profile", "employment_id", "employment_name",
-        "employment_street", "employment_house_number", "employment_city", "employment_postal_code",
-        "employment_country_code", "resolved_ossz", "institution_profile", "document_id",
+        "surname",
+        "given_name",
+        "dob",
+        "birth_place",
+        "nationality",
+        "sex",
+        "insurance_number",
+        "street",
+        "house_number",
+        "city",
+        "postal_code",
+        "country_code",
+        "status_profile",
+        "employment_id",
+        "employment_name",
+        "employment_street",
+        "employment_house_number",
+        "employment_city",
+        "employment_postal_code",
+        "employment_country_code",
+        "resolved_ossz",
+        "institution_profile",
+        "document_id",
         "issue_date",
     )
     if variant_params["readiness_requires_activity_name"]:
@@ -286,34 +432,59 @@ def _required_review_fields(status: str, *, provisional: bool, variant: str = VA
 
 
 def readiness_report(
-    rows: list[dict[str, str]], profile_dir: Path | None = None, *, provisional: bool = False,
+    rows: list[dict[str, str]],
+    profile_dir: Path | None = None,
+    *,
+    provisional: bool = False,
     variant: str = VARIANT_DEFAULT,
 ) -> dict[str, Any]:
     """Sanitized, mode-aware review preflight; not generation or artifact approval."""
     report_rows = []
-    variant_params = VARIANT_PARAMETERS.get(variant, VARIANT_PARAMETERS[VARIANT_DEFAULT])
+    variant_params = VARIANT_PARAMETERS.get(
+        variant, VARIANT_PARAMETERS[VARIANT_DEFAULT]
+    )
     for index, row in enumerate(rows, 1):
         status = row.get("status_profile", "")
         row_variant = derive_variant(status)
-        required_values = _required_review_fields(status, provisional=provisional, variant=row_variant)
-        blockers = [f"missing {field}" for field in required_values if not row.get(field)]
-        for subject in (() if provisional else ("activity", "certificate", "signatory")):
+        required_values = _required_review_fields(
+            status, provisional=provisional, variant=row_variant
+        )
+        blockers = [
+            f"missing {field}" for field in required_values if not row.get(field)
+        ]
+        for subject in () if provisional else ("activity", "certificate", "signatory"):
             source = row.get(f"{subject}_source", "")
             if not source:
                 blockers.append(f"missing {subject}_source")
-            elif any(marker in source.casefold() for marker in UNVERIFIED_SOURCE_MARKERS):
+            elif any(
+                marker in source.casefold() for marker in UNVERIFIED_SOURCE_MARKERS
+            ):
                 blockers.append(f"placeholder detected in {subject}_source")
             if row.get(f"{subject}_source_status") != AUTHORITATIVE:
                 blockers.append(f"{subject}_source_status is not AUTHORITATIVE")
-        for flag, expected in (("identity_reviewed", YES), ("certificate_reviewed", YES),
-                               ("approved_for_pdf", YES), ("validated_by_user", "1")):
+        for flag, expected in (
+            ("identity_reviewed", YES),
+            ("certificate_reviewed", YES),
+            ("approved_for_pdf", YES),
+            ("validated_by_user", "1"),
+        ):
             if row.get(flag) != expected:
                 blockers.append(f"{flag} must be {expected}")
-        if status not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
-            blockers.append("unsupported status_profile")
+        if status not in {
+            "self_employed_multi_state",
+            "employee_multi_state",
+            "posted_employee",
+        }:
+            blockers.append(
+                f"unsupported status_profile {status!r}; expected posted_employee, "
+                "employee_multi_state or self_employed_multi_state"
+            )
         if row_variant == "employee":
             lowered_employment_name = row.get("employment_name", "").casefold()
-            if any(term in lowered_employment_name for term in variant_params["employment_name_must_not_contain"]):
+            if any(
+                term in lowered_employment_name
+                for term in variant_params["employment_name_must_not_contain"]
+            ):
                 blockers.append("employee profile has self-employed employer data")
         dates = {}
         for field in ("dob", "start_date", "end_date", "issue_date"):
@@ -322,46 +493,77 @@ def readiness_report(
                     dates[field] = datetime.strptime(row[field], "%d.%m.%Y")
                 except ValueError:
                     blockers.append(f"invalid {field}")
-        if dates.get("start_date") and dates.get("end_date") and dates["start_date"] > dates["end_date"]:
+        if (
+            dates.get("start_date")
+            and dates.get("end_date")
+            and dates["start_date"] > dates["end_date"]
+        ):
             blockers.append("start_date is after end_date")
         for field in ("employee_id", "document_id"):
-            if row.get(field) and sum(other.get(field) == row[field] for other in rows) > 1:
+            if (
+                row.get(field)
+                and sum(other.get(field) == row[field] for other in rows) > 1
+            ):
                 blockers.append(f"duplicate {field}")
         if profile_dir is not None and row.get("institution_profile"):
             try:
-                profile = load_profile(profile_dir, row["institution_profile"], provisional=provisional)
-                if not provisional and profile.get("expected_ossz", "").casefold() != row.get("resolved_ossz", "").casefold():
+                profile = load_profile(
+                    profile_dir, row["institution_profile"], provisional=provisional
+                )
+                if (
+                    not provisional
+                    and profile.get("expected_ossz", "").casefold()
+                    != row.get("resolved_ossz", "").casefold()
+                ):
                     blockers.append("institution_profile does not match resolved_ossz")
             except (FinalizationError, OSError, ValueError):
-                blockers.append("institution_profile is missing, unverified or contains placeholder fields")
+                blockers.append(
+                    "institution_profile is missing, unverified or contains placeholder fields"
+                )
         report_rows.append({"row_index": index, "blockers": blockers})
-    return {"mode": "provisional" if provisional else "authoritative",
-            "scope": "review_preflight",
-            "ready": bool(rows) and all(not r["blockers"] for r in report_rows),
-            "employee_count": len(rows), "blocked_employee_count": sum(bool(r["blockers"]) for r in report_rows),
-            "employees": report_rows}
+    return {
+        "mode": "provisional" if provisional else "authoritative",
+        "scope": "review_preflight",
+        "ready": bool(rows) and all(not r["blockers"] for r in report_rows),
+        "employee_count": len(rows),
+        "blocked_employee_count": sum(bool(r["blockers"]) for r in report_rows),
+        "employees": report_rows,
+    }
 
 
 def readiness_receipt_path(requested: Path | None) -> Path:
     root = private_root().resolve()
     try:
-        target = protected_path(requested or root / "a1/blocked-rows.json", ("a1", "evidence"))
+        target = protected_path(
+            requested or root / "a1/blocked-rows.json", ("a1", "evidence")
+        )
     except PathValidationError as exc:
         raise FinalizationError("READINESS_DESTINATION_INVALID") from exc
-    if (target.suffix != ".json" or target.name in {"cohort.json", "employees_normalized.json", "operator.json"}
-            or any(target.is_relative_to(root / "a1" / name) for name in ("audit", "receipts", "locks"))
-            or not any(target.is_relative_to(root / name) for name in ("a1", "evidence"))):
-        raise FinalizationError("readiness receipt requires a protected non-input JSON destination")
+    if (
+        target.suffix != ".json"
+        or target.name in {"cohort.json", "employees_normalized.json", "operator.json"}
+        or any(
+            target.is_relative_to(root / "a1" / name)
+            for name in ("audit", "receipts", "locks")
+        )
+        or not any(target.is_relative_to(root / name) for name in ("a1", "evidence"))
+    ):
+        raise FinalizationError(
+            "readiness receipt requires a protected non-input JSON destination"
+        )
     return target
 
 
-
-def load_profile(profile_dir: Path, profile_id: str, provisional: bool = False) -> dict[str, Any]:
+def load_profile(
+    profile_dir: Path, profile_id: str, provisional: bool = False
+) -> dict[str, Any]:
     profile = load_json(profile_dir / f"{_slug(profile_id)}.json")
     return validate_profile(profile, profile_id, provisional=provisional)
 
 
-def validate_profile(profile: dict[str, Any], profile_id: str, *, provisional: bool = False) -> dict[str, Any]:
+def validate_profile(
+    profile: dict[str, Any], profile_id: str, *, provisional: bool = False
+) -> dict[str, Any]:
     """Validate loaded profile bytes as well as profiles supplied by DB adapters."""
     if profile.get("review_status") != "VERIFIED":
         raise FinalizationError(f"institution profile {profile_id!r} is not VERIFIED")
@@ -378,10 +580,18 @@ def validate_profile(profile: dict[str, Any], profile_id: str, *, provisional: b
         )
     if not provisional:
         markers = (*UNVERIFIED_SOURCE_MARKERS, "tbd", "doplnit")
-        invalid = [field for field in PROFILE_FIELDS
-                   if any(marker in str(institution.get(field, "")).casefold() for marker in markers)]
+        invalid = [
+            field
+            for field in PROFILE_FIELDS
+            if any(
+                marker in str(institution.get(field, "")).casefold()
+                for marker in markers
+            )
+        ]
         if invalid:
-            raise FinalizationError("institution profile contains placeholder fields: " + ", ".join(invalid))
+            raise FinalizationError(
+                "institution profile contains placeholder fields: " + ", ".join(invalid)
+            )
     return profile
 
 
@@ -389,7 +599,9 @@ def _require_authoritative_source(row: dict[str, str], subject: str) -> None:
     source = row.get(f"{subject}_source", "").strip()
     status = row.get(f"{subject}_source_status", "").strip()
     if status != AUTHORITATIVE:
-        raise FinalizationError(f"{row['employee_id']}: {subject}_source_status must be AUTHORITATIVE")
+        raise FinalizationError(
+            f"{row['employee_id']}: {subject}_source_status must be AUTHORITATIVE"
+        )
     if not source:
         raise FinalizationError(f"{row['employee_id']}: {subject}_source is required")
     lowered = source.casefold()
@@ -415,7 +627,9 @@ def _birth_number_matches_dob(value: str, dob: str, sex: str) -> bool:
 
 
 def validate_review(
-    rows: list[dict[str, str]], employees_path: Path, profile_dir: Path,
+    rows: list[dict[str, str]],
+    employees_path: Path,
+    profile_dir: Path,
     provisional: bool = False,
 ) -> list[tuple[dict[str, str], dict[str, Any]]]:
     source_employees = load_json(employees_path).get("employees", [])
@@ -433,7 +647,9 @@ def validate_review(
             f"review CSV employee set differs from source; expected {sorted(expected)}, got {sorted(ids)}"
         )
     document_ids = [row.get("document_id", "") for row in rows]
-    if any(not value for value in document_ids) or len(document_ids) != len(set(document_ids)):
+    if any(not value for value in document_ids) or len(document_ids) != len(
+        set(document_ids)
+    ):
         raise FinalizationError("every employee needs a non-empty, unique document_id")
 
     validated: list[tuple[dict[str, str], dict[str, Any]]] = []
@@ -443,7 +659,9 @@ def validate_review(
         required = _required_review_fields(status, provisional=provisional)
         missing = [field for field in required if not row.get(field)]
         if missing:
-            raise FinalizationError(f"{employee_id}: missing required values: {', '.join(missing)}")
+            raise FinalizationError(
+                f"{employee_id}: missing required values: {', '.join(missing)}"
+            )
         for flag in ("identity_reviewed", "certificate_reviewed", "approved_for_pdf"):
             if row.get(flag) != YES:
                 raise FinalizationError(f"{employee_id}: {flag} must be YES")
@@ -454,20 +672,41 @@ def validate_review(
                 _require_authoritative_source(row, subject)
             source_employee = expected_by_id[employee_id]
             source_values = {
-                **{field: source_employee.get("person", {}).get(field, "") for field in (
-                    "surname", "given_name", "dob", "birth_place", "nationality",
-                    "sex", "insurance_number",
-                )},
-                **{field: source_employee.get("residence", {}).get(field, "") for field in (
-                    "street", "house_number", "city", "district", "country_code",
-                )},
+                **{
+                    field: source_employee.get("person", {}).get(field, "")
+                    for field in (
+                        "surname",
+                        "given_name",
+                        "dob",
+                        "birth_place",
+                        "nationality",
+                        "sex",
+                        "insurance_number",
+                    )
+                },
+                **{
+                    field: source_employee.get("residence", {}).get(field, "")
+                    for field in (
+                        "street",
+                        "house_number",
+                        "city",
+                        "district",
+                        "country_code",
+                    )
+                },
             }
             mismatched = [
-                field for field, value in source_values.items()
-                if value and row.get(field, "").casefold() != str(value).strip().casefold()
+                field
+                for field, value in source_values.items()
+                if value
+                and row.get(field, "").casefold() != str(value).strip().casefold()
             ]
             expected_scans = set(source_employee.get("provenance", {}).get("scans", []))
-            reviewed_scans = {item.strip() for item in row.get("source_scans", "").split(";") if item.strip()}
+            reviewed_scans = {
+                item.strip()
+                for item in row.get("source_scans", "").split(";")
+                if item.strip()
+            }
             if mismatched or reviewed_scans != expected_scans:
                 details = ", ".join(mismatched) if mismatched else "source_scans"
                 raise FinalizationError(
@@ -475,54 +714,102 @@ def validate_review(
                 )
         if row["sex"] not in {"M", "F"}:
             raise FinalizationError(f"{employee_id}: sex must be M or F")
-        if row["status_profile"] not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
-            raise FinalizationError(f"{employee_id}: unsupported status_profile")
+        if row["status_profile"] not in {
+            "self_employed_multi_state",
+            "employee_multi_state",
+            "posted_employee",
+        }:
+            raise FinalizationError(
+                f"{employee_id}: unsupported status_profile {row['status_profile']!r}; "
+                "expected posted_employee, employee_multi_state or self_employed_multi_state"
+            )
         if row["status_profile"] in {"employee_multi_state", "posted_employee"}:
             if "osvč" in row["employment_name"].casefold():
-                raise FinalizationError("employee profile has self-employed employer data")
+                raise FinalizationError(
+                    "employee profile has self-employed employer data"
+                )
         dob = _date(row["dob"], f"{employee_id}.dob")
         if not provisional:
             start = _date(row["start_date"], f"{employee_id}.start_date")
             end = _date(row["end_date"], f"{employee_id}.end_date")
-            issue = _date(row["issue_date"], f"{employee_id}.issue_date")
-            if datetime.strptime(start, "%d.%m.%Y") > datetime.strptime(end, "%d.%m.%Y"):
+            _date(row["issue_date"], f"{employee_id}.issue_date")
+            if datetime.strptime(start, "%d.%m.%Y") > datetime.strptime(
+                end, "%d.%m.%Y"
+            ):
                 raise FinalizationError(f"{employee_id}: start_date is after end_date")
             if not _birth_number_matches_dob(row["insurance_number"], dob, row["sex"]):
-                raise FinalizationError(f"{employee_id}: insurance_number does not match dob")
+                raise FinalizationError(
+                    f"{employee_id}: insurance_number does not match dob"
+                )
 
-        profile = load_profile(profile_dir, row["institution_profile"], provisional=provisional)
+        profile = load_profile(
+            profile_dir, row["institution_profile"], provisional=provisional
+        )
         if not provisional:
-            if profile.get("expected_ossz", "").casefold() != row["resolved_ossz"].casefold():
-                raise FinalizationError(f"{employee_id}: institution profile does not match resolved_ossz")
-            if row["resolved_ossz"].casefold() not in profile["institution"]["name"].casefold():
-                raise FinalizationError(f"{employee_id}: institution name does not identify resolved_ossz")
+            if (
+                profile.get("expected_ossz", "").casefold()
+                != row["resolved_ossz"].casefold()
+            ):
+                raise FinalizationError(
+                    f"{employee_id}: institution profile does not match resolved_ossz"
+                )
+            if (
+                row["resolved_ossz"].casefold()
+                not in profile["institution"]["name"].casefold()
+            ):
+                raise FinalizationError(
+                    f"{employee_id}: institution name does not identify resolved_ossz"
+                )
         validated.append((row, profile))
     return validated
 
 
-def validate_application_draft_row(row: dict[str, str], profile: dict[str, Any]) -> dict[str, Any]:
+def validate_application_draft_row(
+    row: dict[str, str], profile: dict[str, Any]
+) -> dict[str, Any]:
     """Prepare an explicitly unverified application; never grant review or issuance."""
-    if set(row) != set(CSV_FIELDS) or any(not isinstance(value, str) for value in row.values()):
+    if set(row) != set(CSV_FIELDS) or any(
+        not isinstance(value, str) for value in row.values()
+    ):
         raise FinalizationError("APPLICATION_DRAFT_CANONICAL_ROW_REQUIRED")
     _slug(row["employee_id"])
     required = _required_review_fields(row["status_profile"], provisional=True)
-    missing = [field for field in required if field != "issue_date" and not row[field].strip()]
+    missing = [
+        field for field in required if field != "issue_date" and not row[field].strip()
+    ]
     if missing:
         raise FinalizationError("APPLICATION_DRAFT_MISSING: " + ", ".join(missing))
     dates = {}
     for field in ("dob", "start_date", "end_date", "issue_date"):
         if row[field]:
             dates[field] = datetime.strptime(_date(row[field], field), "%d.%m.%Y")
-    if dates.get("start_date") and dates.get("end_date") and dates["start_date"] > dates["end_date"]:
+    if (
+        dates.get("start_date")
+        and dates.get("end_date")
+        and dates["start_date"] > dates["end_date"]
+    ):
         raise FinalizationError("APPLICATION_DRAFT_DATE_ORDER")
     if row["sex"] not in {"M", "F"}:
         raise FinalizationError("APPLICATION_DRAFT_SEX_INVALID")
-    if row["status_profile"] not in {"self_employed_multi_state", "employee_multi_state", "posted_employee"}:
-        raise FinalizationError("APPLICATION_DRAFT_PROFILE_INVALID")
-    if row["status_profile"] != "self_employed_multi_state" and "osvč" in row["employment_name"].casefold():
+    if row["status_profile"] not in {
+        "self_employed_multi_state",
+        "employee_multi_state",
+        "posted_employee",
+    }:
+        raise FinalizationError(
+            "APPLICATION_DRAFT_PROFILE_INVALID: expected posted_employee, employee_multi_state "
+            "or self_employed_multi_state"
+        )
+    if (
+        row["status_profile"] != "self_employed_multi_state"
+        and "osvč" in row["employment_name"].casefold()
+    ):
         raise FinalizationError("employee profile has self-employed employer data")
     validate_profile(profile, row["institution_profile"])
-    if not str(profile["institution"]["code"]).isascii() or not str(profile["institution"]["code"]).isdigit():
+    if (
+        not str(profile["institution"]["code"]).isascii()
+        or not str(profile["institution"]["code"]).isdigit()
+    ):
         raise FinalizationError("APPLICATION_DRAFT_INSTITUTION_CODE_INVALID")
     if not 1 <= int(profile["institution"]["code"]) <= 99999:
         raise FinalizationError("APPLICATION_DRAFT_INSTITUTION_CODE_INVALID")
@@ -536,30 +823,50 @@ def validate_application_draft_row(row: dict[str, str], profile: dict[str, Any])
 def display_row(row: dict[str, str]) -> dict[str, str]:
     """Display-only casing: preserve evidence, employer legal names and prose."""
     result = dict(row)
-    for field in ("surname", "given_name", "birth_place", "street", "city", "district",
-                  "employment_street", "employment_city"):
+    for field in (
+        "surname",
+        "given_name",
+        "birth_place",
+        "street",
+        "city",
+        "district",
+        "employment_street",
+        "employment_city",
+    ):
         value = result.get(field, "")
         if value.isupper():
             result[field] = czech_display_case(value)
     return result
 
 
-def row_to_form(row: dict[str, str], profile: dict[str, Any], *, application_draft: bool = False) -> dict[str, Any]:
+def row_to_form(
+    row: dict[str, str], profile: dict[str, Any], *, application_draft: bool = False
+) -> dict[str, Any]:
     row = display_row(row)
     employee = {
         "id": row["employee_id"],
         "person": {
-            "surname": row["surname"], "given_name": row["given_name"], "dob": row["dob"],
-            "birth_place": row["birth_place"], "nationality": row["nationality"],
-            "insurance_number": row["insurance_number"], "sex": row["sex"],
+            "surname": row["surname"],
+            "given_name": row["given_name"],
+            "dob": row["dob"],
+            "birth_place": row["birth_place"],
+            "nationality": row["nationality"],
+            "insurance_number": row["insurance_number"],
+            "sex": row["sex"],
         },
         "residence": {
-            "street": row["street"], "house_number": row["house_number"], "city": row["city"],
-            "district": row["district"], "postal_code": row["postal_code"],
-            "country_code": row["country_code"], "ossz": row["resolved_ossz"],
+            "street": row["street"],
+            "house_number": row["house_number"],
+            "city": row["city"],
+            "district": row["district"],
+            "postal_code": row["postal_code"],
+            "country_code": row["country_code"],
+            "ossz": row["resolved_ossz"],
         },
         "employment": {
-            "kind": "self_employed" if row["status_profile"] == "self_employed_multi_state" else "employee",
+            "kind": "self_employed"
+            if row["status_profile"] == "self_employed_multi_state"
+            else "employee",
             "employer_id": row["employment_id"],
             "employer_name": row["employment_name"],
             "street": row["employment_street"],
@@ -575,20 +882,34 @@ def row_to_form(row: dict[str, str], profile: dict[str, Any], *, application_dra
         # Activity: for multi-state, territories default to DE, CZ
         "activity": {
             "name": row["activity_name"],
-            "address": row["activity_address"] or ("DE, CZ" if row["status_profile"] in {
-                "self_employed_multi_state", "employee_multi_state", "posted_employee"
-            } else ""),
+            "address": row["activity_address"]
+            or (
+                "DE, CZ"
+                if row["status_profile"]
+                in {
+                    "self_employed_multi_state",
+                    "employee_multi_state",
+                    "posted_employee",
+                }
+                else ""
+            ),
         },
         "certificate": {
-            "document_id": row["document_id"], "member_state": "CZ",
-            "start_date": row["start_date"], "end_date": row["end_date"],
+            "document_id": row["document_id"],
+            "member_state": "CZ",
+            "start_date": row["start_date"],
+            "end_date": row["end_date"],
         },
         # Institution: add contact person from profile
         "institution": {
             "issue_date": row["issue_date"],
             "signed_by": row["signed_by"],
-            "contact_person_1": profile.get("current_office_contact", {}).get("name", ""),
-            "contact_title_1": profile.get("current_office_contact", {}).get("role", ""),
+            "contact_person_1": profile.get("current_office_contact", {}).get(
+                "name", ""
+            ),
+            "contact_title_1": profile.get("current_office_contact", {}).get(
+                "role", ""
+            ),
         },
     }
     institution_config = {
@@ -598,7 +919,9 @@ def row_to_form(row: dict[str, str], profile: dict[str, Any], *, application_dra
         "issue_date": row["issue_date"],
         "signed_by": row["signed_by"],
     }
-    return build_form_data(employee, institution_config, application_draft=application_draft)
+    return build_form_data(
+        employee, institution_config, application_draft=application_draft
+    )
 
 
 def verify_pdf(
@@ -612,21 +935,37 @@ def verify_pdf(
     row = display_row(row)
     reader = PdfReader(str(path))
     if len(reader.pages) != 3 or reader.get_fields():
-        raise FinalizationError(f"{row['employee_id']}: PDF is not a static three-page document")
+        raise FinalizationError(
+            f"{row['employee_id']}: PDF is not a static three-page document"
+        )
     page_texts = [page.extract_text() or "" for page in reader.pages]
     text = "\n".join(page_texts)
     nationality = row["nationality"]
     if nationality.casefold() in {"česká republika", "czech republic", "cz", "cze"}:
         nationality = "CZ"
     expected = (
-        row["surname"], row["given_name"], row["dob"], row["birth_place"],
-        nationality, row["insurance_number"], row["street"],
-        row["house_number"], row["city"], row["postal_code"], row["document_id"],
-        row["start_date"], row["end_date"], row["issue_date"], row["signed_by"],
+        row["surname"],
+        row["given_name"],
+        row["dob"],
+        row["birth_place"],
+        nationality,
+        row["insurance_number"],
+        row["street"],
+        row["house_number"],
+        row["city"],
+        row["postal_code"],
+        row["document_id"],
+        row["start_date"],
+        row["end_date"],
+        row["issue_date"],
+        row["signed_by"],
         profile["institution"]["code"],
-        row["employment_id"], row["employment_street"],
-        row["employment_house_number"], row["employment_city"],
-        row["employment_postal_code"], row["employment_country_code"],
+        row["employment_id"],
+        row["employment_street"],
+        row["employment_house_number"],
+        row["employment_city"],
+        row["employment_postal_code"],
+        row["employment_country_code"],
     )
     if row["status_profile"] == "self_employed_multi_state":
         expected += (row["surname"], row["given_name"])
@@ -638,13 +977,19 @@ def verify_pdf(
             # self-employment labels must remain visible elsewhere on the page.
             import pymupdf
 
-            layout = json.loads((ROOT / "config/a1_layout.json").read_text(encoding="utf-8"))
+            layout = json.loads(
+                (ROOT / "config/a1_layout.json").read_text(encoding="utf-8")
+            )
             field = layout["fields"]["activity.name"]
             with pymupdf.open(path) as document:
                 page = document[field["page"]]
                 baseline = page.rect.height - field["y"]
-                box = (field["x"] - 1, baseline - field["size"] * 1.5,
-                       field["x"] + field["max_width"], baseline + field["size"] * 0.5)
+                box = (
+                    field["x"] - 1,
+                    baseline - field["size"] * 1.5,
+                    field["x"] + field["max_width"],
+                    baseline + field["size"] * 0.5,
+                )
                 if page.get_text("text", clip=box).strip():
                     raise FinalizationError("PROVISIONAL_SECTION_5_1_NOT_BLANK")
     missing = [value for value in expected if value not in text]
@@ -655,35 +1000,51 @@ def verify_pdf(
             f"{row['employee_id']}: document_id missing from page 1"
         )
     if "{{" in text:
-        raise FinalizationError(f"{row['employee_id']}: PDF contains a template placeholder")
+        raise FinalizationError(
+            f"{row['employee_id']}: PDF contains a template placeholder"
+        )
     foreign = [
-        other["insurance_number"] for other in all_rows
+        other["insurance_number"]
+        for other in all_rows
         if other["employee_id"] != row["employee_id"]
         and other["insurance_number"]
         and other["insurance_number"] in text
     ]
     if foreign:
-        raise FinalizationError(f"{row['employee_id']}: PDF contains another employee identity")
-    return {"page_count": len(reader.pages), "sha256": _sha256(path), "size_bytes": path.stat().st_size}
+        raise FinalizationError(
+            f"{row['employee_id']}: PDF contains another employee identity"
+        )
+    return {
+        "page_count": len(reader.pages),
+        "sha256": _sha256(path),
+        "size_bytes": path.stat().st_size,
+    }
 
 
 def generation_dependencies(review, employees, profiles, background, layout, extras=()):
-    paths = {"review": review, "normalized_source": employees,
-             "background": background, "layout": layout,
-             "renderer": ROOT / "scripts/a1_core.py",
-             "mapper": Path(__file__),
-             "audit": ROOT / "scripts/a1_audit.py",
-             "paths": ROOT / "scripts/a1_paths.py",
-             "template_repair_receipt": ROOT / "config/a1_template_repair_2026-09-06.json",
-             "address_rules": ROOT / "config/address_enrichment.json"}
+    paths = {
+        "review": review,
+        "normalized_source": employees,
+        "background": background,
+        "layout": layout,
+        "renderer": ROOT / "scripts/a1_core.py",
+        "mapper": Path(__file__),
+        "audit": ROOT / "scripts/a1_audit.py",
+        "paths": ROOT / "scripts/a1_paths.py",
+        "template_repair_receipt": ROOT / "config/a1_template_repair_2026-09-06.json",
+        "address_rules": ROOT / "config/address_enrichment.json",
+    }
     paths.update({f"institution/{p.name}": p for p in profiles.glob("*.json")})
     paths.update({f"extra/{index}": p for index, p in enumerate(extras)})
     return {key: _sha256(Path(path)) for key, path in paths.items()}
 
 
 def snapshot_hash(rows):
-    return hashlib.sha256(json.dumps(rows, sort_keys=True, ensure_ascii=False,
-                                     separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(
+            rows, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+        ).encode()
+    ).hexdigest()
 
 
 @audited("candidate_generate", "a1_candidate")
@@ -695,13 +1056,16 @@ def generate_final_set(
     layout: Path,
     output: Path,
 ) -> Path:
-    import uuid
     validate_output_path(output, review_path, employees_path)
-    inputs = generation_dependencies(review_path, employees_path, profile_dir, background, layout)
+    inputs = generation_dependencies(
+        review_path, employees_path, profile_dir, background, layout
+    )
     rows = read_review(review_path)
     validated = validate_review(rows, employees_path, profile_dir)
     if output.exists():
-        raise FinalizationError(f"output destination already exists; must be unique: {output}")
+        raise FinalizationError(
+            f"output destination already exists; must be unique: {output}"
+        )
     run_id = current_run_id()
     staging = unique_staging_path(output.parent, f"candidate-{run_id}")
     generated_at = datetime.now(timezone.utc).isoformat()
@@ -725,26 +1089,37 @@ def generate_final_set(
             checks = verify_pdf(target, row, profile, rows)
             manifest["generated"].append(
                 {
-                    "employee_id": row["employee_id"], "path": target.name,
-                    "document_id": row["document_id"], "institution_profile": row["institution_profile"],
+                    "employee_id": row["employee_id"],
+                    "path": target.name,
+                    "document_id": row["document_id"],
+                    "institution_profile": row["institution_profile"],
                     "institution_version": profile.get("version", ""),
                     "pdf_created": generated_at,
                     **checks,
                 }
             )
         if len(manifest["generated"]) != len(rows):
-            raise FinalizationError("not every reviewed employee produced a verified PDF")
+            raise FinalizationError(
+                "not every reviewed employee produced a verified PDF"
+            )
         (staging / "generation_manifest.json").write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        if generation_dependencies(review_path, employees_path, profile_dir, background, layout) != inputs:
-            raise FinalizationError("generation dependencies changed; candidate is stale")
+        if (
+            generation_dependencies(
+                review_path, employees_path, profile_dir, background, layout
+            )
+            != inputs
+        ):
+            raise FinalizationError(
+                "generation dependencies changed; candidate is stale"
+            )
         for artifact in staging.iterdir():
             artifact.chmod(0o600)
         with destination_lock(output):
             publish_package(staging, output)
         return output
-    except Exception as exc:
+    except Exception:
         cleanup_staging_only(staging, pid)
         raise
 
@@ -752,48 +1127,91 @@ def generate_final_set(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--employees", type=Path)
-    parser.add_argument("--enrichment", type=Path, default=ROOT / "config/address_enrichment.json")
+    parser.add_argument(
+        "--enrichment", type=Path, default=ROOT / "config/address_enrichment.json"
+    )
     parser.add_argument("--profiles", type=Path, default=ROOT / "config/institutions")
     sub = parser.add_subparsers(dest="command", required=True)
-    prepare = sub.add_parser("prepare", help="create the pre-filled operator review CSV")
-    prepare.add_argument("--current-institution", type=Path, default=ROOT / "config/institution.json")
+    prepare = sub.add_parser(
+        "prepare", help="create the pre-filled operator review CSV"
+    )
+    prepare.add_argument(
+        "--current-institution", type=Path, default=ROOT / "config/institution.json"
+    )
     prepare.add_argument("--review", type=Path)
-    validate = sub.add_parser("validate", help="validate an approved review CSV without writing PDFs")
+    validate = sub.add_parser(
+        "validate", help="validate an approved review CSV without writing PDFs"
+    )
     validate.add_argument("--review", type=Path)
-    readiness = sub.add_parser("readiness", help="list all operator-actionable review blockers")
+    readiness = sub.add_parser(
+        "readiness", help="list all operator-actionable review blockers"
+    )
     readiness.add_argument("--review", type=Path)
-    readiness.add_argument("--report", type=Path, help="protected JSON receipt; defaults under a1/")
-    readiness.add_argument("--provisional", action="store_true",
-                           help="check provisional review inputs; default checks authoritative evidence")
-    generate = sub.add_parser("generate", help="generate and atomically publish the complete reviewed set")
+    readiness.add_argument(
+        "--report", type=Path, help="protected JSON receipt; defaults under a1/"
+    )
+    readiness.add_argument(
+        "--provisional",
+        action="store_true",
+        help="check provisional review inputs; default checks authoritative evidence",
+    )
+    generate = sub.add_parser(
+        "generate", help="generate and atomically publish the complete reviewed set"
+    )
     generate.add_argument("--review", type=Path)
-    generate.add_argument("--background", type=Path, default=ROOT / "templates/a1_background.pdf")
+    generate.add_argument(
+        "--background", type=Path, default=ROOT / "templates/a1_background.pdf"
+    )
     generate.add_argument("--layout", type=Path, default=ROOT / "config/a1_layout.json")
     generate.add_argument("--output", type=Path, default=None)
-    auto_approve = sub.add_parser("auto-approve", help="auto-approve stale identity reviews unchanged for 24h")
+    auto_approve = sub.add_parser(
+        "auto-approve", help="auto-approve stale identity reviews unchanged for 24h"
+    )
     auto_approve.add_argument("--review", type=Path)
-    auto_approve.add_argument("--older-than", type=str, default="24h",
-                              help="minimum age for auto-approval, e.g. 24h, 48h (default: 24h)")
-    auto_approve.add_argument("--dry-run", action="store_true", help="print affected rows without writing")
-    count_variants = sub.add_parser("count-variants", help="count workers by OSVČ/zaměstnanec variant")
+    auto_approve.add_argument(
+        "--older-than",
+        type=str,
+        default="24h",
+        help="minimum age for auto-approval, e.g. 24h, 48h (default: 24h)",
+    )
+    auto_approve.add_argument(
+        "--dry-run", action="store_true", help="print affected rows without writing"
+    )
+    count_variants = sub.add_parser(
+        "count-variants", help="count workers by OSVČ/zaměstnanec variant"
+    )
     count_variants.add_argument("--review", type=Path)
-    count_variants.add_argument("--default", type=str, default=VARIANT_DEFAULT,
-                                choices=("employee", "self_employed"),
-                                help="default variant for non-default counting (default: employee)")
+    count_variants.add_argument(
+        "--default",
+        type=str,
+        default=VARIANT_DEFAULT,
+        choices=("employee", "self_employed"),
+        help="default variant for non-default counting (default: employee)",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     import uuid
+
     args = build_parser().parse_args(argv)
     try:
         private_root()
         args.employees = args.employees or private_path("a1/employees_normalized.json")
-        args.review = args.review or (private_root() / "a1/review.csv" if args.command == "prepare"
-                                      else private_path("a1/review.csv"))
+        args.review = args.review or (
+            private_root() / "a1/review.csv"
+            if args.command == "prepare"
+            else private_path("a1/review.csv")
+        )
         if args.command == "generate":
-            generate_final_set(args.review, args.employees, args.profiles, args.background,
-                               args.layout, args.output or private_root() / "output/candidate" / str(uuid.uuid4()))
+            generate_final_set(
+                args.review,
+                args.employees,
+                args.profiles,
+                args.background,
+                args.layout,
+                args.output or private_root() / "output/candidate" / str(uuid.uuid4()),
+            )
             print("Generated candidate set; QA and artifact approval remain required")
             return 0
         if args.command == "auto-approve":
@@ -803,54 +1221,107 @@ def main(argv: list[str] | None = None) -> int:
             except ValueError:
                 print(f"invalid --older-than value: {args.older_than}", file=sys.stderr)
                 return 1
-            changed = auto_approve_stale_identity_reviews(rows, older_than_hours=older_than, dry_run=args.dry_run)
+            changed = auto_approve_stale_identity_reviews(
+                rows, older_than_hours=older_than, dry_run=args.dry_run
+            )
             if args.dry_run:
-                print(json.dumps({"dry_run": True, "would_change_count": len(changed),
-                                   "would_change": [r["employee_id"] for r in changed]}, ensure_ascii=False))
+                print(
+                    json.dumps(
+                        {
+                            "dry_run": True,
+                            "would_change_count": len(changed),
+                            "would_change": [r["employee_id"] for r in changed],
+                        },
+                        ensure_ascii=False,
+                    )
+                )
             else:
                 write_review(args.review, rows)
-                print(json.dumps({"changed_count": len(changed),
-                                   "changed": [r["employee_id"] for r in changed]}, ensure_ascii=False))
+                print(
+                    json.dumps(
+                        {
+                            "changed_count": len(changed),
+                            "changed": [r["employee_id"] for r in changed],
+                        },
+                        ensure_ascii=False,
+                    )
+                )
             return 0
         if args.command == "count-variants":
             rows = read_review(args.review)
             summary = count_variants(rows, default=args.default)
             print(json.dumps(summary, ensure_ascii=False))
             return 0
-        operation, purpose = {"prepare": ("review_prepare", "a1_prepare"),
-                              "validate": ("review_validate", "a1_validate"),
-                              "readiness": ("readiness_check", "a1_readiness")}[args.command]
+        operation, purpose = {
+            "prepare": ("review_prepare", "a1_prepare"),
+            "validate": ("review_validate", "a1_validate"),
+            "readiness": ("readiness_check", "a1_readiness"),
+        }[args.command]
         with audited_operation(operation, purpose) as run_id:
             if args.command == "prepare":
                 protected_path(args.review, ("a1",))
                 if args.review.exists():
                     raise FinalizationError("REVIEW_EXISTS")
-                prepare_review(args.employees, args.enrichment, args.current_institution, args.review)
+                prepare_review(
+                    args.employees,
+                    args.enrichment,
+                    args.current_institution,
+                    args.review,
+                )
                 args.review.chmod(0o600)
                 summary = "Prepared review CSV"
             elif args.command == "validate":
-                validated = validate_review(read_review(args.review), args.employees, args.profiles)
+                validated = validate_review(
+                    read_review(args.review), args.employees, args.profiles
+                )
                 summary = f"Validated {len(validated)} approved employees"
             else:
                 destination = readiness_receipt_path(args.report)
-                if (destination in {args.review.resolve(), args.employees.resolve()}
-                        or destination.is_relative_to(args.profiles.resolve())):
+                if destination in {
+                    args.review.resolve(),
+                    args.employees.resolve(),
+                } or destination.is_relative_to(args.profiles.resolve()):
                     raise FinalizationError("RECEIPT_INPUT_OVERLAP")
-                report = readiness_report(read_review(args.review), args.profiles,
-                                          provisional=args.provisional)
-                report['run_id'] = run_id
+                report = readiness_report(
+                    read_review(args.review),
+                    args.profiles,
+                    provisional=args.provisional,
+                )
+                report["run_id"] = run_id
                 write_private_json(destination, report)
-                summary = json.dumps({key: report[key] for key in ("mode", "scope", "ready", "employee_count", "blocked_employee_count")})
+                summary = json.dumps(
+                    {
+                        key: report[key]
+                        for key in (
+                            "mode",
+                            "scope",
+                            "ready",
+                            "employee_count",
+                            "blocked_employee_count",
+                        )
+                    }
+                )
         print(summary)
         return (0 if report["ready"] else 1) if args.command == "readiness" else 0
-    except (Exception, KeyboardInterrupt):  # Sanitize unexpected malformed-input errors at the CLI boundary.
+    except (
+        Exception,
+        KeyboardInterrupt,
+    ):  # Sanitize unexpected malformed-input errors at the CLI boundary.
         if args.command == "readiness":
             try:
                 destination = readiness_receipt_path(args.report)
-                if (destination not in {args.review.resolve(), args.employees.resolve()}
-                        and not destination.is_relative_to(args.profiles.resolve())):
+                if destination not in {
+                    args.review.resolve(),
+                    args.employees.resolve(),
+                } and not destination.is_relative_to(args.profiles.resolve()):
                     write_failure_receipt(destination, "READINESS_INPUT_INVALID")
-            except (A1PrivateInputError, FinalizationError, OSError, ValueError, AttributeError):
+            except (
+                A1PrivateInputError,
+                FinalizationError,
+                OSError,
+                ValueError,
+                AttributeError,
+            ):
                 pass
         print("FINALIZATION_BLOCKED", file=sys.stderr)
         return 1

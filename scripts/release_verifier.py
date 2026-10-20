@@ -20,15 +20,13 @@ Each check has exactly one status:
 
 No PII, credentials, scan data, or protected content is ever written to reports.
 """
+
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -41,6 +39,7 @@ REPORT_MD = REPORT_DIR / "verification-report.md"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -68,7 +67,11 @@ def run(
             cwd=cwd or ROOT,
             timeout=timeout,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return None
 
 
@@ -157,7 +160,9 @@ def check_py_with_assertion(
     result = check_py(label, code, env=env)
     if result["status"] == "PASS" and assertion.lower() in result["stdout"].lower():
         result["status"] = "PASS"
-    elif result["status"] == "PASS" and assertion.lower() not in result["stdout"].lower():
+    elif (
+        result["status"] == "PASS" and assertion.lower() not in result["stdout"].lower()
+    ):
         result["status"] = "FAIL"
         result["error"] = f"assertion '{assertion}' not found in output"
     return result
@@ -179,6 +184,7 @@ def approvals_hash() -> str:
     """SHA-256 of approvals.json."""
     import hashlib
     import json as _json
+
     data = _json.loads((ROOT / "planning" / "approvals.json").read_text())
     return hashlib.sha256(
         _json.dumps(data, sort_keys=True, ensure_ascii=False).encode()
@@ -194,6 +200,7 @@ def build_id() -> str:
 # ---------------------------------------------------------------------------
 # Django setup helpers
 # ---------------------------------------------------------------------------
+
 
 def django_settings() -> str:
     return "portal.settings_verification"
@@ -216,6 +223,7 @@ def django_check(label: str, *args: str) -> dict:
 # ---------------------------------------------------------------------------
 # Verification sections
 # ---------------------------------------------------------------------------
+
 
 def verify_governance() -> list[dict]:
     """Gate integrity and approval register checks."""
@@ -279,28 +287,39 @@ def verify_django_checks() -> list[dict]:
     """Django system checks."""
     return [
         django_check("django/check", "check"),
-        django_check("django/makemigrations-check", "makemigrations", "--check", "--dry-run"),
+        django_check(
+            "django/makemigrations-check", "makemigrations", "--check", "--dry-run"
+        ),
     ]
 
 
 def verify_migrations() -> list[dict]:
     """Migration state and executor transitions."""
     results = []
-    results.append(django_check("migrations/fresh-db-makemigrations", "makemigrations", "--check", "--dry-run"))
+    results.append(
+        django_check(
+            "migrations/fresh-db-makemigrations",
+            "makemigrations",
+            "--check",
+            "--dry-run",
+        )
+    )
 
     for n in ["0005", "0006", "0007"]:
         found = bool(list(ROOT.glob(f"portal/release1a/migrations/{n}_*.py")))
-        results.append({
-            "label": f"migrations/{n}_exists",
-            "status": "PASS" if found else "FAIL",
-            "command": f"ls portal/release1a/migrations/{n}_*.py",
-            "start": now(),
-            "end": now(),
-            "exit_code": 0 if found else 1,
-            "stdout": f"{n} migration {'found' if found else 'MISSING'}",
-            "stderr": "",
-            "error": None if found else f"migration {n} not found",
-        })
+        results.append(
+            {
+                "label": f"migrations/{n}_exists",
+                "status": "PASS" if found else "FAIL",
+                "command": f"ls portal/release1a/migrations/{n}_*.py",
+                "start": now(),
+                "end": now(),
+                "exit_code": 0 if found else 1,
+                "stdout": f"{n} migration {'found' if found else 'MISSING'}",
+                "stderr": "",
+                "error": None if found else f"migration {n} not found",
+            }
+        )
 
     code = f"""
 import sys, os
@@ -364,17 +383,19 @@ def verify_backend_crud() -> list[dict]:
         "tests/architecture/test_rollback.py",
     ]:
         if not (ROOT / test_path).exists():
-            results.append({
-                "label": f"backend/{Path(test_path).stem}",
-                "status": "NOT_RUN",
-                "command": f"test -f {test_path}",
-                "start": now(),
-                "end": now(),
-                "exit_code": 0,
-                "stdout": "test file not found",
-                "stderr": "",
-                "error": "not found",
-            })
+            results.append(
+                {
+                    "label": f"backend/{Path(test_path).stem}",
+                    "status": "NOT_RUN",
+                    "command": f"test -f {test_path}",
+                    "start": now(),
+                    "end": now(),
+                    "exit_code": 0,
+                    "stdout": "test file not found",
+                    "stderr": "",
+                    "error": "not found",
+                }
+            )
             continue
         r = check_cmd(
             f"backend/{Path(test_path).stem}",
@@ -383,14 +404,18 @@ def verify_backend_crud() -> list[dict]:
             timeout=120,
         )
         # Prototype tests — report result but do not count as real portal evidence
-        results.append({
-            **r,
-            "label": f"backend/{Path(test_path).stem}",
-            "status": "PASS" if r["exit_code"] == 0 else "FAIL",
-            "stdout": r.get("stdout", ""),
-            "stderr": r.get("stderr", ""),
-            "error": "[PROTOTYPE — not real portal evidence]" if r["exit_code"] == 0 else r.get("error"),
-        })
+        results.append(
+            {
+                **r,
+                "label": f"backend/{Path(test_path).stem}",
+                "status": "PASS" if r["exit_code"] == 0 else "FAIL",
+                "stdout": r.get("stdout", ""),
+                "stderr": r.get("stderr", ""),
+                "error": "[PROTOTYPE — not real portal evidence]"
+                if r["exit_code"] == 0
+                else r.get("error"),
+            }
+        )
 
     return results
 
@@ -412,24 +437,30 @@ def verify_storage() -> list[dict]:
             env=env,
             timeout=120,
         )
-        results.append({
-            **r,
-            "label": f"storage/{Path(test_path).stem}",
-            "status": "PASS" if r["exit_code"] == 0 else "FAIL",
-            "error": "[PROTOTYPE — not real portal evidence]" if r["exit_code"] == 0 else r.get("error"),
-        })
+        results.append(
+            {
+                **r,
+                "label": f"storage/{Path(test_path).stem}",
+                "status": "PASS" if r["exit_code"] == 0 else "FAIL",
+                "error": "[PROTOTYPE — not real portal evidence]"
+                if r["exit_code"] == 0
+                else r.get("error"),
+            }
+        )
     else:
-        results.append({
-            "label": "storage/test_protected_storage",
-            "status": "NOT_RUN",
-            "command": f"test -f {test_path}",
-            "start": now(),
-            "end": now(),
-            "exit_code": 0,
-            "stdout": "test file not found",
-            "stderr": "",
-            "error": "not found",
-        })
+        results.append(
+            {
+                "label": "storage/test_protected_storage",
+                "status": "NOT_RUN",
+                "command": f"test -f {test_path}",
+                "start": now(),
+                "end": now(),
+                "exit_code": 0,
+                "stdout": "test file not found",
+                "stderr": "",
+                "error": "not found",
+            }
+        )
 
     code = f"""
 import sys, os
@@ -462,12 +493,24 @@ def verify_ocr() -> list[dict]:
 
     r = check_cmd(
         "ocr/field-decision-tests",
-        [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=short",
-         "-k", "field_decision or proposal", "--ignore=tests/fixtures/"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/",
+            "-q",
+            "--tb=short",
+            "-k",
+            "field_decision or proposal",
+            "--ignore=tests/fixtures/",
+        ],
         env=env,
         timeout=120,
     )
-    if "no tests ran" in r.get("stdout", "").lower() or "error" in r.get("stderr", "").lower():
+    if (
+        "no tests ran" in r.get("stdout", "").lower()
+        or "error" in r.get("stderr", "").lower()
+    ):
         results.append({**r, "status": "NOT_RUN"})
     else:
         results.append({**r, "status": "PASS" if r["exit_code"] == 0 else "FAIL"})
@@ -502,8 +545,17 @@ def verify_assignment() -> list[dict]:
 
     r = check_cmd(
         "assignment/tests",
-        [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=short",
-         "-k", "assignment or concurrency", "--ignore=tests/fixtures/"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/",
+            "-q",
+            "--tb=short",
+            "-k",
+            "assignment or concurrency",
+            "--ignore=tests/fixtures/",
+        ],
         env=env,
         timeout=120,
     )
@@ -512,17 +564,19 @@ def verify_assignment() -> list[dict]:
     else:
         results.append({**r, "status": "PASS" if r["exit_code"] == 0 else "FAIL"})
 
-    results.append({
-        "label": "assignment/true-concurrency",
-        "status": "BLOCKED_ENV",
-        "command": "PostgreSQL two-connection concurrency test",
-        "start": now(),
-        "end": now(),
-        "exit_code": None,
-        "stdout": "SQLite does not support two-connection concurrency testing",
-        "stderr": "",
-        "error": "PostgreSQL required for two-connection test",
-    })
+    results.append(
+        {
+            "label": "assignment/true-concurrency",
+            "status": "BLOCKED_ENV",
+            "command": "PostgreSQL two-connection concurrency test",
+            "start": now(),
+            "end": now(),
+            "exit_code": None,
+            "stdout": "SQLite does not support two-connection concurrency testing",
+            "stderr": "",
+            "error": "PostgreSQL required for two-connection test",
+        }
+    )
 
     return results
 
@@ -538,33 +592,44 @@ def verify_a1(profile: str = "core") -> list[dict]:
     env = django_env()
 
     if profile != "optional-a1":
-        results.append({
-            "label": "a1/quality-gate",
-            "status": "NOT_RUN",
-            "command": "pytest tests/test_a1_quality_gate.py",
-            "start": now(),
-            "end": now(),
-            "exit_code": None,
-            "stdout": "",
-            "stderr": "",
-            "error": "A1 checks are optional; use --profile optional-a1 to include them",
-        })
-        results.append({
-            "label": "a1/models-check",
-            "status": "NOT_RUN",
-            "command": "python -c 'portal.release1a models'",
-            "start": now(),
-            "end": now(),
-            "exit_code": None,
-            "stdout": "",
-            "stderr": "",
-            "error": "A1 checks are optional; use --profile optional-a1 to include them",
-        })
+        results.append(
+            {
+                "label": "a1/quality-gate",
+                "status": "NOT_RUN",
+                "command": "pytest tests/test_a1_quality_gate.py",
+                "start": now(),
+                "end": now(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": "",
+                "error": "A1 checks are optional; use --profile optional-a1 to include them",
+            }
+        )
+        results.append(
+            {
+                "label": "a1/models-check",
+                "status": "NOT_RUN",
+                "command": "python -c 'portal.release1a models'",
+                "start": now(),
+                "end": now(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": "",
+                "error": "A1 checks are optional; use --profile optional-a1 to include them",
+            }
+        )
         return results
 
     r = check_cmd(
         "a1/quality-gate",
-        [sys.executable, "-m", "pytest", "tests/test_a1_quality_gate.py", "-q", "--tb=short"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/test_a1_quality_gate.py",
+            "-q",
+            "--tb=short",
+        ],
         env=env,
         timeout=120,
     )
@@ -592,7 +657,10 @@ except Exception as e:
     r = check_py("a1/models-check", code, env=env)
     # Semantic FAIL if A1Artifact or A1InputSnapshot not found
     if r["status"] == "PASS":
-        if "A1Artifact: False" in r["stdout"] or "A1InputSnapshot: False" in r["stdout"]:
+        if (
+            "A1Artifact: False" in r["stdout"]
+            or "A1InputSnapshot: False" in r["stdout"]
+        ):
             r["status"] = "FAIL"
             r["error"] = "A1 snapshot/artifact models not found"
     results.append(r)
@@ -606,32 +674,36 @@ def verify_frontend() -> list[dict]:
 
     r = check_cmd("frontend/playwright-available", ["npx", "playwright", "--version"])
     if r is None or r.get("exit_code") != 0:
-        results.append({
-            "label": "frontend/playwright",
-            "status": "BLOCKED_ENV",
-            "command": "npx playwright --version",
-            "start": now(),
-            "end": now(),
-            "exit_code": None,
-            "stdout": "",
-            "stderr": "",
-            "error": "Playwright not available",
-        })
+        results.append(
+            {
+                "label": "frontend/playwright",
+                "status": "BLOCKED_ENV",
+                "command": "npx playwright --version",
+                "start": now(),
+                "end": now(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": "",
+                "error": "Playwright not available",
+            }
+        )
     else:
         results.append({**r, "status": "PASS"})
 
     smoke = ROOT / "scripts" / "smoke_synthetic_review_ui.mjs"
-    results.append({
-        "label": "frontend/smoke-script",
-        "status": "PASS" if smoke.exists() else "FAIL",
-        "command": f"test -f {smoke}",
-        "start": now(),
-        "end": now(),
-        "exit_code": 0 if smoke.exists() else 1,
-        "stdout": f"smoke script {'found' if smoke.exists() else 'MISSING'}",
-        "stderr": "",
-        "error": None if smoke.exists() else "missing",
-    })
+    results.append(
+        {
+            "label": "frontend/smoke-script",
+            "status": "PASS" if smoke.exists() else "FAIL",
+            "command": f"test -f {smoke}",
+            "start": now(),
+            "end": now(),
+            "exit_code": 0 if smoke.exists() else 1,
+            "stdout": f"smoke script {'found' if smoke.exists() else 'MISSING'}",
+            "stderr": "",
+            "error": None if smoke.exists() else "missing",
+        }
+    )
 
     # Run Playwright smoke against the disposable verification server
     smoke_py = ROOT / "scripts" / "playwright_smoke.py"
@@ -643,7 +715,14 @@ def verify_frontend() -> list[dict]:
             timeout=180,
         )
         # Parse result from report
-        report_path = ROOT / "runtime" / "portal" / "verification" / "playwright-artifacts" / "smoke-report.json"
+        report_path = (
+            ROOT
+            / "runtime"
+            / "portal"
+            / "verification"
+            / "playwright-artifacts"
+            / "smoke-report.json"
+        )
         if report_path.exists():
             data = json.loads(report_path.read_text())
             journeys = data.get("journeys", {})
@@ -651,35 +730,43 @@ def verify_frontend() -> list[dict]:
                 f"{k}={v.get('status')}" for k, v in journeys.items()
             )
             console_errors = len(data.get("console_errors", []))
-            results.append({
-                **r,
-                "label": "frontend/playwright-smoke",
-                "status": "PASS" if data.get("result") == "pass" else "FAIL",
-                "stdout": f"Journeys: {journey_summary}; Console errors: {console_errors}",
-                "stderr": "",
-                "error": f"smoke failed: {data.get('error')}" if data.get("result") != "pass" else None,
-            })
+            results.append(
+                {
+                    **r,
+                    "label": "frontend/playwright-smoke",
+                    "status": "PASS" if data.get("result") == "pass" else "FAIL",
+                    "stdout": f"Journeys: {journey_summary}; Console errors: {console_errors}",
+                    "stderr": "",
+                    "error": f"smoke failed: {data.get('error')}"
+                    if data.get("result") != "pass"
+                    else None,
+                }
+            )
         else:
-            results.append({
-                **r,
-                "label": "frontend/playwright-smoke",
-                "status": "FAIL",
-                "stdout": r.get("stdout", ""),
-                "stderr": r.get("stderr", ""),
-                "error": "smoke report not found",
-            })
+            results.append(
+                {
+                    **r,
+                    "label": "frontend/playwright-smoke",
+                    "status": "FAIL",
+                    "stdout": r.get("stdout", ""),
+                    "stderr": r.get("stderr", ""),
+                    "error": "smoke report not found",
+                }
+            )
     else:
-        results.append({
-            "label": "frontend/playwright-smoke",
-            "status": "BLOCKED_ENV",
-            "command": f"test -f {smoke_py}",
-            "start": now(),
-            "end": now(),
-            "exit_code": None,
-            "stdout": "playwright_smoke.py not found",
-            "stderr": "",
-            "error": "playwright_smoke.py not found",
-        })
+        results.append(
+            {
+                "label": "frontend/playwright-smoke",
+                "status": "BLOCKED_ENV",
+                "command": f"test -f {smoke_py}",
+                "start": now(),
+                "end": now(),
+                "exit_code": None,
+                "stdout": "playwright_smoke.py not found",
+                "stderr": "",
+                "error": "playwright_smoke.py not found",
+            }
+        )
 
     return results
 
@@ -689,35 +776,44 @@ def verify_accessibility() -> list[dict]:
     results = []
 
     r = check_cmd("accessibility/axe-available", ["npx", "axe", "--version"])
-    results.append({**r, "status": "BLOCKED_ENV" if r is None or r.get("exit_code") != 0 else "PASS"})
+    results.append(
+        {
+            **r,
+            "status": "BLOCKED_ENV" if r is None or r.get("exit_code") != 0 else "PASS",
+        }
+    )
 
     axe_receipt = ROOT / "runtime" / "portal" / "synthetic-review" / "axe.json"
     if axe_receipt.exists():
         data = json.loads(axe_receipt.read_text())
         commit = data.get("git_commit", "unknown")
-        results.append({
-            "label": "accessibility/axe-receipt",
-            "status": "FAIL",
-            "command": f"cat {axe_receipt}",
-            "start": now(),
-            "end": now(),
-            "exit_code": 0,
-            "stdout": f"Receipt found for commit {commit} — stale",
-            "stderr": "",
-            "error": "axe receipt is stale (not for current HEAD)",
-        })
+        results.append(
+            {
+                "label": "accessibility/axe-receipt",
+                "status": "FAIL",
+                "command": f"cat {axe_receipt}",
+                "start": now(),
+                "end": now(),
+                "exit_code": 0,
+                "stdout": f"Receipt found for commit {commit} — stale",
+                "stderr": "",
+                "error": "axe receipt is stale (not for current HEAD)",
+            }
+        )
     else:
-        results.append({
-            "label": "accessibility/axe-receipt",
-            "status": "NOT_RUN",
-            "command": f"test -f {axe_receipt}",
-            "start": now(),
-            "end": now(),
-            "exit_code": 1,
-            "stdout": "No axe receipt found",
-            "stderr": "",
-            "error": "not found",
-        })
+        results.append(
+            {
+                "label": "accessibility/axe-receipt",
+                "status": "NOT_RUN",
+                "command": f"test -f {axe_receipt}",
+                "start": now(),
+                "end": now(),
+                "exit_code": 1,
+                "stdout": "No axe receipt found",
+                "stderr": "",
+                "error": "not found",
+            }
+        )
 
     return results
 
@@ -729,15 +825,69 @@ def verify_accessibility() -> list[dict]:
 #   only once via env_module="portal.settings_document_tests".
 # - profile restricts the check to 'optional-a1' or 'both'.
 ENG001_CHECK_TEST_MAP: list[tuple[str, str, str | None, str, str]] = [
-    ("ENG-AUTH",          "tests/document_web/test_intake.py",     "portal.settings_document_tests", "allauth + invitation-only reviewer adapter + TOTP wiring", "both"),
-    ("ENG-MIGRATION",     "tests/m2/test_migration_0003.py",      "portal.settings_document_tests", "MigrationExecutor 0002→0003 transition", "both"),
-    ("ENG-J2-SCANNER",    "tests/document_web/test_intake.py",     "portal.settings_document_tests", "J2 scanner + protected intake (single intake run)", "both"),
-    ("ENG-J2-OCR",        "tests/test_runtime_contract.py",        "portal.settings_document_tests", "J2 OCR contract + sanitized runtime payload", "both"),
-    ("ENG-J2-IMMUTABLE",  "tests/document_web/test_field_review.py", "portal.settings_document_tests", "FieldDecision immutability + revision tokens", "both"),
-    ("ENG-J2-REVISION",   "tests/document_web/test_identity_review.py", "portal.settings_document_tests", "Identity revision + association", "both"),
-    ("ENG-J4-SNAPSHOT",   "tests/a1/test_a1_snapshots.py",         "portal.settings_document_tests", "A1 input snapshot + artifact", "optional-a1"),
-    ("ENG-J4-PREVIEW",    "tests/test_j4_artifacts.py",            "portal.settings_document_tests", "A1 preview/artifact", "optional-a1"),
-    ("ENG-J4-STATE",      "tests/test_j4_minimum.py",              "portal.settings_document_tests", "A1 generation + state machine", "optional-a1"),
+    (
+        "ENG-AUTH",
+        "tests/document_web/test_intake.py",
+        "portal.settings_document_tests",
+        "allauth + invitation-only reviewer adapter + TOTP wiring",
+        "both",
+    ),
+    (
+        "ENG-MIGRATION",
+        "tests/m2/test_migration_0003.py",
+        "portal.settings_document_tests",
+        "MigrationExecutor 0002→0003 transition",
+        "both",
+    ),
+    (
+        "ENG-J2-SCANNER",
+        "tests/document_web/test_intake.py",
+        "portal.settings_document_tests",
+        "J2 scanner + protected intake (single intake run)",
+        "both",
+    ),
+    (
+        "ENG-J2-OCR",
+        "tests/test_runtime_contract.py",
+        "portal.settings_document_tests",
+        "J2 OCR contract + sanitized runtime payload",
+        "both",
+    ),
+    (
+        "ENG-J2-IMMUTABLE",
+        "tests/document_web/test_field_review.py",
+        "portal.settings_document_tests",
+        "FieldDecision immutability + revision tokens",
+        "both",
+    ),
+    (
+        "ENG-J2-REVISION",
+        "tests/document_web/test_identity_review.py",
+        "portal.settings_document_tests",
+        "Identity revision + association",
+        "both",
+    ),
+    (
+        "ENG-J4-SNAPSHOT",
+        "tests/a1/test_a1_snapshots.py",
+        "portal.settings_document_tests",
+        "A1 input snapshot + artifact",
+        "optional-a1",
+    ),
+    (
+        "ENG-J4-PREVIEW",
+        "tests/test_j4_artifacts.py",
+        "portal.settings_document_tests",
+        "A1 preview/artifact",
+        "optional-a1",
+    ),
+    (
+        "ENG-J4-STATE",
+        "tests/test_j4_minimum.py",
+        "portal.settings_document_tests",
+        "A1 generation + state machine",
+        "optional-a1",
+    ),
 ]
 
 
@@ -765,29 +915,35 @@ def verify_eng001_checks(profile: str = "core") -> list[dict]:
     seen_expensive: dict[tuple[str, str], dict] = {}
     for check_id, test_path, env_module, note, check_profile in check_test_map:
         if check_profile == "optional-a1" and profile != "optional-a1":
-            results.append({
-                "label": f"eng001/{check_id}",
-                "status": "NOT_RUN",
-                "command": f"test -f {test_path}",
-                "start": now(), "end": now(),
-                "exit_code": None,
-                "stdout": "",
-                "stderr": "",
-                "error": f"{note}. Skipped for profile '{profile}'; use --profile optional-a1 to include.",
-            })
+            results.append(
+                {
+                    "label": f"eng001/{check_id}",
+                    "status": "NOT_RUN",
+                    "command": f"test -f {test_path}",
+                    "start": now(),
+                    "end": now(),
+                    "exit_code": None,
+                    "stdout": "",
+                    "stderr": "",
+                    "error": f"{note}. Skipped for profile '{profile}'; use --profile optional-a1 to include.",
+                }
+            )
             continue
         full_path = ROOT / test_path
         if not full_path.exists():
-            results.append({
-                "label": f"eng001/{check_id}",
-                "status": "MISSING_EVIDENCE",
-                "command": f"test -f {test_path}",
-                "start": now(), "end": now(),
-                "exit_code": None,
-                "stdout": "",
-                "stderr": "",
-                "error": f"{note}. Test file not found at {test_path}.",
-            })
+            results.append(
+                {
+                    "label": f"eng001/{check_id}",
+                    "status": "MISSING_EVIDENCE",
+                    "command": f"test -f {test_path}",
+                    "start": now(),
+                    "end": now(),
+                    "exit_code": None,
+                    "stdout": "",
+                    "stderr": "",
+                    "error": f"{note}. Test file not found at {test_path}.",
+                }
+            )
             continue
         run_env = dict(env)
         if env_module:
@@ -799,16 +955,19 @@ def verify_eng001_checks(profile: str = "core") -> list[dict]:
             # Reuse the ACTUAL prior outcome (exit code and stdout) —
             # never a synthetic PASS — and link to the shared run. A
             # different test file under the same module never reuses.
-            results.append({
-                "label": f"eng001/{check_id}",
-                "status": prior.get("status", "FAIL"),
-                "command": f"(shared) pytest {test_path}",
-                "start": now(), "end": now(),
-                "exit_code": prior.get("exit_code"),
-                "stdout": f"reused {prior.get('status', 'FAIL')} from earlier identical run of {test_path}. \n{prior.get('stdout', '')}",
-                "stderr": prior.get("stderr", ""),
-                "error": prior.get("error"),
-            })
+            results.append(
+                {
+                    "label": f"eng001/{check_id}",
+                    "status": prior.get("status", "FAIL"),
+                    "command": f"(shared) pytest {test_path}",
+                    "start": now(),
+                    "end": now(),
+                    "exit_code": prior.get("exit_code"),
+                    "stdout": f"reused {prior.get('status', 'FAIL')} from earlier identical run of {test_path}. \n{prior.get('stdout', '')}",
+                    "stderr": prior.get("stderr", ""),
+                    "error": prior.get("error"),
+                }
+            )
             continue
         r = check_cmd(
             f"eng001/{check_id}",
@@ -817,39 +976,68 @@ def verify_eng001_checks(profile: str = "core") -> list[dict]:
             timeout=180,
         )
         if env_module:
-            seen_expensive[shared_key] = {**r, "label": f"eng001/{check_id}",
-                                          "status": "PASS" if r["exit_code"] == 0 else "FAIL"}
-        results.append({**r, "label": f"eng001/{check_id}",
-                        "status": "PASS" if r["exit_code"] == 0 else "FAIL"})
+            seen_expensive[shared_key] = {
+                **r,
+                "label": f"eng001/{check_id}",
+                "status": "PASS" if r["exit_code"] == 0 else "FAIL",
+            }
+        results.append(
+            {
+                **r,
+                "label": f"eng001/{check_id}",
+                "status": "PASS" if r["exit_code"] == 0 else "FAIL",
+            }
+        )
 
     # Checks that remain unproven in the current source tree. Each gets
     # exactly one result with the explicit reason; we do NOT collapse
     # them into a single NOT_RUN, and we do NOT claim PASS.
     unproven = [
-        ("ENG-J2-STORAGE",  "No isolated storage backend test exists; tests/document_web/test_storage.py absent. "
-                            "Current evidence covers intake + protected OCR derivatives, not storage-layer contract."),
-        ("ENG-J3-CONCURRENCY", "Optimistic locking / concurrent drafts is unproven on the inspected source. "
-                            "PostgreSQL-only evidence; the SQLite dev environment cannot satisfy this gate."),
-        ("ENG-A11Y",        "Accessibility/axe coverage is unproven on the inspected source. "
-                            "Requires a real Chromium run; the verifier cannot satisfy this in a headless CI shell."),
-        ("ENG-BUILD",       "Full-test-suite execution is unproven on the inspected source. "
-                            "Targeted regressions via change-packages.yml replace the broad rerun for evidence-only commits."),
-        ("ENG-OCR-REAL",    "Real-engine OCR accuracy is unproven on the inspected source. "
-                            "The shared intake uses RapidOCR/ONNX as a default backend; real-engine extraction is separate evidence."),
-        ("ENG-SCANNER-REAL","Real scanner is unproven on the inspected source. "
-                            "The intake guard ``SCANNER_UNAVAILABLE`` returns ``synthetic_not_scanned`` when M2_SYNTHETIC_ONLY is True."),
+        (
+            "ENG-J2-STORAGE",
+            "No isolated storage backend test exists; tests/document_web/test_storage.py absent. "
+            "Current evidence covers intake + protected OCR derivatives, not storage-layer contract.",
+        ),
+        (
+            "ENG-J3-CONCURRENCY",
+            "Optimistic locking / concurrent drafts is unproven on the inspected source. "
+            "PostgreSQL-only evidence; the SQLite dev environment cannot satisfy this gate.",
+        ),
+        (
+            "ENG-A11Y",
+            "Accessibility/axe coverage is unproven on the inspected source. "
+            "Requires a real Chromium run; the verifier cannot satisfy this in a headless CI shell.",
+        ),
+        (
+            "ENG-BUILD",
+            "Full-test-suite execution is unproven on the inspected source. "
+            "Targeted regressions via change-packages.yml replace the broad rerun for evidence-only commits.",
+        ),
+        (
+            "ENG-OCR-REAL",
+            "Real-engine OCR accuracy is unproven on the inspected source. "
+            "The shared intake uses RapidOCR/ONNX as a default backend; real-engine extraction is separate evidence.",
+        ),
+        (
+            "ENG-SCANNER-REAL",
+            "Real scanner is unproven on the inspected source. "
+            "The intake guard ``SCANNER_UNAVAILABLE`` returns ``synthetic_not_scanned`` when M2_SYNTHETIC_ONLY is True.",
+        ),
     ]
     for check_id, note in unproven:
-        results.append({
-            "label": f"eng001/{check_id}",
-            "status": "BLOCKED_ENV",
-            "command": "",
-            "start": now(), "end": now(),
-            "exit_code": None,
-            "stdout": "",
-            "stderr": "",
-            "error": note,
-        })
+        results.append(
+            {
+                "label": f"eng001/{check_id}",
+                "status": "BLOCKED_ENV",
+                "command": "",
+                "start": now(),
+                "end": now(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": "",
+                "error": note,
+            }
+        )
 
     return results
 
@@ -912,10 +1100,14 @@ def write_md(report: dict, path: Path) -> None:
         lines.append("| Check | Status | Detail |")
         lines.append("|-------|--------|--------|")
         for item in items:
-            detail = (item.get("stdout") or item.get("error") or "")[:80].replace("\n", " ")
+            detail = (item.get("stdout") or item.get("error") or "")[:80].replace(
+                "\n", " "
+            )
             lines.append(f"| `{item['label']}` | {item['status']} | {detail} |")
 
-    lines.extend(["", "---", "*No PII, credentials, or protected content in this report.*"])
+    lines.extend(
+        ["", "---", "*No PII, credentials, or protected content in this report.*"]
+    )
     path.write_text("\n".join(lines))
     print(f"Markdown report: {path}")
 
@@ -923,6 +1115,7 @@ def write_md(report: dict, path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def _ensure_verification_db() -> dict:
     """Create or recreate the hermetic verification DB.
@@ -935,8 +1128,11 @@ def _ensure_verification_db() -> dict:
         [sys.executable, str(ROOT / "scripts" / "seed_verification_db.py")],
         capture_output=True,
         text=True,
-        env={**os.environ, "PYTHONPATH": str(ROOT),
-             "DJANGO_SETTINGS_MODULE": "portal.settings_verification"},
+        env={
+            **os.environ,
+            "PYTHONPATH": str(ROOT),
+            "DJANGO_SETTINGS_MODULE": "portal.settings_verification",
+        },
         cwd=ROOT,
         timeout=120,
     )
@@ -952,13 +1148,14 @@ def _ensure_verification_db() -> dict:
 
 def main() -> int:
     import argparse
+
     parser = argparse.ArgumentParser(description="Release 1A verification harness")
     parser.add_argument(
         "--profile",
         choices=["core", "optional-a1"],
         default="core",
         help="Acceptance profile: 'core' covers login/worker/document/assignment/persistence; "
-             "'optional-a1' additionally requires A1 draft/artifact paths (default: core)",
+        "'optional-a1' additionally requires A1 draft/artifact paths (default: core)",
     )
     args = parser.parse_args()
     profile = args.profile
@@ -980,8 +1177,10 @@ def main() -> int:
 
     try:
         import django
+
         django.setup()
         from django.db import connection
+
         db_backend = connection.vendor
     except Exception as e:
         db_backend = f"unknown ({type(e).__name__}: {e})"
@@ -1091,7 +1290,7 @@ def main() -> int:
     failures = []
     for r in all_results:
         label = r["label"]
-        required = _required_for(label)
+        _required_for(label)
         if r["status"] == "FAIL":
             # An explicit check failure prevents acceptance regardless of
             # whether the check is declared required for this profile.
@@ -1099,11 +1298,13 @@ def main() -> int:
         if not _required_for_profile(label, profile):
             continue  # not required for this profile
         if r["status"] == "BLOCKED_ENV":
-            failures.append((label, "BLOCKED_ENV",
-                             r.get("error", "environment unavailable")))
+            failures.append(
+                (label, "BLOCKED_ENV", r.get("error", "environment unavailable"))
+            )
         elif r["status"] == "NOT_RUN":
-            failures.append((label, "NOT_RUN",
-                             "required check not run for this profile"))
+            failures.append(
+                (label, "NOT_RUN", "required check not run for this profile")
+            )
 
     if failures:
         print(f"\nRequired-check failures: {len(failures)}")

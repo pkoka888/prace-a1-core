@@ -72,7 +72,10 @@ jobs:
       - name: Install lint tools
         run: |
           python -m venv venv
-          venv/bin/pip install ruff pytest
+          # Pinned to the same ruff the pre-commit hook uses (v0.8.0). An
+          # unpinned ruff resolves to a newer release whose default rule set is
+          # broader, so the hook and CI would disagree about what passes.
+          venv/bin/pip install "ruff==0.8.0" pytest
 
       - name: Run ruff
         run: |

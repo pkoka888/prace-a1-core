@@ -8,7 +8,14 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        # public-site/ is owned by root and is not writable by the commit user.
+        # These hooks open every file they are given in read-write mode even
+        # when the content is already correct, so they fail with
+        # PermissionError on a file that needs no change. The directory is
+        # classified as quarantined in change-packages.yml, with no checks.
+        exclude: "^public-site/"
       - id: end-of-file-fixer
+        exclude: "^public-site/"
       - id: check-yaml
       - id: check-added-large-files
         args: ["--maxkb=5120"]
@@ -23,10 +30,20 @@ repos:
         args: ["--fix", "--output-format=github"]
       - id: ruff-format
 
-  # Secret detection (basic pattern matching)
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+  # Secret detection (Yelp detect-secrets; baseline remains a separate setup item)
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
         exclude: "^tests/fixtures/|^.history-remediation/"
+
+  # CLI/Agent directory drift prevention — local repo hook
+  - repo: local
+    hooks:
+      - id: cli-agent-drift
+        name: CLI Agent Config Drift Check
+        entry: .pre-commit-hooks/cli-agent-drift/check.sh
+        language: script
+        pass_filenames: false
+        always_run: true

@@ -8,6 +8,7 @@ users, workers, documents, and assignments.
 
 Safe to re-run: always recreates from scratch.
 """
+
 from __future__ import annotations
 
 import os
@@ -35,6 +36,7 @@ def destroy_db():
 def migrate():
     print("  Applying migrations...")
     from django.core.management import call_command
+
     call_command("migrate", verbosity=1, interactive=False)
     print("  Migrations applied.")
 
@@ -42,6 +44,7 @@ def migrate():
 def seed():
     print("  Seeding synthetic data...")
     import django
+
     django.setup()
 
     from django.contrib.auth import get_user_model
@@ -86,7 +89,9 @@ def seed():
                     family_name=f"TestLast{j+1}",
                     birth_date=date(1990, 1, 1) + timedelta(days=j * 100),
                     activity_profile="employee",
-                    state=r1a.Worker.State.ACTIVE if j < 2 else r1a.Worker.State.ARCHIVED,
+                    state=r1a.Worker.State.ACTIVE
+                    if j < 2
+                    else r1a.Worker.State.ARCHIVED,
                 )
                 workers.append(w)
         print(f"    Created {len(workers)} workers")
@@ -120,8 +125,14 @@ def seed():
         print(f"    Created {len(docs)} documents + versions")
 
         assignments = []
-        for i, (org, worker) in enumerate([(org_a, workers[0]), (org_a, workers[1]),
-                                            (org_b, workers[3]), (org_b, workers[4])]):
+        for i, (org, worker) in enumerate(
+            [
+                (org_a, workers[0]),
+                (org_a, workers[1]),
+                (org_b, workers[3]),
+                (org_b, workers[4]),
+            ]
+        ):
             a = r1a.Assignment.objects.create(
                 organization=org,
                 worker=worker,
@@ -129,7 +140,9 @@ def seed():
                 activity_label=f"Activity {i+1}",
                 start=date(2026, 1, 1) + timedelta(days=i * 30),
                 end=date(2026, 12, 31) + timedelta(days=i * 30),
-                state=r1a.Assignment.State.PLANNED if i % 2 == 0 else r1a.Assignment.State.ACTIVE,
+                state=r1a.Assignment.State.PLANNED
+                if i % 2 == 0
+                else r1a.Assignment.State.ACTIVE,
             )
             assignments.append(a)
         print(f"    Created {len(assignments)} assignments")
@@ -155,14 +168,14 @@ def seed():
             ocr_engine="RapidOCR",
             state=r1a.FieldProposal.State.PROPOSED,
         )
-        fd = r1a.FieldDecision.objects.create(
+        r1a.FieldDecision.objects.create(
             field_proposal=fp,
             organization=org_a,
             decision="confirmed",
             corrected_value="Synthetic",
             decided_by=u,
         )
-        rev = r1a.WorkerIdentityRevision.objects.create(
+        r1a.WorkerIdentityRevision.objects.create(
             worker=workers[0],
             organization=org_a,
             source_document=d,
@@ -214,6 +227,7 @@ def main():
     sys.path.insert(0, str(ROOT))
 
     import django
+
     django.setup()
 
     header()
@@ -222,7 +236,7 @@ def main():
     migrate()
     seed()
     print(f"\nVerification DB ready: {DB_PATH}")
-    print(f"  Run with: DJANGO_SETTINGS_MODULE=portal.settings_verification")
+    print("  Run with: DJANGO_SETTINGS_MODULE=portal.settings_verification")
 
 
 if __name__ == "__main__":

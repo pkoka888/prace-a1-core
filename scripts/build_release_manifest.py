@@ -26,6 +26,7 @@ Operators do not edit it manually. ``PRACE_RELEASE_MANIFEST_SHA256``
 is the expected hash; the manifest's hash must match it on every
 service start.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,19 +36,34 @@ import json
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUT = REPO_ROOT / "runtime" / "portal" / "supervised-development" / "release_manifest.json"
+DEFAULT_OUT = (
+    REPO_ROOT
+    / "runtime"
+    / "portal"
+    / "supervised-development"
+    / "release_manifest.json"
+)
 APPROVED_RUNTIME_PARENT = REPO_ROOT / "runtime" / "portal"
 
 
-def _git_commit() -> str:
-    proc = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
-                          check=False, capture_output=True, text=True)
+def _git_commit(explicit: str | None = None) -> str:
+    if explicit:
+        if not re.fullmatch(r"[0-9a-f]{40}", explicit):
+            raise SystemExit(
+                f"FAIL: git_commit {explicit!r} is not a 40-hex commit SHA"
+            )
+        return explicit
+    proc = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     sha = (proc.stdout or "").strip()
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise SystemExit(f"FAIL: HEAD is not a 40-hex commit SHA: {sha!r}")
@@ -64,8 +80,12 @@ def _app_build_id(explicit: str | None) -> str:
         return env
     # Fallback: git describe (e.g. v0.0.0-12-gabcdef). If describe
     # fails, use the short SHA.
-    proc = subprocess.run(["git", "-C", str(REPO_ROOT), "describe", "--always", "--dirty"],
-                          check=False, capture_output=True, text=True)
+    proc = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "describe", "--always", "--dirty"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
     describe = (proc.stdout or "").strip()
     if describe and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", describe):
         return describe
@@ -92,14 +112,18 @@ def _validate_confinement(out: Path) -> Path:
         raise SystemExit(f"FAIL: manifest path {raw} is a symlink")
     for parent in [raw, *raw.parents]:
         if parent.exists() and parent.is_symlink():
-            raise SystemExit(f"FAIL: manifest path {raw} contains symlink component {parent}")
+            raise SystemExit(
+                f"FAIL: manifest path {raw} contains symlink component {parent}"
+            )
     # After the raw symlink check, resolve to a canonical form for
     # the layout comparison.
     resolved = raw.resolve()
-    expected_parent = APPROVED_RUNTIME_PARENT / "supervised-"  # any supervised-* child
-    if resolved.parent.parent != APPROVED_RUNTIME_PARENT \
-            or not resolved.parent.name.startswith("supervised-") \
-            or resolved.name != "release_manifest.json":
+    # any supervised-* child of APPROVED_RUNTIME_PARENT is accepted
+    if (
+        resolved.parent.parent != APPROVED_RUNTIME_PARENT
+        or not resolved.parent.name.startswith("supervised-")
+        or resolved.name != "release_manifest.json"
+    ):
         raise SystemExit(
             f"FAIL: manifest path {resolved} is not under "
             f"{APPROVED_RUNTIME_PARENT}/supervised-*/release_manifest.json"
@@ -122,10 +146,23 @@ def _validate_confinement(out: Path) -> Path:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUT,
-                        help="Path to the manifest (default: %(default)s)")
-    parser.add_argument("--app-build-id", default=None,
-                        help="Override the app_build_id (default: env or git describe)")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_OUT,
+        help="Path to the manifest (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--app-build-id",
+        default=None,
+        help="Override the app_build_id (default: env or git describe)",
+    )
+    parser.add_argument(
+        "--git-commit",
+        default=None,
+        help="Explicit 40-hex commit SHA (default: local git HEAD; "
+        "required when the source export has no git metadata)",
+    )
     args = parser.parse_args()
 
     out = _validate_confinement(args.output)
@@ -144,11 +181,12 @@ def main() -> int:
         raise SystemExit(f"FAIL: parent path {out.parent} is a symlink")
 
     payload = {
-        "git_commit": _git_commit(),
+        "git_commit": _git_commit(args.git_commit),
         "app_build_id": _app_build_id(args.app_build_id),
         "generated_at": _dt.datetime.now(_dt.timezone.utc)
-                                     .replace(microsecond=0).isoformat()
-                                     .replace("+00:00", "Z"),
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
         "schema_version": 1,
     }
     body = json.dumps(payload, indent=2, sort_keys=True).encode("utf-8") + b"\n"
@@ -157,8 +195,7 @@ def main() -> int:
     # Atomic write to a sibling temp file, then rename. Use mode 0o400
     # (read-only for owner) so the read_manifest() PERMISSIONS check
     # succeeds without further chmod.
-    fd, tmp_path = tempfile.mkstemp(prefix=".release-manifest-",
-                                     dir=str(out.parent))
+    fd, tmp_path = tempfile.mkstemp(prefix=".release-manifest-", dir=str(out.parent))
     try:
         with os.fdopen(fd, "wb") as stream:
             stream.write(body)

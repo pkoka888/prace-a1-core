@@ -3,10 +3,10 @@
 These tests exercise the orchestrator's pure logic without requiring a real
 PostgreSQL cluster or browser. They use monkeypatching and fake executables.
 """
+
 from __future__ import annotations
 
 import json
-import os
 import signal
 import subprocess
 import sys
@@ -41,8 +41,8 @@ def _make_fake_pg_bin_fail_start(tmp_path: Path) -> Path:
     pg_ctl = bin_dir / "pg_ctl"
     pg_ctl.write_text(
         "#!/bin/sh\n"
-        "for arg in \"$@\"; do\n"
-        "    if [ \"$arg\" = \"start\" ]; then exit 1; fi\n"
+        'for arg in "$@"; do\n'
+        '    if [ "$arg" = "start" ]; then exit 1; fi\n'
         "done\n"
         "exit 0\n"
     )
@@ -59,10 +59,14 @@ def _prepare_work_tree(tmp_path: Path) -> Path:
     (scripts / "rehearse_synthetic_site.sh").write_text("#!/bin/sh\nexit 0\n")
     (scripts / "rehearse_synthetic_site.sh").chmod(0o755)
     # rehearse_verify_persistence.py
-    (scripts / "rehearse_verify_persistence.py").write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n")
+    (scripts / "rehearse_verify_persistence.py").write_text(
+        "#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n"
+    )
     (scripts / "rehearse_verify_persistence.py").chmod(0o755)
     # build_release_manifest.py
-    (scripts / "build_release_manifest.py").write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n")
+    (scripts / "build_release_manifest.py").write_text(
+        "#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n"
+    )
     (scripts / "build_release_manifest.py").chmod(0o755)
     # manage.py
     (work / "manage.py").write_text("#!/usr/bin/env python3\nimport sys\nsys.exit(0)\n")
@@ -184,8 +188,14 @@ def test_run_phase_failure_retention_and_log_mode(tmp_path):
     steps_dir.mkdir(mode=0o700)
 
     # Command that exits with code 7 and writes to stderr
-    argv = [sys.executable, "-c", "import sys; sys.stderr.write('phase error\\n'); sys.exit(7)"]
-    code, record = rcj.run_phase(state, steps_dir, "test-phase", argv, cwd=Path.cwd(), env={}, timeout=10)
+    argv = [
+        sys.executable,
+        "-c",
+        "import sys; sys.stderr.write('phase error\\n'); sys.exit(7)",
+    ]
+    code, record = rcj.run_phase(
+        state, steps_dir, "test-phase", argv, cwd=Path.cwd(), env={}, timeout=10
+    )
 
     assert code == 7
     assert record["exit_code"] == 7
@@ -211,7 +221,9 @@ def test_run_phase_timeout_kills_process_group(tmp_path):
 
     # Command that sleeps longer than timeout
     argv = [sys.executable, "-c", "import time; time.sleep(10)"]
-    code, record = rcj.run_phase(state, steps_dir, "timeout-phase", argv, cwd=Path.cwd(), env={}, timeout=0.1)
+    code, record = rcj.run_phase(
+        state, steps_dir, "timeout-phase", argv, cwd=Path.cwd(), env={}, timeout=0.1
+    )
 
     assert code == 124
     assert record["exit_code"] == 124
@@ -232,7 +244,10 @@ def _canonical_core_evidence() -> dict:
         "source_document_sha256": "a" * 64,
         "required_stages": list(rcj.CORE_STAGES_REQUIRED),
         "stages": {
-            **{stage: {"stage": stage, "ok": True} for stage in rcj.CORE_STAGES_REQUIRED},
+            **{
+                stage: {"stage": stage, "ok": True}
+                for stage in rcj.CORE_STAGES_REQUIRED
+            },
             "identity_confirmed": {
                 "stage": "identity_confirmed",
                 "ok": True,
@@ -251,7 +266,11 @@ def _canonical_core_evidence() -> dict:
                 "document_pk": 1,
                 "sha256": "a" * 64,
             },
-            "a1_skipped": {"stage": "a1_skipped", "ok": True, "reason": "core profile does not exercise A1 stages"},
+            "a1_skipped": {
+                "stage": "a1_skipped",
+                "ok": True,
+                "reason": "core profile does not exercise A1 stages",
+            },
         },
     }
 
@@ -325,7 +344,9 @@ def test_parse_journey_evidence_fails_on_source_document_downloaded_mismatch():
     evidence = _canonical_core_evidence()
     evidence["stages"]["source_document_downloaded"]["document_pk"] = 999
     _, errors = rcj.parse_journey_evidence(json.dumps(evidence).encode(), "core")
-    assert any("source_document_downloaded.document_pk does not match" in e for e in errors)
+    assert any(
+        "source_document_downloaded.document_pk does not match" in e for e in errors
+    )
 
     evidence = _canonical_core_evidence()
     evidence["stages"]["source_document_downloaded"]["sha256"] = "b" * 64
@@ -353,7 +374,9 @@ def _canonical_optional_a1_evidence() -> dict:
 def test_parse_journey_evidence_success_optional_a1():
     """Valid optional-a1 evidence should parse without errors."""
     evidence = _canonical_optional_a1_evidence()
-    parsed, errors = rcj.parse_journey_evidence(json.dumps(evidence).encode(), "optional-a1")
+    parsed, errors = rcj.parse_journey_evidence(
+        json.dumps(evidence).encode(), "optional-a1"
+    )
     assert errors == []
     assert parsed == evidence
 
@@ -388,7 +411,6 @@ def test_run_core_journey_failed_pg_start_triggers_pg_stop(tmp_path, monkeypatch
     monkeypatch.chdir(work)
 
     pg_bin = _make_fake_pg_bin_fail_start(tmp_path)
-    commit = "0" * 40
 
     home = tmp_path / "home"
     home.mkdir()
@@ -450,7 +472,18 @@ def test_run_core_journey_missing_pg_bin_no_state_mutation(tmp_path, monkeypatch
 def test_run_core_journey_invalid_profile_rejected():
     """Invalid profile should be rejected early (via argparse)."""
     with pytest.raises(SystemExit):
-        rcj.parse_args(["--commit", "0"*40, "--repo-root", ".", "--state", ".", "--profile", "invalid"])
+        rcj.parse_args(
+            [
+                "--commit",
+                "0" * 40,
+                "--repo-root",
+                ".",
+                "--state",
+                ".",
+                "--profile",
+                "invalid",
+            ]
+        )
 
 
 def test_parse_verifier_result_success_core():
@@ -458,9 +491,7 @@ def test_parse_verifier_result_success_core():
     result = {
         "ok": True,
         "profile": "core",
-        "checks": {
-            name: True for name in rcj.VERIFIER_CORE_CHECKS
-        },
+        "checks": {name: True for name in rcj.VERIFIER_CORE_CHECKS},
     }
     parsed, errors = rcj.parse_verifier_result(json.dumps(result).encode(), "core")
     assert errors == []
@@ -483,7 +514,10 @@ def test_parse_verifier_result_fails_on_false_check():
     result = {
         "ok": True,
         "profile": "core",
-        "checks": {name: (False if name == "worker_found" else True) for name in rcj.VERIFIER_CORE_CHECKS},
+        "checks": {
+            name: (False if name == "worker_found" else True)
+            for name in rcj.VERIFIER_CORE_CHECKS
+        },
     }
     _, errors = rcj.parse_verifier_result(json.dumps(result).encode(), "core")
     assert any("verifier check did not pass: worker_found" in e for e in errors)
@@ -510,13 +544,21 @@ def test_run_phase_unexpected_exception_is_recorded(tmp_path, monkeypatch):
     class BadProcess:
         def poll(self):
             raise MemoryError("simulated unexpected failure")
+
         def wait(self, timeout=None):
             raise MemoryError("simulated unexpected failure")
 
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **kw: BadProcess())
     with pytest.raises(MemoryError, match="simulated unexpected failure"):
-        rcj.run_phase(state, steps_dir, "bad-phase", [sys.executable, "-c", "import time; time.sleep(10)"],
-                      cwd=Path.cwd(), env={}, timeout=5.0)
+        rcj.run_phase(
+            state,
+            steps_dir,
+            "bad-phase",
+            [sys.executable, "-c", "import time; time.sleep(10)"],
+            cwd=Path.cwd(),
+            env={},
+            timeout=5.0,
+        )
 
 
 def test_run_phase_interrupted_by_cancellation(tmp_path):
@@ -530,8 +572,16 @@ def test_run_phase_interrupted_by_cancellation(tmp_path):
     cancel.request(signal.SIGTERM, "test cancellation")
     argv = [sys.executable, "-c", "import time; time.sleep(10)"]
     with pytest.raises(rcj.JourneyInterrupted) as exc_info:
-        rcj.run_phase(state, steps_dir, "interrupted-phase", argv,
-                      cwd=Path.cwd(), env={}, timeout=10.0, cancellation=cancel)
+        rcj.run_phase(
+            state,
+            steps_dir,
+            "interrupted-phase",
+            argv,
+            cwd=Path.cwd(),
+            env={},
+            timeout=10.0,
+            cancellation=cancel,
+        )
     assert exc_info.value.signum == signal.SIGTERM
     assert exc_info.value.reason == "test cancellation"
 

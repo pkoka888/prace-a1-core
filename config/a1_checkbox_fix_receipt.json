@@ -2,7 +2,7 @@
   "fix_type": "original_checkbox_outlines_and_inset_marks",
   "template_sha256": "c816d97525cd9070d00c1984c486e73fbf1fa08b8a507df32459dbaf9c23d27a",
   "layout_sha256": "9ac1b8bc27e68e84b82a8697f81b77633160cf051fab3b41ba6c8b45762fd025",
-  "renderer_sha256": "f0bbdca3a23fcecf2697e20c73939def76a5b1a04af4a1b349342c5fad868aa8",
+  "renderer_sha256": "cc33bc299657ffce6fcc99e3e3888cb70d05b8b4840d5cfd7dcacf3ae3c40656",
   "reference_sha256": "2d1a2b142b74920f0ef81d2197064cdeed1617a5a56976d05b0b0f05861e3f1d",
   "checks": [
     {
@@ -103,5 +103,178 @@
       "result": "PASS",
       "human_identity_confirmation": false
     }
+  },
+  "provisional_section_5_1_regression": {
+    "previous_renderer_sha256": "e9ee648cbbc13a8fb98e4729275eafd3191c98ed71f0a151320f811c0b5c3567",
+    "checks": [
+      {
+        "page": 1,
+        "dpi": 300,
+        "changed_pixels": 0,
+        "outside_section_5_1": 0
+      },
+      {
+        "page": 2,
+        "dpi": 300,
+        "changed_pixels": 3784,
+        "outside_section_5_1": 0
+      },
+      {
+        "page": 3,
+        "dpi": 300,
+        "changed_pixels": 0,
+        "outside_section_5_1": 0
+      }
+    ],
+    "source_preserved": true,
+    "territory": "synthetic DE, AT",
+    "visual_review": "PASS: all three synthetic pages inspected locally; 5.1 empty, 4.1.2 selected, 5.2 preserved"
+  },
+  "completion_preview_regression": {
+    "previous_renderer_sha256": "3d59e0ca7ec6caed129b7b4da0de2dd6f70cb45d3ae9a412fe559bcf59cb2cbe",
+    "comparisons": [
+      {
+        "profile": "posted_employee",
+        "application_draft": false,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "posted_employee",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "employee_multi_state",
+        "application_draft": false,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "employee_multi_state",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "self_employed_multi_state",
+        "application_draft": false,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "self_employed_multi_state",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      }
+    ],
+    "scope": "Existing complete forms; incomplete previews separately tested"
+  },
+  "undecided_completion_preview_regression": {
+    "previous_renderer_sha256": "ecf45244df46ba2a6d6274c6071e0bbb40212dd91d3b2b90d5611ef475647bed",
+    "current_renderer_sha256": "cc33bc299657ffce6fcc99e3e3888cb70d05b8b4840d5cfd7dcacf3ae3c40656",
+    "comparisons": [
+      {
+        "profile": "posted_employee",
+        "application_draft": false,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "posted_employee",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "employee_multi_state",
+        "application_draft": false,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "employee_multi_state",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "self_employed_multi_state",
+        "application_draft": false,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "self_employed_multi_state",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0
+      },
+      {
+        "profile": "self_employed_multi_state",
+        "application_draft": true,
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": 0,
+        "completion_preview": true
+      }
+    ],
+    "undecided_baseline_fail_closed": {
+      "completion_preview_true": "Missing or unsupported a1.status_profile: ''",
+      "completion_preview_false": "Missing or unsupported a1.status_profile: ''"
+    },
+    "undecided_current": {
+      "pages": 3,
+      "draft_notice_all_pages": true,
+      "pending_token_leak": false,
+      "status_profile": "",
+      "status_profile_choices": [
+        "posted_employee",
+        "employee_multi_state"
+      ],
+      "missing_fields_include_status": true,
+      "activity_region": [
+        {
+          "page": 0,
+          "changed_pixels": 0,
+          "inside_activity_region": 0,
+          "outside_activity_region": 0
+        },
+        {
+          "page": 1,
+          "changed_pixels": 749,
+          "inside_activity_region": 749,
+          "outside_activity_region": 0
+        },
+        {
+          "page": 2,
+          "changed_pixels": 230,
+          "inside_activity_region": 230,
+          "outside_activity_region": 0
+        }
+      ]
+    },
+    "checks": [
+      "baseline-pinned renderer fails closed for status '' with and without completion_preview",
+      "decided complete forms and valid-status previews pixel-identical at dpi 110",
+      "undecided preview renders with draft notice on all pages, no pending-token leakage",
+      "reviewed activity values render only inside Section 5 activity field boxes",
+      "activity-blanked variant differs only inside those boxes; page 1 unchanged"
+    ],
+    "scope": "Undecided status previews with reviewed Section 5 activity; existing complete forms covered by prior pin"
   }
 }

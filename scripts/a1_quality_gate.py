@@ -28,14 +28,38 @@ from PIL import Image, ImageOps, ImageDraw
 from pypdf import PdfReader
 
 try:
-    from .a1_audit import audited_operation, write_private_json, AuditWriteError, current_run_id, completed_operation_evidence
+    from .a1_audit import (
+        audited_operation,
+        write_private_json,
+        AuditWriteError,
+        current_run_id,
+        completed_operation_evidence,
+    )
     from .a1_private import A1PrivateInputError, private_path
-    from .a1_paths import protected_root, protected_path, validate_output_path, PathValidationError, ensure_private_directory
+    from .a1_paths import (
+        protected_root,
+        protected_path,
+        validate_output_path,
+        PathValidationError,
+        ensure_private_directory,
+    )
     from .finalize_a1 import read_review
 except ImportError:
-    from a1_audit import audited_operation, write_private_json, AuditWriteError, current_run_id, completed_operation_evidence
+    from a1_audit import (
+        audited_operation,
+        write_private_json,
+        AuditWriteError,
+        current_run_id,
+        completed_operation_evidence,
+    )
     from a1_private import A1PrivateInputError, private_path
-    from a1_paths import protected_root, protected_path, validate_output_path, PathValidationError, ensure_private_directory
+    from a1_paths import (
+        protected_root,
+        protected_path,
+        validate_output_path,
+        PathValidationError,
+        ensure_private_directory,
+    )
     from finalize_a1 import read_review
 
 try:
@@ -100,9 +124,13 @@ def expected_records(
         with review_path.open(encoding="utf-8-sig", newline="") as stream:
             reader = csv.DictReader(stream)
             required_employment = {
-                "employment_id", "employment_name", "employment_street",
-                "employment_house_number", "employment_city",
-                "employment_postal_code", "employment_country_code",
+                "employment_id",
+                "employment_name",
+                "employment_street",
+                "employment_house_number",
+                "employment_city",
+                "employment_postal_code",
+                "employment_country_code",
             }
             missing_columns = sorted(required_employment - set(reader.fieldnames or ()))
             if missing_columns:
@@ -117,10 +145,15 @@ def expected_records(
         if {row["employee_id"] for row in reviewed} != set(records):
             raise QualityGateError("review and cohort employee sets differ")
         if cohort.get("additional_people"):
-            raise QualityGateError("cohort additions require reconciliation in review CSV")
+            raise QualityGateError(
+                "cohort additions require reconciliation in review CSV"
+            )
         for row in reviewed:
             key = row["employee_id"]
-            if row["document_id"] != document_ids[key] or row["issue_date"] != issue_dates[key]:
+            if (
+                row["document_id"] != document_ids[key]
+                or row["issue_date"] != issue_dates[key]
+            ):
                 raise QualityGateError("cohort values differ from reviewed evidence")
         return {row["employee_id"]: row for row in reviewed}
     for row in cohort.get("additional_people", []):
@@ -154,17 +187,23 @@ def require_completed_generation(pdf_dir: Path) -> dict[str, Any]:
         run_id = manifest["run_id"]
         if not isinstance(run_id, str) or str(uuid.UUID(run_id)) != run_id:
             raise ValueError()
-        receipt_path = protected_path(protected_root() / "a1/receipts" / f"{run_id}.json")
+        receipt_path = protected_path(
+            protected_root() / "a1/receipts" / f"{run_id}.json"
+        )
         receipt_hash = sha256_file(receipt_path)
         audit_digest = completed_operation_evidence(
             run_id, {"provisional_generate", "candidate_generate"}
         )
         entries = manifest["generated"]
         declared = {entry["path"]: entry["sha256"] for entry in entries}
-        actual = {path.name: sha256_file(protected_path(path)) for path in _pdf_paths(pdf_dir)}
+        actual = {
+            path.name: sha256_file(protected_path(path)) for path in _pdf_paths(pdf_dir)
+        }
         if not actual or declared != actual or len(declared) != len(entries):
             raise ValueError()
-        if manifest_hash != sha256_file(manifest_path) or receipt_hash != sha256_file(receipt_path):
+        if manifest_hash != sha256_file(manifest_path) or receipt_hash != sha256_file(
+            receipt_path
+        ):
             raise ValueError()
         return {
             "run_id": run_id,
@@ -181,8 +220,13 @@ def render_previews(pdf_dir: Path, preview_dir: Path, dpi: int = 200) -> list[Pa
     protected_path(pdf_dir)
     if type(dpi) is not int or not 144 <= dpi <= 600:
         raise QualityGateError("QA rendering requires 144 to 600 DPI")
-    if pdf_dir.resolve() == preview_dir.resolve() or pdf_dir.resolve() in preview_dir.resolve().parents:
-        raise QualityGateError("preview directory must not contain the source PDF directory")
+    if (
+        pdf_dir.resolve() == preview_dir.resolve()
+        or pdf_dir.resolve() in preview_dir.resolve().parents
+    ):
+        raise QualityGateError(
+            "preview directory must not contain the source PDF directory"
+        )
     validate_output_path(preview_dir, allow_existing=True)
     if preview_dir.resolve() in pdf_dir.resolve().parents:
         raise QualityGateError("preview directory overlaps source PDFs")
@@ -201,7 +245,9 @@ def render_previews(pdf_dir: Path, preview_dir: Path, dpi: int = 200) -> list[Pa
             for index, page in enumerate(document):
                 target = preview_dir / f"{pdf_path.stem}-page-{index + 1}.png"
                 protected_path(target)
-                page.get_pixmap(matrix=matrix, alpha=False, colorspace=pymupdf.csRGB).save(target)
+                page.get_pixmap(
+                    matrix=matrix, alpha=False, colorspace=pymupdf.csRGB
+                ).save(target)
                 target.chmod(0o600)
                 rendered.append(target)
     if source_hashes != {path.name: sha256_file(path) for path in pdfs}:
@@ -210,18 +256,28 @@ def render_previews(pdf_dir: Path, preview_dir: Path, dpi: int = 200) -> list[Pa
     for path in rendered:
         with Image.open(path) as image:
             pixel_hashes[path.name] = _pixel_hash(image)
-    _write_json(preview_dir / "render-receipt.json", {
-        "schema_version": 1, "dpi": dpi, "pdfs": source_hashes,
-        "preview_pixels": pixel_hashes,
-    })
+    _write_json(
+        preview_dir / "render-receipt.json",
+        {
+            "schema_version": 1,
+            "dpi": dpi,
+            "pdfs": source_hashes,
+            "preview_pixels": pixel_hashes,
+        },
+    )
     return rendered
 
 
-def create_contact_sheets(previews: Iterable[Path], output_dir: Path, columns: int = 3) -> list[Path]:
+def create_contact_sheets(
+    previews: Iterable[Path], output_dir: Path, columns: int = 3
+) -> list[Path]:
     previews = list(previews)
     validate_output_path(output_dir, allow_existing=True)
-    if any(output_dir.resolve() == path.parent.resolve() or output_dir.resolve() in path.resolve().parents
-           for path in previews):
+    if any(
+        output_dir.resolve() == path.parent.resolve()
+        or output_dir.resolve() in path.resolve().parents
+        for path in previews
+    ):
         raise QualityGateError("QA_OUTPUT_OVERLAPS_INPUT")
     ensure_private_directory(output_dir)
     grouped: dict[int, list[Path]] = {page: [] for page in range(1, PAGE_COUNT + 1)}
@@ -242,27 +298,44 @@ def create_contact_sheets(previews: Iterable[Path], output_dir: Path, columns: i
             with Image.open(path) as source:
                 image = source.convert("RGB")
                 height = round(image.height * thumb_width / image.width)
-                thumbs.append((path.stem.rsplit("-page-", 1)[0], image.resize((thumb_width, height))))
+                thumbs.append(
+                    (
+                        path.stem.rsplit("-page-", 1)[0],
+                        image.resize((thumb_width, height)),
+                    )
+                )
         label_height, padding = 34, 12
         cell_height = max(image.height for _, image in thumbs) + label_height
         rows = (len(thumbs) + columns - 1) // columns
-        sheet = Image.new("RGB", (columns * (thumb_width + padding) + padding, rows * (cell_height + padding) + padding), "white")
+        sheet = Image.new(
+            "RGB",
+            (
+                columns * (thumb_width + padding) + padding,
+                rows * (cell_height + padding) + padding,
+            ),
+            "white",
+        )
         draw = ImageDraw.Draw(sheet)
         for index, (label, image) in enumerate(thumbs):
             x = padding + (index % columns) * (thumb_width + padding)
             y = padding + (index // columns) * (cell_height + padding)
-            sheet.paste(ImageOps.expand(image, border=1, fill="#888888"), (x, y + label_height))
+            sheet.paste(
+                ImageOps.expand(image, border=1, fill="#888888"), (x, y + label_height)
+            )
             draw.text((x, y + 8), label.removeprefix(PDF_PREFIX), fill="black")
         target = output_dir / f"contact-sheet-page-{page_number}.png"
         protected_path(target)
         sheet.save(target, optimize=True)
         target.chmod(0o600)
         outputs.append(target)
-    _write_json(output_dir / "contact-receipt.json", {
-        "schema_version": 1,
-        "previews": {path.name: sha256_file(path) for path in previews},
-        "sheets": {path.name: sha256_file(path) for path in outputs},
-    })
+    _write_json(
+        output_dir / "contact-receipt.json",
+        {
+            "schema_version": 1,
+            "previews": {path.name: sha256_file(path) for path in previews},
+            "sheets": {path.name: sha256_file(path) for path in outputs},
+        },
+    )
     return outputs
 
 
@@ -284,7 +357,9 @@ def _normalize(value: str) -> str:
     return " ".join(value.replace("\u00a0", " ").split()).casefold()
 
 
-def _background_damage(pdf_path: Path, background: Path, dpi: int = 144) -> list[dict[str, int]]:
+def _background_damage(
+    pdf_path: Path, background: Path, dpi: int = 144
+) -> list[dict[str, int]]:
     """Count template ink/color pixels erased to near-white in the generated PDF.
 
     The generated page is rendered once per page (the previous version
@@ -300,19 +375,31 @@ def _background_damage(pdf_path: Path, background: Path, dpi: int = 144) -> list
             return [{"page": 0, "erased_template_pixels": 10**9}]
         for index in range(len(generated)):
             got_pix = generated[index].get_pixmap(
-                matrix=matrix, alpha=False, colorspace=pymupdf.csRGB)
-            got = np.frombuffer(got_pix.samples, dtype=np.uint8) \
-                .reshape(got_pix.height, got_pix.width, 3)
+                matrix=matrix, alpha=False, colorspace=pymupdf.csRGB
+            )
+            got = np.frombuffer(got_pix.samples, dtype=np.uint8).reshape(
+                got_pix.height, got_pix.width, 3
+            )
             ref_pix = template[index].get_pixmap(
-                matrix=matrix, alpha=False, colorspace=pymupdf.csRGB)
-            ref = np.frombuffer(ref_pix.samples, dtype=np.uint8) \
-                .reshape(ref_pix.height, ref_pix.width, 3)
+                matrix=matrix, alpha=False, colorspace=pymupdf.csRGB
+            )
+            ref = np.frombuffer(ref_pix.samples, dtype=np.uint8).reshape(
+                ref_pix.height, ref_pix.width, 3
+            )
             if got.shape != ref.shape:
                 damage.append({"page": index + 1, "erased_template_pixels": 10**9})
                 continue
-            ref_ink = (ref.min(axis=2) < 215) | ((ref.max(axis=2) - ref.min(axis=2)) > 18)
-            erased = ref_ink & (got.min(axis=2) > 246) & (got.max(axis=2) - got.min(axis=2) < 5)
-            damage.append({"page": index + 1, "erased_template_pixels": int(erased.sum())})
+            ref_ink = (ref.min(axis=2) < 215) | (
+                (ref.max(axis=2) - ref.min(axis=2)) > 18
+            )
+            erased = (
+                ref_ink
+                & (got.min(axis=2) > 246)
+                & (got.max(axis=2) - got.min(axis=2) < 5)
+            )
+            damage.append(
+                {"page": index + 1, "erased_template_pixels": int(erased.sum())}
+            )
     return damage
 
 
@@ -337,12 +424,18 @@ def validate_pdf(
         if widgets:
             result.fail("annotations/widgets remain")
         text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    except Exception as exc:
+    except Exception:
         result.fail("PDF_PARSE_FAILED")
         return result
     normalized = _normalize(text)
     nationality = record.get("nationality", "")
-    if _normalize(nationality) in {"česká republika", "ceska republika", "czech republic", "cz", "cze"}:
+    if _normalize(nationality) in {
+        "česká republika",
+        "ceska republika",
+        "czech republic",
+        "cz",
+        "cze",
+    }:
         nationality = "CZ"
     required = {
         "document_id": record.get("document_id", ""),
@@ -362,24 +455,40 @@ def validate_pdf(
     if record.get("status_profile") in {"employee_multi_state", "posted_employee"}:
         required.pop("activity_name")
         required.pop("activity_address")
-    for field in ("employment_id", "employment_street", "employment_house_number",
-                  "employment_city", "employment_postal_code", "employment_country_code"):
-        required[field] = record.get(field, "")
+    for field_name in (
+        "employment_id",
+        "employment_street",
+        "employment_house_number",
+        "employment_city",
+        "employment_postal_code",
+        "employment_country_code",
+    ):
+        required[field_name] = record.get(field_name, "")
     if record.get("status_profile") == "self_employed_multi_state":
-        required["employer_name"] = record.get("surname", "") + " " + record.get("given_name", "")
+        required["employer_name"] = (
+            record.get("surname", "") + " " + record.get("given_name", "")
+        )
     else:
         required["employment_name"] = record.get("employment_name", "")
-    missing = [name for name, value in required.items() if value and _normalize(value) not in normalized]
-    result.checks["required_text"] = {name: name not in missing for name in required if required[name]}
+    missing = [
+        name
+        for name, value in required.items()
+        if value and _normalize(value) not in normalized
+    ]
+    result.checks["required_text"] = {
+        name: name not in missing for name in required if required[name]
+    }
     for name in missing:
         result.fail(f"missing expected {name}")
-    foreign_numbers = sorted({
-        other.get("insurance_number", "")
-        for employee_id, other in all_records.items()
-        if employee_id != record["employee_id"]
-        and other.get("insurance_number")
-        and _normalize(other["insurance_number"]) in normalized
-    })
+    foreign_numbers = sorted(
+        {
+            other.get("insurance_number", "")
+            for employee_id, other in all_records.items()
+            if employee_id != record["employee_id"]
+            and other.get("insurance_number")
+            and _normalize(other["insurance_number"]) in normalized
+        }
+    )
     result.checks["foreign_identity_number_count"] = len(foreign_numbers)
     if foreign_numbers:
         result.fail("contains another employee insurance number")
@@ -391,12 +500,17 @@ def validate_pdf(
         result.checks["background_integrity"] = damage
         for item in damage:
             if item["erased_template_pixels"] > max_erased_pixels:
-                result.fail(f"page {item['page']} erased {item['erased_template_pixels']} template pixels")
+                result.fail(
+                    f"page {item['page']} erased {item['erased_template_pixels']} template pixels"
+                )
     gs = shutil.which("gs")
     if gs:
         completed = subprocess.run(
             [gs, "-q", "-dNOPAUSE", "-dBATCH", "-sDEVICE=nullpage", str(path)],
-            capture_output=True, text=True, timeout=30, check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
         )
         result.checks["ghostscript"] = completed.returncode == 0
         if completed.returncode:
@@ -425,22 +539,36 @@ def validate_set(
     protected_path(manifest_path)
     if pdf_dir.resolve() == preview_dir.resolve():
         raise QualityGateError("QA_OUTPUT_OVERLAPS_INPUT")
-    if any(pdf_dir.resolve() in path.resolve().parents for path in (report_path, manifest_path)):
+    if any(
+        pdf_dir.resolve() in path.resolve().parents
+        for path in (report_path, manifest_path)
+    ):
         raise QualityGateError("QA_OUTPUT_OVERLAPS_INPUT")
     if report_path.resolve() == manifest_path.resolve():
         raise QualityGateError("QA report and manifest must use distinct paths")
     input_paths = list(input_paths)
     if generation_evidence is not None:
-        input_paths.extend(Path(generation_evidence[key]["path"]) for key in ("manifest", "receipt"))
-    sources = [config_path, cohort_path, *([review_path] if review_path else []),
-               *input_paths, *([background] if background else [])]
+        input_paths.extend(
+            Path(generation_evidence[key]["path"]) for key in ("manifest", "receipt")
+        )
+    sources = [
+        config_path,
+        cohort_path,
+        *([review_path] if review_path else []),
+        *input_paths,
+        *([background] if background else []),
+    ]
     if any(not path.is_file() for path in sources):
         raise QualityGateError("QA_SOURCE_MISSING")
     input_hashes = {str(path): sha256_file(path) for path in sources}
     pdfs = _pdf_paths(pdf_dir)
-    previews = sorted(preview_dir.glob("A1_*-page-*.png")) if preview_dir.exists() else []
-    protected_inputs = {path.resolve() for path in [*sources, *pdfs, *previews,
-                        preview_dir / "render-receipt.json"]}
+    previews = (
+        sorted(preview_dir.glob("A1_*-page-*.png")) if preview_dir.exists() else []
+    )
+    protected_inputs = {
+        path.resolve()
+        for path in [*sources, *pdfs, *previews, preview_dir / "render-receipt.json"]
+    }
     if any(path.resolve() in protected_inputs for path in (report_path, manifest_path)):
         raise QualityGateError("QA_OUTPUT_OVERLAPS_INPUT")
     manifest_path.unlink(missing_ok=True)
@@ -450,16 +578,27 @@ def validate_set(
     set_issues: list[str] = []
     if actual_ids != expected_ids:
         set_issues.append("COHORT_MISMATCH")
-    artifact_hashes = {path: sha256_file(protected_path(path)) for path in [*pdfs, *previews]}
-    expected_preview_names = {f"A1_{employee_id}-page-{page}.png" for employee_id in expected_ids for page in range(1, 4)}
+    artifact_hashes = {
+        path: sha256_file(protected_path(path)) for path in [*pdfs, *previews]
+    }
+    expected_preview_names = {
+        f"A1_{employee_id}-page-{page}.png"
+        for employee_id in expected_ids
+        for page in range(1, 4)
+    }
     actual_preview_names = {path.name for path in previews}
     if actual_preview_names != expected_preview_names:
         set_issues.append("PREVIEW_SET_MISMATCH")
     results = [
-        validate_pdf(path, records[_employee_id(path)], records, background, max_erased_pixels)
-        for path in pdfs if _employee_id(path) in records
+        validate_pdf(
+            path, records[_employee_id(path)], records, background, max_erased_pixels
+        )
+        for path in pdfs
+        if _employee_id(path) in records
     ]
-    document_ids = [records[employee_id]["document_id"] for employee_id in sorted(expected_ids)]
+    document_ids = [
+        records[employee_id]["document_id"] for employee_id in sorted(expected_ids)
+    ]
     if len(document_ids) != len(set(document_ids)):
         set_issues.append("certificate document IDs are not unique")
     render_receipt_path = preview_dir / "render-receipt.json"
@@ -470,11 +609,16 @@ def validate_set(
         set_issues.append("QA_ARTIFACT_CHANGED")
     if input_hashes != {str(path): sha256_file(path) for path in sources}:
         set_issues.append("QA_INPUT_CHANGED")
-    if generation_evidence is not None and require_completed_generation(pdf_dir) != generation_evidence:
+    if (
+        generation_evidence is not None
+        and require_completed_generation(pdf_dir) != generation_evidence
+    ):
         set_issues.append("GENERATION_COMPLETION_CHANGED")
     report = {
         "schema_version": 1,
-        "passed": not set_issues and len(results) == len(records) and all(item.passed for item in results),
+        "passed": not set_issues
+        and len(results) == len(records)
+        and all(item.passed for item in results),
         "expected_pdf_count": len(records),
         "actual_pdf_count": len(pdfs),
         "expected_preview_count": len(records) * PAGE_COUNT,
@@ -489,12 +633,18 @@ def validate_set(
             "qa_status": "PASS",
             "cohort": sorted(expected_ids),
             "inputs": input_hashes,
-            "render_receipt": {"path": str(render_receipt_path.resolve()), "sha256": sha256_file(render_receipt_path)},
+            "render_receipt": {
+                "path": str(render_receipt_path.resolve()),
+                "sha256": sha256_file(render_receipt_path),
+            },
             "pdf_directory": str(pdf_dir.resolve()),
             "preview_directory": str(preview_dir.resolve()),
             "pdfs": {path.name: sha256_file(path) for path in pdfs},
             "previews": {path.name: sha256_file(path) for path in previews},
-            "qa_report": {"path": str(report_path.resolve()), "sha256": sha256_file(report_path)},
+            "qa_report": {
+                "path": str(report_path.resolve()),
+                "sha256": sha256_file(report_path),
+            },
         }
         if generation_evidence is not None:
             manifest["generation_evidence"] = generation_evidence
@@ -505,7 +655,9 @@ def validate_set(
 
 
 def _validate_preview_freshness(
-    pdfs: list[Path], existing_previews: list[Path], receipt_path: Path,
+    pdfs: list[Path],
+    existing_previews: list[Path],
+    receipt_path: Path,
 ) -> list[str]:
     """Compare every decoded preview with a fresh in-memory render at recorded DPI.
 
@@ -537,12 +689,18 @@ def _validate_preview_freshness(
                         continue
                     pixmap = page.get_pixmap(
                         matrix=pymupdf.Matrix(dpi / 72, dpi / 72),
-                        alpha=False, colorspace=pymupdf.csRGB,
+                        alpha=False,
+                        colorspace=pymupdf.csRGB,
                     )
-                    fresh = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+                    fresh = Image.frombytes(
+                        "RGB", (pixmap.width, pixmap.height), pixmap.samples
+                    )
                     with Image.open(existing) as old:
                         pixel_hash = _pixel_hash(old)
-                    if pixel_hash != _pixel_hash(fresh) or pixel_hash != receipt["preview_pixels"][name]:
+                    if (
+                        pixel_hash != _pixel_hash(fresh)
+                        or pixel_hash != receipt["preview_pixels"][name]
+                    ):
                         issues.append(f"PREVIEW_STALE:row={row}:page={index + 1}")
         return issues
     except (OSError, ValueError, KeyError, TypeError, RuntimeError):
@@ -566,12 +724,18 @@ def record_visual_review(
     if require_generation or "generation_evidence" in manifest:
         try:
             expected_generation = manifest["generation_evidence"]
-            if require_completed_generation(Path(manifest["pdf_directory"])) != expected_generation:
+            if (
+                require_completed_generation(Path(manifest["pdf_directory"]))
+                != expected_generation
+            ):
                 raise ValueError()
         except (KeyError, ValueError, TypeError):
             raise QualityGateError("GENERATION_COMPLETION_REQUIRED") from None
     try:
-        if len(manifest["previews"]) != len(manifest["pdfs"]) * PAGE_COUNT or not manifest["pdfs"]:
+        if (
+            len(manifest["previews"]) != len(manifest["pdfs"]) * PAGE_COUNT
+            or not manifest["pdfs"]
+        ):
             raise ValueError()
         for record in (manifest["qa_report"], manifest["render_receipt"]):
             if sha256_file(protected_path(Path(record["path"]))) != record["sha256"]:
@@ -579,10 +743,16 @@ def record_visual_review(
         for filename, digest in manifest["inputs"].items():
             if sha256_file(Path(filename)) != digest:
                 raise ValueError()
-        for directory_key, collection in (("pdf_directory", "pdfs"), ("preview_directory", "previews")):
+        for directory_key, collection in (
+            ("pdf_directory", "pdfs"),
+            ("preview_directory", "previews"),
+        ):
             directory = protected_path(Path(manifest[directory_key]))
             for filename, digest in manifest[collection].items():
-                if Path(filename).name != filename or sha256_file(protected_path(directory / filename)) != digest:
+                if (
+                    Path(filename).name != filename
+                    or sha256_file(protected_path(directory / filename)) != digest
+                ):
                     raise ValueError()
     except (KeyError, TypeError, ValueError, OSError):
         raise QualityGateError("QA_MANIFEST_STALE_OR_INVALID") from None
@@ -592,9 +762,9 @@ def record_visual_review(
     try:
         contact_receipt = protected_path(contact_dir / "contact-receipt.json")
         contact_binding = json.loads(contact_receipt.read_text(encoding="utf-8"))
-        if contact_binding["previews"] != manifest["previews"] or contact_binding["sheets"] != {
-            path.name: sha256_file(protected_path(path)) for path in sheets
-        }:
+        if contact_binding["previews"] != manifest["previews"] or contact_binding[
+            "sheets"
+        ] != {path.name: sha256_file(protected_path(path)) for path in sheets}:
             raise ValueError()
     except (OSError, ValueError, KeyError, TypeError):
         raise QualityGateError("CONTACT_SHEETS_STALE_OR_INVALID") from None
@@ -623,10 +793,20 @@ def record_visual_review(
             "previews_match_pdf_renders": True,
         },
     }
-    referenced = [manifest_path, contact_receipt, *sheets, Path(manifest["qa_report"]["path"]),
-                  Path(manifest["render_receipt"]["path"]), *map(Path, manifest["inputs"])]
-    referenced.extend(Path(manifest["pdf_directory"]) / name for name in manifest["pdfs"])
-    referenced.extend(Path(manifest["preview_directory"]) / name for name in manifest["previews"])
+    referenced = [
+        manifest_path,
+        contact_receipt,
+        *sheets,
+        Path(manifest["qa_report"]["path"]),
+        Path(manifest["render_receipt"]["path"]),
+        *map(Path, manifest["inputs"]),
+    ]
+    referenced.extend(
+        Path(manifest["pdf_directory"]) / name for name in manifest["pdfs"]
+    )
+    referenced.extend(
+        Path(manifest["preview_directory"]) / name for name in manifest["previews"]
+    )
     if output_path.resolve() in {path.resolve() for path in referenced}:
         raise QualityGateError("QA_OUTPUT_OVERLAPS_INPUT")
     _write_json(output_path, review)
@@ -636,7 +816,9 @@ def record_visual_review(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    render = sub.add_parser("render", help="render fresh fixed-DPI previews and contact sheets")
+    render = sub.add_parser(
+        "render", help="render fresh fixed-DPI previews and contact sheets"
+    )
     render.add_argument("--pdf-dir", type=Path, required=True)
     render.add_argument("--preview-dir", type=Path, required=True)
     render.add_argument("--contact-dir", type=Path, required=True)
@@ -665,10 +847,17 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     validated_output = False
     try:
-        operation = {"render": "qa_render", "validate": "qa_validate", "record-review": "qa_review"}[args.command]
+        operation = {
+            "render": "qa_render",
+            "validate": "qa_validate",
+            "record-review": "qa_review",
+        }[args.command]
         with audited_operation(operation, "a1_qa"):
             if args.command == "render":
-                if args.contact_dir.resolve() == args.pdf_dir.resolve() or args.contact_dir.resolve() in args.pdf_dir.resolve().parents:
+                if (
+                    args.contact_dir.resolve() == args.pdf_dir.resolve()
+                    or args.contact_dir.resolve() in args.pdf_dir.resolve().parents
+                ):
                     raise QualityGateError("QA_OUTPUT_OVERLAPS_INPUT")
                 if (args.pdf_dir / "generation_manifest.json").exists():
                     require_completed_generation(args.pdf_dir)
@@ -677,7 +866,12 @@ def main(argv: list[str] | None = None) -> int:
                 summary = {"previews": len(previews), "contact_sheets": len(sheets)}
             elif args.command == "record-review":
                 review = record_visual_review(
-                    args.manifest, args.contact_dir, args.output, args.reviewer, args.note, require_generation=True
+                    args.manifest,
+                    args.contact_dir,
+                    args.output,
+                    args.reviewer,
+                    args.note,
+                    require_generation=True,
                 )
                 validated_output = True
                 summary = {"visual_status": review["visual_status"]}
@@ -686,14 +880,28 @@ def main(argv: list[str] | None = None) -> int:
                 cohort = args.cohort or private_path("a1/cohort.json")
                 review_path = args.review or private_path("a1/review.csv")
                 report = validate_set(
-                    args.pdf_dir, args.preview_dir, args.config, cohort, review_path,
-                    args.background, args.report, args.manifest, [args.layout],
-                    args.max_erased_template_pixels, generation_evidence=generation_evidence,
+                    args.pdf_dir,
+                    args.preview_dir,
+                    args.config,
+                    cohort,
+                    review_path,
+                    args.background,
+                    args.report,
+                    args.manifest,
+                    [args.layout],
+                    args.max_erased_template_pixels,
+                    generation_evidence=generation_evidence,
                 )
                 validated_output = True
-                summary = {key: report[key] for key in (
-                    "passed", "actual_pdf_count", "actual_preview_count", "set_issues"
-                )}
+                summary = {
+                    key: report[key]
+                    for key in (
+                        "passed",
+                        "actual_pdf_count",
+                        "actual_preview_count",
+                        "set_issues",
+                    )
+                }
                 if not report["passed"]:
                     raise _ValidationFailed("QA_VALIDATION_FAILED")
         print(json.dumps(summary, ensure_ascii=False))
@@ -701,14 +909,21 @@ def main(argv: list[str] | None = None) -> int:
     except _ValidationFailed:
         print("QA_VALIDATION_FAILED", file=sys.stderr)
         return 1
-    except (Exception, KeyboardInterrupt):  # CLI boundary: no input-derived traceback is public.
+    except (
+        Exception,
+        KeyboardInterrupt,
+    ):  # CLI boundary: no input-derived traceback is public.
         try:
             if validated_output and args.command == "validate":
                 protected_path(args.manifest).unlink(missing_ok=True)
-                _write_json(args.report, {
-                    "schema_version": 1, "passed": False,
-                    "set_issues": ["QA_OPERATION_FAILED"],
-                })
+                _write_json(
+                    args.report,
+                    {
+                        "schema_version": 1,
+                        "passed": False,
+                        "set_issues": ["QA_OPERATION_FAILED"],
+                    },
+                )
             elif validated_output and args.command == "record-review":
                 protected_path(args.output).unlink(missing_ok=True)
         except (A1PrivateInputError, PathValidationError, OSError):

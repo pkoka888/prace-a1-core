@@ -15,6 +15,7 @@ Usage:
 
 Output goes to output/provisional/
 """
+
 import argparse
 import csv
 import hashlib
@@ -32,36 +33,26 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from scripts.a1_core import (
-    APPLICATION_DRAFT_NOTICE,
-    build_form_data,
     generate_a1_pdf,
-    load_json,
     provisional_one_year_period,
 )
 from scripts.finalize_a1 import (
-    CSV_FIELDS,
     display_row,
-    load_profile,
     validate_profile,
-    validate_review,
     row_to_form,
-    FinalizationError,
 )
 from scripts.a1_paths import (
-    protected_root,
     unique_staging_path,
-    destination_lock,
-    publish_package,
 )
 
 
 def get_generated_workers(provisional_dir: Path) -> set[str]:
     """Find all workers that already have PDFs generated."""
     generated = set()
-    
+
     if not provisional_dir.exists():
         return generated
-    
+
     # Check existing manifests
     for pkg_dir in provisional_dir.iterdir():
         if not pkg_dir.is_dir():
@@ -74,12 +65,12 @@ def get_generated_workers(provisional_dir: Path) -> set[str]:
                     generated.add(entry.get("employee_id", ""))
             except Exception:
                 pass
-        
+
         # Also check for loose PDF files
         for pdf in pkg_dir.glob("A1_*.pdf"):
             worker_id = pdf.stem.replace("A1_", "")
             generated.add(worker_id)
-    
+
     return generated
 
 
@@ -96,22 +87,50 @@ def read_review_csv(csv_path: Path) -> list[dict]:
 
 def main():
     parser = argparse.ArgumentParser(description="Generate A1 forms incrementally")
-    parser.add_argument("--review", type=Path, default=ROOT / "a1" / "review.csv",
-                        help="Review CSV file")
-    parser.add_argument("--cohort", type=Path, default=ROOT / "a1" / "cohort.json",
-                        help="Cohort JSON file")
-    parser.add_argument("--profiles", type=Path, default=ROOT / "config" / "institutions",
-                        help="Institution profiles directory")
-    parser.add_argument("--config", type=Path, default=ROOT / "config" / "a1_provisional.json",
-                        help="Provisional config file")
-    parser.add_argument("--output", type=Path, default=ROOT / "output" / "provisional",
-                        help="Output directory")
-    parser.add_argument("--worker", action="append", default=[],
-                        help="Specific worker ID to generate (can repeat)")
-    parser.add_argument("--all", action="store_true",
-                        help="Regenerate all (ignore existing)")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Show what would be generated without generating")
+    parser.add_argument(
+        "--review",
+        type=Path,
+        default=ROOT / "a1" / "review.csv",
+        help="Review CSV file",
+    )
+    parser.add_argument(
+        "--cohort",
+        type=Path,
+        default=ROOT / "a1" / "cohort.json",
+        help="Cohort JSON file",
+    )
+    parser.add_argument(
+        "--profiles",
+        type=Path,
+        default=ROOT / "config" / "institutions",
+        help="Institution profiles directory",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=ROOT / "config" / "a1_provisional.json",
+        help="Provisional config file",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=ROOT / "output" / "provisional",
+        help="Output directory",
+    )
+    parser.add_argument(
+        "--worker",
+        action="append",
+        default=[],
+        help="Specific worker ID to generate (can repeat)",
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="Regenerate all (ignore existing)"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be generated without generating",
+    )
     args = parser.parse_args()
 
     # Ensure A1_PRIVATE_DIR is set
@@ -154,7 +173,11 @@ def main():
         return 0
 
     # Load cohort and config
-    cohort = json.loads(args.cohort.read_text()) if args.cohort.exists() else {}
+    # NOTE: the cohort is loaded but never used. The incremental generator does
+    # not yet gate the generated set against the authoritative cohort, unlike
+    # generate_provisional_a1.build_provisional_rows. Recorded as a defect; the
+    # binding is underscore-prefixed so the gap stays visible rather than hidden.
+    _cohort = json.loads(args.cohort.read_text()) if args.cohort.exists() else {}
     prov_config = json.loads(args.config.read_text()) if args.config.exists() else {}
     notice = prov_config.get("notice", "CLIENT_CONFIRMATION_COPY")
 
@@ -168,28 +191,28 @@ def main():
 
     for worker_id in sorted(to_generate):
         row = next(r for r in all_workers if r["employee_id"] == worker_id)
-        
+
         try:
             # Get profile
             profile_id = row.get("institution_profile", "")
             if not profile_id:
                 raise ValueError("Missing institution_profile")
-            
+
             profile_path = args.profiles / f"{profile_id}.json"
             if not profile_path.exists():
                 raise ValueError(f"Profile not found: {profile_id}")
-            
+
             profile = json.loads(profile_path.read_text())
             validate_profile(profile, profile_id, provisional=True)
 
             # Use core logic: display_row → row_to_form → build_form_data
             # This handles ALL-CAPS conversion, Czech casing, enrichment
             displayed_row = display_row(row)
-            
+
             # Derive start/end dates from issue_date if missing (same as main script)
             if not displayed_row.get("start_date") and displayed_row.get("issue_date"):
-                displayed_row["start_date"], displayed_row["end_date"] = provisional_one_year_period(
-                    displayed_row["issue_date"]
+                displayed_row["start_date"], displayed_row["end_date"] = (
+                    provisional_one_year_period(displayed_row["issue_date"])
                 )
             employee_data = row_to_form(displayed_row, profile, application_draft=False)
 
@@ -203,16 +226,19 @@ def main():
             # Get PDF info
             sha256 = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
             from pypdf import PdfReader
+
             pdf = PdfReader(pdf_path)
             page_count = len(pdf.pages)
 
-            generated.append({
-                "employee_id": worker_id,
-                "path": pdf_path.name,
-                "page_count": page_count,
-                "sha256": sha256,
-                "size_bytes": pdf_path.stat().st_size,
-            })
+            generated.append(
+                {
+                    "employee_id": worker_id,
+                    "path": pdf_path.name,
+                    "page_count": page_count,
+                    "sha256": sha256,
+                    "size_bytes": pdf_path.stat().st_size,
+                }
+            )
             print(f"✓ {worker_id}: {page_count} pages")
 
         except Exception as e:
@@ -236,15 +262,14 @@ def main():
         return 1
 
     # Publish the package (rename staging to final)
-    import shutil
     import stat
-    
+
     # The staging dir is already the final destination, just set permissions
     for root, dirs, files in os.walk(staging):
         os.chmod(root, stat.S_IRWXU)
         for f in files:
             os.chmod(os.path.join(root, f), stat.S_IRUSR | stat.S_IWUSR)
-    
+
     print(f"✓ Saved to: {staging}")
 
     return 0

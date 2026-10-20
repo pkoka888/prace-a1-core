@@ -9,6 +9,7 @@ Tests the actual two-pass cardinality check and final model constraints:
 3. PROTECT on Release1aAcceptance.session, .organization, .user.
 4. Inactive memberships are excluded from cardinality check.
 """
+
 import os
 import tempfile
 
@@ -16,14 +17,17 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
 os.environ.setdefault("REVIEW_BUILD_MANIFEST_PATH", tempfile.mktemp(suffix=".json"))
 
 import django
+
 django.setup()
 
 from collections import defaultdict
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from portal.release1a.models import (
-    Organization, Membership, Release1aReview,
-    Release1aReviewSession, Release1aAcceptance,
+    Organization,
+    Membership,
+    Release1aReviewSession,
+    Release1aAcceptance,
 )
 
 
@@ -35,7 +39,8 @@ class BackfillLogicTests(TransactionTestCase):
         self.org_b = Organization.objects.create(key="backfill-b", label="Backfill B")
         User = get_user_model()
         self.user = User.objects.create_user(
-            username="backfill-user", email="backfill@example.invalid",
+            username="backfill-user",
+            email="backfill@example.invalid",
             password="!notused123",
         )
 
@@ -48,7 +53,9 @@ class BackfillLogicTests(TransactionTestCase):
         Return {user_id: unique_org_id}.
         """
         user_org_sets = defaultdict(set)
-        for m in Membership.objects.filter(active=True).values("user_id", "organization_id"):
+        for m in Membership.objects.filter(active=True).values(
+            "user_id", "organization_id"
+        ):
             user_org_sets[m["user_id"]].add(m["organization_id"])
         for user_id, org_ids in user_org_sets.items():
             if len(org_ids) != 1:
@@ -104,7 +111,7 @@ class BackfillLogicTests(TransactionTestCase):
         session = Release1aReviewSession.objects.create(
             user=self.user, organization=self.org_a, build_id="protect-test"
         )
-        acceptance = Release1aAcceptance.objects.create(
+        Release1aAcceptance.objects.create(
             user=self.user,
             organization=self.org_a,
             session=session,
@@ -113,12 +120,13 @@ class BackfillLogicTests(TransactionTestCase):
             app_build_id="protect-test",
         )
         from django.db.models import ProtectedError
+
         with self.assertRaises(ProtectedError):
             session.delete()
 
     def test_acceptance_protect_on_organization(self):
         """Deleting an org is blocked by PROTECT when acceptances reference it."""
-        acceptance = Release1aAcceptance.objects.create(
+        Release1aAcceptance.objects.create(
             user=self.user,
             organization=self.org_a,
             session=Release1aReviewSession.objects.create(
@@ -129,6 +137,7 @@ class BackfillLogicTests(TransactionTestCase):
             app_build_id="org-protect",
         )
         from django.db.models import ProtectedError
+
         with self.assertRaises(ProtectedError):
             self.org_a.delete()
 
@@ -137,7 +146,7 @@ class BackfillLogicTests(TransactionTestCase):
         session = Release1aReviewSession.objects.create(
             user=self.user, organization=self.org_a, build_id="user-protect"
         )
-        acceptance = Release1aAcceptance.objects.create(
+        Release1aAcceptance.objects.create(
             user=self.user,
             organization=self.org_a,
             session=session,
@@ -146,6 +155,7 @@ class BackfillLogicTests(TransactionTestCase):
             app_build_id="user-protect",
         )
         from django.db.models import ProtectedError
+
         with self.assertRaises(ProtectedError):
             self.user.delete()
 

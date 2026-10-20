@@ -46,6 +46,106 @@ Respect [ADR-001](../docs/decisions/ADR-001-jan-portal-architecture.md) and
 Preserve catalog IDs and registered approvals. No extra ADR, repeated operator
 permission or new activation gate is required for the authorized synthetic preparation.
 
+2026-10-20 documentation checkpoint: the
+[official A1 field → source mapping](../docs/architecture/a1-field-source-mapping.md)
+adds the official-form view alongside the 44-field CSV mapping, restructured
+into six topics with one owner each (certificate, person, employer/role/
+situation, activity, institution, provenance). It states which official
+positions 1.1–6.11 are owned by whom, which are derived, and which are
+conditional on the legal situation (R1–R10), and records the
+employer-as-organization decision: the employer is a legal entity in its own
+`LegalEntity` master table, never the tenant `Organization`. The
+[gap analysis](../docs/architecture/a1-gap-analysis.md) (G1–G15),
+[automation scenarios](../docs/architecture/a1-automation-scenarios.md) and the
+architecture solution
+`docs/architecture/solutions/a1-topic-data-architecture-solution.md` state the
+same arrangement as an ordered, low-risk landing sequence. The
+[LangGraph guide](../docs/architecture/langgraph-integration.md) was aligned
+with the measured layer: three orchestrator defects were found by running it
+and fixed (a shadowed-module `UnboundLocalError`, a state channel name that
+LangGraph 1.x reserves, and a dry run that wrote into the protected output
+tree), and the agent-ops experiment suite now passes 37/37 after the venv was
+aligned with the already-pinned dependency file.
+
+2026-10-20 alignment checkpoint. The competing draft
+`docs/architecture/a1-form-architecture.md` was removed and its content
+consolidated into the registered mapping, so one document owns the field
+logic. Corrections carried over: `status_posted_self_employed` is at
+`scripts/a1_core.py:450`; the layout key is `status_posted_self_employed`;
+the seven A1 suites hold 124 tests; and status 3.3 needs **12** code sites,
+not 5 or 9 — `mark_provisional`'s Section 5.1 blanking, the per-variant
+`status_profiles` and the preview profile choices fail *silently* rather than
+raising, so an incomplete activation list yields a wrong certificate instead
+of an error. The full path with the failure mode of each site is in the
+mapping §15. `scripts/a1_completion_preview.py` offered only two of the three
+supported statuses in the undecided worksheet; it now offers all three, so an
+OSVČ case is no longer steered away from `self_employed_multi_state`.
+
+Four latent defects were fixed while validating: the J4 confirmation receipt
+recorded an empty `build_id` because `settings` was undefined in
+`portal/release1a/views.py` and the `NameError` was swallowed, so the
+artifact-approval evidence never bound to a build; an operator password-reset
+script referenced an undefined `temporary_password`; a type annotation
+referenced an unimported `Any`; and two review loops unpacked `_`, shadowing
+the module's gettext alias, so a `gettext` call inside those loops would have
+raised. A 63-second browser diagnostic that had no assertions — and could
+therefore never fail — is now opt-in behind `A1_BROWSER_DEBUG=1` and no
+longer runs in directory sweeps. `portal/release1a/views.py` now passes the
+repository's own `ruff` default rules with no findings, against 15 at HEAD.
+
+Documentation and small repairs only: no schema, migration, seed, record
+import, acceptance state or change to the CSV contract, validation gates,
+provisional notice or issuance workflow. The employer and institution stores
+remain as they are today (structured `Assignment.a1_facts_json` and
+provenance-carrying institution profile files); no normalisation was
+performed.
+
+A repo-wide formatter pass reformatted 372 files in the working tree. It is
+not part of this increment: 238 of the 282 changed Python files are exactly
+`ruff format` plus `ruff --fix` output on HEAD — what the repository's own
+`.pre-commit-config.yaml` mandates on commit — and only 44 carry behavioural
+changes. It belongs to its own delivery unit with its own scoped checks, and
+must not be bundled with A1 work.
+
+2026-10-20 commit-gate checkpoint. The three pre-commit failures reported
+after the CLI-agent drift review were verified rather than accepted as
+pre-existing. The secret-scanning gate could not run at all: the hook has
+configured `--baseline .secrets.baseline` since it was added, but that file has
+never existed in the repository history. A baseline over exactly the 823
+tracked files was generated with the hook's own pinned detector, after every
+finding was reviewed and found benign (hashes, synthetic test values, a
+labelled insecure local default, a docstring example). `ruff.toml` now records
+the two deliberate patterns the default rule set flags — E402 for the Django
+`django.setup()` bootstrap and the `sys.path` scripts, F403/F405 for the
+isolated settings modules — and 40 real findings were fixed across 20 files.
+CI now pins the same ruff version as the hook, because an unpinned CI ruff and
+a pinned hook ruff could disagree about what passes. The root-owned
+`public-site/` directory is excluded from the two file-fixing hooks, which
+open files read-write even when the content is correct. All hooks now pass.
+
+One defect surfaced during that work and is recorded rather than fixed:
+`scripts/generate_a1_incremental.py` loads the cohort passed to `--cohort` and
+never uses it, so the incremental generator does not gate its output against
+the authoritative cohort the way `generate_provisional_a1.build_provisional_rows`
+does. Correcting it is a behaviour change to an inherited generator and needs
+its own test.
+
+The `planning_cockpit` check remains red, for a reason that predates this
+increment and that no working-tree edit can fix: the test builds its fixture
+from the **committed** tree, and the committed `plans/INDEX.md`,
+`plans/PLAN-INFRA.md` and `roadmap.md` link to
+`plans/2026-09-18-backup-and-project-separation.md`, which is untracked
+working-tree material. A sweep of the committed tree found 29 relative-link
+targets absent from it. Ten of those exist on disk and are repaired by
+committing them — including this increment's own
+[a1-field-source-mapping.md](../docs/architecture/a1-field-source-mapping.md),
+[a1-gap-analysis.md](../docs/architecture/a1-gap-analysis.md) and
+[a1-automation-scenarios.md](../docs/architecture/a1-automation-scenarios.md).
+The rest are permanently broken paths whose link text omits the `docs/`
+prefix, plus one deliberate negative-test fixture. Commit scope is Jan's
+decision: the A1 increment, the formatter reformat, and the untracked files
+the committed tree already references are three separable units.
+
 2026-09-09 implementation checkpoint: seed/reproducer repairs and bounded J2
 synthetic intake have behavioral coverage. Fixture role mapping, duplicate/case
 reconciliation and exact settings selection are implemented; evidence belongs in
