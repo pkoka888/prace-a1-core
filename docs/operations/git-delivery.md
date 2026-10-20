@@ -1847,6 +1847,14 @@ same increment.
 | Limitations | The change to the client-confirmation renderer is visible: the copy is now the coordinate-rendered document rather than the placeholder-rendered one, so its bytes and layout differ from copies produced before this increment. Copies already generated in `output/` are unaffected. Two pre-existing failures were found and fixed on the way: the client-confirmation copy was failing its own quality gate, because the placeholder framework erased 279, 610 and 40 template pixels against a limit of 24; and the delivery test's mock did not accept the keyword the caller already used, so `test_generation_detects_source_change_before_publication` had been failing on the committed tree — confirmed by running the file against a clean export of HEAD. The 23-site activation path for 3.3 is still dormant, and the two remaining G13 facts — the CZ-NACE main activity and the State of stay — are still absent. The optional review columns are an extension to a compatibility contract, so an external consumer that parses the review CSV positionally must tolerate two extra columns once a row carries them; the repository's own reader already does, and the required set is unchanged |
 | Next owner | Engineering decides whether to introduce the shared status-profile constant that would make the 23-site table unnecessary, and whether the `LegalEntity` seed (D11a) lands as its own unit. Jan confirms the D11b host/network decision when runtime ARES lookups are actually wanted. The CZ-NACE main activity and the State-of-stay address remain open business facts |
 
+A third pre-existing failure was fixed on the way:
+`tests/test_j4_artifacts.py` imported its helpers as a top-level
+`from test_finalize_a1 import ...`, which needs `tests/` on the path, so the
+three `test_canonical_renderer_all_pages` cases failed whenever the check ran
+that file without the rest of the directory. It now imports
+`tests.test_finalize_a1`, matching the other test modules. Confirmed
+pre-existing by running the same command against a clean export of HEAD.
+
 Two findings are worth restating because they were not in the plan. First, the
 client-confirmation copy was failing the quality gate that is meant to vouch
 for it — the document the agency sends to a client never passed. Second, the
