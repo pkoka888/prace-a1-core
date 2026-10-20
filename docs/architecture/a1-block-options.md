@@ -891,6 +891,21 @@ the change is recorded in the delivery record.
   dialogue, the duty to inform, and the A1 as a declaratory act.
 - *Bouman*, 62015CJ0356 — the presumption created by an A1.
 
+**Pending EU reform (read as press coverage, not primary text)**
+
+- The European Commission's package on fair worker mobility, presented
+  **15 September 2026**: five legislative proposals, including a **European
+  Social Security Passport (ESSPASS)** for digital social-security documents
+  with the **A1 as the first document affected**, and an express aim of
+  "limiting the use of falsified documents" and making A1s easier to verify.
+  This was read through trade-press reporting, so the Commission's own
+  communication and the proposal texts are the authority and should be
+  consulted before the roadmap depends on any of it.
+- The A1 reform provisionally agreed in **April 2026** — Council adoption
+  and publication in the Official Journal still pending — which would exempt
+  short business trips and add a three-day exemption for other short-term
+  assignments abroad.
+
 **Registry and data sources**
 
 - ARES (Ministry of Finance, Czech business register) REST API —

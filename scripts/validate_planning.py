@@ -222,6 +222,7 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset(
         "docs/architecture/a1-field-source-mapping.md",
         "docs/architecture/a1-gap-analysis.md",
         "docs/architecture/a1-block-options.md",
+        "docs/architecture/a1-open-decisions-brief.md",
         "docs/architecture/a1-automation-scenarios.md",
         "docs/architecture/a1-data-architecture-variants.md",
         "docs/architecture/solutions/a1-topic-data-architecture-solution.md",
