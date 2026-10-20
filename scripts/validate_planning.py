@@ -231,6 +231,10 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset(
         # status, and that the country codes are ISO 3166-1 alpha-2.
         "tests/test_a1_status_default.py",
         "tests/test_a1_country_codes.py",
+        "tests/test_a1_situation_facts.py",
+        "tests/m2/test_a1_situation_facts.py",
+        "tests/test_finalize_a1.py",
+        "portal/release1a/migrations/0021_a1_situation_facts.py",
         # Secret-scanning baseline. Contains only hashed_secret values, never
         # a plaintext secret, and is generated from the tracked tree alone.
         ".secrets.baseline",

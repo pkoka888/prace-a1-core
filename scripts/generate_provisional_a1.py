@@ -11,6 +11,9 @@ import os
 import tempfile
 import uuid
 import sys
+
+import pymupdf
+
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -19,6 +22,7 @@ try:
     from .a1_core import (
         FONT_CANDIDATES,
         APPLICATION_DRAFT_NOTICE,
+        PROVISIONAL_NOTICE,
         generate_a1_pdf,
         mark_provisional,
         provisional_one_year_period,
@@ -296,12 +300,32 @@ def generate(
                     row["issue_date"]
                 )
             form = row_to_form(row, profile)
+            # Decision D2 (2026-10-20): the client-confirmation copy carries a
+            # visible document-status mark on every page. It is not official
+            # field 2.5 -- that field states that the legal determination is
+            # provisional, which is a different thing from this document not
+            # being an issued A1. The package keeps its own marking as well:
+            # the manifest status, the manifest notice and the client
+            # confirmation checklist.
             form = mark_provisional(
                 form,
                 "Client confirmation copy; publication and visual acceptance remain separate",
+                visible_notice=True,
             )
             target = staging / f"A1_{row['employee_id']}.pdf"
-            generate_a1_placeholder_technique(form, target)
+            # The coordinate renderer is the canonical path: it draws the
+            # document-status notice itself and stays inside the quality
+            # gate's background-damage threshold. The placeholder framework
+            # remains the documented vector-template alternative, but the
+            # client copy is not rendered with it: that route erased more
+            # template pixels than the gate allows, so the copy failed its own
+            # quality gate.
+            generate_a1_pdf(
+                form,
+                ROOT / "templates/a1_background.pdf",
+                ROOT / "config/a1_layout.json",
+                target,
+            )
             checks = verify_pdf(target, row, profile, all_rows, provisional=True)
             manifest["generated"].append(
                 {"employee_id": row["employee_id"], "path": target.name, **checks}

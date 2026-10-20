@@ -18,6 +18,7 @@ from pypdf import PdfReader
 
 try:
     from .a1_core import (
+        PROVISIONAL_NOTICE,
         build_form_data,
         czech_display_case,
         enrich_residence,
@@ -79,6 +80,13 @@ PROFILE_BY_OSSZ = {
     "OSSZ Praha": "praha",
     "OSSZ Brno": "brno",
 }
+# The 44-column review contract is the required set. Two further columns may
+# be present: they carry the Article 12 situation facts, which are validation
+# evidence rather than form fields, so a review file without them still reads
+# and the gates report the facts as missing rather than defaulting them.
+# Decision D10 and D1b (2026-10-20).
+OPTIONAL_REVIEW_FIELDS = ("prior_activity_start", "replaces_worker")
+
 CSV_FIELDS = (
     "employee_id",
     "source_scans",
@@ -243,6 +251,60 @@ def _date(value: str, field: str) -> str:
     return parsed.strftime("%d.%m.%Y")
 
 
+# A posting is a derogation from the single-legislation rule in Article 11(1)
+# of Regulation 883/2004, and Article 12 conditions it. A certificate that
+# asserts a posting has to be able to show those conditions, so the facts are
+# checked at the issuance gate. Decision D1b (2026-10-20).
+POSTING_STATUS_PROFILES = ("posted_employee", "posted_self_employed")
+# Article 12(1) and 12(2): the activity abroad does not exceed 24 months.
+POSTING_MAX_MONTHS = 24
+
+
+def _check_posting_conditions(employee_id: str, row: dict[str, str]) -> None:
+    """The Article 12 conditions for a posting, checked before issuance.
+
+    A missing fact blocks this A1 operation and nothing else: the worker and
+    the review row are still saved, and the gates report the fact as missing
+    rather than defaulting it.
+    """
+    status = row.get("status_profile", "")
+    if status not in POSTING_STATUS_PROFILES:
+        return
+    replaces = (row.get("replaces_worker") or "").strip().casefold()
+    if replaces not in {"yes", "no"}:
+        raise FinalizationError(
+            f"{employee_id}: replaces_worker must be yes or no for a posting "
+            "(Article 12(1): the worker must not be sent to replace another "
+            "posted person); the fact is missing, not presumed"
+        )
+    if status == "posted_self_employed":
+        prior = (row.get("prior_activity_start") or "").strip()
+        if not prior:
+            raise FinalizationError(
+                f"{employee_id}: prior_activity_start is required for a posted "
+                "self-employed person (Article 14(3) of Regulation 987/2009: "
+                "the activity must already have been pursued); the fact is "
+                "missing, not presumed"
+            )
+        _date(prior, f"{employee_id}.prior_activity_start")
+    start = (row.get("start_date") or "").strip()
+    end = (row.get("end_date") or "").strip()
+    if start and end:
+        start_date = datetime.strptime(_date(start, f"{employee_id}.start_date"), "%d.%m.%Y")
+        end_date = datetime.strptime(_date(end, f"{employee_id}.end_date"), "%d.%m.%Y")
+        if end_date < start_date:
+            raise FinalizationError(
+                f"{employee_id}: end_date {end} precedes start_date {start}"
+            )
+        months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+        if months > POSTING_MAX_MONTHS:
+            raise FinalizationError(
+                f"{employee_id}: a posting may not exceed {POSTING_MAX_MONTHS} "
+                f"months (Article 12 of Regulation 883/2004); the certificate "
+                f"covers {months} months"
+            )
+
+
 def _slug(value: str) -> str:
     if not re.fullmatch(r"[a-z0-9-]+", value or ""):
         raise FinalizationError(f"unsafe identifier: {value!r}")
@@ -294,6 +356,10 @@ def prepare_review(
                 "postal_code": residence.get("postal_code", ""),
                 "country_code": residence.get("country_code", ""),
                 "status_profile": employee.get("a1", {}).get("status_profile", ""),
+                "prior_activity_start": employee.get("a1", {}).get(
+                    "prior_activity_start", ""
+                ),
+                "replaces_worker": employee.get("a1", {}).get("replaces_worker", ""),
                 "resolved_ossz": resolved,
                 "institution_profile": PROFILE_BY_OSSZ.get(resolved, ""),
                 "start_date": current.get("certificate", {}).get("start_date", "")
@@ -345,7 +411,7 @@ def prepare_review(
         rows.append(row)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8-sig", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=CSV_FIELDS)
+        writer = csv.DictWriter(stream, fieldnames=review_fieldnames(rows))
         writer.writeheader()
         writer.writerows(rows)
     output_path.chmod(0o600)
@@ -380,10 +446,24 @@ def read_review(path: Path) -> list[dict[str, str]]:
         return rows
 
 
+def review_fieldnames(rows: list[dict[str, str]]) -> list[str]:
+    """The required 44 columns, plus the optional ones the rows carry.
+
+    The 44-column contract is unchanged. The two optional columns appear
+    only when the rows carry them, so a review file that does not use the
+    Article 12 situation facts is byte-identical to before.
+    """
+    fieldnames = list(CSV_FIELDS)
+    for optional in OPTIONAL_REVIEW_FIELDS:
+        if any(optional in row for row in rows):
+            fieldnames.append(optional)
+    return fieldnames
+
+
 def write_review(path: Path, rows: list[dict[str, str]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8-sig", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=CSV_FIELDS)
+        writer = csv.DictWriter(stream, fieldnames=review_fieldnames(rows))
         writer.writeheader()
         writer.writerows(rows)
     path.chmod(0o600)
@@ -668,6 +748,7 @@ def validate_review(
         if row.get("validated_by_user") != "1":
             raise FinalizationError(f"{employee_id}: validated_by_user must be 1")
         if not provisional:
+            _check_posting_conditions(employee_id, row)
             for subject in ("activity", "certificate", "signatory"):
                 _require_authoritative_source(row, subject)
             source_employee = expected_by_id[employee_id]
@@ -992,6 +1073,12 @@ def verify_pdf(
                 )
                 if page.get_text("text", clip=box).strip():
                     raise FinalizationError("PROVISIONAL_SECTION_5_1_NOT_BLANK")
+    if provisional:
+        # Decision D2 (2026-10-20): the client-confirmation copy states on
+        # every page that it is not an issued A1. This is the document that
+        # leaves the agency before the real certificate exists.
+        if not all(PROVISIONAL_NOTICE in page for page in page_texts):
+            raise FinalizationError("PROVISIONAL_NOTICE_MISSING")
     missing = [value for value in expected if value not in text]
     if missing:
         raise FinalizationError(f"{row['employee_id']}: PDF text is missing: {missing}")

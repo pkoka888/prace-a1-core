@@ -27,6 +27,8 @@ import pymupdf
 from PIL import Image, ImageOps, ImageDraw
 from pypdf import PdfReader
 
+from scripts.a1_core import PROVISIONAL_NOTICE
+
 try:
     from .a1_audit import (
         audited_operation,
@@ -176,6 +178,18 @@ def _pdf_paths(pdf_dir: Path) -> list[Path]:
 
 def _employee_id(path: Path) -> str:
     return path.stem.removeprefix(PDF_PREFIX)
+
+
+def _package_is_provisional(pdf_dir: Path) -> bool:
+    """Whether the package is a client-confirmation copy rather than a final one."""
+    manifest_path = pdf_dir / "generation_manifest.json"
+    if not manifest_path.is_file():
+        return False
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return manifest.get("status") == "PROVISIONAL_NOT_FOR_OFFICIAL_USE"
 
 
 def require_completed_generation(pdf_dir: Path) -> dict[str, Any]:
@@ -409,7 +423,17 @@ def validate_pdf(
     all_records: dict[str, dict[str, str]],
     background: Path | None,
     max_erased_pixels: int,
+    *,
+    expect_provisional_notice: bool = False,
 ) -> PdfResult:
+    """Validate a rendered A1.
+
+    The provisional notice states that a document is not an issued A1. It is
+    therefore required in a client-confirmation copy and forbidden in an
+    authoritative one: a certificate that says it is a draft would be
+    self-contradictory, and a copy that says it is a draft but does not
+    would be misleading. Decision D2 (2026-10-20).
+    """
     result = PdfResult(_employee_id(path), path.name, sha256_file(path))
     try:
         reader = PdfReader(str(path), strict=True)
@@ -492,9 +516,18 @@ def validate_pdf(
     result.checks["foreign_identity_number_count"] = len(foreign_numbers)
     if foreign_numbers:
         result.fail("contains another employee insurance number")
-    for forbidden in ("EXAMPLE-LEGACY-IDENTITY", "NÁVRH – ČEKÁ NA POTVRZENÍ OSSZ"):
+    for forbidden in ("EXAMPLE-LEGACY-IDENTITY",):
         if _normalize(forbidden) in normalized:
             result.fail(f"forbidden legacy text present: {forbidden}")
+    notice_present = _normalize(PROVISIONAL_NOTICE) in normalized
+    if expect_provisional_notice:
+        if not notice_present:
+            result.fail("provisional notice missing from a client-confirmation copy")
+        page_texts = [page.extract_text() or "" for page in reader.pages]
+        if not all(_normalize(PROVISIONAL_NOTICE) in _normalize(t) for t in page_texts):
+            result.fail("provisional notice missing from a page")
+    elif notice_present:
+        result.fail("provisional notice present in an authoritative document")
     if background and background.exists() and len(reader.pages) == PAGE_COUNT:
         damage = _background_damage(path, background)
         result.checks["background_integrity"] = damage
@@ -589,9 +622,18 @@ def validate_set(
     actual_preview_names = {path.name for path in previews}
     if actual_preview_names != expected_preview_names:
         set_issues.append("PREVIEW_SET_MISMATCH")
+    # A client-confirmation package carries the provisional notice on every
+    # page; an authoritative package must not carry it at all. The generation
+    # manifest says which kind of package this is.
+    expect_notice = _package_is_provisional(pdf_dir)
     results = [
         validate_pdf(
-            path, records[_employee_id(path)], records, background, max_erased_pixels
+            path,
+            records[_employee_id(path)],
+            records,
+            background,
+            max_erased_pixels,
+            expect_provisional_notice=expect_notice,
         )
         for path in pdfs
         if _employee_id(path) in records

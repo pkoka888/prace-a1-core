@@ -17,8 +17,7 @@ class Membership(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "organization", "role"],
-                name="unique_org_role"
+                fields=["user", "organization", "role"], name="unique_org_role"
             )
         ]
 
@@ -33,7 +32,7 @@ class Release1aReviewSession(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "organization", "build_id"],
-                name="unique_user_org_build"
+                name="unique_user_org_build",
             )
         ]
 
@@ -53,7 +52,9 @@ class Release1aReview(models.Model):
 
     session = models.ForeignKey(Release1aReviewSession, on_delete=models.CASCADE)
     section = models.CharField(max_length=24, choices=Section.choices)
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.NOT_STARTED)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.NOT_STARTED
+    )
     note = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -61,8 +62,7 @@ class Release1aReview(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["session", "section"],
-                name="unique_session_section"
+                fields=["session", "section"], name="unique_session_section"
             )
         ]
         ordering = ["section"]
@@ -89,19 +89,24 @@ class Release1aAcceptance(models.Model):
         ordering = ["-accepted_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["session"],
-                name="unique_acceptance_per_session"
+                fields=["session"], name="unique_acceptance_per_session"
             )
         ]
 
     def save(self, *args, **kwargs):
         if self.pk:
-            raise ValueError("Release1aAcceptance is immutable; create a new record instead of updating existing.")
+            raise ValueError(
+                "Release1aAcceptance is immutable; create a new record instead of updating existing."
+            )
         return super().save(*args, **kwargs)
+
 
 class TenantModel(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.PROTECT)
-    class Meta: abstract = True
+
+    class Meta:
+        abstract = True
+
 
 class Worker(TenantModel):
     legacy_employee_id = models.CharField(max_length=120, null=True, blank=True)
@@ -109,16 +114,24 @@ class Worker(TenantModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["organization", "legacy_employee_id"],
-                condition=models.Q(legacy_employee_id__isnull=False), name="unique_org_worker_legacy_key"),
-            models.CheckConstraint(condition=models.Q(legacy_employee_id__isnull=True) |
-                ~models.Q(legacy_employee_id=""), name="worker_legacy_key_not_empty"),
+            models.UniqueConstraint(
+                fields=["organization", "legacy_employee_id"],
+                condition=models.Q(legacy_employee_id__isnull=False),
+                name="unique_org_worker_legacy_key",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(legacy_employee_id__isnull=True)
+                | ~models.Q(legacy_employee_id=""),
+                name="worker_legacy_key_not_empty",
+            ),
         ]
 
     given_name = models.CharField(max_length=80)
     family_name = models.CharField(max_length=80)
     birth_date = models.DateField()
-    activity_profile = models.CharField(max_length=32, choices=[("employee", "Zaměstnanec"), ("self_employed", "OSVČ")])
+    activity_profile = models.CharField(
+        max_length=32, choices=[("employee", "Zaměstnanec"), ("self_employed", "OSVČ")]
+    )
 
     class State(models.TextChoices):
         DRAFT = "draft", "Rozpracováno"
@@ -127,6 +140,7 @@ class Worker(TenantModel):
 
     state = models.CharField(max_length=20, choices=State.choices, default=State.DRAFT)
     version = models.PositiveIntegerField(default=1)
+
 
 class Document(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT, null=True, blank=True)
@@ -143,15 +157,36 @@ class Document(TenantModel):
         REJECTED = "rejected", "Zamítnuto"
         SUPERSEDED = "superseded", "Nahrazeno"
 
-    state = models.CharField(max_length=24, choices=State.choices, default=State.QUARANTINED)
-    class Meta: constraints = [models.UniqueConstraint(fields=["organization", "sha256"], name="unique_org_document_hash")]
+    state = models.CharField(
+        max_length=24, choices=State.choices, default=State.QUARANTINED
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "sha256"], name="unique_org_document_hash"
+            )
+        ]
+
 
 class Assignment(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
     workplace_label = models.CharField(max_length=160)
     activity_label = models.CharField(max_length=120)
     a1_facts_json = models.JSONField(default=dict, blank=True)
-    start = models.DateField(); end = models.DateField()
+    start = models.DateField()
+    end = models.DateField()
+
+    # Article 12 situation facts. They are conditions of the posting claim
+    # rather than fields on the A1 form, so they are nullable and absent
+    # means "not captured", never "no". Decision D10 and D1b (2026-10-20).
+    # prior_activity_start: Article 14(3) of Regulation 987/2009 requires the
+    # self-employed to have already pursued the activity before moving.
+    prior_activity_start = models.DateField(null=True, blank=True)
+    # replaces_worker: Article 12(1) of Regulation 883/2004 excludes a worker
+    # sent to replace another posted person. Nullable tri-state: null means
+    # the question has not been answered.
+    replaces_worker = models.BooleanField(null=True, blank=True)
 
     class State(models.TextChoices):
         PLANNED = "planned", "Plánováno"
@@ -159,8 +194,11 @@ class Assignment(TenantModel):
         COMPLETED = "completed", "Dokončeno"
         CANCELLED = "cancelled", "Zrušeno"
 
-    state = models.CharField(max_length=20, choices=State.choices, default=State.PLANNED)
+    state = models.CharField(
+        max_length=20, choices=State.choices, default=State.PLANNED
+    )
     version = models.PositiveIntegerField(default=1)
+
 
 class A1Case(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
@@ -189,7 +227,11 @@ class A1Case(TenantModel):
     prepared_artifact_hash = models.CharField(max_length=64, blank=True)
     receipt_build_id = models.CharField(max_length=64, blank=True)
     receipt_git_commit = models.CharField(max_length=40, blank=True)
-    external_status = models.CharField(max_length=32, choices=ExternalStatus.choices, default=ExternalStatus.NOT_SUBMITTED)
+    external_status = models.CharField(
+        max_length=32,
+        choices=ExternalStatus.choices,
+        default=ExternalStatus.NOT_SUBMITTED,
+    )
     notes = models.TextField(blank=True, default="")
 
     # J4 visual confirmation fields
@@ -203,28 +245,47 @@ class A1Case(TenantModel):
         related_name="visual_confirmations",
     )
     visual_confirmation_notes = models.TextField(blank=True, default="", db_default="")
-    visual_confirmation_receipt = models.CharField(max_length=400, blank=True, default="", db_default="")
+    visual_confirmation_receipt = models.CharField(
+        max_length=400, blank=True, default="", db_default=""
+    )
     evidence_documents = models.JSONField(default=list, blank=True, db_default="[]")
     evidence_notes = models.JSONField(default=list, blank=True, db_default="[]")
 
     def save(self, *args, **kwargs):
         if self.pk:
-            previous = type(self).objects.filter(pk=self.pk).values(
-                "source_hash", "source_snapshot_json", "artifact_reference", "artifact_dependencies",
-                "prepared_artifact_hash").first()
+            previous = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values(
+                    "source_hash",
+                    "source_snapshot_json",
+                    "artifact_reference",
+                    "artifact_dependencies",
+                    "prepared_artifact_hash",
+                )
+                .first()
+            )
             if previous:
                 for field in ("source_hash", "source_snapshot_json"):
                     if previous[field] != getattr(self, field):
                         raise ValueError("A1_SNAPSHOT_IMMUTABLE")
                 if previous["artifact_reference"]:
-                    for field in ("artifact_reference", "artifact_dependencies", "prepared_artifact_hash"):
+                    for field in (
+                        "artifact_reference",
+                        "artifact_dependencies",
+                        "prepared_artifact_hash",
+                    ):
                         if previous[field] != getattr(self, field):
                             raise ValueError("A1_ARTIFACT_IMMUTABLE")
         return super().save(*args, **kwargs)
 
+
 class A1DraftReservation(TenantModel):
     """Immutable machine draft identity; never an issued certificate or approval."""
-    case = models.OneToOneField(A1Case, on_delete=models.PROTECT, related_name="draft_reservation")
+
+    case = models.OneToOneField(
+        A1Case, on_delete=models.PROTECT, related_name="draft_reservation"
+    )
     document_id = models.CharField(max_length=64, unique=True)
     reference_date = models.DateField()
     package_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -240,7 +301,10 @@ class A1DraftReservation(TenantModel):
 
 class A1DraftGeneration(TenantModel):
     """Immutable render inputs and write-once package for a stable draft identity."""
-    reservation = models.ForeignKey(A1DraftReservation, on_delete=models.PROTECT, related_name="generations")
+
+    reservation = models.ForeignKey(
+        A1DraftReservation, on_delete=models.PROTECT, related_name="generations"
+    )
     revision = models.PositiveIntegerField()
     fingerprint = models.CharField(max_length=64)
     package_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -253,29 +317,56 @@ class A1DraftGeneration(TenantModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["reservation", "revision"], name="unique_a1_draft_revision"),
-            models.UniqueConstraint(fields=["reservation", "fingerprint"], name="unique_a1_draft_fingerprint"),
+            models.UniqueConstraint(
+                fields=["reservation", "revision"], name="unique_a1_draft_revision"
+            ),
+            models.UniqueConstraint(
+                fields=["reservation", "fingerprint"],
+                name="unique_a1_draft_fingerprint",
+            ),
         ]
 
     def save(self, *args, **kwargs):
         if self.organization_id != self.reservation.organization_id:
             raise ValueError("A1_DRAFT_GENERATION_ORGANIZATION_MISMATCH")
-        immutable = ("organization_id", "reservation_id", "revision", "fingerprint", "package_key",
-                     "snapshot", "snapshot_sha256", "dependencies")
-        artifacts = ("artifact_reference", "artifact_dependencies", "prepared_artifact_hash")
+        immutable = (
+            "organization_id",
+            "reservation_id",
+            "revision",
+            "fingerprint",
+            "package_key",
+            "snapshot",
+            "snapshot_sha256",
+            "dependencies",
+        )
+        artifacts = (
+            "artifact_reference",
+            "artifact_dependencies",
+            "prepared_artifact_hash",
+        )
         if self.pk:
-            previous = type(self).objects.filter(pk=self.pk).values(*immutable, *artifacts).first()
+            previous = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values(*immutable, *artifacts)
+                .first()
+            )
             if previous:
                 if any(previous[field] != getattr(self, field) for field in immutable):
                     raise ValueError("A1_DRAFT_GENERATION_IMMUTABLE")
-                if previous["artifact_reference"] and any(previous[field] != getattr(self, field) for field in artifacts):
+                if previous["artifact_reference"] and any(
+                    previous[field] != getattr(self, field) for field in artifacts
+                ):
                     raise ValueError("A1_DRAFT_GENERATION_ARTIFACT_IMMUTABLE")
         return super().save(*args, **kwargs)
 
 
 class A1GenerationConfirmation(TenantModel):
     """Operator visual review of one exact package, never identity verification."""
-    generation = models.OneToOneField(A1DraftGeneration, models.PROTECT, related_name="visual_confirmation")
+
+    generation = models.OneToOneField(
+        A1DraftGeneration, models.PROTECT, related_name="visual_confirmation"
+    )
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT)
     confirmed_at = models.DateTimeField(auto_now_add=True)
     source_hash = models.CharField(max_length=64)
@@ -297,9 +388,13 @@ class AuditEvent(TenantModel):
     object_ref = models.CharField(max_length=100)
     outcome = models.CharField(max_length=20)
     occurred_at = models.DateTimeField(auto_now_add=True)
-    class Meta: ordering = ["id"]
+
+    class Meta:
+        ordering = ["id"]
+
     def save(self, *args, **kwargs):
-        if self.pk: raise ValueError("AuditEvent is append-only")
+        if self.pk:
+            raise ValueError("AuditEvent is append-only")
         return super().save(*args, **kwargs)
 
 
@@ -311,9 +406,13 @@ class AuthAuditEvent(models.Model):
     object_ref = models.CharField(max_length=100, blank=True, default="")
     reason_code = models.CharField(max_length=40, blank=True, default="")
     occurred_at = models.DateTimeField(auto_now_add=True)
-    class Meta: ordering = ["id"]
+
+    class Meta:
+        ordering = ["id"]
+
     def save(self, *args, **kwargs):
-        if self.pk: raise ValueError("AuthAuditEvent is append-only")
+        if self.pk:
+            raise ValueError("AuthAuditEvent is append-only")
         return super().save(*args, **kwargs)
 
 
@@ -331,7 +430,9 @@ class IntakeSession(TenantModel):
         MERGED = "merged", "Sloučeno"
         ARCHIVED = "archived", "Archivováno"
 
-    ocr_runs = models.ManyToManyField("OcrRun", related_name="intake_sessions", blank=True)
+    ocr_runs = models.ManyToManyField(
+        "OcrRun", related_name="intake_sessions", blank=True
+    )
     worker = models.ForeignKey(Worker, models.PROTECT, null=True, blank=True)
     purpose = models.CharField(max_length=24, choices=Purpose.choices)
     state = models.CharField(max_length=24, choices=State.choices, default=State.DRAFT)
@@ -356,8 +457,7 @@ class DocumentVersion(TenantModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["document", "version_number"],
-                name="unique_doc_version"
+                fields=["document", "version_number"], name="unique_doc_version"
             )
         ]
 
@@ -383,24 +483,35 @@ class DocumentClassification(TenantModel):
         CZ_HEALTH_CARD_BACK = "cz_health_card_back", "ZP zadní strana"
         UNKNOWN = "unknown", "Neznámý"
 
-    doc_type = models.CharField(max_length=24, choices=DocType.choices, default=DocType.UNKNOWN)
-    doc_type_confidence = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
-    side_confidence = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    doc_type = models.CharField(
+        max_length=24, choices=DocType.choices, default=DocType.UNKNOWN
+    )
+    doc_type_confidence = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
+    side_confidence = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
     is_human_confirmed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class OcrRun(TenantModel):
     """An OCR processing run for a document version. Derivatives never replace originals."""
+
     output_key = models.CharField(max_length=160, blank=True, default="")
     output_sha256 = models.CharField(max_length=64, blank=True, default="")
     lease_expires_at = models.DateTimeField(null=True, blank=True)
     attempt_token = models.CharField(max_length=32, blank=True, default="")
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["organization", "idempotency_key"],
-                       condition=~models.Q(idempotency_key=""), name="unique_org_ocr_idempotency")]
-
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "idempotency_key"],
+                condition=~models.Q(idempotency_key=""),
+                name="unique_org_ocr_idempotency",
+            )
+        ]
 
     class Engine(models.TextChoices):
         LOCAL = "local", "Lokální OCR"
@@ -414,9 +525,13 @@ class OcrRun(TenantModel):
 
     document = models.ForeignKey(Document, models.CASCADE)
     version = models.ForeignKey(DocumentVersion, models.CASCADE)
-    engine = models.CharField(max_length=24, choices=Engine.choices, default=Engine.LOCAL)
+    engine = models.CharField(
+        max_length=24, choices=Engine.choices, default=Engine.LOCAL
+    )
     engine_version = models.CharField(max_length=40, blank=True, default="")
-    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.PENDING
+    )
     idempotency_key = models.CharField(max_length=80, blank=True, default="")
     retry_count = models.PositiveIntegerField(default=0)
     failure_reason = models.TextField(blank=True, default="")
@@ -427,6 +542,7 @@ class OcrRun(TenantModel):
 
 class DocumentRegionAssociation(TenantModel):
     """Explicit human association; immutable and independent of upload context."""
+
     ocr_run = models.ForeignKey(OcrRun, models.PROTECT)
     region_id = models.CharField(max_length=36)
     document_type = models.CharField(max_length=24, blank=True, default="")
@@ -436,7 +552,11 @@ class DocumentRegionAssociation(TenantModel):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(fields=["ocr_run", "region_id"], name="unique_run_region_association")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ocr_run", "region_id"], name="unique_run_region_association"
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -461,15 +581,21 @@ class FieldProposal(TenantModel):
     field_name = models.CharField(max_length=80)
     raw_ocr_text = models.TextField(blank=True, default="")
     proposed_value = models.CharField(max_length=240)
-    confidence = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
-    doc_class_confidence = models.DecimalField(max_digits=5, decimal_places=4, null=True, blank=True)
+    confidence = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
+    doc_class_confidence = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
     source_page = models.PositiveIntegerField(null=True, blank=True)
     source_bounding_box = models.JSONField(null=True, blank=True)
     source_text_offset = models.PositiveIntegerField(null=True, blank=True)
     ocr_engine = models.CharField(max_length=24, blank=True, default="")
     ocr_model_version = models.CharField(max_length=40, blank=True, default="")
     validation_findings = models.JSONField(default=list)
-    state = models.CharField(max_length=16, choices=State.choices, default=State.PROPOSED)
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.PROPOSED
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
@@ -485,7 +611,9 @@ class FieldDecision(TenantModel):
     decision = models.CharField(max_length=24)
     corrected_value = models.CharField(max_length=240, blank=True, default="")
     reason = models.TextField(blank=True, default="")
-    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True
+    )
     decided_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -494,11 +622,15 @@ class WorkerIdentityRevision(TenantModel):
 
     worker = models.ForeignKey(Worker, models.CASCADE)
     source_document = models.ForeignKey(Document, models.PROTECT, null=True, blank=True)
-    source_version = models.ForeignKey(DocumentVersion, models.PROTECT, null=True, blank=True)
+    source_version = models.ForeignKey(
+        DocumentVersion, models.PROTECT, null=True, blank=True
+    )
     revision_number = models.PositiveIntegerField(default=1)
     confirmed_fields = models.JSONField(default=dict)
     confirmed_at = models.DateTimeField(auto_now_add=True)
-    confirmed_by = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True)
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True
+    )
 
 
 class IdentityEvaluation(TenantModel):
@@ -509,9 +641,12 @@ class IdentityEvaluation(TenantModel):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(
-            fields=["organization", "evaluation_sha256"], name="unique_org_identity_evaluation"
-        )]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "evaluation_sha256"],
+                name="unique_org_identity_evaluation",
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -534,9 +669,12 @@ class WorkerIdentityClaim(TenantModel):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [models.UniqueConstraint(
-            fields=["organization", "identifier_sha256"], name="unique_org_identity_claim"
-        )]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "identifier_sha256"],
+                name="unique_org_identity_claim",
+            )
+        ]
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -589,10 +727,16 @@ class ReviewTask(TenantModel):
     worker = models.ForeignKey(Worker, models.CASCADE, null=True, blank=True)
     document = models.ForeignKey(Document, models.CASCADE, null=True, blank=True)
     task_type = models.CharField(max_length=24, choices=TaskType.choices)
-    priority = models.CharField(max_length=16, choices=Priority.choices, default=Priority.MEDIUM)
-    state = models.CharField(max_length=16, choices=State.choices, default=State.PENDING)
+    priority = models.CharField(
+        max_length=16, choices=Priority.choices, default=Priority.MEDIUM
+    )
+    state = models.CharField(
+        max_length=16, choices=State.choices, default=State.PENDING
+    )
     description = models.TextField(blank=True, default="")
-    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, models.PROTECT, null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(null=True, blank=True)

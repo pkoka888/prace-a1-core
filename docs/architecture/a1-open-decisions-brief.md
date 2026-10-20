@@ -1,9 +1,10 @@
 # A1 open decisions: the investigation and the recommended answer
 
-Status: decision brief, 2026-10-20. Non-PII. This brief gathers the evidence
-behind each decision that is waiting on Jan, states the question in a form
-that can be answered, and gives a recommended answer with its reasoning. It
-decides nothing and changes nothing.
+Status: decision brief, **decided 2026-10-20**. Non-PII. This brief gathers
+the evidence behind each decision, states the question in a form that can be
+answered, and gives a recommended answer with its reasoning. **All five
+decisions have now been taken as recommended**, and the engineering work each
+one unblocks is recorded in the last section.
 
 Companions: [the field mapping](a1-field-source-mapping.md) (the contract),
 [the block options](a1-block-options.md) (the research behind it), and the
@@ -11,11 +12,11 @@ Companions: [the field mapping](a1-field-source-mapping.md) (the contract),
 
 ## 0. The answers in one table
 
-| Gate | Question in one line | Recommendation | Cost if you say no |
+| Gate | Question in one line | Decision | Cost if you say no |
 |---|---|---|---|
 | **D1a** | Do you ever issue an A1 for a self-employed person **posted** to another State (official status 3.3)? | **No — not yet.** Keep the checkbox off; establish the arrangement per case instead | None now. If a case needs it, the 23-site activation is ready to run |
-| **D1b** | Will you capture, per case, the facts Article 12 requires (prior activity, replaces another worker)? | **Yes** — capture them now, nullable, even with 3.3 off | 3.1 and 3.3 cannot be shown to satisfy Art. 12, so the generator should refuse them |
-| **D2** | Should the client-confirmation copy carry a visible "not an issued A1" mark on every page? | **Yes** — the machinery exists; the digitisation direction makes it the safer default | A copy that looks official can be forwarded and mistaken for a certificate |
+| **D1b** | Will you capture, per case, the facts Article 12 requires (prior activity, replaces another worker)? | **Yes** — captured now, nullable, even with 3.3 off | 3.1 and 3.3 cannot be shown to satisfy Art. 12, so the generator should refuse them |
+| **D2** | Should the client-confirmation copy carry a visible "not an issued A1" mark on every page? | **Yes** — implemented | A copy that looks official can be forwarded and mistaken for a certificate |
 | **D10** | Should the model carry a situation record? | **Yes, but four fields, not six** — `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker` | Facts that make an A1 defensible have to be collected later, about past dates |
 | **D11a** | May the agency retrieve an employer's registry record manually, review it and store it? | **Yes** | Employer facts stay un-sourced; the ARES enrichment has nowhere to attach |
 
@@ -330,3 +331,35 @@ Each answer has a documented consequence in this brief, and the engineering
 work it unblocks is already specified: the 23-site activation path for D1a and
 D1b, the visibility flag for D2, the additive migration for D10, and the
 `LegalEntity` seed path for D11a.
+
+## 8. What the decisions produced
+
+All five were taken as recommended on 2026-10-20, and the engineering work
+followed in the same increment.
+
+| Decision | What was built | Where |
+|---|---|---|
+| **D1a** (no) | No change to the status enum, so 3.3 stays inexpressible and the generator keeps refusing such a row. The 23-site activation path stays documented for the day a case needs it | `a1-field-source-mapping.md` §15 |
+| **D1b** (yes) | `Assignment.prior_activity_start` and `Assignment.replaces_worker`, both nullable so an absent fact is distinguishable from a negative answer. `update_assignment_situation` writes them with an audit event, and the export carries them into the review row | migration `0021_a1_situation_facts` |
+| **D2** (yes) | The client-confirmation copy now carries `PROVISIONAL_NOTICE` on every page, and the quality gate requires it in a provisional package and forbids it in an authoritative one | `generate_provisional_a1.py`, `a1_quality_gate.py`, `finalize_a1.py` |
+| **D10** (yes, four fields) | `posting_start` and `posting_end` are the certificate's own 2.2 and 2.3, which had no model home; the other two are the new columns. `legal_basis` is dropped as derivable and `nace_code` moves to the A block | `a1-field-source-mapping.md` §14 |
+| **D11a** (yes) | The offline import path is the same reviewed mechanism the institution profiles already use, so the `LegalEntity` seed needs no host change | `a1-block-options.md` §5 |
+
+### The two things the decisions exposed
+
+**The client-confirmation copy was failing its own quality gate.** The copy was
+rendered by the placeholder framework, which erased 279, 610 and 40 template
+pixels on the three pages against a limit of 24 — so the copy the agency
+sends to a client never passed the gate that is supposed to vouch for it. The
+gate's threshold is tuned for the coordinate renderer, which erases within it.
+Switching the copy to the coordinate renderer — which is also the documented
+V1 path, and the one that draws the notice natively — fixed the failure and
+implemented D2 without a second notice-drawing mechanism. The placeholder
+framework remains the documented vector-template alternative and is still used
+by the legacy generator.
+
+**The Article 12 conditions now gate issuance.** A posting without the
+replacement answer is refused at the issuance gate with an actionable message,
+and a posting whose certificate covers more than 24 months is refused. The
+draft path is not refused: a missing fact blocks the A1 operation and nothing
+else, exactly as the repository's rule requires.

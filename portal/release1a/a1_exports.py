@@ -3,29 +3,64 @@
 Exports preserve pending/confirmed provenance. They never manufacture approval,
 certificate issuance, dates or numbers; canonical finalization remains separate.
 """
+
 import csv
 import io
 from datetime import datetime
 from django.db import transaction
-from scripts.finalize_a1 import CSV_FIELDS, readiness_report
+from scripts.finalize_a1 import CSV_FIELDS, readiness_report, review_fieldnames
 from src.document_core.serialization import canonical_json, result_hash
 from .document_intake import audit, read_result
 from .identity import _authorize, _lock_organization, _lock_sources
-from .models import (A1Case, Assignment, Worker, WorkerIdentityRevision,
-                     WorkerIdentityClaim, FieldProposal)
+from .models import (
+    A1Case,
+    Assignment,
+    Worker,
+    WorkerIdentityRevision,
+    WorkerIdentityClaim,
+    FieldProposal,
+)
 from .services import StaleWrite, J4_IDENTITY_BINDING
 
-IDENTITY = {"surname": "surname", "family_name": "surname", "given_name": "given_name",
-            "dob": "dob", "birth_date": "dob", **{f: f for f in (
-                "birth_place", "nationality", "sex", "insurance_number", "street",
-                "house_number", "city", "district", "postal_code", "country_code")}}
+IDENTITY = {
+    "surname": "surname",
+    "family_name": "surname",
+    "given_name": "given_name",
+    "dob": "dob",
+    "birth_date": "dob",
+    **{
+        f: f
+        for f in (
+            "birth_place",
+            "nationality",
+            "sex",
+            "insurance_number",
+            "street",
+            "house_number",
+            "city",
+            "district",
+            "postal_code",
+            "country_code",
+        )
+    },
+}
 GROUPS = {
-    "employment": {"employer_id": "employment_id", "employer_name": "employment_name",
-                   **{f: "employment_" + f for f in ("street", "house_number", "city", "postal_code", "country_code")}},
+    "employment": {
+        "employer_id": "employment_id",
+        "employer_name": "employment_name",
+        **{
+            f: "employment_" + f
+            for f in ("street", "house_number", "city", "postal_code", "country_code")
+        },
+    },
     "activity": {"name": "activity_name", "address": "activity_address"},
     "certificate": {f: f for f in ("document_id", "start_date", "end_date")},
-    "institution": {"resolved_ossz": "resolved_ossz", "profile_key": "institution_profile",
-                    "issue_date": "issue_date", "signed_by": "signed_by"},
+    "institution": {
+        "resolved_ossz": "resolved_ossz",
+        "profile_key": "institution_profile",
+        "issue_date": "issue_date",
+        "signed_by": "signed_by",
+    },
 }
 
 
@@ -34,20 +69,81 @@ def _facts(value):
         raise ValueError("A1_FACTS_FIELDS_INVALID")
     for group, fields in GROUPS.items():
         block = value.get(group, {})
-        if (not isinstance(block, dict) or set(block) - set(fields) or
-                any(not isinstance(v, str) or len(v) > 240 for v in block.values())):
+        if (
+            not isinstance(block, dict)
+            or set(block) - set(fields)
+            or any(not isinstance(v, str) or len(v) > 240 for v in block.values())
+        ):
             raise ValueError("A1_FACTS_FIELDS_INVALID")
-    if value.get("status_profile", "") not in ("", "posted_employee", "employee_multi_state", "self_employed_multi_state"):
+    if value.get("status_profile", "") not in (
+        "",
+        "posted_employee",
+        "employee_multi_state",
+        "self_employed_multi_state",
+    ):
         raise ValueError("A1_STATUS_PROFILE_INVALID")
     return value
 
 
 @transaction.atomic
-def update_assignment_facts(user, organization, assignment_id, facts, *, expected_version):
+def update_assignment_situation(
+    user, organization, assignment_id, *, prior_activity_start=None,
+    replaces_worker=None, expected_version
+):
+    """Capture the Article 12 situation facts of a posting.
+
+    They are conditions of the posting claim rather than fields on the A1
+    form, so they have their own columns and their own write path. Absent
+    means "not captured"; it never means "no". Decision D10 and D1b
+    (2026-10-20).
+    """
     _authorize(user, organization, "assignment:update")
     _lock_organization(organization)
-    assignment = Assignment.objects.select_for_update().get(pk=assignment_id, organization=organization,
-                                                           worker__organization=organization)
+    assignment = Assignment.objects.select_for_update().get(
+        pk=assignment_id, organization=organization, worker__organization=organization
+    )
+    if type(expected_version) is not int or assignment.version != expected_version:
+        raise StaleWrite("ASSIGNMENT_VERSION_STALE")
+    fields = []
+    if prior_activity_start is not None:
+        if not isinstance(prior_activity_start, str):
+            raise ValueError("A1_SITUATION_DATE_INVALID")
+        try:
+            parsed = datetime.strptime(prior_activity_start, "%d.%m.%Y").date()
+        except ValueError:
+            raise ValueError("A1_SITUATION_DATE_INVALID") from None
+        fields.append(("prior_activity_start", parsed))
+    if replaces_worker is not None:
+        if type(replaces_worker) is not bool:
+            raise ValueError("A1_SITUATION_FLAG_INVALID")
+        fields.append(("replaces_worker", replaces_worker))
+    if not fields:
+        return {"assignment_ref": assignment.pk, "version": assignment.version}
+    for name, value in fields:
+        setattr(assignment, name, value)
+    assignment.version += 1
+    assignment.save(update_fields=[*[name for name, _ in fields], "version"])
+    A1Case.objects.filter(
+        organization=organization, worker=assignment.worker
+    ).update(is_stale=True)
+    audit(
+        user,
+        organization,
+        "a1.assignment_situation_updated",
+        f"a1:{assignment.pk}",
+    )
+    return {"assignment_ref": assignment.pk, "version": assignment.version}
+
+
+@transaction.atomic
+def update_assignment_facts(
+    user, organization, assignment_id, facts, *, expected_version
+):
+    _authorize(user, organization, "assignment:update")
+    _lock_organization(organization)
+    assignment = Assignment.objects.select_for_update().get(
+        pk=assignment_id, organization=organization, worker__organization=organization
+    )
     if type(expected_version) is not int or assignment.version != expected_version:
         raise StaleWrite("ASSIGNMENT_VERSION_STALE")
     facts = _facts(facts)
@@ -55,8 +151,15 @@ def update_assignment_facts(user, organization, assignment_id, facts, *, expecte
         assignment.a1_facts_json = facts
         assignment.version += 1
         assignment.save(update_fields=["a1_facts_json", "version"])
-        A1Case.objects.filter(organization=organization, worker=assignment.worker).update(is_stale=True)
-        audit(user, organization, "a1.assignment_facts_updated", f"assignment:{assignment.pk}")
+        A1Case.objects.filter(
+            organization=organization, worker=assignment.worker
+        ).update(is_stale=True)
+        audit(
+            user,
+            organization,
+            "a1.assignment_facts_updated",
+            f"assignment:{assignment.pk}",
+        )
     return assignment
 
 
@@ -75,27 +178,53 @@ def _value(field, value):
 
 
 def _snapshot(user, organization, worker_id, assignment_id, claim_id):
-    worker = Worker.objects.select_for_update(no_key=True).get(pk=worker_id, organization=organization)
+    worker = Worker.objects.select_for_update(no_key=True).get(
+        pk=worker_id, organization=organization
+    )
     if worker.state == Worker.State.ARCHIVED:
         raise ValueError("WORKER_ARCHIVED")
     row = dict.fromkeys(CSV_FIELDS, "")
-    row.update(employee_id=worker.legacy_employee_id or f"worker-{worker.pk}", identity_reviewed="NO", certificate_reviewed="NO",
-               approved_for_pdf="NO", validated_by_user="0")
+    row.update(
+        employee_id=worker.legacy_employee_id or f"worker-{worker.pk}",
+        identity_reviewed="NO",
+        certificate_reviewed="NO",
+        approved_for_pdf="NO",
+        validated_by_user="0",
+    )
     for subject in ("activity", "certificate", "signatory"):
         row[subject + "_source_status"] = "UNVERIFIED"
     provenance, blockers = {}, []
-    dependencies = {"worker_ref": worker.pk, "worker_version": worker.version,
-                    "activity_profile": worker.activity_profile, "worker_state": worker.state}
+    dependencies = {
+        "worker_ref": worker.pk,
+        "worker_version": worker.version,
+        "activity_profile": worker.activity_profile,
+        "worker_state": worker.state,
+    }
     if worker.legacy_employee_id:
         dependencies["legacy_key_provenance"] = worker.legacy_key_provenance
-        provenance["employee_id"] = {"kind": "explicit_legacy_mapping", "worker_ref": worker.pk,
-                                     **worker.legacy_key_provenance}
+        provenance["employee_id"] = {
+            "kind": "explicit_legacy_mapping",
+            "worker_ref": worker.pk,
+            **worker.legacy_key_provenance,
+        }
+
     def put(field, value, source):
         row[field] = _value(field, value)
         provenance[field] = source
-    for field, value in (("given_name", worker.given_name), ("surname", worker.family_name), ("dob", str(worker.birth_date))):
-        put(field, value, {"kind": "worker_projection", "worker_ref": worker.pk, "confirmed": False})
-    claims = WorkerIdentityClaim.objects.filter(organization=organization, worker=worker).order_by("pk")
+
+    for field, value in (
+        ("given_name", worker.given_name),
+        ("surname", worker.family_name),
+        ("dob", str(worker.birth_date)),
+    ):
+        put(
+            field,
+            value,
+            {"kind": "worker_projection", "worker_ref": worker.pk, "confirmed": False},
+        )
+    claims = WorkerIdentityClaim.objects.filter(
+        organization=organization, worker=worker
+    ).order_by("pk")
     if claim_id is not None:
         claims = claims.filter(pk=claim_id)
     selected = list(claims)
@@ -107,19 +236,41 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
         claim = selected[0]
         _lock_sources(organization, [claim.ocr_run_id])
         run = claim.ocr_run
-        if (claim.evaluation.organization_id != organization.pk or
-                run.document.documentversion_set.order_by("-version_number").first().pk != run.version_id):
+        if (
+            claim.evaluation.organization_id != organization.pk
+            or run.document.documentversion_set.order_by("-version_number").first().pk
+            != run.version_id
+        ):
             raise ValueError("A1_SOURCE_STALE")
         payload = read_result(user, organization, run.pk)
         if not payload or payload.get("status") != "completed":
             raise ValueError("A1_SOURCE_UNAVAILABLE")
-        dependencies["claim"] = {"claim_ref": claim.pk, "evaluation_ref": claim.evaluation_id,
-            "run_ref": run.pk, "region_ref": claim.region_id, "version_ref": run.version_id,
-            "source_sha256": run.version.sha256, "output_sha256": run.output_sha256}
-        put("source_scans", f"document:{run.document_id}:version:{run.version_id}",
-            {"kind": "document_reference", "document_ref": run.document_id, "version_ref": run.version_id, "confirmed": False})
-        proposals = FieldProposal.objects.filter(organization=organization, ocr_run=run,
-            document=run.document, version=run.version, document_region_id=claim.region_id).order_by("pk")
+        dependencies["claim"] = {
+            "claim_ref": claim.pk,
+            "evaluation_ref": claim.evaluation_id,
+            "run_ref": run.pk,
+            "region_ref": claim.region_id,
+            "version_ref": run.version_id,
+            "source_sha256": run.version.sha256,
+            "output_sha256": run.output_sha256,
+        }
+        put(
+            "source_scans",
+            f"document:{run.document_id}:version:{run.version_id}",
+            {
+                "kind": "document_reference",
+                "document_ref": run.document_id,
+                "version_ref": run.version_id,
+                "confirmed": False,
+            },
+        )
+        proposals = FieldProposal.objects.filter(
+            organization=organization,
+            ocr_run=run,
+            document=run.document,
+            version=run.version,
+            document_region_id=claim.region_id,
+        ).order_by("pk")
         grouped = {}
         for proposal in proposals:
             field = IDENTITY.get(proposal.field_name)
@@ -134,16 +285,35 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
             if len(values) != 1 or any(p.validation_findings for p in proposals):
                 blockers.append("conflict:" + field)
                 continue
-            put(field, values.pop(), {"kind": "ocr_proposal", "proposal_refs": [p.pk for p in proposals], "confirmed": False})
-    revision = WorkerIdentityRevision.objects.filter(organization=organization, worker=worker).order_by("-revision_number", "-pk").first()
+            put(
+                field,
+                values.pop(),
+                {
+                    "kind": "ocr_proposal",
+                    "proposal_refs": [p.pk for p in proposals],
+                    "confirmed": False,
+                },
+            )
+    revision = (
+        WorkerIdentityRevision.objects.filter(organization=organization, worker=worker)
+        .order_by("-revision_number", "-pk")
+        .first()
+    )
     if revision:
-        if (not revision.confirmed_by_id or not revision.source_document_id or not revision.source_version_id or
-                revision.source_document.organization_id != organization.pk or
-                revision.source_version.organization_id != organization.pk or
-                revision.source_version.document_id != revision.source_document_id):
+        if (
+            not revision.confirmed_by_id
+            or not revision.source_document_id
+            or not revision.source_version_id
+            or revision.source_document.organization_id != organization.pk
+            or revision.source_version.organization_id != organization.pk
+            or revision.source_version.document_id != revision.source_document_id
+        ):
             raise ValueError("A1_REVISION_EVIDENCE_REQUIRED")
-        dependencies["identity_revision"] = {"ref": revision.pk, "number": revision.revision_number,
-                                              "fields_sha256": result_hash(revision.confirmed_fields)}
+        dependencies["identity_revision"] = {
+            "ref": revision.pk,
+            "number": revision.revision_number,
+            "fields_sha256": result_hash(revision.confirmed_fields),
+        }
         mapped = {}
         for key, value in revision.confirmed_fields.items():
             if key in IDENTITY:
@@ -153,12 +323,29 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
                     raise ValueError("A1_CONFIRMED_ALIAS_CONFLICT")
                 mapped[field] = value
         for field, value in mapped.items():
-            put(field, value, {"kind": "confirmed_revision", "revision_ref": revision.pk,
-                "actor_ref": revision.confirmed_by_id, "confirmed_at": revision.confirmed_at.isoformat(),
-                "document_ref": revision.source_document_id, "version_ref": revision.source_version_id, "confirmed": True})
+            put(
+                field,
+                value,
+                {
+                    "kind": "confirmed_revision",
+                    "revision_ref": revision.pk,
+                    "actor_ref": revision.confirmed_by_id,
+                    "confirmed_at": revision.confirmed_at.isoformat(),
+                    "document_ref": revision.source_document_id,
+                    "version_ref": revision.source_version_id,
+                    "confirmed": True,
+                },
+            )
             blockers = [b for b in blockers if b != "conflict:" + field]
-    assignments = Assignment.objects.select_for_update().filter(organization=organization, worker=worker,
-        state__in=[Assignment.State.ACTIVE, Assignment.State.PLANNED]).order_by("pk")
+    assignments = (
+        Assignment.objects.select_for_update()
+        .filter(
+            organization=organization,
+            worker=worker,
+            state__in=[Assignment.State.ACTIVE, Assignment.State.PLANNED],
+        )
+        .order_by("pk")
+    )
     if assignment_id is not None:
         assignments = assignments.filter(pk=assignment_id)
     assignments = list(assignments)
@@ -169,57 +356,146 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
     if assignments:
         assignment = assignments[0]
         facts = _facts(assignment.a1_facts_json)
-        dependencies["assignment"] = {"ref": assignment.pk, "version": assignment.version,
-                                      "facts_sha256": result_hash(facts), "state": assignment.state,
-                                      "start": str(assignment.start), "end": str(assignment.end),
-                                      "workplace_label": assignment.workplace_label,
-                                      "activity_label": assignment.activity_label}
-        put("status_profile", facts.get("status_profile", ""), {"kind": "assignment_input", "assignment_ref": assignment.pk, "confirmed": False})
+        dependencies["assignment"] = {
+            "ref": assignment.pk,
+            "version": assignment.version,
+            "facts_sha256": result_hash(facts),
+            "state": assignment.state,
+            "start": str(assignment.start),
+            "end": str(assignment.end),
+            "workplace_label": assignment.workplace_label,
+            "activity_label": assignment.activity_label,
+        }
+        put(
+            "status_profile",
+            facts.get("status_profile", ""),
+            {
+                "kind": "assignment_input",
+                "assignment_ref": assignment.pk,
+                "confirmed": False,
+            },
+        )
+        # The Article 12 situation facts live in their own columns, not in
+        # a1_facts_json, so that each fact has exactly one owner. They are
+        # conditions of the posting claim rather than fields on the form, so
+        # they are not rendered; they are carried so the issuance gate can
+        # check them.
+        if assignment.prior_activity_start is not None:
+            put(
+                "prior_activity_start",
+                assignment.prior_activity_start.strftime("%d.%m.%Y"),
+                {
+                    "kind": "assignment_input",
+                    "assignment_ref": assignment.pk,
+                    "version": assignment.version,
+                    "path": "prior_activity_start",
+                    "confirmed": False,
+                },
+            )
+        if assignment.replaces_worker is not None:
+            put(
+                "replaces_worker",
+                "yes" if assignment.replaces_worker else "no",
+                {
+                    "kind": "assignment_input",
+                    "assignment_ref": assignment.pk,
+                    "version": assignment.version,
+                    "path": "replaces_worker",
+                    "confirmed": False,
+                },
+            )
         for group, fields in GROUPS.items():
             for key, field in fields.items():
                 if key in facts.get(group, {}):
-                    put(field, facts[group][key], {"kind": "assignment_input", "assignment_ref": assignment.pk,
-                                                 "version": assignment.version, "path": f"{group}.{key}", "confirmed": False})
-        if row["status_profile"] and (row["status_profile"] == "self_employed_multi_state") != (worker.activity_profile == "self_employed"):
+                    put(
+                        field,
+                        facts[group][key],
+                        {
+                            "kind": "assignment_input",
+                            "assignment_ref": assignment.pk,
+                            "version": assignment.version,
+                            "path": f"{group}.{key}",
+                            "confirmed": False,
+                        },
+                    )
+        if row["status_profile"] and (
+            row["status_profile"] == "self_employed_multi_state"
+        ) != (worker.activity_profile == "self_employed"):
             blockers.append("activity_profile_mismatch")
         if row["status_profile"] == "self_employed_multi_state":
             for field, value in (("activity_name", ""), ("activity_address", "DE, CZ")):
                 if field not in provenance:
-                    put(field, value, {"kind": "policy_default", "policy": "self-employed-provisional-section5-v1", "confirmed": False})
+                    put(
+                        field,
+                        value,
+                        {
+                            "kind": "policy_default",
+                            "policy": "self-employed-provisional-section5-v1",
+                            "confirmed": False,
+                        },
+                    )
     else:
         blockers.append("assignment_missing")
-    provenance.setdefault("employee_id", {"kind": "database_key", "worker_ref": worker.pk, "confirmed": False})
+    provenance.setdefault(
+        "employee_id",
+        {"kind": "database_key", "worker_ref": worker.pk, "confirmed": False},
+    )
     for field in CSV_FIELDS:
-        provenance.setdefault(field, {"kind": "system_state" if row[field] else "missing", "confirmed": False})
+        provenance.setdefault(
+            field,
+            {"kind": "system_state" if row[field] else "missing", "confirmed": False},
+        )
     # Gate inputs remain honest: accepted individual fields are not whole-input approval.
     readiness = readiness_report([row], provisional=True)
     blockers += readiness["employees"][0]["blockers"]
-    return {"schema_version": "a1-input-1", "organization_ref": organization.pk,
-            "employee_id": row["employee_id"], "row": row, "provenance": provenance,
-            "dependencies": dependencies, "blockers": sorted(set(blockers)), "scope": "input_preparation"}
+    return {
+        "schema_version": "a1-input-1",
+        "organization_ref": organization.pk,
+        "employee_id": row["employee_id"],
+        "row": row,
+        "provenance": provenance,
+        "dependencies": dependencies,
+        "blockers": sorted(set(blockers)),
+        "scope": "input_preparation",
+    }
 
 
 @transaction.atomic
-def prepare_input_case(user, organization, worker_id, *, assignment_id=None, claim_id=None):
+def prepare_input_case(
+    user, organization, worker_id, *, assignment_id=None, claim_id=None
+):
     _authorize(user, organization, "a1:prepare")
     _lock_organization(organization)
     snapshot = _snapshot(user, organization, worker_id, assignment_id, claim_id)
     digest = result_hash(snapshot)
-    existing = A1Case.objects.filter(organization=organization, worker_id=worker_id, source_hash=digest).first()
+    existing = A1Case.objects.filter(
+        organization=organization, worker_id=worker_id, source_hash=digest
+    ).first()
     if existing:
         if existing.source_snapshot_json != snapshot:
             raise ValueError("A1_SNAPSHOT_CORRUPT")
         if existing.is_stale:
-            A1Case.objects.filter(organization=organization, worker_id=worker_id,
-                source_snapshot_json__schema_version="a1-input-1").exclude(pk=existing.pk).update(is_stale=True)
+            A1Case.objects.filter(
+                organization=organization,
+                worker_id=worker_id,
+                source_snapshot_json__schema_version="a1-input-1",
+            ).exclude(pk=existing.pk).update(is_stale=True)
             existing.is_stale = False
             existing.save(update_fields=["is_stale"])
             audit(user, organization, "a1.input_revalidated", f"a1:{existing.pk}")
         return existing
-    A1Case.objects.filter(organization=organization, worker_id=worker_id,
-        source_snapshot_json__schema_version="a1-input-1").update(is_stale=True)
-    case = A1Case.objects.create(organization=organization, worker_id=worker_id, source_hash=digest,
-        source_snapshot_json=snapshot, readiness=A1Case.Readiness.BLOCKED)
+    A1Case.objects.filter(
+        organization=organization,
+        worker_id=worker_id,
+        source_snapshot_json__schema_version="a1-input-1",
+    ).update(is_stale=True)
+    case = A1Case.objects.create(
+        organization=organization,
+        worker_id=worker_id,
+        source_hash=digest,
+        source_snapshot_json=snapshot,
+        readiness=A1Case.Readiness.BLOCKED,
+    )
     audit(user, organization, "a1.input_prepared", f"a1:{case.pk}")
     return case
 
@@ -258,6 +534,7 @@ def _current_input_snapshot(user, organization, case):
         # worker-projection or confirmed-identity write—therefore cannot
         # leak into the rebuilt canonical row under the original hash.
         from .services import current_case_source
+
         if current_case_source(case) != case.source_hash:
             raise StaleWrite("A1_INPUT_STALE")
         if snapshot.get("source_contract") != J4_IDENTITY_BINDING:
@@ -269,13 +546,23 @@ def _current_input_snapshot(user, organization, case):
             # dropped. The adoption is recorded (opaque references only) and
             # does not re-issue any decision or readiness.
             from .services import current_identity_source
-            identity_hash = result_hash(current_identity_source(case.worker, case.organization))
+
+            identity_hash = result_hash(
+                current_identity_source(case.worker, case.organization)
+            )
             if case.bound_identity_sha256:
                 if case.bound_identity_sha256 != identity_hash:
                     raise StaleWrite("A1_INPUT_STALE")
             else:
-                A1Case.objects.filter(pk=case.pk).update(bound_identity_sha256=identity_hash)
-                audit(user, organization, "a1.identity_revision_bound_legacy", f"a1:{case.pk}")
+                A1Case.objects.filter(pk=case.pk).update(
+                    bound_identity_sha256=identity_hash
+                )
+                audit(
+                    user,
+                    organization,
+                    "a1.identity_revision_bound_legacy",
+                    f"a1:{case.pk}",
+                )
         # Build the canonical ``row`` / ``dependencies`` shape on the
         # fly so downstream renderers (``export_input_case`` and the
         # application-draft publisher) receive the contract they
@@ -291,9 +578,13 @@ def _current_input_snapshot(user, organization, case):
         if "assignments" in snapshot:
             rebuilt["assignments"] = snapshot["assignments"]
         return rebuilt
-    current = _snapshot(user, organization, case.worker_id,
+    current = _snapshot(
+        user,
+        organization,
+        case.worker_id,
         deps.get("assignment", {}).get("ref"),
-        deps.get("claim", {}).get("claim_ref"))
+        deps.get("claim", {}).get("claim_ref"),
+    )
     if result_hash(current) != case.source_hash:
         raise StaleWrite("A1_INPUT_STALE")
     return snapshot
@@ -301,17 +592,28 @@ def _current_input_snapshot(user, organization, case):
 
 @transaction.atomic
 def export_input_case(user, organization, case_id):
-    """Return revision-bound JSON and exactly 44 CSV fields; no publication side effect."""
+    """Return revision-bound JSON and the review CSV; no publication side effect.
+
+    The CSV carries the 44 required columns, plus the two optional situation
+    columns when the assignment has them.
+    """
     _authorize(user, organization, "a1:prepare")
     _lock_organization(organization)
-    case = A1Case.objects.get(pk=case_id, organization=organization, worker__organization=organization)
+    case = A1Case.objects.get(
+        pk=case_id, organization=organization, worker__organization=organization
+    )
     snapshot = _current_input_snapshot(user, organization, case)
     output = io.StringIO(newline="")
-    writer = csv.DictWriter(output, fieldnames=CSV_FIELDS, lineterminator="\n")
+    writer = csv.DictWriter(
+        output, fieldnames=review_fieldnames([snapshot["row"]]), lineterminator="\n"
+    )
     writer.writeheader()
     writer.writerow(snapshot["row"])
     audit(user, organization, "a1.input_exported", f"a1:{case.pk}")
-    return {"json": canonical_json(snapshot).encode("utf-8"), "csv": output.getvalue().encode("utf-8")}
+    return {
+        "json": canonical_json(snapshot).encode("utf-8"),
+        "csv": output.getvalue().encode("utf-8"),
+    }
 
 
 @transaction.atomic
@@ -330,10 +632,14 @@ def export_input_cohort(user, organization, selections):
         raise ValueError("A1_COHORT_SELECTION_REQUIRED")
     selected = {}
     for item in selections:
-        if (not isinstance(item, dict) or set(item) != {"case_id", "expected_source_hash"}
-                or type(item["case_id"]) is not int or item["case_id"] <= 0
-                or not isinstance(item["expected_source_hash"], str)
-                or not re.fullmatch(r"[0-9a-f]{64}", item["expected_source_hash"])):
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"case_id", "expected_source_hash"}
+            or type(item["case_id"]) is not int
+            or item["case_id"] <= 0
+            or not isinstance(item["expected_source_hash"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", item["expected_source_hash"])
+        ):
             raise ValueError("A1_COHORT_SELECTION_INVALID")
         if item["case_id"] in selected:
             raise ValueError("A1_COHORT_DUPLICATE_CASE")
@@ -341,7 +647,9 @@ def export_input_cohort(user, organization, selections):
     _lock_organization(organization)
     snapshots, workers, keys, document_ids = [], set(), set(), set()
     for case_id in sorted(selected):
-        case = A1Case.objects.get(pk=case_id, organization=organization, worker__organization=organization)
+        case = A1Case.objects.get(
+            pk=case_id, organization=organization, worker__organization=organization
+        )
         if case.source_hash != selected[case_id]:
             raise StaleWrite("A1_COHORT_SOURCE_STALE")
         # Reuse the canonical current-source validation and audit in the same transaction.
@@ -352,39 +660,89 @@ def export_input_cohort(user, organization, selections):
             raise ValueError("A1_COHORT_DUPLICATE_WORKER_OR_KEY")
         if document_id and document_id in document_ids:
             raise ValueError("A1_COHORT_DUPLICATE_DOCUMENT_ID")
-        workers.add(case.worker_id); keys.add(key)
+        workers.add(case.worker_id)
+        keys.add(key)
         if document_id:
             document_ids.add(document_id)
         snapshots.append((case_id, snapshot))
     snapshots.sort(key=lambda entry: entry[1]["employee_id"])
     rows = [snapshot["row"] for _, snapshot in snapshots]
     output = io.StringIO(newline="")
-    writer = csv.DictWriter(output, fieldnames=CSV_FIELDS, lineterminator="\n")
-    writer.writeheader(); writer.writerows(rows)
+    writer = csv.DictWriter(
+        output, fieldnames=review_fieldnames(rows), lineterminator="\n"
+    )
+    writer.writeheader()
+    writer.writerows(rows)
     employees = []
     for case_id, snapshot in snapshots:
         row = snapshot["row"]
-        employees.append({"id": row["employee_id"],
-            "person": {field: row[field] for field in (
-                "surname", "given_name", "dob", "birth_place", "nationality", "sex", "insurance_number")},
-            "residence": {field: row[field] for field in (
-                "street", "house_number", "city", "district", "postal_code", "country_code")},
-            "employment": {"kind": snapshot["dependencies"]["activity_profile"]},
-            "a1": {"status_profile": row["status_profile"]},
-            "provenance": {"kind": "database_input_snapshot", "case_ref": case_id,
-                "source_hash": selected[case_id], "fields": snapshot["provenance"]}})
-    cohort = {"issue_dates": {row["employee_id"]: row["issue_date"] for row in rows},
-              "document_ids": {row["employee_id"]: row["document_id"] for row in rows},
-              "additional_people": []}
-    payloads = {"review.csv": output.getvalue().encode("utf-8"),
-                "cohort.json": canonical_json(cohort).encode("utf-8"),
-                "employees_normalized.json": canonical_json({"employees": employees}).encode("utf-8"),
-                "input_snapshots.json": canonical_json({"snapshots": [s for _, s in snapshots]}).encode("utf-8")}
-    manifest = {"schema_version": "a1-input-cohort-1", "organization_ref": organization.pk,
-        "scope": "pending_compatibility_inputs", "sources": [
-            {"case_ref": case_id, "source_hash": selected[case_id], "employee_id": snapshot["employee_id"]}
-            for case_id, snapshot in snapshots],
-        "payload_sha256": {name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()}}
+        employees.append(
+            {
+                "id": row["employee_id"],
+                "person": {
+                    field: row[field]
+                    for field in (
+                        "surname",
+                        "given_name",
+                        "dob",
+                        "birth_place",
+                        "nationality",
+                        "sex",
+                        "insurance_number",
+                    )
+                },
+                "residence": {
+                    field: row[field]
+                    for field in (
+                        "street",
+                        "house_number",
+                        "city",
+                        "district",
+                        "postal_code",
+                        "country_code",
+                    )
+                },
+                "employment": {"kind": snapshot["dependencies"]["activity_profile"]},
+                "a1": {"status_profile": row["status_profile"]},
+                "provenance": {
+                    "kind": "database_input_snapshot",
+                    "case_ref": case_id,
+                    "source_hash": selected[case_id],
+                    "fields": snapshot["provenance"],
+                },
+            }
+        )
+    cohort = {
+        "issue_dates": {row["employee_id"]: row["issue_date"] for row in rows},
+        "document_ids": {row["employee_id"]: row["document_id"] for row in rows},
+        "additional_people": [],
+    }
+    payloads = {
+        "review.csv": output.getvalue().encode("utf-8"),
+        "cohort.json": canonical_json(cohort).encode("utf-8"),
+        "employees_normalized.json": canonical_json({"employees": employees}).encode(
+            "utf-8"
+        ),
+        "input_snapshots.json": canonical_json(
+            {"snapshots": [s for _, s in snapshots]}
+        ).encode("utf-8"),
+    }
+    manifest = {
+        "schema_version": "a1-input-cohort-1",
+        "organization_ref": organization.pk,
+        "scope": "pending_compatibility_inputs",
+        "sources": [
+            {
+                "case_ref": case_id,
+                "source_hash": selected[case_id],
+                "employee_id": snapshot["employee_id"],
+            }
+            for case_id, snapshot in snapshots
+        ],
+        "payload_sha256": {
+            name: hashlib.sha256(data).hexdigest() for name, data in payloads.items()
+        },
+    }
     payloads["manifest.json"] = canonical_json(manifest).encode("utf-8")
     audit(user, organization, "a1.cohort_exported", f"cohort:{result_hash(manifest)}")
     return payloads
@@ -399,7 +757,11 @@ def _bound_input_profiles(payloads):
     from django.conf import settings
     from scripts.finalize_a1 import _slug, validate_profile
 
-    root = Path(getattr(settings, "A1_DRAFT_PROFILE_ROOT", settings.BASE_DIR / "config/institutions"))
+    root = Path(
+        getattr(
+            settings, "A1_DRAFT_PROFILE_ROOT", settings.BASE_DIR / "config/institutions"
+        )
+    )
     if not root.is_absolute() or any(p.is_symlink() for p in (root, *root.parents)):
         raise ValueError("A1_PROFILE_ROOT_INVALID")
     snapshots = json.loads(payloads["input_snapshots.json"])["snapshots"]
@@ -413,6 +775,7 @@ def _bound_input_profiles(payloads):
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(descriptor, "rb") as stream:
             import stat
+
             if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
                 raise ValueError("A1_PROFILE_NOT_REGULAR")
             raw = stream.read()
@@ -422,7 +785,9 @@ def _bound_input_profiles(payloads):
     result.update(files)
     manifest = json.loads(result["manifest.json"])
     manifest["schema_version"] = "a1-bound-input-cohort-1"
-    manifest["payload_sha256"].update({name: hashlib.sha256(raw).hexdigest() for name, raw in files.items()})
+    manifest["payload_sha256"].update(
+        {name: hashlib.sha256(raw).hexdigest() for name, raw in files.items()}
+    )
     result["manifest.json"] = canonical_json(manifest).encode("utf-8")
     return result
 
@@ -444,6 +809,14 @@ def publish_input_cohort(user, organization, selections):
     reference = publish_input_artifact(settings.DOCUMENT_STORAGE_ROOT, payloads)
     if _bound_input_profiles(inputs) != payloads:
         raise StaleWrite("A1_INPUT_PROFILES_CHANGED")
-    audit(user, organization, "a1.input_bundle_published", f"bundle:{reference['manifest_sha256']}")
-    return {**reference, "status": "PENDING_COMPATIBILITY_INPUTS",
-            "bundle_sha256": hashlib.sha256(payloads["manifest.json"]).hexdigest()}
+    audit(
+        user,
+        organization,
+        "a1.input_bundle_published",
+        f"bundle:{reference['manifest_sha256']}",
+    )
+    return {
+        **reference,
+        "status": "PENDING_COMPATIBILITY_INPUTS",
+        "bundle_sha256": hashlib.sha256(payloads["manifest.json"]).hexdigest(),
+    }

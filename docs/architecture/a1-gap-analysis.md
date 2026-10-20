@@ -96,12 +96,20 @@ limit from an omission.
 `status_profile` simultaneously determines the Section 3 status and the
 Section 4.1 employer kind. That coupling is *why* the two can never
 disagree, and it is worth keeping — but it is stored as one opaque string.
+**Update, 2026-10-20.** Decisions D1b and D10 were taken: the model now
+carries `prior_activity_start` and `replaces_worker` on the `Assignment`
+(migration `0021_a1_situation_facts`), and the issuance gate refuses a
+posting that does not answer the replacement question or whose certificate
+covers more than 24 months. `legal_basis` was dropped as derivable from the
+status profile, and `nace_code` moved to the A block. The remaining two
+facts — the CZ-NACE main activity and the State of stay — are still absent.
+
 Under the [employer-as-organization decision](a1-field-source-mapping.md#9-the-employer-as-organization-decision)
 the two facts separate into `Employment.role` (employee / self_employed) and
 `Employment.situation` (posted / multi_state / in_state), and both become
 queryable without changing a single rendered value.
 
-### G13 — business facts with no home in the model
+### G13 — business facts with no home in the model (closed for two of them)
 
 Six official or mandatory facts have nowhere to live. The first three are
 the situation facts that D10 introduces; the last three are the business
@@ -316,6 +324,36 @@ territory list of Germany and Czechia, and it already includes the home
 State; its real deficiencies are that it is an untyped comma-joined string,
 that it is a labelled policy proposal rather than a reviewed value, and that
 nothing checks the codes against the closed State domain.
+
+## 7b. Findings from the decision increment
+
+**The client-confirmation copy failed its own quality gate.** The copy was
+rendered by the placeholder framework, which erased 279, 610 and 40 template
+pixels on the three pages against a limit of 24, so the document the agency
+sends to a client never passed the gate meant to vouch for it. The threshold
+is tuned for the coordinate renderer, which stays within it. This predated
+the decision increment and was found while implementing D2, because the
+decision needs the copy to carry a notice and the placeholder framework
+cannot draw one. The copy now uses the coordinate renderer — the documented
+V1 path — which draws the notice natively, satisfies the threshold, and
+removes the need for a second notice mechanism. The placeholder framework
+remains the documented vector-template alternative.
+
+**The notice rule in the quality gate was unconditional.** It forbade the
+provisional notice in any PDF, which was right when no published document
+carried it and wrong once the client copy was marked on purpose. The rule is
+now scoped: the notice is **required** in a client-confirmation package and
+**forbidden** in an authoritative one, decided from the generation manifest's
+status. A certificate that said it was a draft would be self-contradictory,
+and a copy that said it was a draft but did not would be misleading.
+
+**The 44-column review contract was a hard ceiling.** It is now the
+*required* set, with two documented optional columns for the Article 12
+situation facts. A review file without them still reads and is
+byte-identical to before; a file with them carries the facts so the issuance
+gate can check them. The alternative — extending the required contract — would
+have broken every external consumer of the export for two validation-only
+fields that are not on the form.
 
 ## 8. What is explicitly not a gap
 

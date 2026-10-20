@@ -566,7 +566,10 @@ for prefixes in topic_of.values():
             assigned.add(key)
 assert assigned == keys, f"unassigned layout keys: {sorted(keys - assigned)}"
 
-# The CSV mapping contract must stay intact: 44 columns, one row each.
+# The CSV mapping contract must stay intact: 44 required columns, one row
+# each. The two optional situation columns are additions the reader accepts
+# when present; a review file without them still reads, and a file that has
+# them still satisfies the required contract.
 rows = re.findall(r"^\| `([a-z_]+)` \|",
                   Path("docs/architecture/release-1a-field-mapping.md").read_text(),
                   re.MULTILINE)
@@ -705,9 +708,9 @@ needs it and never blocks the rest of the application.
 
 | # | Question | Default | Owner | Switchable | Location |
 |---|---|---|---|---|---|
-| D1a | Agency issues posted-self-employed A1s (official status 3.3)? | NO | Jan | Yes | `status_profile` enum |
-| D1b | If D1a is yes: is the agency willing to capture the situation facts Art. 12 requires? | NO | Jan | Yes | Situation record (D10) |
-| D2 | Client-confirmation copy: page-level provisional marker? | NO (`visible_notice=False`) | Jan | Yes | `mark_provisional(visible_notice=...)` |
+| D1a | Agency issues posted-self-employed A1s (official status 3.3)? | **NO** — decided 2026-10-20 | Jan (decided) | Yes | `status_profile` enum |
+| D1b | If D1a is yes: is the agency willing to capture the situation facts Art. 12 requires? | **YES** — decided 2026-10-20 | Jan (decided) | Yes | `Assignment.prior_activity_start`, `Assignment.replaces_worker` |
+| D2 | Client-confirmation copy: page-level provisional marker? | **YES** — decided and implemented 2026-10-20 | Jan (decided) | Yes | `mark_provisional(visible_notice=True)` |
 | D3 | Add `stay_*` nullable fields for 1.9? | **YES** | Jan | Yes (additive migration) | Model + `build_form_data()` |
 | D4 | Render 2.5 provisional checkbox? | **YES, but derived** — ticked exactly when the situation is an Art. 13 one | Engineering | Yes | Layout coordinate + situation record |
 | D5 | Keep 2.6 transitional rules FALSE? | YES (until source) | Engineering | Yes | Hardcoded FALSE |
@@ -715,8 +718,8 @@ needs it and never blocks the rest of the application.
 | D7 | 5.2 default "DE, CZ" stays? | **YES, but as a typed list of ISO 3166-1 alpha-2 codes validated against the A1 State domain** (DE = Germany, CZ = Czechia; Denmark would be DK) | Engineering | Yes | `config/a1_provisional.json` |
 | D8 | Self-employed employer = person derivation? | **Replaced by a `sole_trader` `LegalEntity` row** | Engineering | Yes | `LegalEntity` master (D11a seed path) |
 | D9 | 5.3 no-fixed-address branch? | NO (hardcoded FALSE) | Engineering | Yes | Nullable source field + review |
-| D10 | Carry a situation record (`legal_basis`, `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker`, `nace_code`)? | **YES** | Jan | Yes | Model + `build_form_data()` |
-| D11a | Permit an operator-initiated **offline** ARES import of a reviewed employer record? | **YES** | Jan | Yes | `LegalEntity` seed path |
+| D10 | Carry a situation record? | **YES, with four fields** — `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker`; `legal_basis` dropped as derivable and `nace_code` moved to the A block | Jan (decided) | Yes | `Assignment` (migration 0021) + the optional review columns |
+| D11a | Permit an operator-initiated **offline** ARES import of a reviewed employer record? | **YES** — decided 2026-10-20 | Jan (decided) | Yes | `LegalEntity` seed path |
 | D11b | Permit **runtime server-side egress** to `ares.gov.cz`? | NO | Jan (host/network decision) | Yes | `LegalEntity` refresh path |
 | D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
 
