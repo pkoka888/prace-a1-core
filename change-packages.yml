@@ -378,11 +378,13 @@
     "cli_agent_tooling": {
       "purpose": "Sanitized CLI and agent verification tooling and reports.",
       "paths": [
+        ".pre-commit-hooks/",
         "cli-docs-update/README.md",
         "cli-docs-update/current-agent-dir-audit.json",
         "cli-docs-update/current-agent-dir-audit.md",
         "cli-docs-update/current-verification.json",
         "cli-docs-update/current-verification.md",
+        "cli-docs-update/2026-10-20-cli-mcp-drift-review.md",
         "config/cli_verification_claims.schema.json",
         "docs/operations/agent-tooling-ledger.md",
         "scripts/audit_agent_dirs.py",
@@ -394,6 +396,7 @@
         "scripts/reset_synthetic_reviewer_password.py",
         "scripts/smoke_synthetic_review_ui.mjs",
         "tests/test_verify_cli_claims.py",
+        "tests/test_audit_agent_dirs.py",
         "tests/test_release_verifier.py",
         "tests/test_playwright_smoke.py",
         "scripts/axe_check.sh",

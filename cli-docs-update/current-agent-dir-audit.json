@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-08-14T12:18:48+02:00",
+  "generated_at": "2026-10-21T00:37:12+02:00",
   "scope": {
     "root": "<repo>",
     "active_dirs": [
@@ -27,14 +27,14 @@
     {
       "path": ".agents",
       "exists": true,
-      "tracked_entries": 5,
+      "tracked_entries": 7,
       "mode": "0o2775",
       "group_writable": true
     },
     {
       "path": ".opencode",
       "exists": true,
-      "tracked_entries": 0,
+      "tracked_entries": 4,
       "mode": "0o2775",
       "group_writable": true
     },
@@ -112,24 +112,410 @@
       "errors": []
     },
     {
+      "path": ".agents/skills/postgres-ops/SKILL.md",
+      "name": "postgres-ops",
+      "description_present": true,
+      "tracked": true,
+      "relative_links": [
+        {
+          "target": "../../../plans/2026-09-14-delivery-reliability-and-jan-v1.md",
+          "exists": true
+        },
+        {
+          "target": "../../../docs/operations/git-delivery.md",
+          "exists": true
+        },
+        {
+          "target": "../../../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".agents/skills/synthetic-portal-delivery/SKILL.md",
+      "name": "synthetic-portal-delivery",
+      "description_present": true,
+      "tracked": true,
+      "relative_links": [
+        {
+          "target": "../../../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16",
+          "exists": true
+        },
+        {
+          "target": "../postgres-ops/SKILL.md",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/a1-pdf-production/SKILL.md",
+      "name": "a1-pdf-production",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "references/field-policy.md",
+          "exists": true
+        },
+        {
+          "target": "references/visual-qa.schema.json",
+          "exists": true
+        },
+        {
+          "target": "references/mcp-contract.md",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [
+        {
+          "path": ".opencode/skills/a1-pdf-production/agents/openai.yaml",
+          "valid_shallow_contract": true,
+          "errors": []
+        }
+      ],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/api-and-interface-design/SKILL.md",
+      "name": "api-and-interface-design",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/audit/SKILL.md",
+      "name": "ponytail-audit",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": false,
+      "errors": [
+        "name 'ponytail-audit' does not match folder 'audit'"
+      ]
+    },
+    {
+      "path": ".opencode/skills/code-review/SKILL.md",
+      "name": "code-review",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/code-review-and-quality/SKILL.md",
+      "name": "code-review",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": false,
+      "errors": [
+        "name 'code-review' does not match folder 'code-review-and-quality'"
+      ]
+    },
+    {
+      "path": ".opencode/skills/code-simplification/SKILL.md",
+      "name": "code-simplification",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/codebase-design/SKILL.md",
+      "name": "codebase-design",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "DEEPENING.md",
+          "exists": false
+        },
+        {
+          "target": "DESIGN-IT-TWICE.md",
+          "exists": false
+        }
+      ],
+      "provider_metadata": [],
+      "valid": false,
+      "errors": [
+        "broken relative link: DEEPENING.md",
+        "broken relative link: DESIGN-IT-TWICE.md"
+      ]
+    },
+    {
+      "path": ".opencode/skills/deprecation-and-migration/SKILL.md",
+      "name": "deprecation-and-migration",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/documentation-and-adrs/SKILL.md",
+      "name": "documentation-and-adrs",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/domain-modeling/SKILL.md",
+      "name": "domain-modeling",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "./CONTEXT-FORMAT.md",
+          "exists": false
+        },
+        {
+          "target": "./ADR-FORMAT.md",
+          "exists": false
+        }
+      ],
+      "provider_metadata": [],
+      "valid": false,
+      "errors": [
+        "broken relative link: ./CONTEXT-FORMAT.md",
+        "broken relative link: ./ADR-FORMAT.md"
+      ]
+    },
+    {
+      "path": ".opencode/skills/improve-codebase-architecture/SKILL.md",
+      "name": "improve-codebase-architecture",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "HTML-REPORT.md",
+          "exists": false
+        }
+      ],
+      "provider_metadata": [],
+      "valid": false,
+      "errors": [
+        "broken relative link: HTML-REPORT.md"
+      ]
+    },
+    {
+      "path": ".opencode/skills/incremental-implementation/SKILL.md",
+      "name": "incremental-implementation",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/make-pdf/SKILL.md",
+      "name": "make-pdf",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "data.png",
+          "exists": false
+        },
+        {
+          "target": "data.png",
+          "exists": false
+        },
+        {
+          "target": "arch.png",
+          "exists": false
+        },
+        {
+          "target": "shot.png",
+          "exists": false
+        }
+      ],
+      "provider_metadata": [],
+      "valid": false,
+      "errors": [
+        "broken relative link: data.png",
+        "broken relative link: data.png",
+        "broken relative link: arch.png",
+        "broken relative link: shot.png"
+      ]
+    },
+    {
       "path": ".opencode/skills/market-research-evidence/SKILL.md",
       "name": "market-research-evidence",
       "description_present": true,
-      "tracked": false,
+      "tracked": true,
       "relative_links": [
         {
           "target": "../../../AGENTS.md",
           "exists": true
         },
         {
-          "target": "../../../plans/2026-08-13-plan-ac-accounting-automation-research.md",
-          "exists": true
-        },
-        {
-          "target": "../../../plans/2026-08-14-plan-ad-invoice-ingestion-foundation.md",
+          "target": "../../../plans/PLAN-INVOICE.md",
           "exists": true
         }
       ],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/observability-and-instrumentation/SKILL.md",
+      "name": "observability-and-instrumentation",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/pdf/SKILL.md",
+      "name": "pdf",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/planning-and-task-breakdown/SKILL.md",
+      "name": "planning-and-task-breakdown",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/ponytail-audit/SKILL.md",
+      "name": "ponytail-audit",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/ponytail-debt/SKILL.md",
+      "name": "ponytail-debt",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/postgres-ops/SKILL.md",
+      "name": "postgres-ops",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "../../../plans/2026-09-14-delivery-reliability-and-jan-v1.md",
+          "exists": true
+        },
+        {
+          "target": "../../../docs/operations/git-delivery.md",
+          "exists": true
+        },
+        {
+          "target": "../../../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/security-and-hardening/SKILL.md",
+      "name": "security-and-hardening",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/source-driven-development/SKILL.md",
+      "name": "source-driven-development",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/synthetic-portal-delivery/SKILL.md",
+      "name": "synthetic-portal-delivery",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [
+        {
+          "target": "../../../docs/operations/runtime-manifest.md#runtime-configuration-path-decision--2026-09-16",
+          "exists": true
+        },
+        {
+          "target": "../postgres-ops/SKILL.md",
+          "exists": true
+        }
+      ],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/systematic-debugging/SKILL.md",
+      "name": "systematic-debugging",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/verification-before-completion/SKILL.md",
+      "name": "verification-before-completion",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
+      "provider_metadata": [],
+      "valid": true,
+      "errors": []
+    },
+    {
+      "path": ".opencode/skills/writing-plans/SKILL.md",
+      "name": "writing-plans",
+      "description_present": true,
+      "tracked": false,
+      "relative_links": [],
       "provider_metadata": [],
       "valid": true,
       "errors": []
@@ -137,70 +523,363 @@
   ],
   "runtime": {
     "opencode_skill_discovery": {
-      "status": "succeeded",
-      "skills": [
-        {
-          "name": "customize-opencode",
-          "location": "<built-in>"
-        },
-        {
-          "name": "market-research-evidence",
-          "location": "<repo>/.opencode/skills/market-research-evidence/SKILL.md"
-        },
-        {
-          "name": "a1-pdf-production",
-          "location": "<repo>/.agents/skills/a1-pdf-production/SKILL.md"
-        }
-      ]
+      "status": "invalid_json",
+      "skills": []
     },
     "kilo_active_config": {
       "available": true,
-      "exit_code": 1,
-      "diagnostic": "Error: Configuration is invalid at ~/.config/kilo/kilo.jsonc\n↳ Unrecognized keys: \"subagent_model\", \"sandbox\""
+      "exit_code": 0,
+      "diagnostic": "home       ~\ndata       ~/.local/share/kilo\nbin        ~/.cache/kilo/bin\nlog        ~/.local/share/kilo/log\nrepos      ~/.local/share/kilo/repos\ncache      ~/.cache/kilo\nconfig     ~/.config/kilo\nstate      ~/.local/state/kilo\ntmp        /tmp/kilo"
     }
   },
   "package_versions": {
     "opencode": {
       "dependency": "@opencode-ai/plugin",
       "declared": "1.18.18",
-      "installed_cli": "1.18.18",
-      "matches": true
+      "installed_cli": "1.18.32",
+      "matches": false
     },
     "kilo": {
       "dependency": "@kilocode/plugin",
-      "declared": "7.4.21",
-      "installed_cli": "7.0.50",
+      "declared": "7.0.50",
+      "installed_cli": "7.7.9",
       "matches": false
     }
   },
-  "findings": [
-    {
-      "severity": "high",
-      "code": "KILO_GLOBAL_CONFIG_BLOCKS_PROJECT",
-      "title": "Kilo cannot load the active configuration chain.",
-      "evidence": "Error: Configuration is invalid at ~/.config/kilo/kilo.jsonc\n↳ Unrecognized keys: \"subagent_model\", \"sandbox\"",
-      "action": "Repair or migrate the user-level Kilo config first; retain the valid project .kilo/kilo.jsonc."
+  "cli_mcp": {
+    "opencode": {
+      "cli": "opencode",
+      "configs": [
+        {
+          "path": "~/.config/opencode/opencode.jsonc",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 5,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        },
+        {
+          "path": "~/.opencode/mcp.json",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 2,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
     },
+    "kilo_cli": {
+      "cli": "kilo_cli",
+      "configs": [
+        {
+          "path": "~/.config/kilo/kilo.json",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 6,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        },
+        {
+          "path": "~/.config/kilo/kilo.jsonc",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 0,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
+    },
+    "kilo_code_extension": {
+      "cli": "kilo_code_extension",
+      "configs": [
+        {
+          "path": "<repo>/.kilo/mcp.json",
+          "exists": false,
+          "parse_error": "missing",
+          "server_count": 0,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
+    },
+    "cline": {
+      "cli": "cline",
+      "configs": [
+        {
+          "path": "~/.cline/data/settings/cline_mcp_settings.json",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 1,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
+    },
+    "pi": {
+      "cli": "pi",
+      "configs": [
+        {
+          "path": "~/.pi/agent/models-store.json",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 0,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        },
+        {
+          "path": "~/.pi/agent/settings.json",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 0,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
+    },
+    "codex": {
+      "cli": "codex",
+      "configs": [
+        {
+          "path": "~/.codex/config.toml",
+          "exists": true,
+          "parse_error": null,
+          "server_count": 0,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
+    },
+    "claude": {
+      "cli": "claude",
+      "configs": [
+        {
+          "path": "~/.claude/settings.json",
+          "exists": false,
+          "parse_error": "missing",
+          "server_count": 0,
+          "stale_markers": [],
+          "disabled": [],
+          "malformed_args": [],
+          "uninterpolated_env": []
+        }
+      ]
+    }
+  },
+  "cli_models": {
+    "opencode": {
+      "cli": "opencode",
+      "configs": [
+        {
+          "path": "~/.config/opencode/opencode.jsonc",
+          "models": [],
+          "unexpected": [],
+          "parse_error": null
+        },
+        {
+          "path": "~/.opencode/mcp.json",
+          "models": [],
+          "unexpected": [],
+          "parse_error": null
+        }
+      ]
+    },
+    "kilo_cli": {
+      "cli": "kilo_cli",
+      "configs": [
+        {
+          "path": "~/.config/kilo/kilo.json",
+          "models": [
+            "kilo/auto",
+            "kilo/Auto Free"
+          ],
+          "unexpected": [],
+          "parse_error": null
+        },
+        {
+          "path": "~/.config/kilo/kilo.jsonc",
+          "models": [
+            "kilo/poolside/laguna-xs-2.1:free",
+            "kilo/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+            "kilo/nvidia/nemotron-3-ultra-550b-a55b:free",
+            "kilo/nvidia/nemotron-3-super-120b-a12b:free",
+            "kilo/stepfun/step-3.7-flash:free",
+            "kilo/kilo-auto/free",
+            "kilo/poolside/laguna-xs-2.1:free",
+            "kilo/nvidia/nemotron-3-super-120b-a12b:free",
+            "openrouter/openrouter/free",
+            "minimax/MiniMax-M3",
+            "minimax/MiniMax-M2.7"
+          ],
+          "unexpected": [
+            "kilo/nvidia/nemotron-3-ultra-550b-a55b:free",
+            "kilo/nvidia/nemotron-3-super-120b-a12b:free",
+            "kilo/stepfun/step-3.7-flash:free",
+            "kilo/kilo-auto/free",
+            "kilo/nvidia/nemotron-3-super-120b-a12b:free",
+            "openrouter/openrouter/free",
+            "minimax/MiniMax-M3",
+            "minimax/MiniMax-M2.7"
+          ],
+          "parse_error": null
+        }
+      ]
+    },
+    "kilo_code_extension": {
+      "cli": "kilo_code_extension",
+      "configs": [
+        {
+          "path": "<repo>/.kilo/mcp.json",
+          "models": [],
+          "unexpected": []
+        }
+      ]
+    },
+    "cline": {
+      "cli": "cline",
+      "configs": [
+        {
+          "path": "~/.cline/data/settings/cline_mcp_settings.json",
+          "models": [],
+          "unexpected": [],
+          "parse_error": null
+        }
+      ]
+    },
+    "pi": {
+      "cli": "pi",
+      "configs": [
+        {
+          "path": "~/.pi/agent/models-store.json",
+          "models": [],
+          "unexpected": [],
+          "parse_error": null
+        },
+        {
+          "path": "~/.pi/agent/settings.json",
+          "models": [
+            "MiniMax-M2.7"
+          ],
+          "unexpected": [],
+          "parse_error": null
+        }
+      ]
+    },
+    "codex": {
+      "cli": "codex",
+      "configs": [
+        {
+          "path": "~/.codex/config.toml",
+          "models": [
+            "gpt-6-astra"
+          ],
+          "unexpected": [],
+          "parse_error": null
+        }
+      ]
+    },
+    "claude": {
+      "cli": "claude",
+      "configs": [
+        {
+          "path": "~/.claude/settings.json",
+          "models": [],
+          "unexpected": []
+        }
+      ]
+    }
+  },
+  "project_models": {
+    "files": [
+      {
+        "path": "<repo>/config/vision_models.json",
+        "tracked": true,
+        "model_count": 6,
+        "secret_like": false
+      },
+      {
+        "path": "<repo>/config/vision_models_cache.json",
+        "tracked": true,
+        "model_count": 0,
+        "secret_like": false
+      }
+    ],
+    "paid": [
+      "<repo>/config/vision_models.json: minimax/minimax-01, minimax/minimax-m3"
+    ]
+  },
+  "credential_inventory": [
+    {
+      "cli": "opencode",
+      "path": "~/.config/opencode/env",
+      "exists": true
+    },
+    {
+      "cli": "opencode",
+      "path": "~/.local/share/opencode/auth.json",
+      "exists": true
+    },
+    {
+      "cli": "cline",
+      "path": "~/.cline/data/secrets.json",
+      "exists": true
+    },
+    {
+      "cli": "cline",
+      "path": "~/.cline/data/settings/providers.json",
+      "exists": true
+    },
+    {
+      "cli": "pi",
+      "path": "~/.pi/agent/auth.json",
+      "exists": true
+    }
+  ],
+  "findings": [
     {
       "severity": "medium",
       "code": "KILO_VERSION_SKEW",
       "title": "Project Kilo plugin and installed Kilo CLI versions differ.",
-      "evidence": "project=7.4.21, cli=7.0.50",
+      "evidence": "project=7.0.50, cli=7.7.9",
       "action": "Decide whether the package tracks the extension or CLI; document both explicitly and avoid treating them as one version."
     },
     {
       "severity": "medium",
       "code": "SKILL_PORTABILITY_GAP",
       "title": "A reusable skill is stored only in the OpenCode-specific directory.",
-      "evidence": ".opencode/skills/market-research-evidence/SKILL.md",
+      "evidence": ".opencode/skills/a1-pdf-production/SKILL.md, .opencode/skills/api-and-interface-design/SKILL.md, .opencode/skills/audit/SKILL.md, .opencode/skills/code-review/SKILL.md, .opencode/skills/code-review-and-quality/SKILL.md, .opencode/skills/code-simplification/SKILL.md, .opencode/skills/codebase-design/SKILL.md, .opencode/skills/deprecation-and-migration/SKILL.md, .opencode/skills/documentation-and-adrs/SKILL.md, .opencode/skills/domain-modeling/SKILL.md, .opencode/skills/improve-codebase-architecture/SKILL.md, .opencode/skills/incremental-implementation/SKILL.md, .opencode/skills/make-pdf/SKILL.md, .opencode/skills/market-research-evidence/SKILL.md, .opencode/skills/observability-and-instrumentation/SKILL.md, .opencode/skills/pdf/SKILL.md, .opencode/skills/planning-and-task-breakdown/SKILL.md, .opencode/skills/ponytail-audit/SKILL.md, .opencode/skills/ponytail-debt/SKILL.md, .opencode/skills/postgres-ops/SKILL.md, .opencode/skills/security-and-hardening/SKILL.md, .opencode/skills/source-driven-development/SKILL.md, .opencode/skills/synthetic-portal-delivery/SKILL.md, .opencode/skills/systematic-debugging/SKILL.md, .opencode/skills/verification-before-completion/SKILL.md, .opencode/skills/writing-plans/SKILL.md",
       "action": "If cross-tool use is intended, migrate it to .agents/skills after validating discovery in each target CLI; do not duplicate two writable copies."
     },
     {
       "severity": "medium",
       "code": "UNTRACKED_AGENT_ASSET",
       "title": "One or more active agent skills are untracked.",
-      "evidence": ".opencode/skills/market-research-evidence/SKILL.md",
+      "evidence": ".opencode/skills/a1-pdf-production/SKILL.md, .opencode/skills/api-and-interface-design/SKILL.md, .opencode/skills/audit/SKILL.md, .opencode/skills/code-review/SKILL.md, .opencode/skills/code-review-and-quality/SKILL.md, .opencode/skills/code-simplification/SKILL.md, .opencode/skills/codebase-design/SKILL.md, .opencode/skills/deprecation-and-migration/SKILL.md, .opencode/skills/documentation-and-adrs/SKILL.md, .opencode/skills/domain-modeling/SKILL.md, .opencode/skills/improve-codebase-architecture/SKILL.md, .opencode/skills/incremental-implementation/SKILL.md, .opencode/skills/make-pdf/SKILL.md, .opencode/skills/observability-and-instrumentation/SKILL.md, .opencode/skills/pdf/SKILL.md, .opencode/skills/planning-and-task-breakdown/SKILL.md, .opencode/skills/ponytail-audit/SKILL.md, .opencode/skills/ponytail-debt/SKILL.md, .opencode/skills/postgres-ops/SKILL.md, .opencode/skills/security-and-hardening/SKILL.md, .opencode/skills/source-driven-development/SKILL.md, .opencode/skills/synthetic-portal-delivery/SKILL.md, .opencode/skills/systematic-debugging/SKILL.md, .opencode/skills/verification-before-completion/SKILL.md, .opencode/skills/writing-plans/SKILL.md",
       "action": "Review for secrets and scope, then intentionally track or explicitly ignore each asset; never wildcard-stage."
+    },
+    {
+      "severity": "high",
+      "code": "INVALID_SKILL_CONTRACT",
+      "title": "A skill has invalid metadata or broken local references.",
+      "evidence": ".opencode/skills/audit/SKILL.md: name 'ponytail-audit' does not match folder 'audit'; .opencode/skills/code-review-and-quality/SKILL.md: name 'code-review' does not match folder 'code-review-and-quality'; .opencode/skills/codebase-design/SKILL.md: broken relative link: DEEPENING.md, broken relative link: DESIGN-IT-TWICE.md; .opencode/skills/domain-modeling/SKILL.md: broken relative link: ./CONTEXT-FORMAT.md, broken relative link: ./ADR-FORMAT.md; .opencode/skills/improve-codebase-architecture/SKILL.md: broken relative link: HTML-REPORT.md; .opencode/skills/make-pdf/SKILL.md: broken relative link: data.png, broken relative link: data.png, broken relative link: arch.png, broken relative link: shot.png",
+      "action": "Fix the smallest metadata or link issue and rerun this audit."
     },
     {
       "severity": "low",
@@ -222,12 +901,40 @@
       "title": "Some tool-specific project directories are absent.",
       "evidence": ".cline, .codex, .claude, .clinerules, .kilocode",
       "action": "Absence is not a defect unless a documented project-specific integration is required; prefer shared AGENTS.md and .agents/skills where supported."
+    },
+    {
+      "severity": "info",
+      "code": "MCP_CONFIG_PARSE_ERROR",
+      "title": "kilo_code_extension MCP config could not be parsed.",
+      "evidence": "<repo>/.kilo/mcp.json: missing",
+      "action": "Repair the config so the CLI can load its MCP servers; a parse error silently disables every server."
+    },
+    {
+      "severity": "info",
+      "code": "MCP_CONFIG_PARSE_ERROR",
+      "title": "claude MCP config could not be parsed.",
+      "evidence": "~/.claude/settings.json: missing",
+      "action": "Repair the config so the CLI can load its MCP servers; a parse error silently disables every server."
+    },
+    {
+      "severity": "info",
+      "code": "HARDCODED_GLOBAL_MODEL",
+      "title": "kilo_cli user-level config pins a model not in the sanctioned list.",
+      "evidence": "~/.config/kilo/kilo.jsonc: kilo/kilo-auto/free, openrouter/openrouter/free, minimax/MiniMax-M3, minimax/MiniMax-M2.7",
+      "action": "Global model choice is a user preference, not repository drift. Confirm the id is intended and, if the project should share a model policy, document it in the CLI docs rather than editing user config."
+    },
+    {
+      "severity": "medium",
+      "code": "PAID_MODEL_IN_PROJECT_CONFIG",
+      "title": "A tracked project config references a paid model endpoint.",
+      "evidence": "<repo>/config/vision_models.json: minimax/minimax-01, minimax/minimax-m3",
+      "action": "AGENTS.md forbids paid model use including fallback. Replace the paid id with a verified-free one or remove it, and confirm with the owner before any use."
     }
   ],
   "summary": {
     "high": 1,
-    "medium": 3,
+    "medium": 4,
     "low": 1,
-    "info": 2
+    "info": 5
   }
 }
