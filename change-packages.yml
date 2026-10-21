@@ -587,6 +587,7 @@
         ".gitattributes",
         ".gitignore",
         "docs/operations/git-delivery.md",
+        "docs/operations/local-database-backup.md",
         "docs/research/2026-09-07-pdf-tool-comparison.md",
         "docs/research/2026-09-07-a1-pdf-tools.md",
         "Makefile",

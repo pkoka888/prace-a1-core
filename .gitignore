@@ -30,6 +30,10 @@ logs/
 # These are the relocated A1_PRIVATE_DIR contents, kept inside the repo and
 # excluded from version control. Set A1_PRIVATE_DIR to the repo root to use them.
 a1/
+# workflows/a1/ is the tracked WF-A1 documentation directory (versioned as
+# a1form-generator); re-include it so the rule above keeps matching only the
+# PII-bearing operational inputs and test leftovers.
+!/workflows/a1/
 scans/
 evidence/
 ocr/
@@ -112,6 +116,11 @@ scans/
 !.env.example
 # All runtime outputs are local; source and fixtures belong outside runtime/.
 /runtime/
+# The working database holds real client identities. It is never committed:
+# Git history is permanent, and this repository's published history was
+# once rewritten to remove PII-bearing ancestry. The rule is also enforced
+# by scripts/check_git_content.py, so removing it here cannot expose the
+# data. See docs/operations/local-database-backup.md.
 *.sqlite3
 *.sqlite3-journal
 *.sqlite3-wal

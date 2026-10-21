@@ -724,7 +724,7 @@ needs it and never blocks the rest of the application.
 | D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
 | D13 | Capture the **State-of-stay** address (1.9) in the identity chain? | **YES**, still to build | Jan (decided) | Yes | the identity proposal chain, not a column |
 | D14 | Carry the **CZ-NACE main activity** on the assignment? | **YES** — decided and implemented 2026-10-20 | Jan (decided) | Yes | `Assignment.nace_code` |
-| D15 | Give the **employment block** (4.2, 4.3, 4.4) a source status, so a registry-verified employer can be told from hand-typed text? | **YES** — decided and implemented 2026-10-21 | Jan (decided) | Yes | `employment_source_status` in the export, checked at issue |
+| D15 | Give the **employment block** (4.2, 4.3, 4.4) a source status, so a registry-verified employer can be told from hand-typed text? | **YES** — decided and implemented 2026-10-21, in both the export and the file path | Jan (decided) | Yes | `employment_source_status`, written by the export and by `scripts/import_ares_legal_entity.py --annotate` |
 | D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
 
 D1 was split into D1a and D1b, and D10 was added, after the legal reading

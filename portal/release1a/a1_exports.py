@@ -9,7 +9,12 @@ import io
 from datetime import datetime
 from django.db import transaction
 from scripts.a1_core import A1_STATUS_PROFILES
-from scripts.finalize_a1 import CSV_FIELDS, readiness_report, review_fieldnames
+from scripts.finalize_a1 import (
+    CSV_FIELDS,
+    employment_divergence,
+    readiness_report,
+    review_fieldnames,
+)
 from src.document_core.serialization import canonical_json, result_hash
 from .document_intake import audit, read_result
 from .identity import _authorize, _lock_organization, _lock_sources
@@ -177,35 +182,18 @@ def _registry_employer(organization, registration_id: str):
 def _employment_divergence(row: dict, entity) -> list[str]:
     """Where the reviewed employer row and the register disagree.
 
-    The register is the authority for a company's registered name and seat.
-    A row that was hand-typed can differ from it, and Section 4 of the form
-    is a legal claim about the counterparty, so a divergence is reported
-    rather than silently replaced. Gate D15.
+    The comparison itself belongs to the review contract, so the export and
+    the import path use one implementation. Gate D15.
     """
     if entity is None:
         return []
-    address = entity.registered_address or {}
-    pairs = (
-        ("employment_name", entity.legal_name, "name"),
-        ("employment_street", address.get("street", ""), "street"),
-        ("employment_city", address.get("city", ""), "city"),
-        ("employment_postal_code", address.get("postal_code", ""), "postal code"),
+    return employment_divergence(
+        row,
+        {
+            "legal_name": entity.legal_name,
+            "registered_address": entity.registered_address or {},
+        },
     )
-    differences = []
-    for field, registry_value, label in pairs:
-        reviewed = (row.get(field) or "").strip()
-        registry_value = (registry_value or "").strip()
-        if not registry_value:
-            continue
-        if not reviewed:
-            differences.append(f"{label} is not stated")
-        elif _normalise(reviewed) != _normalise(registry_value):
-            differences.append(f"{label} differs from the register")
-    return differences
-
-
-def _normalise(value: str) -> str:
-    return " ".join(value.casefold().split())
 
 
 def _value(field, value):

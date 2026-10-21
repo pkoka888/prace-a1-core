@@ -277,6 +277,59 @@ POSTING_STATUS_PROFILES = A1_POSTING_STATUS_PROFILES
 POSTING_MAX_MONTHS = 24
 
 
+def employment_divergence(row: dict[str, str], registry: dict) -> list[str]:
+    """Where a reviewed employer row and the business register disagree.
+
+    The register is the authority for a company's registered name and seat.
+    A row that was hand-typed can differ from it, and Section 4 of the form
+    is a legal claim about the counterparty, so a divergence is reported
+    rather than silently replaced. Gate D15.
+
+    The register is passed as a plain mapping so that the export, which has a
+    stored record, and the import path, which has a fresh lookup, compare
+    the same way.
+    """
+    if not registry:
+        return []
+    address = registry.get("registered_address") or {}
+    pairs = (
+        ("employment_name", registry.get("legal_name", ""), "name"),
+        ("employment_street", address.get("street", ""), "street"),
+        ("employment_city", address.get("city", ""), "city"),
+    )
+    differences = []
+    for field, registry_value, label in pairs:
+        reviewed = _folded(row.get(field))
+        registry_value = _folded(registry_value)
+        if not registry_value:
+            continue
+        if not reviewed:
+            differences.append(f"{label} is not stated")
+        elif reviewed != registry_value:
+            differences.append(f"{label} differs from the register")
+    postal = _folded_digits(address.get("postal_code", ""))
+    if postal and _folded_digits(row.get("employment_postal_code")) != postal:
+        differences.append("postal code differs from the register")
+    return differences
+
+
+def _folded(value) -> str:
+    """A value reduced to a comparable form.
+
+    A postal code is written with a space in a review row and without one in
+    the register, and the register types some of its values as numbers, so
+    everything is compared as text with the spacing and the case removed.
+    """
+    if value is None:
+        return ""
+    return " ".join(str(value).casefold().split())
+
+
+def _folded_digits(value) -> str:
+    """A value reduced to its digits, for a postal code."""
+    return "".join(character for character in str(value) if character.isdigit())
+
+
 def _check_employer_agreement(employee_id: str, row: dict[str, str]) -> None:
     """The employer row must agree with the business register.
 

@@ -2,23 +2,36 @@
 """Detect credential signatures in Git blobs without printing secret values.
 This complements path review; it does not establish absence of PII.
 
-Two classes are checked:
+Three classes are checked:
 
 * credential signatures -- private keys and known token prefixes;
 * business-registration identifiers -- a Czech IČO is an eight-digit number
   with a check digit, and for a sole trader it identifies a natural person.
   It is therefore a personal identifier, not a company reference, and it
-  must not appear in a committed document.
+  must not appear in a committed document;
+* database files -- the working database holds real client identities, and
+  the published history of this repository was once rewritten to remove
+  PII-bearing ancestry. A database in Git would undo that, and Git history is
+  permanent: removing the file later does not remove it from the clones.
 
-Both checks report the path only, never the matched value.
+Both the committed content and the staged content are checked. A leak caught
+only after the commit that introduced it is a commit too late.
+
+The checks report the path only, never the matched value.
 """
 
 import re
 import subprocess
+from pathlib import Path
 
 PATTERN = re.compile(
     rb"(?:-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\b(?:sk-or-v1-|sk-proj-|ghp_)[A-Za-z0-9_-]{20,})"
 )
+
+# A database file is never a committable artefact. The rule is enforced here
+# rather than only in .gitignore, so that removing the ignore rule cannot
+# quietly expose the working data.
+DATABASE_SUFFIXES = (".sqlite3", ".sqlite", ".db", ".db3")
 
 # Czech IČO: eight digits, weighted 8..2 over the first seven, check digit
 # 11 - (sum % 11) with 10 read as 0.
@@ -61,6 +74,43 @@ def find_ico_occurrences(text, path):
     return found
 
 
+def is_database_path(path) -> bool:
+    return Path(path).suffix.lower() in DATABASE_SUFFIXES
+
+
+def staged_paths():
+    """The paths staged for the next commit, or an empty list outside a commit."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        return []
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def staged_blob(path: str):
+    """The staged content of a path, which is what the next commit will hold."""
+    result = subprocess.run(["git", "show", f":{path}"], capture_output=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def _report(path: str, payload: bytes) -> bool:
+    """Check one payload. Returns whether anything was found."""
+    found = False
+    if PATTERN.search(payload):
+        print("CREDENTIAL_SIGNATURE:", repr(path))
+        found = True
+    if find_ico_occurrences(payload.decode("utf-8", "replace"), path):
+        print("BUSINESS_REGISTRATION_IDENTIFIER:", repr(path))
+        found = True
+    if is_database_path(path):
+        print("DATABASE_FILE:", repr(path))
+        found = True
+    return found
+
+
 def main():
     failed = False
     for entry in subprocess.check_output(["git", "ls-tree", "-rz", "HEAD"]).split(
@@ -73,12 +123,25 @@ def main():
         if kind != b"blob":
             continue
         payload = subprocess.check_output(["git", "cat-file", "blob", oid.decode()])
-        if PATTERN.search(payload):
-            print("CREDENTIAL_SIGNATURE:", repr(path.decode("utf-8", "replace")))
+        if _report(path.decode("utf-8", "replace"), payload):
             failed = True
-        text = payload.decode("utf-8", "replace")
-        if find_ico_occurrences(text, path.decode("utf-8", "replace")):
-            print("BUSINESS_REGISTRATION_IDENTIFIER:", repr(path.decode("utf-8", "replace")))
+    # What is about to be committed is checked as well, so a leak is caught
+    # before it lands rather than after.
+    for path in staged_paths():
+        if is_database_path(path):
+            print(
+                "DATABASE_FILE_STAGED:",
+                repr(path),
+                "\n  a working database holds real client identities and must "
+                "not be committed; back it up to the private runtime instead "
+                "(docs/operations/local-database-backup.md)",
+            )
+            failed = True
+            continue
+        payload = staged_blob(path)
+        if payload is None:
+            continue
+        if _report(path, payload):
             failed = True
     return int(failed)
 

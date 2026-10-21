@@ -38,9 +38,11 @@ ARES_RESPONSE = {
         "nazevStatu": "Česká republika",
         "kodObce": "5678",
         "nazevObce": "SYNTHETICKÁ OBC",
+        "nazevUlice": "SYNTHETICKÁ ULICE",
         "cisloDomovni": "12",
-        "psc": "415 01",
-        "textovaAdresa": "SYNTHETICKÁ ULICE",
+        "cisloOrientacni": "3",
+        "psc": "41501",
+        "textovaAdresa": "SYNTHETICKÁ ULICE 12/3, 415 01 SYNTHETICKÁ OBC",
     },
     "pravniForma": "101",
     "datumVzniku": "2022-01-01",
@@ -89,9 +91,9 @@ def test_the_record_carries_its_source_and_its_dates(registry):
 def test_the_address_is_taken_from_the_registered_seat(registry):
     address = fetch_legal_entity("00000000")["registered_address"]
     assert address["street"] == "SYNTHETICKÁ ULICE"
-    assert address["house_number"] == "12"
+    assert address["house_number"] == "12/3"
     assert address["city"] == "SYNTHETICKÁ OBC"
-    assert address["postal_code"] == "415 01"
+    assert address["postal_code"] == "41501"
     assert address["municipality_code"] == "5678"
 
 
@@ -152,13 +154,13 @@ def test_the_registration_numbers_are_discovered_from_the_review_data(tmp_path):
     review = tmp_path / "review.csv"
     review.write_text(
         "employee_id,employment_id\n"
-        "one,17511267\n"
-        "two,19213298\n"
+        "one,11111111\n"
+        "two,22222222\n"
         "three,<PENDING_OPERATOR_REVIEW>\n"
-        "four,17511267\n",
+        "four,11111111\n",
         encoding="utf-8",
     )
-    assert _discover(review) == ["17511267", "19213298"]
+    assert _discover(review) == ["11111111", "22222222"]
 
 
 def test_a_missing_review_file_yields_no_registrations(tmp_path):
@@ -177,7 +179,77 @@ def test_the_stored_record_keeps_the_review_step_between(monkeypatch, tmp_path):
     )
     review = tmp_path / "review.csv"
     review.write_text(
-        "employee_id,employment_id\none,17511267\n", encoding="utf-8"
+        "employee_id,employment_id\none,11111111\n", encoding="utf-8"
     )
     assert importer.main(["--all-reviewed", "--review", str(review), "--out", str(tmp_path / "out")]) == 0
-    assert written == ["17511267"]
+    assert written == ["11111111"]
+
+
+def test_the_review_csv_is_annotated_with_the_register_comparison(monkeypatch, tmp_path):
+    """The file path learns the divergence too.
+
+    The generator reads a review CSV and must not reach the network or the
+    database, so this is how a hand-written row learns that its employer
+    disagrees with the register.
+    """
+    from scripts import import_ares_legal_entity as importer
+
+    review = tmp_path / "review.csv"
+    review.write_text(
+        "employee_id,employment_id,employment_name,employment_street,"
+        "employment_city,employment_postal_code\n"
+        "one,00000000,SYNTHETICKY OBCHODNIK,SYNTHETICKÁ ULICE,"
+        "SYNTHETICKÁ OBC,41501\n"
+        "two,00000000,JINÝ ZAMĚSTNAVATEL,SYNTHETICKÁ ULICE,"
+        "SYNTHETICKÁ OBC,41501\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        importer, "_discover", lambda path: ["00000000"]
+    )
+
+    class _FakeRegister:
+        def fetch_legal_entity(self, registration_id, **kwargs):
+            return {
+                "registration_id": registration_id,
+                "legal_name": "SYNTHETICKY OBCHODNIK",
+                "registered_address": {
+                    "street": "SYNTHETICKÁ ULICE",
+                    "city": "SYNTHETICKÁ OBC",
+                    "postal_code": "41501",
+                },
+            }
+
+    monkeypatch.setattr(
+        "portal.release1a.ares.fetch_legal_entity",
+        _FakeRegister().fetch_legal_entity,
+    )
+    assert importer.main(["--annotate", str(review)]) == 0
+    import csv
+
+    rows = list(csv.DictReader(review.open(encoding="utf-8-sig")))
+    assert rows[0]["employment_source_status"] == "REGISTRY_VERIFIED"
+    assert rows[1]["employment_source_status"] == "DIVERGES_FROM_REGISTER"
+
+
+def test_the_verification_seeder_refuses_a_database_outside_its_own():
+    """It seeds the isolated verification database and nothing else.
+
+    The working database holds real client identities, so a seeder that
+    follows an inherited DJANGO_SETTINGS_MODULE would put synthetic rows
+    among them.
+    """
+    import re
+    from pathlib import Path as _Path
+
+    source = (
+        _Path(__file__).resolve().parent.parent
+        / "scripts"
+        / "seed_verification_db.py"
+    ).read_text(encoding="utf-8")
+    assert 'os.environ["DJANGO_SETTINGS_MODULE"] = "portal.settings_verification"' in source
+    assert "refusing to seed" in source
+    # It must not merely default the setting, which an inherited value would
+    # override.
+    assert "setdefault" not in source
+    assert re.search(r"target != DB_PATH", source)

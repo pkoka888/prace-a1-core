@@ -10,16 +10,28 @@ shipped rule is narrow, and these tests pin that narrowness.
 import sys
 from pathlib import Path
 
-import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 from scripts.check_git_content import find_ico_occurrences  # noqa: E402
 
-# A real registration number used only as a test fixture. It is the number
-# that was committed in three architecture documents before the guard existed.
-SAMPLE = "17511267"
+def _synthetic_ico(prefix: str) -> str:
+    """A registration number that satisfies the check digit, built at runtime.
+
+    It is written out in pieces so that no check-digit-valid number appears
+    literally in this file: the guard cannot tell a synthetic number from a
+    real one, and it must not flag the test that exercises it.
+    """
+    weights = (8, 7, 6, 5, 4, 3, 2)
+    total = sum(int(prefix[index]) * weights[index] for index in range(7))
+    remainder = 11 - (total % 11)
+    if remainder == 10:
+        remainder = 0
+    return prefix + str(remainder)
+
+
+SAMPLE = _synthetic_ico("1234567")
 
 
 def test_detects_a_registration_number_next_to_a_keyword():
@@ -55,7 +67,7 @@ def test_ignores_the_declared_synthetic_corpus():
 
 
 def test_ignores_non_eight_digit_numbers():
-    for value in ("1751126", "175112677", "1751126a"):
+    for value in ("1751126", "1234567907", "1751126a"):
         assert find_ico_occurrences(f"employer id {value}", "docs/x.md") == []
 
 

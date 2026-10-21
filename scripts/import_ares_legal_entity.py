@@ -8,7 +8,7 @@ database without the review in between.
 
     # 1. retrieve for review
     venv/bin/python scripts/import_ares_legal_entity.py \\
-        --registration-id 17511267 --out runtime/portal/temporary/ares-review.json
+        --registration-id <registration number> --out <review file>
 
     # 2. store the reviewed record
     venv/bin/python scripts/import_ares_legal_entity.py \\
@@ -134,6 +134,59 @@ def _retrieve(registration_id: str, out: Path) -> int:
     return 0
 
 
+def _annotate(review_path: Path) -> int:
+    """Mark each review row with how it compares to the register.
+
+    The file path reads a review CSV, and the generator must not reach the
+    network or the database, so this is how a hand-written row learns that its
+    employer disagrees with the register. The comparison itself is the
+    review contract's, so the export and this path agree. Gate D15.
+    """
+    from scripts.finalize_a1 import employment_divergence
+
+    from portal.release1a.ares import AresUnavailable, fetch_legal_entity
+
+    if not review_path.is_file():
+        print(f"no review file at {review_path}", file=sys.stderr)
+        return 2
+    with review_path.open(encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        fieldnames = list(reader.fieldnames or [])
+        rows = list(reader)
+    if "employment_source_status" not in fieldnames:
+        fieldnames.append("employment_source_status")
+    registry: dict[str, dict] = {}
+    for row in rows:
+        registration_id = (row.get("employment_id") or "").strip()
+        if not registration_id.isdigit() or registration_id in registry:
+            continue
+        try:
+            registry[registration_id] = fetch_legal_entity(registration_id)
+        except AresUnavailable as exc:
+            print(f"{registration_id}: not retrieved ({exc})", file=sys.stderr)
+    diverging = 0
+    for row in rows:
+        registration_id = (row.get("employment_id") or "").strip()
+        record = registry.get(registration_id)
+        if record is None:
+            row["employment_source_status"] = ""
+            continue
+        differences = employment_divergence(row, record)
+        if differences:
+            row["employment_source_status"] = "DIVERGES_FROM_REGISTER"
+            diverging += 1
+            print(f"{row.get('employee_id', registration_id)}: "
+                  + "; ".join(differences))
+        else:
+            row["employment_source_status"] = "REGISTRY_VERIFIED"
+    with review_path.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"annotated {len(rows)} row(s); {diverging} diverge from the register")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registration-id")
@@ -150,7 +203,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="retrieve every registration number the review rows carry",
     )
+    parser.add_argument(
+        "--annotate",
+        type=Path,
+        help="mark each row of a review CSV with how its employer compares to "
+        "the register, so the file path learns the divergence too",
+    )
     args = parser.parse_args(argv)
+    if args.annotate:
+        return _annotate(args.annotate)
     if args.confirm:
         return _store(args.confirm)
     if args.registration_id:

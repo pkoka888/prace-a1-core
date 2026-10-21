@@ -110,13 +110,30 @@ def economic_subject_url(registration_id: str) -> str:
 
 
 def _address(raw: dict) -> dict:
+    """The registered seat, in the shape a review row carries.
+
+    The register puts the whole formatted address in ``textovaAdresa`` and
+    keeps the street and the building number apart, with the orientation
+    number in its own field. A review row carries the street on its own and
+    the building number with its orientation number, so the street is taken
+    from ``nazevUlice`` and the two numbers are joined. Every value is a
+    string, because the register types some of them as numbers and the
+    comparison is textual.
+    """
+    house_number = str(raw.get("cisloDomovni", "") or "")
+    orientation = str(raw.get("cisloOrientacni", "") or "")
+    if house_number and orientation:
+        joined = f"{house_number}/{orientation}"
+    else:
+        joined = house_number
     return {
-        "street": raw.get("textovaAdresa", "") or "",
-        "house_number": raw.get("cisloDomovni", "") or "",
-        "city": raw.get("nazevObce", "") or "",
-        "postal_code": raw.get("psc", "") or "",
-        "municipality_code": raw.get("kodObce", "") or "",
-        "country_code": raw.get("kodStatu", "") or "",
+        "street": str(raw.get("nazevUlice", "") or ""),
+        "house_number": joined,
+        "city": str(raw.get("nazevObce", "") or ""),
+        "postal_code": str(raw.get("psc", "") or ""),
+        "municipality_code": str(raw.get("kodObce", "") or ""),
+        "country_code": str(raw.get("kodStatu", "") or ""),
+        "address_text": str(raw.get("textovaAdresa", "") or ""),
     }
 
 
