@@ -147,6 +147,32 @@ def seed():
             assignments.append(a)
         print(f"    Created {len(assignments)} assignments")
 
+        # The employer records, so the reproducible database carries the whole
+        # model rather than stopping at the assignment.
+        entities = []
+        for index, registration_id in enumerate(("11111111", "22222222")):
+            entity = r1a.LegalEntity.objects.create(
+                organization=org_a,
+                registration_id=registration_id,
+                legal_name=f"Synthetic Employer {index + 1} s.r.o.",
+                legal_form="company",
+                country_code="CZ",
+                registered_address={
+                    "street": "SYNTHETICKÁ ULICE",
+                    "house_number": str(index + 1),
+                    "city": "TEPLICE",
+                    "postal_code": "415 01",
+                    "municipality_code": "5678",
+                    "country_code": "CZ",
+                },
+                nace_codes=["43120"],
+                source="https://ares.gov.cz/synthetic",
+                verified_on=date(2026, 1, 1),
+                content_sha256="0" * 64,
+            )
+            entities.append(entity)
+        print(f"    Created {len(entities)} legal entities")
+
         d, dv, u = docs[0]
         ocr = r1a.OcrRun.objects.create(
             document=d,
@@ -223,12 +249,25 @@ def seed():
 
 
 def main():
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings_verification")
+    # The verification settings are forced, not defaulted. A default would let
+    # an inherited DJANGO_SETTINGS_MODULE point the seeder at the working
+    # database, and the working database holds real client identities, so the
+    # synthetic seed would land in it.
+    os.environ["DJANGO_SETTINGS_MODULE"] = "portal.settings_verification"
     sys.path.insert(0, str(ROOT))
 
     import django
 
     django.setup()
+
+    from django.conf import settings
+
+    target = Path(settings.DATABASES["default"]["NAME"]).resolve()
+    if target != DB_PATH.resolve():
+        raise SystemExit(
+            f"refusing to seed {target}: this script seeds the isolated "
+            f"verification database at {DB_PATH} and nothing else"
+        )
 
     header()
     print(f"\nDatabase: {DB_PATH}")

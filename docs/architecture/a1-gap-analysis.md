@@ -352,6 +352,14 @@ decides. A divergent employer is refused before issue, because Section 4 is a
 legal claim. The row is never silently replaced: the divergence is reported
 and the operator reconciles it.
 
+**The file path learns it too.** The generator reads a review CSV and must
+not reach the network or the database, so a hand-written row could still
+carry an employer the register contradicts while the portal's export could
+not. `scripts/import_ares_legal_entity.py --annotate` closes that: it reads
+the registration numbers out of the review file, compares each row against the
+register, and writes the status into the file. The comparison itself is the
+review contract's, so the export and the import path agree.
+
 **One of the agency's own employment identifiers is not a Czech
 registration number.** The review data names three: two are eight-digit
 numbers the register accepts, and the third is **nine digits** with the

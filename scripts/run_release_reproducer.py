@@ -3,6 +3,7 @@
 This is a selected synthetic acceptance run, not deployment or real-data approval.
 The invoking runner and installed venv are recorded separately from tested source.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -54,16 +55,32 @@ def sanitize_environment(env):
 
 
 def git(repo, *args):
-    return subprocess.check_output(["git", "-C", str(repo), *args], stderr=subprocess.PIPE)
+    return subprocess.check_output(
+        ["git", "-C", str(repo), *args], stderr=subprocess.PIPE
+    )
 
 
-PROTECTED_EXPORT_ROOTS = frozenset({
-    "a1", "scans", "evidence", "ocr", "data", "output", "runtime", "secrets",
-    ".runtime-config", ".history-remediation",
-})
-PROTECTED_EXPORT_COMPONENTS = frozenset({
-    ".runtime-config", ".history-remediation", "secrets",
-})
+PROTECTED_EXPORT_ROOTS = frozenset(
+    {
+        "a1",
+        "scans",
+        "evidence",
+        "ocr",
+        "data",
+        "output",
+        "runtime",
+        "secrets",
+        ".runtime-config",
+        ".history-remediation",
+    }
+)
+PROTECTED_EXPORT_COMPONENTS = frozenset(
+    {
+        ".runtime-config",
+        ".history-remediation",
+        "secrets",
+    }
+)
 
 
 def protected_export_path(path):
@@ -74,9 +91,11 @@ def protected_export_path(path):
     template name alone cannot establish that its contents are nonsecret.
     """
     parts = PurePosixPath(path).parts
-    if (parts[0] in PROTECTED_EXPORT_ROOTS
-            or parts[:2] == ("employees", "scans")
-            or any(part in PROTECTED_EXPORT_COMPONENTS for part in parts)):
+    if (
+        parts[0] in PROTECTED_EXPORT_ROOTS
+        or parts[:2] == ("employees", "scans")
+        or any(part in PROTECTED_EXPORT_COMPONENTS for part in parts)
+    ):
         return True
     for index, part in enumerate(parts):
         example = index == len(parts) - 1 and part == ".env.example"
@@ -96,25 +115,35 @@ def tree(repo, sha):
         mode, kind, oid = meta.decode().split()
         path = os.fsdecode(name)
         if kind != "blob" or mode not in {"100644", "100755"}:
-            raise ValueError("Unsupported Git entry (symlinks/submodules are not exported)")
+            raise ValueError(
+                "Unsupported Git entry (symlinks/submodules are not exported)"
+            )
         if Path(path).is_absolute() or ".." in Path(path).parts:
             raise ValueError("Unsafe Git path")
         if protected_export_path(path):
-            raise ValueError("Protected data path present in requested Git tree; content review required")
+            raise ValueError(
+                "Protected data path present in requested Git tree; content review required"
+            )
         selected.append((path, mode, oid))
     # Inspect every path before reading blobs. A later forbidden path must not
     # allow any part of an inadmissible source tree to enter an export.
-    return {path: (mode, git(repo, "cat-file", "blob", oid))
-            for path, mode, oid in selected}
+    return {
+        path: (mode, git(repo, "cat-file", "blob", oid)) for path, mode, oid in selected
+    }
 
 
 def verify_export(export, entries, *, test_copy=False):
     if export.is_symlink() or not export.is_dir():
         raise ValueError("Export integrity: invalid root")
     expected_dir_mode = 0o700 if test_copy else 0o500
-    if stat.S_IMODE(export.stat().st_mode) != expected_dir_mode or export.stat().st_uid != os.getuid():
+    if (
+        stat.S_IMODE(export.stat().st_mode) != expected_dir_mode
+        or export.stat().st_uid != os.getuid()
+    ):
         raise ValueError("Export integrity: root permissions or ownership")
-    expected_dirs = {str(p) for name in entries for p in Path(name).parents if str(p) != "."}
+    expected_dirs = {
+        str(p) for name in entries for p in Path(name).parents if str(p) != "."
+    }
     found = set()
     for directory, dirs, files in os.walk(export, followlinks=False):
         for name in dirs + files:
@@ -126,20 +155,62 @@ def verify_export(export, entries, *, test_copy=False):
                 if test_copy and (rel == "runtime" or rel.startswith("runtime/")):
                     dirs.remove(name)
                     continue
-                if stat.S_IMODE(path.stat().st_mode) != expected_dir_mode or path.stat().st_uid != os.getuid():
-                    raise ValueError("Export integrity: directory permissions or ownership")
+                if (
+                    stat.S_IMODE(path.stat().st_mode) != expected_dir_mode
+                    or path.stat().st_uid != os.getuid()
+                ):
+                    raise ValueError(
+                        "Export integrity: directory permissions or ownership"
+                    )
                 if rel not in expected_dirs:
                     raise ValueError("Export integrity: unexpected directory")
                 continue
             if not stat.S_ISREG(path.stat().st_mode) or rel not in entries:
                 raise ValueError("Export integrity: unexpected entry")
             mode, data = entries[rel]
-            expected_mode = (0o700 if mode == "100755" else 0o600) if test_copy else (0o500 if mode == "100755" else 0o400)
-            if path.read_bytes() != data or stat.S_IMODE(path.stat().st_mode) != expected_mode or path.stat().st_uid != os.getuid():
+            expected_mode = (
+                (0o700 if mode == "100755" else 0o600)
+                if test_copy
+                else (0o500 if mode == "100755" else 0o400)
+            )
+            if (
+                path.read_bytes() != data
+                or stat.S_IMODE(path.stat().st_mode) != expected_mode
+                or path.stat().st_uid != os.getuid()
+            ):
                 raise ValueError("Export integrity: changed bytes or permissions")
             found.add(rel)
     if found != set(entries):
         raise ValueError("Export integrity: missing entry")
+
+
+def scan_export_content(entries):
+    """Return the exported paths that carry a credential or IČO signature.
+
+    The path boundary check above rejects private directories by name. This
+    content check catches the case where sensitive material is committed
+    under an innocent name, which is exactly the failure mode that a
+    published repository cannot undo. Only the path is reported; no matched
+    value is ever written to a receipt, a log or a report.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_a1_check_git_content",
+        Path(__file__).resolve().parent / "check_git_content.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    pattern = module.PATTERN
+    find_ico = module.find_ico_occurrences
+
+    findings = []
+    for path, (_mode, data) in entries.items():
+        if pattern.search(data):
+            findings.append((path, "CREDENTIAL_SIGNATURE"))
+        elif find_ico(data.decode("utf-8", "replace"), path):
+            findings.append((path, "BUSINESS_REGISTRATION_IDENTIFIER"))
+    return findings
 
 
 def private_dir(path):
@@ -179,7 +250,7 @@ def export_tree(repo, sha, entries):
     return export
 
 
-PLANNING_CHECK = '''import json, pathlib, jsonschema
+PLANNING_CHECK = """import json, pathlib, jsonschema
 from scripts import validate_planning as v
 root=pathlib.Path.cwd()
 checks=v.build_checks(json.loads((root/v.DEFAULT_CATALOG).read_text()),root,jsonschema,json.loads((root/v.DEFAULT_SCHEMA).read_text()))
@@ -191,7 +262,7 @@ for name, check in checks:
     print(name, ok, detail)
     if not ok: failed.append(name)
 raise SystemExit(bool(failed))
-'''
+"""
 
 
 ACCEPTANCE_COMMAND_TIMEOUT = 3600
@@ -200,19 +271,69 @@ ACCEPTANCE_COMMAND_TIMEOUT = 3600
 def acceptance_commands(python, state, repo, sha, include_a1=False):
     commands = [
         [python, "-c", PLANNING_CHECK],
-        [python, "-m", "pytest", "-p", "no:cacheprovider", "--basetemp", str(state / "pytest"),
-         "tests/m2/test_synthetic_containment.py", "tests/test_release_reproducer.py",
-         "tests/test_finalize_a1.py", "tests/test_a1_stabilization.py", "tests/test_a1_application_draft.py", "tests/test_a1_input_artifacts.py", "-q"],
-        [python, "manage.py", "test", "tests.document_web.test_inbox", "tests.document_web.test_field_review", "tests.document_web.test_identity_review", "tests.document_web.test_legacy_reconciliation", "tests.document_web.test_identity", "tests.document_web.test_a1_exports", "tests.document_web.test_a1_cohort_exports", "tests.document_web.test_a1_input_publication", "tests.document_web.test_input_bundle_bo", "tests.document_web.test_a1_drafts", "tests.document_web.test_a1_generation_access", "tests.document_web.test_a1_generation_confirmation", "--noinput", "--verbosity", "1"],
-        [python, "scripts/run_core_journey.py", "--repo-root", str(repo),
-         "--commit", sha, "--state", str(state / "core-journey"),
-         "--profile", "core"],
+        [
+            python,
+            "-m",
+            "pytest",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp",
+            str(state / "pytest"),
+            "tests/m2/test_synthetic_containment.py",
+            "tests/test_release_reproducer.py",
+            "tests/test_finalize_a1.py",
+            "tests/test_a1_stabilization.py",
+            "tests/test_a1_application_draft.py",
+            "tests/test_a1_input_artifacts.py",
+            "-q",
+        ],
+        [
+            python,
+            "manage.py",
+            "test",
+            "tests.document_web.test_inbox",
+            "tests.document_web.test_field_review",
+            "tests.document_web.test_identity_review",
+            "tests.document_web.test_legacy_reconciliation",
+            "tests.document_web.test_identity",
+            "tests.document_web.test_a1_exports",
+            "tests.document_web.test_a1_cohort_exports",
+            "tests.document_web.test_a1_input_publication",
+            "tests.document_web.test_input_bundle_bo",
+            "tests.document_web.test_a1_drafts",
+            "tests.document_web.test_a1_generation_access",
+            "tests.document_web.test_a1_generation_confirmation",
+            "--noinput",
+            "--verbosity",
+            "1",
+        ],
+        [
+            python,
+            "scripts/run_core_journey.py",
+            "--repo-root",
+            str(repo),
+            "--commit",
+            sha,
+            "--state",
+            str(state / "core-journey"),
+            "--profile",
+            "core",
+        ],
     ]
     if include_a1:
         commands.append(
-            [python, "scripts/run_core_journey.py", "--repo-root", str(repo),
-             "--commit", sha, "--state", str(state / "optional-a1-journey"),
-             "--profile", "optional-a1"]
+            [
+                python,
+                "scripts/run_core_journey.py",
+                "--repo-root",
+                str(repo),
+                "--commit",
+                sha,
+                "--state",
+                str(state / "optional-a1-journey"),
+                "--profile",
+                "optional-a1",
+            ]
         )
     return commands
 
@@ -223,10 +344,29 @@ def reproduce(repo, revision, *, commands=None, include_a1=False):
     started_at = datetime.now(timezone.utc).isoformat()
     repo = Path(repo).resolve()
     try:
-        sha = git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}").decode().strip()
+        sha = (
+            git(
+                repo,
+                "rev-parse",
+                "--verify",
+                "--end-of-options",
+                revision + "^{commit}",
+            )
+            .decode()
+            .strip()
+        )
     except subprocess.CalledProcessError as exc:
         raise ValueError("cannot resolve requested revision to a commit") from exc
     entries = tree(repo, sha)
+    findings = scan_export_content(entries)
+    if findings:
+        # A credential signature or a business-registration identifier in the
+        # committed tree cannot be undone by a later commit: the history is
+        # permanent. The run stops before any export or check happens.
+        raise ValueError(
+            "Sensitive content signature in committed tree: "
+            + ", ".join(sorted(f"{kind} at {path}" for path, kind in findings))
+        )
     export = export_tree(repo, sha, entries)
     parent = repo / "runtime"
     for segment in ("portal", "temporary", "release-reproducer"):
@@ -245,10 +385,16 @@ def reproduce(repo, revision, *, commands=None, include_a1=False):
             mode = entries[path.relative_to(work).as_posix()][0]
             path.chmod(0o700 if mode == "100755" else 0o600)
     verify_export(work, entries, test_copy=True)
-    env = {"PATH": str(Path(sys.executable).parent) + ":/usr/bin:/bin", "HOME": str(state / "home"),
-           "TMPDIR": str(state / "tmp"), "PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1",
-           "DJANGO_SETTINGS_MODULE": "portal.settings_document_tests",
-           "GIT_CEILING_DIRECTORIES": str(work.parent), "LC_ALL": "C.UTF-8"}
+    env = {
+        "PATH": str(Path(sys.executable).parent) + ":/usr/bin:/bin",
+        "HOME": str(state / "home"),
+        "TMPDIR": str(state / "tmp"),
+        "PYTHONPATH": str(work),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "DJANGO_SETTINGS_MODULE": "portal.settings_document_tests",
+        "GIT_CEILING_DIRECTORIES": str(work.parent),
+        "LC_ALL": "C.UTF-8",
+    }
     # Forward the caller's real database/test variables into the exported
     # acceptance run. The reproducer never invents a host, port or password;
     # without any caller context the checks keep their documented SQLite
@@ -257,48 +403,100 @@ def reproduce(repo, revision, *, commands=None, include_a1=False):
     for name in os.environ:
         if name.startswith(("PRACE_DB_", "DOCUMENT_TEST_PG_", "PRACE_TEST_DB_")):
             env[name] = os.environ[name]
-    for name in ("PGPASSWORD", "JOURNEY_EVIDENCE_PATH",
-                 "PRACE_SECRET_KEY", "PRACE_RUNTIME_ROOT",
-                 "PRACE_WORKFLOW_PG",
-                 "PRACE_RUNTIME_STATEMENT_TIMEOUT_MS",
-                 "PRACE_MIGRATION_STATEMENT_TIMEOUT_MS",
-                 "PRACE_MIGRATION_SCOPE",
-                 "PRACE_MIGRATION_DB_USER",
-                 "PRACE_MIGRATION_DB_PASSWORD"):
+    for name in (
+        "PGPASSWORD",
+        "JOURNEY_EVIDENCE_PATH",
+        "PRACE_SECRET_KEY",
+        "PRACE_RUNTIME_ROOT",
+        "PRACE_WORKFLOW_PG",
+        "PRACE_RUNTIME_STATEMENT_TIMEOUT_MS",
+        "PRACE_MIGRATION_STATEMENT_TIMEOUT_MS",
+        "PRACE_MIGRATION_SCOPE",
+        "PRACE_MIGRATION_DB_USER",
+        "PRACE_MIGRATION_DB_PASSWORD",
+    ):
         if name in os.environ:
             env[name] = os.environ[name]
-    commands = commands if commands is not None else acceptance_commands(
-        sys.executable, state, repo, sha)
+    commands = (
+        commands
+        if commands is not None
+        else acceptance_commands(sys.executable, state, repo, sha)
+    )
     if include_a1:
         commands = list(commands) + [
-            [sys.executable, "scripts/run_core_journey.py", "--repo-root", str(repo),
-             "--commit", sha, "--state", str(state / "optional-a1-journey"),
-             "--profile", "optional-a1"]
+            [
+                sys.executable,
+                "scripts/run_core_journey.py",
+                "--repo-root",
+                str(repo),
+                "--commit",
+                sha,
+                "--state",
+                str(state / "optional-a1-journey"),
+                "--profile",
+                "optional-a1",
+            ]
         ]
-    receipt = {"schema_version": "2.0", "commit_sha": sha, "git_tree": git(repo, "rev-parse", sha + "^{tree}").decode().strip(),
-               "started_at": started_at,
-               "export_dir": str(export), "test_cwd": str(work), "runner_sha256": digest(Path(__file__).read_bytes()),
-               "python": {"executable": sys.executable, "executable_sha256": digest(Path(sys.executable).read_bytes()), "version": sys.version},
-               "dependencies": sorted(f"{d.metadata['Name']}=={d.version}" for d in importlib.metadata.distributions()),
-               "environment": sanitize_environment(env), "checks": [],
-               "omitted_checks": {"staged forbidden-path and PII/secret indicators": "Index-only check; plain committed export has no index. Source publication hooks remain required."}}
+    receipt = {
+        "schema_version": "2.0",
+        "commit_sha": sha,
+        "git_tree": git(repo, "rev-parse", sha + "^{tree}").decode().strip(),
+        "started_at": started_at,
+        "export_dir": str(export),
+        "test_cwd": str(work),
+        "runner_sha256": digest(Path(__file__).read_bytes()),
+        "python": {
+            "executable": sys.executable,
+            "executable_sha256": digest(Path(sys.executable).read_bytes()),
+            "version": sys.version,
+        },
+        "dependencies": sorted(
+            f"{d.metadata['Name']}=={d.version}"
+            for d in importlib.metadata.distributions()
+        ),
+        "environment": sanitize_environment(env),
+        "checks": [],
+        "omitted_checks": {
+            "staged forbidden-path and PII/secret indicators": "Index-only check; plain committed export has no index. Source publication hooks remain required."
+        },
+    }
     for index, argv in enumerate(commands, 1):
         start = time.monotonic()
-        stdout, stderr = state / f"check-{index}.stdout", state / f"check-{index}.stderr"
+        stdout, stderr = (
+            state / f"check-{index}.stdout",
+            state / f"check-{index}.stderr",
+        )
         with stdout.open("wb") as out, stderr.open("wb") as err:
             try:
-                result = subprocess.run(argv, cwd=work, env=env, stdout=out, stderr=err, check=False, timeout=ACCEPTANCE_COMMAND_TIMEOUT)
+                result = subprocess.run(
+                    argv,
+                    cwd=work,
+                    env=env,
+                    stdout=out,
+                    stderr=err,
+                    check=False,
+                    timeout=ACCEPTANCE_COMMAND_TIMEOUT,
+                )
                 exit_code = result.returncode
             except subprocess.TimeoutExpired:
-                err.write(f"Acceptance command exceeded {ACCEPTANCE_COMMAND_TIMEOUT} seconds.\n".encode())
+                err.write(
+                    f"Acceptance command exceeded {ACCEPTANCE_COMMAND_TIMEOUT} seconds.\n".encode()
+                )
                 exit_code = 124
             except OSError as exc:
                 err.write((str(exc) + "\n").encode())
                 exit_code = 127
-        receipt["checks"].append({"argv": argv, "exit_code": exit_code,
-            "duration_seconds": time.monotonic() - start,
-            "stdout_log": stdout.name, "stdout_sha256": digest(stdout.read_bytes()),
-            "stderr_log": stderr.name, "stderr_sha256": digest(stderr.read_bytes())})
+        receipt["checks"].append(
+            {
+                "argv": argv,
+                "exit_code": exit_code,
+                "duration_seconds": time.monotonic() - start,
+                "stdout_log": stdout.name,
+                "stdout_sha256": digest(stdout.read_bytes()),
+                "stderr_log": stderr.name,
+                "stderr_sha256": digest(stderr.read_bytes()),
+            }
+        )
     try:
         verify_export(export, entries)
         verify_export(work, entries, test_copy=True)
@@ -306,8 +504,11 @@ def reproduce(repo, revision, *, commands=None, include_a1=False):
     except ValueError:
         receipt["source_integrity_after_checks"] = False
     receipt["passed"] = receipt["source_integrity_after_checks"] and all(
-        c["exit_code"] == 0 for c in receipt["checks"]
-        if not any("--profile" in str(a) and "optional-a1" in str(a) for a in c.get("argv", []))
+        c["exit_code"] == 0
+        for c in receipt["checks"]
+        if not any(
+            "--profile" in str(a) and "optional-a1" in str(a) for a in c.get("argv", [])
+        )
     )
     receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
     receipt_path = state / "receipt.json"
@@ -318,11 +519,14 @@ def reproduce(repo, revision, *, commands=None, include_a1=False):
 def main():
     include_a1 = "--include-a1" in sys.argv
     if len(sys.argv) < 2 or (len(sys.argv) == 2 and sys.argv[1] == "--include-a1"):
-        print("Usage: release_reproducer.sh <commit-sha> [--include-a1]", file=sys.stderr)
+        print(
+            "Usage: release_reproducer.sh <commit-sha> [--include-a1]", file=sys.stderr
+        )
         return 2
     try:
-        path, receipt = reproduce(Path(__file__).resolve().parents[1], sys.argv[1],
-                                  include_a1=include_a1)
+        path, receipt = reproduce(
+            Path(__file__).resolve().parents[1], sys.argv[1], include_a1=include_a1
+        )
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

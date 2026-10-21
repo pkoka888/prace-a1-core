@@ -30,6 +30,12 @@ logs/
 # These are the relocated A1_PRIVATE_DIR contents, kept inside the repo and
 # excluded from version control. Set A1_PRIVATE_DIR to the repo root to use them.
 a1/
+# workflows/a1/ is the tracked WF-A1 documentation directory (versioned as
+# a1form-generator); re-include it so the rule above keeps matching only the
+# PII-bearing operational inputs and test leftovers.
+!/workflows/a1/
+# tests/a1/ is the tracked A1 test suite (versioned); re-include it.
+!/tests/a1/
 scans/
 evidence/
 ocr/
@@ -87,6 +93,7 @@ archive/**/verification_table.csv
 
 # Script backups
 scripts/*.backup
+scripts/*.bak
 
 # PII-bearing operational snapshots (names/DOB) not part of the committed tree
 archive/**/verification_table.csv
@@ -112,11 +119,28 @@ scans/
 !.env.example
 # All runtime outputs are local; source and fixtures belong outside runtime/.
 /runtime/
+# The working database holds real client identities. It is never committed:
+# Git history is permanent, and this repository's published history was
+# once rewritten to remove PII-bearing ancestry. The rule is also enforced
+# by scripts/check_git_content.py, so removing it here cannot expose the
+# data. See docs/operations/local-database-backup.md.
 *.sqlite3
 *.sqlite3-journal
 *.sqlite3-wal
 *.sqlite3-shm
 /:memory:.ses
+
+# Scratch A1 review inputs and per-person scratch directories. These hold
+# real identity data (name, date of birth, insurance number) in a plain CSV
+# or a working copy of the private input tree. They are disposable local
+# artifacts: the canonical inputs live under the private a1/ directory and
+# the generated artifacts under output/, both of which are ignored above.
+# They are ignored here so that a wide "git add" cannot publish them.
+tomas_nistor_review.csv
+temp_orig
+temp_orig.py
+test_output/
+test_tomas_nistor/
 
 # Plan AC research corpora — experimental market-research-evidence skill
 # Per docs/research/2026-09-07-research-audit.md disposition: retain pending review.

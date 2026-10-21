@@ -1,4 +1,5 @@
 """Behavioral reproduction checks use disposable, wholly synthetic Git trees."""
+
 import hashlib
 import json
 import os
@@ -26,7 +27,10 @@ def repo(tmp_path):
     root.mkdir()
     root.chmod(0o2700)  # Mirror the workspace's inherited group-directory flag.
     subprocess.run(["git", "init", "-q", str(root)], check=True)
-    for key, value in (("user.name", "Synthetic"), ("user.email", "synthetic@example.invalid")):
+    for key, value in (
+        ("user.name", "Synthetic"),
+        ("user.email", "synthetic@example.invalid"),
+    ):
         git(root, "config", key, value)
     yield root
     for directory, _, _ in os.walk(root):
@@ -49,7 +53,13 @@ def test_old_commit_dirty_tree_and_untracked_inputs_are_isolated(repo):
     commit(repo, "new")
     (repo / "value.py").write_text("raise RuntimeError('dirty source imported')")
     (repo / "untracked.txt").write_text("excluded")
-    commands = [[sys.executable, "-c", "import value; print(value.VALUE); assert value.VALUE == 'old'"]]
+    commands = [
+        [
+            sys.executable,
+            "-c",
+            "import value; print(value.VALUE); assert value.VALUE == 'old'",
+        ]
+    ]
     path, receipt = reproduce(repo, sha, commands=commands)
     assert receipt["passed"]
     assert (path.parent / "check-1.stdout").read_text().strip() == "old"
@@ -59,7 +69,9 @@ def test_old_commit_dirty_tree_and_untracked_inputs_are_isolated(repo):
     assert not path.is_relative_to(export)
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
-    assert receipt["checks"][0]["stdout_sha256"] == digest((path.parent / "check-1.stdout").read_bytes())
+    assert receipt["checks"][0]["stdout_sha256"] == digest(
+        (path.parent / "check-1.stdout").read_bytes()
+    )
     assert receipt["dependencies"] and receipt["runner_sha256"]
     assert reproduce(repo, sha, commands=commands)[1]["passed"]
 
@@ -73,7 +85,9 @@ def test_failure_runs_exactly_once_and_records_actual_exit_code(repo):
     assert (path.parent / "home/counter").read_text() == "x"
 
 
-@pytest.mark.parametrize("damage", ["bytes", "extra", "missing", "symlink", "extra_dir"])
+@pytest.mark.parametrize(
+    "damage", ["bytes", "extra", "missing", "symlink", "extra_dir"]
+)
 def test_tampered_export_refused_before_commands(repo, damage):
     sha = commit(repo, "fixture")
     _, receipt = reproduce(repo, sha, commands=[])
@@ -103,6 +117,26 @@ def test_git_symlink_rejected_before_export(repo):
     git(repo, "add", "escape")
     git(repo, "commit", "-qm", "synthetic symlink")
     with pytest.raises(ValueError, match="symlinks"):
+        reproduce(repo, "HEAD", commands=[])
+    assert not (repo / "runtime").exists()
+
+
+def test_committed_credential_signature_is_refused_before_export(repo):
+    commit(repo, "fixture")
+    (repo / "leak.py").write_text("KEY = 'ghp_" + "a" * 30 + "'\n")
+    git(repo, "add", "leak.py")
+    git(repo, "commit", "-qm", "synthetic credential signature")
+    with pytest.raises(ValueError, match="CREDENTIAL_SIGNATURE"):
+        reproduce(repo, "HEAD", commands=[])
+    assert not (repo / "runtime").exists()
+
+
+def test_committed_business_registration_identifier_is_refused_before_export(repo):
+    commit(repo, "fixture")
+    (repo / "employer.txt").write_text("IČO 25000004\n")
+    git(repo, "add", "employer.txt")
+    git(repo, "commit", "-qm", "synthetic registration identifier")
+    with pytest.raises(ValueError, match="BUSINESS_REGISTRATION_IDENTIFIER"):
         reproduce(repo, "HEAD", commands=[])
     assert not (repo / "runtime").exists()
 
@@ -189,8 +223,7 @@ def test_caller_migration_credential_pair_is_forwarded(repo, monkeypatch):
     _, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", code]])
     assert receipt["passed"]
     body = json.dumps(receipt)
-    assert secret not in body, (
-        "migration credential value leaked into the receipt")
+    assert secret not in body, "migration credential value leaked into the receipt"
     assert receipt["environment"]["PRACE_MIGRATION_DB_PASSWORD"] == "set"
     assert receipt["environment"]["PRACE_MIGRATION_SCOPE"] == "1"
 
@@ -200,8 +233,12 @@ def test_receipt_never_records_secret_values(repo, monkeypatch):
     names appear as presence markers only, never with their values."""
     secret_value = "super-secret-value-1902f3a"
     sha = commit(repo, "fixture")
-    for name in ("PRACE_DB_PASSWORD", "PGPASSWORD", "PRACE_SECRET_KEY",
-                 "JOURNEY_EVIDENCE_PATH"):
+    for name in (
+        "PRACE_DB_PASSWORD",
+        "PGPASSWORD",
+        "PRACE_SECRET_KEY",
+        "JOURNEY_EVIDENCE_PATH",
+    ):
         monkeypatch.setenv(name, "x")
     monkeypatch.setenv("PRACE_DB_PASSWORD", secret_value)
     monkeypatch.setenv("PGPASSWORD", secret_value)
@@ -210,20 +247,26 @@ def test_receipt_never_records_secret_values(repo, monkeypatch):
     body = json.dumps(receipt)
     assert secret_value not in body, (
         "a driver credential was serialized into the receipt; the receipt "
-        "must keep execution variables out of the evidence store")
+        "must keep execution variables out of the evidence store"
+    )
     for name in ("PRACE_DB_PASSWORD", "PGPASSWORD", "PRACE_SECRET_KEY"):
         assert receipt["environment"][name] == "set", (
             f"{name} must be recorded as a set marker, got "
-            f"{receipt['environment'].get(name)!r}")
+            f"{receipt['environment'].get(name)!r}"
+        )
     assert "JOURNEY_EVIDENCE_PATH" in receipt["environment"]
     assert receipt["passed"]
 
 
 def test_acceptance_commands_include_core_journey_and_timeout():
     """The default acceptance commands must include the core journey with correct args and timeout."""
-    from scripts.run_release_reproducer import acceptance_commands, ACCEPTANCE_COMMAND_TIMEOUT
+    from scripts.run_release_reproducer import (
+        acceptance_commands,
+        ACCEPTANCE_COMMAND_TIMEOUT,
+    )
     import sys
     import tempfile
+
     with tempfile.TemporaryDirectory() as tmp:
         state = Path(tmp) / "state"
         repo = Path(tmp) / "repo"
@@ -252,12 +295,15 @@ def test_acceptance_commands_include_a1_when_requested():
     from scripts.run_release_reproducer import acceptance_commands
     import sys
     import tempfile
+
     with tempfile.TemporaryDirectory() as tmp:
         state = Path(tmp) / "state"
         repo = Path(tmp) / "repo"
         repo.mkdir()
         sha = "0" * 40
-        commands = acceptance_commands(sys.executable, state, repo, sha, include_a1=True)
+        commands = acceptance_commands(
+            sys.executable, state, repo, sha, include_a1=True
+        )
         assert len(commands) == 5
         a1_cmd = commands[-1]
         assert a1_cmd[0] == sys.executable
@@ -279,8 +325,9 @@ def test_reproduce_default_excludes_a1(repo):
 def test_reproduce_include_a1_adds_a1_journey(repo):
     """When include_a1=True, the A1 journey command is appended."""
     sha = commit(repo, "fixture")
-    path, receipt = reproduce(repo, sha, commands=[[sys.executable, "-c", "print('ok')"]],
-                             include_a1=True)
+    path, receipt = reproduce(
+        repo, sha, commands=[[sys.executable, "-c", "print('ok')"]], include_a1=True
+    )
     # 1 synthetic command + the A1 core-journey command
     assert len(receipt["checks"]) == 2
     a1_check = receipt["checks"][-1]

@@ -1,12 +1,34 @@
 # Changelog
 
-All notable changes to this project are documented here. Format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-Dates are ISO 8601. Entries are grouped by change package per `change-packages.yml`.
+ All notable changes to this project are documented here. Format follows
+ [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+ Dates are ISO 8601. Entries are grouped by change package per `change-packages.yml`.
 
----
+ ---
 
-## [2026-09-07] — Plan AC v12 live tooling + clean-checkout CI collection fix
+ ## [Unreleased] — 2026-10-22 A1 Core Fixes & Test Stability
+
+ ### Fixed — A1 Export CSV Contract
+ - **`scripts/finalize_a1.py`**: Added `"pending_gates"` and `"warnings"` to `OPTIONAL_REVIEW_FIELDS` to match advisory fields emitted by `portal/release1a/a1_exports.py`. Restores A1 input export path (12 tests).
+
+ ### Fixed — Test Infrastructure
+ - **`tests/test_agent_ops_workflow.py`**: Rewrote `test_existing_hardlinked_ledger_is_refused_without_overwrite` and `test_demo_receipt_and_reuse_refusal` to use fixture-provided directories under `runtime/portal/temporary`, fixing `private_directory` rejections.
+ - **`tests/fixtures/release_1a/manifest.json`**: Added three `_orgonik_zivot.json` variant files to fixture contract (hashes, counts) so architecture proof preflight passes.
+ - **`tests/fixtures/research-comparison/errata/atomic-v1.1-errata-2026-08-14.json`**: Regenerated `target_bindings` SHA256 hashes for run files to match current content.
+ - **`pytest.ini`**: Added `tmp_path_retention_count = 1` to prevent tmpfs exhaustion on CI.
+ - **`tests/_research_tmp.py`**: Removed `tests/fixtures` from `_COPY_REL` (reduces per-test copy 28 MB → 11 MB).
+
+ ### Fixed — Approval Asset
+ - **`docs/prototypes/roadmap-portal/approval-data.js`**: Regenerated from current `planning/approvals.json` (resolves 8 planning validator failures).
+
+ ### Added — A1 Employer Registry & ARES Integration
+ - **`scripts/import_ares_legal_entity.py`**: Rate-limited ARES legal entity import with Assignment linking.
+ - **`portal/release1a/models.py`**: New `field_group`, `source_status` fields on `FieldProposal`; `SourceStatus`/`FieldGroup` enums.
+ - **`scripts/a1_quality_gate.py`**: Section 5.1 validation, CLI bootstrap fix.
+ - **`portal/release1a/a1_exports.py`**: Advisory `pending_gates`/`warnings` columns in CSV export.
+ - **`config/institutions/*.json`** (13 files): Added `"member_state": "CZ"` field.
+
+ ## [2026-09-07] — Plan AC v12 live tooling + clean-checkout CI collection fix
 
 ### Changed — provide the tracked v12 test contract its validator on clean checkouts
 - **`change-packages.yml`** (updated): moved `scripts/run_collector_proposals_v12.py`, `scripts/validate_collector_execution_v12.py`, `tests/test_collector_v12.py` from `quarantined_research_artifacts` to `plan_ac_integrity` (AC-01 Option B ratified). Restores clean-checkout CI collection, which previously failed because the tracked test imported the untracked + quarantined validator.

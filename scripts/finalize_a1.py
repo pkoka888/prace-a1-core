@@ -87,15 +87,17 @@ PROFILE_BY_OSSZ = {
     "OSSZ Praha": "praha",
     "OSSZ Brno": "brno",
 }
-# The 44-column review contract is the required set. Two further columns may
-# be present: they carry the Article 12 situation facts, which are validation
-# evidence rather than form fields, so a review file without them still reads
-# and the gates report the facts as missing rather than defaulting them.
+# The 44-column review contract is the required set. Additional columns may
+# be present: they carry Article 12 situation facts (validation evidence)
+# and advisory readiness fields (pending_gates, warnings), so a review file
+# without them still reads and the gates report facts as missing.
 # Decision D10 and D1b (2026-10-20).
 OPTIONAL_REVIEW_FIELDS = (
     "prior_activity_start",
     "replaces_worker",
     "employment_source_status",
+    "pending_gates",
+    "warnings",
 )
 
 CSV_FIELDS = (
@@ -162,6 +164,25 @@ UNVERIFIED_SOURCE_MARKERS = (
     "placeholder",
     "template",
 )
+
+# Human review gates. Authoritative issue requires every gate closed. A
+# provisional copy keeps open gates open: it reports them as pending gates on
+# an explicitly unverified copy instead of silently closing or blocking them.
+REVIEW_GATES: tuple[tuple[str, str], ...] = (
+    ("identity_reviewed", YES),
+    ("certificate_reviewed", YES),
+    ("approved_for_pdf", YES),
+    ("validated_by_user", "1"),
+)
+
+# Facts the A1 form can carry but that a provisional copy may leave blank.
+# Unknown stays unknown: the copy keeps the gap and reports it as a warning.
+PROVISIONAL_OPTIONAL_FACTS = ("district",)
+
+# Employer source state for a known disagreement with the public register.
+# Provisional copies warn and keep the reviewed employer; authoritative issue
+# stays refused by the existing D15 check.
+EMPLOYMENT_SOURCE_DIVERGES = "DIVERGES_FROM_REGISTER"
 
 VARIANT_DEFAULT = "employee"
 
@@ -275,6 +296,59 @@ def _date(value: str, field: str) -> str:
 POSTING_STATUS_PROFILES = A1_POSTING_STATUS_PROFILES
 # Article 12(1) and 12(2): the activity abroad does not exceed 24 months.
 POSTING_MAX_MONTHS = 24
+
+
+def employment_divergence(row: dict[str, str], registry: dict) -> list[str]:
+    """Where a reviewed employer row and the business register disagree.
+
+    The register is the authority for a company's registered name and seat.
+    A row that was hand-typed can differ from it, and Section 4 of the form
+    is a legal claim about the counterparty, so a divergence is reported
+    rather than silently replaced. Gate D15.
+
+    The register is passed as a plain mapping so that the export, which has a
+    stored record, and the import path, which has a fresh lookup, compare
+    the same way.
+    """
+    if not registry:
+        return []
+    address = registry.get("registered_address") or {}
+    pairs = (
+        ("employment_name", registry.get("legal_name", ""), "name"),
+        ("employment_street", address.get("street", ""), "street"),
+        ("employment_city", address.get("city", ""), "city"),
+    )
+    differences = []
+    for field, registry_value, label in pairs:
+        reviewed = _folded(row.get(field))
+        registry_value = _folded(registry_value)
+        if not registry_value:
+            continue
+        if not reviewed:
+            differences.append(f"{label} is not stated")
+        elif reviewed != registry_value:
+            differences.append(f"{label} differs from the register")
+    postal = _folded_digits(address.get("postal_code", ""))
+    if postal and _folded_digits(row.get("employment_postal_code")) != postal:
+        differences.append("postal code differs from the register")
+    return differences
+
+
+def _folded(value) -> str:
+    """A value reduced to a comparable form.
+
+    A postal code is written with a space in a review row and without one in
+    the register, and the register types some of its values as numbers, so
+    everything is compared as text with the spacing and the case removed.
+    """
+    if value is None:
+        return ""
+    return " ".join(str(value).casefold().split())
+
+
+def _folded_digits(value) -> str:
+    """A value reduced to its digits, for a postal code."""
+    return "".join(character for character in str(value) if character.isdigit())
 
 
 def _check_employer_agreement(employee_id: str, row: dict[str, str]) -> None:
@@ -544,14 +618,117 @@ def _required_review_fields(
     return (*common, *activity, *certificate)
 
 
+def pending_review_gates(row: dict[str, str]) -> list[str]:
+    """Open human review gates for one row, in a stable order.
+
+    The strings name the gate and the required value; they never carry
+    review content.
+    """
+    return [
+        f"{flag} must be {expected}"
+        for flag, expected in REVIEW_GATES
+        if row.get(flag) != expected
+    ]
+
+
+def identity_source_state(
+    row: dict[str, str], source_employee: dict[str, Any]
+) -> dict[str, Any]:
+    """Compare a reviewed row with the normalized scan source.
+
+    Only field names are returned: source and reviewed values stay out of
+    readiness receipts, manifests and verification tables.
+    """
+    source_values = {
+        **{
+            field: source_employee.get("person", {}).get(field, "")
+            for field in (
+                "surname",
+                "given_name",
+                "dob",
+                "birth_place",
+                "nationality",
+                "sex",
+                "insurance_number",
+            )
+        },
+        **{
+            field: source_employee.get("residence", {}).get(field, "")
+            for field in (
+                "street",
+                "house_number",
+                "city",
+                "district",
+                "country_code",
+            )
+        },
+    }
+    differences = [
+        field
+        for field, value in source_values.items()
+        if value
+        and row.get(field, "").casefold() != str(value).strip().casefold()
+    ]
+    expected_scans = set(source_employee.get("provenance", {}).get("scans", []))
+    reviewed_scans = {
+        item.strip()
+        for item in row.get("source_scans", "").split(";")
+        if item.strip()
+    }
+    if reviewed_scans != expected_scans:
+        differences.append("source_scans")
+    return {
+        "state": "MATCHES_SOURCE" if not differences else "DIFFERS_FROM_SOURCE",
+        "differences": differences,
+    }
+
+
+def provisional_warnings(
+    row: dict[str, str], *, identity: dict[str, Any] | None = None
+) -> list[str]:
+    """Non-blocking provisional observations; field names and states only."""
+    warnings = [
+        f"optional fact not stated: {field}"
+        for field in PROVISIONAL_OPTIONAL_FACTS
+        if not row.get(field, "").strip()
+    ]
+    if row.get("employment_source_status") == EMPLOYMENT_SOURCE_DIVERGES:
+        warnings.append(
+            "employment_source_status is DIVERGES_FROM_REGISTER; "
+            "reviewed employer retained pending registry review"
+        )
+    if identity is not None and identity.get("differences"):
+        warnings.append(
+            "reviewed identity/residence differs from normalized scan source: "
+            + ", ".join(identity["differences"])
+        )
+    return warnings
+
+
 def readiness_report(
     rows: list[dict[str, str]],
     profile_dir: Path | None = None,
     *,
     provisional: bool = False,
     variant: str = VARIANT_DEFAULT,
+    employees_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Sanitized, mode-aware review preflight; not generation or artifact approval."""
+    """Sanitized, mode-aware review preflight; not generation or artifact approval.
+
+    ``blockers`` stop the selected mode. In the provisional mode the human
+    review gates stay open and appear in ``pending_gates``; ``ready`` then
+    means ready for a provisional copy, never ready to issue. ``warnings``
+    are non-blocking, field-name-only observations.
+    """
+    source_by_id: dict[str, Any] | None = None
+    if employees_path is not None:
+        try:
+            source_by_id = {
+                item["id"]: item
+                for item in load_json(employees_path).get("employees", [])
+            }
+        except (OSError, ValueError, KeyError, FinalizationError):
+            source_by_id = {}
     report_rows = []
     variant_params = VARIANT_PARAMETERS.get(
         variant, VARIANT_PARAMETERS[VARIANT_DEFAULT]
@@ -575,14 +752,10 @@ def readiness_report(
                 blockers.append(f"placeholder detected in {subject}_source")
             if row.get(f"{subject}_source_status") != AUTHORITATIVE:
                 blockers.append(f"{subject}_source_status is not AUTHORITATIVE")
-        for flag, expected in (
-            ("identity_reviewed", YES),
-            ("certificate_reviewed", YES),
-            ("approved_for_pdf", YES),
-            ("validated_by_user", "1"),
-        ):
-            if row.get(flag) != expected:
-                blockers.append(f"{flag} must be {expected}")
+        gates = pending_review_gates(row)
+        pending = gates if provisional else []
+        if not provisional:
+            blockers.extend(gates)
         if status not in A1_STATUS_PROFILES:
             blockers.append(
                 f"unsupported status_profile {status!r}; expected posted_employee, "
@@ -629,13 +802,49 @@ def readiness_report(
                 blockers.append(
                     "institution_profile is missing, unverified or contains placeholder fields"
                 )
-        report_rows.append({"row_index": index, "blockers": blockers})
+        identity = (
+            identity_source_state(row, source_by_id[row["employee_id"]])
+            if source_by_id is not None and row.get("employee_id") in source_by_id
+            else None
+        )
+        if not provisional and identity is not None and identity["differences"]:
+            blockers.append(
+                "reviewed identity/residence differs from normalized scan source: "
+                + ", ".join(identity["differences"])
+            )
+        warnings = (
+            provisional_warnings(row, identity=identity) if provisional else []
+        )
+        if blockers:
+            gate_state = "BLOCKED"
+        elif pending:
+            gate_state = "AWAITING_REVIEW"
+        else:
+            gate_state = "READY"
+        report_rows.append(
+            {
+                "row_index": index,
+                "gate_state": gate_state,
+                "blockers": blockers,
+                "pending_gates": pending,
+                "warnings": warnings,
+                "identity_source_state": identity["state"]
+                if identity is not None
+                else "NOT_CHECKED",
+            }
+        )
     return {
         "mode": "provisional" if provisional else "authoritative",
         "scope": "review_preflight",
         "ready": bool(rows) and all(not r["blockers"] for r in report_rows),
+        "ready_for": "provisional_copy" if provisional else "authoritative_issue",
         "employee_count": len(rows),
         "blocked_employee_count": sum(bool(r["blockers"]) for r in report_rows),
+        "pending_employee_count": sum(
+            bool(r["pending_gates"]) for r in report_rows
+        ),
+        "pending_gate_count": sum(len(r["pending_gates"]) for r in report_rows),
+        "warning_count": sum(len(r["warnings"]) for r in report_rows),
         "employees": report_rows,
     }
 
@@ -771,57 +980,22 @@ def validate_review(
             raise FinalizationError(
                 f"{employee_id}: missing required values: {', '.join(missing)}"
             )
-        for flag in ("identity_reviewed", "certificate_reviewed", "approved_for_pdf"):
-            if row.get(flag) != YES:
-                raise FinalizationError(f"{employee_id}: {flag} must be YES")
-        if row.get("validated_by_user") != "1":
-            raise FinalizationError(f"{employee_id}: validated_by_user must be 1")
         if not provisional:
+            for flag in ("identity_reviewed", "certificate_reviewed", "approved_for_pdf"):
+                if row.get(flag) != YES:
+                    raise FinalizationError(f"{employee_id}: {flag} must be YES")
+            if row.get("validated_by_user") != "1":
+                raise FinalizationError(f"{employee_id}: validated_by_user must be 1")
             _check_posting_conditions(employee_id, row)
             _check_employer_agreement(employee_id, row)
             for subject in ("activity", "certificate", "signatory"):
                 _require_authoritative_source(row, subject)
-            source_employee = expected_by_id[employee_id]
-            source_values = {
-                **{
-                    field: source_employee.get("person", {}).get(field, "")
-                    for field in (
-                        "surname",
-                        "given_name",
-                        "dob",
-                        "birth_place",
-                        "nationality",
-                        "sex",
-                        "insurance_number",
-                    )
-                },
-                **{
-                    field: source_employee.get("residence", {}).get(field, "")
-                    for field in (
-                        "street",
-                        "house_number",
-                        "city",
-                        "district",
-                        "country_code",
-                    )
-                },
-            }
-            mismatched = [
-                field
-                for field, value in source_values.items()
-                if value
-                and row.get(field, "").casefold() != str(value).strip().casefold()
-            ]
-            expected_scans = set(source_employee.get("provenance", {}).get("scans", []))
-            reviewed_scans = {
-                item.strip()
-                for item in row.get("source_scans", "").split(";")
-                if item.strip()
-            }
-            if mismatched or reviewed_scans != expected_scans:
-                details = ", ".join(mismatched) if mismatched else "source_scans"
+            identity = identity_source_state(row, expected_by_id[employee_id])
+            if identity["differences"]:
                 raise FinalizationError(
-                    f"{employee_id}: reviewed identity/residence differs from normalized scan source: {details}"
+                    f"{employee_id}: reviewed identity/residence differs from "
+                    "normalized scan source: "
+                    + ", ".join(identity["differences"])
                 )
         if row["sex"] not in {"M", "F"}:
             raise FinalizationError(f"{employee_id}: sex must be M or F")
@@ -995,7 +1169,7 @@ def row_to_form(
         },
         "certificate": {
             "document_id": row["document_id"],
-            "member_state": "CZ",
+            "member_state": profile.get("member_state", "CZ"),
             "start_date": row["start_date"],
             "end_date": row["end_date"],
         },
@@ -1014,7 +1188,7 @@ def row_to_form(
     institution_config = {
         "institution": profile["institution"],
         "source_url": profile["source_url"],
-        "certificate": {"member_state": "CZ"},
+        "certificate": {"member_state": profile.get("member_state", "CZ")},
         "issue_date": row["issue_date"],
         "signed_by": row["signed_by"],
     }
@@ -1391,6 +1565,7 @@ def main(argv: list[str] | None = None) -> int:
                     read_review(args.review),
                     args.profiles,
                     provisional=args.provisional,
+                    employees_path=args.employees,
                 )
                 report["run_id"] = run_id
                 write_private_json(destination, report)
@@ -1401,8 +1576,11 @@ def main(argv: list[str] | None = None) -> int:
                             "mode",
                             "scope",
                             "ready",
+                            "ready_for",
                             "employee_count",
                             "blocked_employee_count",
+                            "pending_gate_count",
+                            "warning_count",
                         )
                     }
                 )

@@ -40,7 +40,10 @@
     "documents.json",
     "assignments.json",
     "a1_inputs.json",
-    "jobs.json"
+    "jobs.json",
+    "a1_inputs_orgonik_zivot.json",
+    "assignments_orgonik_zivot.json",
+    "workers_orgonik_zivot.json"
   ],
   "fixture_hashes": {
     "organizations.json": "a39d8bc17ffdbe27e893ffb84ebbba130daa47b2b42ea42c921cf2b953323a87",
@@ -49,7 +52,10 @@
     "documents.json": "949a5da794a737c4fdb32f466a6847e5f4709b1ed54a521942fec94241c85cbe",
     "assignments.json": "7f3bb57f20980888e0e74e0c946ed0fef550686b020ab1c45fc6d6a225fa1e47",
     "a1_inputs.json": "ee65b65f2f071db6ccfe11acaa1f74202640b312b87fa1757e3992d62bbd452a",
-    "jobs.json": "fe24e64fe7f49a7275cd909746a1df7bfb5e44097a7d3322b2cff0340919513d"
+    "jobs.json": "fe24e64fe7f49a7275cd909746a1df7bfb5e44097a7d3322b2cff0340919513d",
+    "a1_inputs_orgonik_zivot.json": "c36b365bf5336ee54212a5b7fffb5a1f16c6ee2a010aa72443ef28b9d8d8d1e6",
+    "assignments_orgonik_zivot.json": "5b82cc33c0f71be1aafbbf762776e0c07f6a51997946ad2b289d6a5ff92af0e7",
+    "workers_orgonik_zivot.json": "53f00b68b85afd18bc1c7a538df0251af2d1d0edc4ae2ef2891d9a726e2a8f19"
   },
   "expected_counts": {
     "organizations.json": 3,
@@ -58,7 +64,10 @@
     "documents.json": 5,
     "assignments.json": 5,
     "a1_inputs.json": 2,
-    "jobs.json": 5
+    "jobs.json": 5,
+    "a1_inputs_orgonik_zivot.json": 4,
+    "assignments_orgonik_zivot.json": 4,
+    "workers_orgonik_zivot.json": 4
   },
   "expected_negative_cases": [
     "disguised executable",

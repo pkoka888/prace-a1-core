@@ -5,6 +5,7 @@ can never mutate canonical outputs under ``research/``, ``docs/prototypes/
 research-cockpit/``, or ``tests/fixtures/``. ``build_tmp_root`` copies only the
 subtrees the research scripts touch (never private/gitignored data).
 """
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,6 @@ _COPY_REL = [
     "research/review",
     "research/query-packs",
     "research/synthetic",
-    "tests/fixtures",
     "docs/prototypes/research-cockpit",
 ]
 

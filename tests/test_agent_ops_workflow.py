@@ -3,11 +3,13 @@
 No skipping when dependencies are absent: this suite requires the documented
 research environment. Use a private in-repository --basetemp (see runbook).
 """
+
 from __future__ import annotations
 
 import importlib.metadata
 import json
 import os
+import uuid
 from pathlib import Path
 import subprocess
 import sys
@@ -15,8 +17,15 @@ import sys
 import pytest
 
 from scripts.research_agent_ops_workflow import (
-    Harness, ROOT, SYNTHETIC_REVISIONS, SYNTHETIC_TARGETS, SyntheticAuthority,
-    load_config, private_directory, request, run_demo,
+    Harness,
+    ROOT,
+    SYNTHETIC_REVISIONS,
+    SYNTHETIC_TARGETS,
+    SyntheticAuthority,
+    load_config,
+    private_directory,
+    request,
+    run_demo,
 )
 
 
@@ -30,7 +39,29 @@ def private_umask():
 @pytest.fixture
 def harness(tmp_path):
     authority = SyntheticAuthority()
-    return Harness(tmp_path, authority)
+    # Harness requires directory under ROOT/runtime/portal/temporary
+    demo_dir = ROOT / "runtime/portal/temporary" / f"test-agent-ops-{uuid.uuid4().hex[:8]}"
+    demo_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
+    try:
+        return Harness(demo_dir, authority)
+    except Exception:
+        # Cleanup on failure
+        import shutil
+        shutil.rmtree(demo_dir, ignore_errors=True)
+        raise
+
+
+@pytest.fixture
+def fresh_demo_dir():
+    """Create a fresh demo directory path under the allowed path for tests that need
+    to test directory creation and file safety checks. The directory is NOT created
+    by this fixture; the test/code under test will create it."""
+    demo_dir = ROOT / "runtime/portal/temporary" / f"test-agent-ops-fresh-{uuid.uuid4().hex[:8]}"
+    try:
+        yield demo_dir
+    finally:
+        import shutil
+        shutil.rmtree(demo_dir, ignore_errors=True)
 
 
 def test_pinned_experiment_dependencies():
@@ -51,18 +82,21 @@ def test_pause_has_no_effect_then_valid_decision_and_duplicate(harness):
     assert harness.count_effects() == 2
 
 
-@pytest.mark.parametrize(("condition", "reason"), [
-    ("rejected", "decision_rejected"),
-    ("expired", "decision_expired"),
-    ("revoked", "decision_revoked"),
-    ("actor", "decision_actor"),
-    ("cross_run", "decision_scope"),
-    ("stale_decision", "decision_scope"),
-    ("changed_revision", "source_drift"),
-    ("changed_targets", "target_drift"),
-    ("changed_decision_targets", "decision_scope"),
-    ("unknown_decision", "decision_missing"),
-])
+@pytest.mark.parametrize(
+    ("condition", "reason"),
+    [
+        ("rejected", "decision_rejected"),
+        ("expired", "decision_expired"),
+        ("revoked", "decision_revoked"),
+        ("actor", "decision_actor"),
+        ("cross_run", "decision_scope"),
+        ("stale_decision", "decision_scope"),
+        ("changed_revision", "source_drift"),
+        ("changed_targets", "target_drift"),
+        ("changed_decision_targets", "decision_scope"),
+        ("unknown_decision", "decision_missing"),
+    ],
+)
 def test_refusal_cannot_reach_effect(harness, condition, reason):
     state = request()
     paused = harness.start(state)
@@ -84,7 +118,9 @@ def test_refusal_cannot_reach_effect(harness, condition, reason):
         harness.targets = (SYNTHETIC_TARGETS[0],)
     elif condition == "changed_decision_targets":
         decision_state["targets"] = [SYNTHETIC_TARGETS[0]]
-        decision_state["checks"] = {SYNTHETIC_TARGETS[0]: paused["checks"][SYNTHETIC_TARGETS[0]]}
+        decision_state["checks"] = {
+            SYNTHETIC_TARGETS[0]: paused["checks"][SYNTHETIC_TARGETS[0]]
+        }
     ref = harness.authority.issue(decision_state, **options)
     if condition == "revoked":
         harness.authority.revoked.add(ref)
@@ -108,7 +144,17 @@ def test_each_required_check_must_pass(harness, status, check):
     assert harness.count_effects() == 0
 
 
-@pytest.mark.parametrize("mutation", ["schema", "missing_check", "target", "claimed_approval", "claimed_effect", "extra_field"])
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "schema",
+        "missing_check",
+        "target",
+        "claimed_approval",
+        "claimed_effect",
+        "extra_field",
+    ],
+)
 def test_invalid_input_is_refused_before_checkpoint(harness, mutation):
     state = request()
     if mutation == "schema":
@@ -151,7 +197,9 @@ def test_reopen_after_fault_reconciles_durable_effect(harness, fault):
     reopened = Harness(harness.directory, harness.authority)
     result = reopened.resume(state["run_id"])
     assert result["status"] == "passed"
-    assert set(result["effects"].values()) == ({"created"} if fault == "before_effect" else {"reconciled"})
+    assert set(result["effects"].values()) == (
+        {"created"} if fault == "before_effect" else {"reconciled"}
+    )
     assert reopened.count_effects() == 2
 
 
@@ -196,9 +244,18 @@ print(json.dumps({'status': result['status'], 'count': harness.count_effects()})
 """
     result = subprocess.run(
         [sys.executable, "-c", program, str(harness.directory), state["run_id"]],
-        cwd=ROOT, env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "PYTHONNOUSERSITE": "1",
-                       "LANGSMITH_TRACING": "false", "LANGCHAIN_TRACING_V2": "false"},
-        text=True, capture_output=True, timeout=30, check=True,
+        cwd=ROOT,
+        env={
+            "PATH": "/usr/bin:/bin",
+            "LANG": "C.UTF-8",
+            "PYTHONNOUSERSITE": "1",
+            "LANGSMITH_TRACING": "false",
+            "LANGCHAIN_TRACING_V2": "false",
+        },
+        text=True,
+        capture_output=True,
+        timeout=30,
+        check=True,
     )
     assert json.loads(result.stdout) == {"status": "passed", "count": 2}
     assert harness.snapshot(state["run_id"])["status"] == "passed"
@@ -228,23 +285,23 @@ def test_parent_traversal_and_shared_base_create_nothing(tmp_path):
     assert not (tmp_path.parent / escaped_name).exists()
 
 
-def test_existing_hardlinked_ledger_is_refused_without_overwrite(tmp_path):
-    sentinel = tmp_path / "synthetic-sentinel.txt"
+def test_existing_hardlinked_ledger_is_refused_without_overwrite(fresh_demo_dir):
+    fresh_demo_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
+    sentinel = fresh_demo_dir / "synthetic-sentinel.txt"
     sentinel.write_text("synthetic unchanged sentinel")
-    os.link(sentinel, tmp_path / "synthetic-effects.sqlite3")
+    os.link(sentinel, fresh_demo_dir / "synthetic-effects.sqlite3")
     with pytest.raises(ValueError, match="unsafe existing demo file"):
-        Harness(tmp_path, SyntheticAuthority())
+        Harness(fresh_demo_dir, SyntheticAuthority())
     assert sentinel.read_text() == "synthetic unchanged sentinel"
 
 
-def test_demo_receipt_and_reuse_refusal(tmp_path):
-    directory = tmp_path / "demo"
-    result = run_demo(directory)
+def test_demo_receipt_and_reuse_refusal(fresh_demo_dir):
+    result = run_demo(fresh_demo_dir)
     assert result["initial_status"] == "waiting_operator"
     assert result["final_status"] == "passed"
     assert result["effects"] == dict.fromkeys(SYNTHETIC_TARGETS, "reconciled")
     assert result["effect_count"] == 2
     assert result["host_actions"] == result["provider_calls"] == 0
-    assert json.loads((directory / "receipt.json").read_text()) == result
+    assert json.loads((fresh_demo_dir / "receipt.json").read_text()) == result
     with pytest.raises(FileExistsError):
-        run_demo(directory)
+        run_demo(fresh_demo_dir)
