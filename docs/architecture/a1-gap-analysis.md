@@ -333,6 +333,34 @@ nothing checks the codes against the closed State domain.
 
 ## 7b. Findings from the decision increment
 
+**The employment block has no source status.** The repository says where the
+activity, the certificate and the signatory came from
+(`activity_source_status`, `certificate_source_status`,
+`signatory_source_status`) but says nothing about the **employer**. Section 4
+of the form — the code, the name and the seat — is a legal claim about a
+counterparty, and a hand-typed employer name in a review row is
+indistinguishable from a registry-verified one. The two reviewed employer
+records now in the local database make that visible: both are sole traders
+whose registry record carries a name and a seat, and both review rows carry
+free text for the same facts. The export does not compare them, because
+there is nowhere to put the answer. Gate D15.
+
+**One of the agency's own employment identifiers is not a Czech
+registration number.** The review data names three: two are eight-digit
+numbers the register accepts, and the third is **nine digits** with the
+country recorded as CZ, which the register refuses with `ARES_HTTP_400`. A
+Czech IČO is eight digits, so the value is either a data-entry error or a
+foreign registration number recorded with the wrong country. The import
+reports it and continues with the rest, which is the behaviour a batch
+import needs, but the value itself is the operator's to correct — it is not
+guessed at, and the registry's refusal is the evidence.
+
+**The import could discover the identifiers itself.** Running it with no
+arguments now reads the registration numbers out of the agency's own review
+data and retrieves each for review, so the first step is one command rather
+than one command per employer. It still never invents a subject: the
+numbers come from the reviewed rows, and the ones still pending are skipped.
+
 **The client-confirmation copy failed its own quality gate.** The copy was
 rendered by the placeholder framework, which erased 279, 610 and 40 template
 pixels on the three pages against a limit of 24, so the document the agency

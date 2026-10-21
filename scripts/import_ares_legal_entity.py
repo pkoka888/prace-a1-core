@@ -23,6 +23,7 @@ is stored with its provenance and never published in a committed document.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import os
@@ -65,6 +66,48 @@ def _store(review_path: Path) -> int:
     return 0
 
 
+def _discover(review_path: Path) -> list[str]:
+    """The registration numbers the agency's own review rows name.
+
+    The import does not guess which employer to look up: it reads the
+    registration numbers the reviewed data already carries, and skips the
+    ones that are still pending.
+    """
+    if not review_path.is_file():
+        return []
+    with review_path.open(encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream))
+    found: list[str] = []
+    for row in rows:
+        value = (row.get("employment_id") or "").strip()
+        if not value.isdigit() or value in found:
+            continue
+        found.append(value)
+    return found
+
+
+def _retrieve_one(registration_id: str, out: Path) -> bool:
+    """Retrieve one registration. Returns whether it succeeded."""
+    from portal.release1a.ares import (
+        AresUnavailable,
+        fetch_legal_entity,
+        write_review_record,
+    )
+
+    try:
+        record = fetch_legal_entity(registration_id)
+    except AresUnavailable as exc:
+        print(f"{registration_id}: not retrieved ({exc})", file=sys.stderr)
+        return False
+    record["content_sha256"] = hashlib.sha256(
+        json.dumps(record, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    destination = out / f"{registration_id}.json"
+    write_review_record(record, destination)
+    print(f"{registration_id}: wrote {destination}")
+    return True
+
+
 def _retrieve(registration_id: str, out: Path) -> int:
     from portal.release1a.ares import (
         AresUnavailable,
@@ -96,12 +139,42 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--registration-id")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--confirm", type=Path)
+    parser.add_argument(
+        "--review",
+        type=Path,
+        help="the review CSV to read the registration numbers from; "
+        "without --registration-id every number in it is retrieved",
+    )
+    parser.add_argument(
+        "--all-reviewed",
+        action="store_true",
+        help="retrieve every registration number the review rows carry",
+    )
     args = parser.parse_args(argv)
     if args.confirm:
         return _store(args.confirm)
-    if not args.registration_id or not args.out:
-        parser.error("--registration-id and --out are required to retrieve")
-    return _retrieve(args.registration_id, args.out)
+    if args.registration_id:
+        if not args.out:
+            parser.error("--out is required with --registration-id")
+        return _retrieve(args.registration_id, args.out)
+
+    review = args.review or (ROOT / "a1" / "review.csv")
+    out = args.out or (ROOT / "runtime" / "portal" / "temporary" / "ares-review")
+    if not args.all_reviewed and not review.is_file():
+        parser.error(
+            f"no review file at {review}; pass --registration-id, or "
+            "--all-reviewed with a review file"
+        )
+    registrations = _discover(review)
+    if not registrations:
+        print("no registration numbers in the review data", file=sys.stderr)
+        return 2
+    out.mkdir(parents=True, exist_ok=True)
+    print(f"retrieving {len(registrations)} registration(s) for review")
+    retrieved = sum(1 for r in registrations if _retrieve_one(r, out))
+    print(f"{retrieved} of {len(registrations)} retrieved; review them, then "
+          "store each with --confirm")
+    return 0 if retrieved else 2
 
 
 if __name__ == "__main__":

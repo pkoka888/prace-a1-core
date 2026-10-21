@@ -138,3 +138,46 @@ def test_the_review_record_is_written_privately(tmp_path):
     write_review_record(record, destination)
     assert json.loads(destination.read_text())["registration_id"] == "00000000"
     assert destination.stat().st_mode & 0o777 == 0o600
+
+
+def test_the_registration_numbers_are_discovered_from_the_review_data(tmp_path):
+    """The import does not guess which employer to look up.
+
+    It reads the registration numbers the reviewed rows already carry and
+    skips the ones still pending, so a bare run does something useful
+    without inventing a subject.
+    """
+    from scripts.import_ares_legal_entity import _discover
+
+    review = tmp_path / "review.csv"
+    review.write_text(
+        "employee_id,employment_id\n"
+        "one,17511267\n"
+        "two,19213298\n"
+        "three,<PENDING_OPERATOR_REVIEW>\n"
+        "four,17511267\n",
+        encoding="utf-8",
+    )
+    assert _discover(review) == ["17511267", "19213298"]
+
+
+def test_a_missing_review_file_yields_no_registrations(tmp_path):
+    from scripts.import_ares_legal_entity import _discover
+
+    assert _discover(tmp_path / "absent.csv") == []
+
+
+def test_the_stored_record_keeps_the_review_step_between(monkeypatch, tmp_path):
+    """Nothing is stored by the retrieval step."""
+    from scripts import import_ares_legal_entity as importer
+
+    written = []
+    monkeypatch.setattr(
+        importer, "_retrieve_one", lambda registration_id, out: written.append(registration_id) or True
+    )
+    review = tmp_path / "review.csv"
+    review.write_text(
+        "employee_id,employment_id\none,17511267\n", encoding="utf-8"
+    )
+    assert importer.main(["--all-reviewed", "--review", str(review), "--out", str(tmp_path / "out")]) == 0
+    assert written == ["17511267"]
