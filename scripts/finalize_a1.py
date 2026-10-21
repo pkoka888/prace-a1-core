@@ -92,7 +92,11 @@ PROFILE_BY_OSSZ = {
 # evidence rather than form fields, so a review file without them still reads
 # and the gates report the facts as missing rather than defaulting them.
 # Decision D10 and D1b (2026-10-20).
-OPTIONAL_REVIEW_FIELDS = ("prior_activity_start", "replaces_worker")
+OPTIONAL_REVIEW_FIELDS = (
+    "prior_activity_start",
+    "replaces_worker",
+    "employment_source_status",
+)
 
 CSV_FIELDS = (
     "employee_id",
@@ -271,6 +275,22 @@ def _date(value: str, field: str) -> str:
 POSTING_STATUS_PROFILES = A1_POSTING_STATUS_PROFILES
 # Article 12(1) and 12(2): the activity abroad does not exceed 24 months.
 POSTING_MAX_MONTHS = 24
+
+
+def _check_employer_agreement(employee_id: str, row: dict[str, str]) -> None:
+    """The employer row must agree with the business register.
+
+    Section 4 of the form is a legal claim about the counterparty, so a row
+    that diverges from the register is refused before issue rather than
+    silently replaced. A row with no reviewed record is not refused here: the
+    absence of a record is "not stated", and the reviewer decides. Gate D15.
+    """
+    if row.get("employment_source_status") == "DIVERGES_FROM_REGISTER":
+        raise FinalizationError(
+            f"{employee_id}: the employer row diverges from the business "
+            "register; Section 4 is a legal claim about the counterparty, so "
+            "it must be reconciled before issue"
+        )
 
 
 def _check_posting_conditions(employee_id: str, row: dict[str, str]) -> None:
@@ -758,6 +778,7 @@ def validate_review(
             raise FinalizationError(f"{employee_id}: validated_by_user must be 1")
         if not provisional:
             _check_posting_conditions(employee_id, row)
+            _check_employer_agreement(employee_id, row)
             for subject in ("activity", "certificate", "signatory"):
                 _require_authoritative_source(row, subject)
             source_employee = expected_by_id[employee_id]

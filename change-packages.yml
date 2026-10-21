@@ -148,6 +148,7 @@
         "tests/m2/test_review_fixes.py",
         "tests/m2/test_a1_situation_facts.py",
         "tests/m2/test_a1_legal_entity.py",
+        "tests/m2/test_a1_employment_registry.py",
         "tests/m2/test_readiness.py",
         "tests/test_j4_service.py",
         "tests/test_j4_minimum.py",

@@ -333,17 +333,24 @@ nothing checks the codes against the closed State domain.
 
 ## 7b. Findings from the decision increment
 
-**The employment block has no source status.** The repository says where the
-activity, the certificate and the signatory came from
-(`activity_source_status`, `certificate_source_status`,
-`signatory_source_status`) but says nothing about the **employer**. Section 4
+**The employment block had no source status — now it does (gate D15).** The
+repository said where the activity, the certificate and the signatory came
+from (`activity_source_status`, `certificate_source_status`,
+`signatory_source_status`) and said nothing about the **employer**. Section 4
 of the form — the code, the name and the seat — is a legal claim about a
-counterparty, and a hand-typed employer name in a review row is
+counterparty, and a hand-typed employer name in a review row was
 indistinguishable from a registry-verified one. The two reviewed employer
-records now in the local database make that visible: both are sole traders
-whose registry record carries a name and a seat, and both review rows carry
-free text for the same facts. The export does not compare them, because
-there is nowhere to put the answer. Gate D15.
+records made that visible: both are sole traders whose registry record
+carries a name and a seat, and both review rows carry free text for the same
+facts.
+
+The export now compares the row with the register and records the answer in
+`employment_source_status`: `REGISTRY_VERIFIED` when they agree,
+`DIVERGES_FROM_REGISTER` when they do not, and the column is **absent**
+when there is no reviewed record — absence is "not stated", and the reviewer
+decides. A divergent employer is refused before issue, because Section 4 is a
+legal claim. The row is never silently replaced: the divergence is reported
+and the operator reconciles it.
 
 **One of the agency's own employment identifiers is not a Czech
 registration number.** The review data names three: two are eight-digit

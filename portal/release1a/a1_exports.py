@@ -16,10 +16,11 @@ from .identity import _authorize, _lock_organization, _lock_sources
 from .models import (
     A1Case,
     Assignment,
-    Worker,
-    WorkerIdentityRevision,
-    WorkerIdentityClaim,
     FieldProposal,
+    LegalEntity,
+    Worker,
+    WorkerIdentityClaim,
+    WorkerIdentityRevision,
 )
 from .services import StaleWrite, J4_IDENTITY_BINDING
 
@@ -157,6 +158,54 @@ def update_assignment_facts(
             f"assignment:{assignment.pk}",
         )
     return assignment
+
+
+def _registry_employer(organization, registration_id: str):
+    """The reviewed employer record for a registration number, if there is one."""
+    registration_id = (registration_id or "").strip()
+    if not registration_id:
+        return None
+    return (
+        LegalEntity.objects.filter(
+            organization=organization, registration_id=registration_id
+        )
+        .order_by("pk")
+        .first()
+    )
+
+
+def _employment_divergence(row: dict, entity) -> list[str]:
+    """Where the reviewed employer row and the register disagree.
+
+    The register is the authority for a company's registered name and seat.
+    A row that was hand-typed can differ from it, and Section 4 of the form
+    is a legal claim about the counterparty, so a divergence is reported
+    rather than silently replaced. Gate D15.
+    """
+    if entity is None:
+        return []
+    address = entity.registered_address or {}
+    pairs = (
+        ("employment_name", entity.legal_name, "name"),
+        ("employment_street", address.get("street", ""), "street"),
+        ("employment_city", address.get("city", ""), "city"),
+        ("employment_postal_code", address.get("postal_code", ""), "postal code"),
+    )
+    differences = []
+    for field, registry_value, label in pairs:
+        reviewed = (row.get(field) or "").strip()
+        registry_value = (registry_value or "").strip()
+        if not registry_value:
+            continue
+        if not reviewed:
+            differences.append(f"{label} is not stated")
+        elif _normalise(reviewed) != _normalise(registry_value):
+            differences.append(f"{label} differs from the register")
+    return differences
+
+
+def _normalise(value: str) -> str:
+    return " ".join(value.casefold().split())
 
 
 def _value(field, value):
@@ -414,6 +463,19 @@ def _snapshot(user, organization, worker_id, assignment_id, claim_id):
                             "confirmed": False,
                         },
                     )
+        # The employer: the register is the authority for a company's
+        # registered name and seat, so a row that disagrees with it is
+        # reported, never silently replaced. Gate D15.
+        entity = assignment.legal_entity or _registry_employer(
+            organization, row.get("employment_id", "")
+        )
+        if entity is not None:
+            differences = _employment_divergence(row, entity)
+            if differences:
+                row["employment_source_status"] = "DIVERGES_FROM_REGISTER"
+                blockers.append("employment_diverges_from_register")
+            else:
+                row["employment_source_status"] = "REGISTRY_VERIFIED"
         if row["status_profile"] and (
             row["status_profile"] == "self_employed_multi_state"
         ) != (worker.activity_profile == "self_employed"):
