@@ -719,8 +719,11 @@ needs it and never blocks the rest of the application.
 | D8 | Self-employed employer = person derivation? | **Replaced by a `sole_trader` `LegalEntity` row** | Engineering | Yes | `LegalEntity` master (D11a seed path) |
 | D9 | 5.3 no-fixed-address branch? | NO (hardcoded FALSE) | Engineering | Yes | Nullable source field + review |
 | D10 | Carry a situation record? | **YES, with four fields** — `posting_start`, `posting_end`, `prior_activity_start`, `replaces_worker`; `legal_basis` dropped as derivable and `nace_code` moved to the A block | Jan (decided) | Yes | `Assignment` (migration 0021) + the optional review columns |
-| D11a | Permit an operator-initiated **offline** ARES import of a reviewed employer record? | **YES** — decided 2026-10-20 | Jan (decided) | Yes | `LegalEntity` seed path |
-| D11b | Permit **runtime server-side egress** to `ares.gov.cz`? | NO | Jan (host/network decision) | Yes | `LegalEntity` refresh path |
+| D11a | Permit an operator-initiated **offline** ARES import of a reviewed employer record? | **YES** — decided and implemented 2026-10-20 | Jan (decided) | Yes | `LegalEntity` + `scripts/import_ares_legal_entity.py` |
+| D11b | Permit **runtime server-side egress** to `ares.gov.cz`? | **YES** — decided and implemented 2026-10-20 | Jan (decided) | Yes | `portal/release1a/ares.py` |
+| D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
+| D13 | Capture the **State-of-stay** address (1.9) in the identity chain? | **YES**, still to build | Jan (decided) | Yes | the identity proposal chain, not a column |
+| D14 | Carry the **CZ-NACE main activity** on the assignment? | **YES** — decided and implemented 2026-10-20 | Jan (decided) | Yes | `Assignment.nace_code` |
 | D12 | Model the certificate as a lifecycle with withdrawal and suspension states? | NO | Engineering | Yes | `A1Case` + artifact ledger |
 
 D1 was split into D1a and D1b, and D10 was added, after the legal reading
@@ -732,6 +735,16 @@ pursued the activity for some time (two months is normally sufficient), and
 when the activity does not exceed 24 months. The same conditions apply to
 3.1, with the addition of the "does not replace another person" test, which
 is why D10 is needed whichever way D1a goes.
+
+**The supported status set is enumerated once.** The set used to be written
+out in six places, and the 3.3 activation path had to name all of them —
+sixteen of which failed silently. It is now `A1_STATUS_PROFILES` in
+`scripts/a1_core.py`, with `A1_STATUS_VARIANTS`, `A1_POSTING_STATUS_PROFILES`
+and `A1_STATUS_LABELS` beside it; every site that offers, accepts or derives
+a status reads the constant, and `tests/test_a1_status_default.py` asserts
+that it is defined once and that no site re-enumerates it. The 23-site
+activation table is therefore a checklist for the *semantic branches* and the
+two input whitelists, not for the vocabulary.
 
 **The default for an unstated status is "undecided", and it never changes.**
 No Section 3 box is ticked, the status is listed as a missing field, and no

@@ -18,6 +18,9 @@ from pypdf import PdfReader
 
 try:
     from .a1_core import (
+        A1_POSTING_STATUS_PROFILES,
+        A1_STATUS_PROFILES,
+        A1_STATUS_VARIANTS,
         PROVISIONAL_NOTICE,
         build_form_data,
         czech_display_case,
@@ -43,6 +46,10 @@ try:
     from .a1_private import A1PrivateInputError, private_path, private_root
 except ImportError:  # Direct CLI execution.
     from a1_core import (
+        A1_POSTING_STATUS_PROFILES,
+        A1_STATUS_PROFILES,
+        A1_STATUS_VARIANTS,
+        PROVISIONAL_NOTICE,
         build_form_data,
         czech_display_case,
         enrich_residence,
@@ -156,7 +163,10 @@ VARIANT_DEFAULT = "employee"
 
 VARIANT_PARAMETERS = {
     "employee": {
-        "status_profiles": ("posted_employee", "employee_multi_state"),
+        "status_profiles": tuple(
+            profile for profile in A1_STATUS_PROFILES
+            if A1_STATUS_VARIANTS[profile] == "employee"
+        ),
         "section5_activity_name_default": "",
         "section5_activity_address_default": "",
         "employment_name_must_not_contain": ("osvč", "osvc", "živnost", "samostatná"),
@@ -164,7 +174,10 @@ VARIANT_PARAMETERS = {
         "readiness_requires_activity_name": True,
     },
     "self_employed": {
-        "status_profiles": ("self_employed_multi_state",),
+        "status_profiles": tuple(
+            profile for profile in A1_STATUS_PROFILES
+            if A1_STATUS_VARIANTS[profile] == "self_employed"
+        ),
         "section5_activity_name_default": "Samostatná výdělečná činnost",
         "section5_activity_address_default": "DE, CZ",
         "employment_name_must_not_contain": (),
@@ -255,7 +268,7 @@ def _date(value: str, field: str) -> str:
 # of Regulation 883/2004, and Article 12 conditions it. A certificate that
 # asserts a posting has to be able to show those conditions, so the facts are
 # checked at the issuance gate. Decision D1b (2026-10-20).
-POSTING_STATUS_PROFILES = ("posted_employee", "posted_self_employed")
+POSTING_STATUS_PROFILES = A1_POSTING_STATUS_PROFILES
 # Article 12(1) and 12(2): the activity abroad does not exceed 24 months.
 POSTING_MAX_MONTHS = 24
 
@@ -550,11 +563,7 @@ def readiness_report(
         ):
             if row.get(flag) != expected:
                 blockers.append(f"{flag} must be {expected}")
-        if status not in {
-            "self_employed_multi_state",
-            "employee_multi_state",
-            "posted_employee",
-        }:
+        if status not in A1_STATUS_PROFILES:
             blockers.append(
                 f"unsupported status_profile {status!r}; expected posted_employee, "
                 "employee_multi_state or self_employed_multi_state"
@@ -795,16 +804,12 @@ def validate_review(
                 )
         if row["sex"] not in {"M", "F"}:
             raise FinalizationError(f"{employee_id}: sex must be M or F")
-        if row["status_profile"] not in {
-            "self_employed_multi_state",
-            "employee_multi_state",
-            "posted_employee",
-        }:
+        if row["status_profile"] not in A1_STATUS_PROFILES:
             raise FinalizationError(
                 f"{employee_id}: unsupported status_profile {row['status_profile']!r}; "
-                "expected posted_employee, employee_multi_state or self_employed_multi_state"
+                f"expected {', '.join(A1_STATUS_PROFILES)}"
             )
-        if row["status_profile"] in {"employee_multi_state", "posted_employee"}:
+        if A1_STATUS_VARIANTS.get(row["status_profile"], "") == "employee":
             if "osvč" in row["employment_name"].casefold():
                 raise FinalizationError(
                     "employee profile has self-employed employer data"
@@ -872,14 +877,10 @@ def validate_application_draft_row(
         raise FinalizationError("APPLICATION_DRAFT_DATE_ORDER")
     if row["sex"] not in {"M", "F"}:
         raise FinalizationError("APPLICATION_DRAFT_SEX_INVALID")
-    if row["status_profile"] not in {
-        "self_employed_multi_state",
-        "employee_multi_state",
-        "posted_employee",
-    }:
+    if row["status_profile"] not in A1_STATUS_PROFILES:
         raise FinalizationError(
-            "APPLICATION_DRAFT_PROFILE_INVALID: expected posted_employee, employee_multi_state "
-            "or self_employed_multi_state"
+            "APPLICATION_DRAFT_PROFILE_INVALID: expected "
+            f"{', '.join(A1_STATUS_PROFILES)}"
         )
     if (
         row["status_profile"] != "self_employed_multi_state"
@@ -967,11 +968,7 @@ def row_to_form(
             or (
                 "DE, CZ"
                 if row["status_profile"]
-                in {
-                    "self_employed_multi_state",
-                    "employee_multi_state",
-                    "posted_employee",
-                }
+                in A1_STATUS_PROFILES
                 else ""
             ),
         },

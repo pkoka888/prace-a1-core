@@ -169,8 +169,55 @@ class Document(TenantModel):
         ]
 
 
+class LegalEntity(TenantModel):
+    """The employer or self-employed business behind an employment.
+
+    It holds registry data, not employment data: the fact that a person works
+    for this entity lives on the Assignment, which is tenant-scoped. The
+    registry data itself is public, so the record carries where it came from
+    and when it was verified, and a correction is traceable to the registry
+    event that caused it.
+
+    The record is tenant-scoped rather than shared. AGENTS.md makes the
+    organization the isolation boundary, and an employer is a customer of
+    the agency, not public reference data like a ministry or a country list.
+    The ARES lookup is the source either way, so a shared table would save a
+    lookup at the cost of letting one tenant's edits reach another's records.
+    Decision D11a (2026-10-20).
+    """
+
+    registration_id = models.CharField(max_length=32)
+    legal_name = models.CharField(max_length=255)
+    legal_form = models.CharField(max_length=32, default="company")
+    country_code = models.CharField(max_length=2, default="CZ")
+    registered_address = models.JSONField(default=dict, blank=True)
+    nace_codes = models.JSONField(default=list, blank=True)
+    source = models.CharField(max_length=255, default="")
+    verified_on = models.DateField(null=True, blank=True)
+    content_sha256 = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "registration_id"],
+                name="release1a_legalentity_org_registration_uniq",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.legal_name} ({self.registration_id})"
+
+
 class Assignment(TenantModel):
     worker = models.ForeignKey(Worker, on_delete=models.PROTECT)
+    # The counterparty, when it is a legal entity the agency has a reviewed
+    # record of. Null means the employer is still free text.
+    legal_entity = models.ForeignKey(
+        LegalEntity, on_delete=models.PROTECT, null=True, blank=True
+    )
+    # The CZ-NACE main activity, which the Czech application requires when
+    # activity is performed in a Member State. Null means not captured.
+    nace_code = models.CharField(max_length=16, null=True, blank=True)
     workplace_label = models.CharField(max_length=160)
     activity_label = models.CharField(max_length=120)
     a1_facts_json = models.JSONField(default=dict, blank=True)

@@ -8,6 +8,7 @@ import csv
 import io
 from datetime import datetime
 from django.db import transaction
+from scripts.a1_core import A1_STATUS_PROFILES
 from scripts.finalize_a1 import CSV_FIELDS, readiness_report, review_fieldnames
 from src.document_core.serialization import canonical_json, result_hash
 from .document_intake import audit, read_result
@@ -75,12 +76,7 @@ def _facts(value):
             or any(not isinstance(v, str) or len(v) > 240 for v in block.values())
         ):
             raise ValueError("A1_FACTS_FIELDS_INVALID")
-    if value.get("status_profile", "") not in (
-        "",
-        "posted_employee",
-        "employee_multi_state",
-        "self_employed_multi_state",
-    ):
+    if value.get("status_profile", "") not in ("", *A1_STATUS_PROFILES):
         raise ValueError("A1_STATUS_PROFILE_INVALID")
     return value
 

@@ -25,6 +25,11 @@ from scripts.a1_completion_preview import (  # noqa: E402
     STATUS_PROFILE_CHOICES,
     build_preview,
 )
+from scripts.a1_core import (  # noqa: E402
+    A1_STATUS_LABELS,
+    A1_STATUS_PROFILES,
+    A1_STATUS_VARIANTS,
+)
 
 SECTION_3_BOXES = (
     "status_posted_employee",
@@ -104,36 +109,70 @@ def test_the_choices_offered_are_exactly_the_supported_profiles():
     assert set(form["meta"]["status_profile_choices"]) == set(PROFILES)
 
 
-def test_the_supported_profile_set_is_enumerated_consistently():
-    """Every site that enumerates the supported set must agree.
+def test_the_supported_set_is_enumerated_exactly_once():
+    """The set lives in the core, and nowhere else.
 
-    The set is currently written out in six places. This test is the guard
-    that makes the duplication safe: change one without the others and it
-    fails here rather than silently rejecting a valid row.
+    It used to be written out in six places, and the activation path had to
+    name all of them -- sixteen of which failed silently. Now it is
+    enumerated once and every site derives from it.
     """
+    sites = (
+        "scripts/finalize_a1.py",
+        "scripts/a1_completion_preview.py",
+        "scripts/a1_quality_gate.py",
+        "portal/release1a/a1_exports.py",
+        "portal/release1a/assignment_facts.py",
+    )
+    literals = ("posted_employee", "employee_multi_state", "self_employed_multi_state")
+    for rel in sites:
+        text = (REPO / rel).read_text(encoding="utf-8")
+        assert not all(
+            re.search(rf"""['"]{name}['"]""", text) for name in literals
+        ), f"{rel} still enumerates the supported set"
     core = (REPO / "scripts" / "a1_core.py").read_text(encoding="utf-8")
-    finalize = (REPO / "scripts" / "finalize_a1.py").read_text(encoding="utf-8")
-    gate = (REPO / "scripts" / "a1_quality_gate.py").read_text(encoding="utf-8")
-    exports = (REPO / "portal" / "release1a" / "a1_exports.py").read_text(encoding="utf-8")
-    facts = (REPO / "portal" / "release1a" / "assignment_facts.py").read_text(encoding="utf-8")
-    preview = (REPO / "scripts" / "a1_completion_preview.py").read_text(encoding="utf-8")
+    assert "A1_STATUS_PROFILES = (" in core
+    assert set(A1_STATUS_PROFILES) == {
+        "posted_employee", "employee_multi_state", "self_employed_multi_state"
+    }
+    assert set(A1_STATUS_VARIANTS) == set(A1_STATUS_PROFILES)
+    assert set(A1_STATUS_LABELS) == set(A1_STATUS_PROFILES)
+    # Every profile maps to a variant, and the variants are the two the
+    # application has.
+    assert set(A1_STATUS_VARIANTS.values()) == {"employee", "self_employed"}
 
-    supported = set(PROFILES)
-    assert supported == set(STATUS_PROFILE_CHOICES)
 
-    for name, text in (("a1_core.py", core), ("finalize_a1.py", finalize),
-                       ("a1_quality_gate.py", gate), ("a1_exports.py", exports),
-                       ("assignment_facts.py", facts),
-                       ("a1_completion_preview.py", preview)):
-        found = set(
-            re.findall(
-                r"""['"](posted_employee|employee_multi_state|self_employed_multi_state)['"]""",
-                text,
-            )
-        )
-        assert found == supported, (
-            f"{name} enumerates {sorted(found)} but the supported set is "
-            f"{sorted(supported)}"
+def test_every_site_reads_the_shared_constant():
+    """The supported set is written once, in the core.
+
+    Before the constant, the set was written out in six places and the
+    activation path had to name all of them. Now each site reads the
+    constant, so a profile cannot be added to one and forgotten in another.
+    """
+    sites = {
+        "scripts/a1_core.py": "A1_STATUS_PROFILES",
+        "scripts/finalize_a1.py": "A1_STATUS_PROFILES",
+        "scripts/a1_completion_preview.py": "A1_STATUS_PROFILES",
+        "scripts/a1_quality_gate.py": "A1_STATUS_VARIANTS",
+        "portal/release1a/a1_exports.py": "A1_STATUS_PROFILES",
+        "portal/release1a/assignment_facts.py": "A1_STATUS_PROFILES",
+    }
+    for rel, symbol in sites.items():
+        text = (REPO / rel).read_text(encoding="utf-8")
+        assert symbol in text, f"{rel} does not read {symbol}"
+
+
+def test_the_constant_is_defined_once():
+    """Only the core defines the set."""
+    for rel in (
+        "scripts/finalize_a1.py",
+        "scripts/a1_completion_preview.py",
+        "scripts/a1_quality_gate.py",
+        "portal/release1a/a1_exports.py",
+        "portal/release1a/assignment_facts.py",
+    ):
+        text = (REPO / rel).read_text(encoding="utf-8")
+        assert "A1_STATUS_PROFILES = (" not in text, (
+            f"{rel} defines the supported set instead of reading the core"
         )
 
 

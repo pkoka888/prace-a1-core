@@ -28,6 +28,38 @@ except ImportError:
 
 
 PAGE_SIZE = (595.2, 841.92)
+
+# The supported A1 status profiles, in one place. Every site that offers,
+# accepts or derives a status reads this, so that adding a profile cannot
+# leave one site behind. Before this, the set was written out in six places
+# and the activation path had to name all of them. Decisions D1a and D1b
+# (2026-10-20).
+A1_STATUS_PROFILES = (
+    "posted_employee",
+    "employee_multi_state",
+    "self_employed_multi_state",
+)
+# The application variant each profile belongs to. The variant says which
+# application form applies; the profile says which situation was declared.
+A1_STATUS_VARIANTS = {
+    "posted_employee": "employee",
+    "employee_multi_state": "employee",
+    "self_employed_multi_state": "self_employed",
+}
+# The profiles that assert a posting, and so carry the Article 12 conditions
+# of Regulation 883/2004. "posted_self_employed" is not yet a supported
+# profile, but it is listed here so that the conditions are already written
+# for the day it is.
+A1_POSTING_STATUS_PROFILES = ("posted_employee", "posted_self_employed")
+# The profiles whose activity is the employer's own, so Section 5 does not
+# apply. The self-employed ones carry the host-State territory instead.
+A1_SELF_EMPLOYED_STATUS_PROFILES = ("self_employed_multi_state",)
+# The Czech labels the portal offers, in the same order as the profiles.
+A1_STATUS_LABELS = {
+    "posted_employee": "Vyslaný zaměstnanec",
+    "employee_multi_state": "Zaměstnanec ve více státech",
+    "self_employed_multi_state": "OSVČ ve více státech",
+}
 APPLICATION_DRAFT_NOTICE = "UNVERIFIED DRAFT – NEOVĚŘENÝ NÁVRH, NENÍ VYDANÉ A1"
 PROVISIONAL_NOTICE = "NÁVRH – ČEKÁ NA POTVRZENÍ OSSZ"
 ROOT = Path(__file__).resolve().parents[1]
@@ -338,11 +370,7 @@ def build_form_data(
     # checkboxes. It is never guessed from other employee fields.
     a1 = employee.get("a1") or {}
     status_profile = str(a1.get("status_profile", "")).strip()
-    if status_profile not in {
-        "self_employed_multi_state",
-        "employee_multi_state",
-        "posted_employee",
-    }:
+    if status_profile not in A1_STATUS_PROFILES:
         if completion_preview and not status_profile:
             # Undecided completion worksheet: no status checkbox is selected and
             # no situation is claimed; the choice is reported as a missing field.
@@ -350,7 +378,7 @@ def build_form_data(
         else:
             raise A1ValidationError(
                 f"Missing or unsupported a1.status_profile: {status_profile!r}; expected one of "
-                "posted_employee, employee_multi_state, self_employed_multi_state "
+                ", ".join(A1_STATUS_PROFILES) + " "
                 "(a coarse activity_profile such as 'employee' is not an A1 status profile)"
             )
     # Enrich residence with address rules

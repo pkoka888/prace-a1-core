@@ -126,6 +126,8 @@
         "tests/document_web/test_inbox.py",
         "tests/document_web/test_identity.py",
         "portal/release1a/a1_exports.py",
+        "portal/release1a/ares.py",
+        "scripts/import_ares_legal_entity.py",
         "portal/release1a/a1_drafts.py",
         "portal/release1a/a1_generation_access.py",
         "portal/release1a/a1_generation_confirmation.py",
@@ -145,6 +147,7 @@
         "tests/m2/test_release1a_vertical.py",
         "tests/m2/test_review_fixes.py",
         "tests/m2/test_a1_situation_facts.py",
+        "tests/m2/test_a1_legal_entity.py",
         "tests/m2/test_readiness.py",
         "tests/test_j4_service.py",
         "tests/test_j4_minimum.py",
@@ -541,10 +544,11 @@
         "tests/test_a1_quality_gate.py",
         "tests/test_a1_country_codes.py",
         "tests/test_a1_status_default.py",
-        "tests/test_a1_situation_facts.py"
+        "tests/test_a1_situation_facts.py",
+        "tests/test_a1_ares.py"
       ],
       "checks": [
-        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py tests/test_a1_country_codes.py tests/test_a1_status_default.py tests/test_a1_situation_facts.py -q"
+        "venv/bin/python -m pytest tests/test_a1_core.py tests/test_a1_private.py tests/test_a1_quality_gate.py tests/test_finalize_a1.py tests/test_comprehensive.py tests/test_a1_country_codes.py tests/test_a1_status_default.py tests/test_a1_situation_facts.py tests/test_a1_ares.py -q"
       ],
       "dependencies": [
         "Private CSV seven-field update before regeneration"
@@ -568,6 +572,7 @@
         "ruff.toml",
         ".pre-commit-config.yaml",
         "scripts/check_git_content.py",
+        "scripts/compare_a1_renderer.py",
         "tests/test_check_git_content.py",
         "scripts/evaluate_a1_pdf_tools.py",
         "scripts/release_reproducer.sh",
@@ -771,6 +776,7 @@
         "portal/release1a/j4_artifacts.py",
         "portal/release1a/migrations/0012_a1case_confirmation_evidence.py",
         "portal/release1a/migrations/0021_a1_situation_facts.py",
+        "portal/release1a/migrations/0022_a1_legal_entity.py",
         "portal/release1a/models.py",
         "portal/release1a/views.py",
         "portal/templates/portal/a1_artifact_confirm.html",

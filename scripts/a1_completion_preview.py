@@ -14,21 +14,24 @@ import pymupdf
 from pypdf import PdfReader
 
 try:
-    from scripts.a1_core import APPLICATION_DRAFT_NOTICE, ROOT, build_form_data, generate_a1_pdf
+    from scripts.a1_core import (A1_STATUS_PROFILES, A1_STATUS_VARIANTS,
+                              APPLICATION_DRAFT_NOTICE, ROOT, build_form_data,
+                              generate_a1_pdf)
     from scripts.a1_audit import audited
     from scripts.a1_paths import (protected_path, protected_root, validate_output_path,
                                   unique_staging_path, cleanup_staging_only,
                                   destination_lock, publish_package)
 except ImportError:  # Direct CLI execution.
-    from a1_core import APPLICATION_DRAFT_NOTICE, ROOT, build_form_data, generate_a1_pdf
+    from a1_core import (A1_STATUS_PROFILES, A1_STATUS_VARIANTS,
+                       APPLICATION_DRAFT_NOTICE, ROOT, build_form_data,
+                       generate_a1_pdf)
     from a1_audit import audited
     from a1_paths import (protected_path, protected_root, validate_output_path,
                           unique_staging_path, cleanup_staging_only,
                           destination_lock, publish_package)
 
 DEFAULT_VARIANT = "self_employed"
-PROFILES = {"posted_employee": "employee", "employee_multi_state": "employee",
-            "self_employed_multi_state": "self_employed"}
+PROFILES = dict(A1_STATUS_VARIANTS)
 # A coarse activity_profile that leaked into the fine A1 field fixes the
 # variant but never the situation: posted vs multi-state stays undecided.
 COARSE_VARIANTS = {
@@ -36,8 +39,7 @@ COARSE_VARIANTS = {
     "self_employed": "self_employed", "osvc": "self_employed", "osvč": "self_employed",
     "živnostník": "self_employed", "zivnostnik": "self_employed",
 }
-STATUS_PROFILE_CHOICES = ["posted_employee", "employee_multi_state",
-                          "self_employed_multi_state"]
+STATUS_PROFILE_CHOICES = list(A1_STATUS_PROFILES)
 
 
 def build_preview(source: dict, *, variant: str | None = None,

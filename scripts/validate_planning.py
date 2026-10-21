@@ -235,6 +235,10 @@ APPROVED_STAGED_DOCUMENT_PATHS = frozenset(
         "tests/m2/test_a1_situation_facts.py",
         "tests/test_finalize_a1.py",
         "portal/release1a/migrations/0021_a1_situation_facts.py",
+        "portal/release1a/migrations/0022_a1_legal_entity.py",
+        "scripts/compare_a1_renderer.py",
+        "tests/test_a1_ares.py",
+        "tests/m2/test_a1_legal_entity.py",
         # Secret-scanning baseline. Contains only hashed_secret values, never
         # a plaintext secret, and is generated from the tracked tree alone.
         ".secrets.baseline",

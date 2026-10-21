@@ -2,7 +2,7 @@
   "fix_type": "original_checkbox_outlines_and_inset_marks",
   "template_sha256": "c816d97525cd9070d00c1984c486e73fbf1fa08b8a507df32459dbaf9c23d27a",
   "layout_sha256": "9ac1b8bc27e68e84b82a8697f81b77633160cf051fab3b41ba6c8b45762fd025",
-  "renderer_sha256": "cc33bc299657ffce6fcc99e3e3888cb70d05b8b4840d5cfd7dcacf3ae3c40656",
+  "renderer_sha256": "99980502c4588e5318137179739c815ed9e3bb5546b5c86d7e1bf58b0c64ab3c",
   "reference_sha256": "2d1a2b142b74920f0ef81d2197064cdeed1617a5a56976d05b0b0f05861e3f1d",
   "checks": [
     {
@@ -276,5 +276,43 @@
       "activity-blanked variant differs only inside those boxes; page 1 unchanged"
     ],
     "scope": "Undecided status previews with reviewed Section 5 activity; existing complete forms covered by prior pin"
+  },
+  "shared_status_profile_constant_regression": {
+    "previous_renderer_sha256": "cc33bc299657ffce6fcc99e3e3888cb70d05b8b4840d5cfd7dcacf3ae3c40656",
+    "current_renderer_sha256": "99980502c4588e5318137179739c815ed9e3bb5546b5c86d7e1bf58b0c64ab3c",
+    "comparisons": [
+      {
+        "profile": "posted_employee",
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "profile": "employee_multi_state",
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "profile": "self_employed_multi_state",
+        "pages": 3,
+        "dpi": 110,
+        "changed_pixels": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "identical": true,
+    "method": "The supported status set moved from six literal enumerations into one constant in scripts/a1_core.py. scripts/compare_a1_renderer.py renders the same synthetic inputs with the previous and the current renderer and compares the pages pixel by pixel; the rendered output is unchanged."
   }
 }

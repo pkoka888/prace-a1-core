@@ -96,6 +96,12 @@ limit from an omission.
 `status_profile` simultaneously determines the Section 3 status and the
 Section 4.1 employer kind. That coupling is *why* the two can never
 disagree, and it is worth keeping — but it is stored as one opaque string.
+**Update, 2026-10-21.** The CZ-NACE main activity now has a home:
+`Assignment.nace_code`, nullable, and carried into the assignment fact.
+The State-of-stay address (1.9) remains without a home, and it is a bigger
+piece than a column: it needs a parallel address field set in the identity
+proposal chain, so it is recorded as gate D13 rather than silently dropped.
+
 **Update, 2026-10-20.** Decisions D1b and D10 were taken: the model now
 carries `prior_activity_start` and `replaces_worker` on the `Assignment`
 (migration `0021_a1_situation_facts`), and the issuance gate refuses a

@@ -27,7 +27,7 @@ import pymupdf
 from PIL import Image, ImageOps, ImageDraw
 from pypdf import PdfReader
 
-from scripts.a1_core import PROVISIONAL_NOTICE
+from scripts.a1_core import A1_STATUS_VARIANTS, PROVISIONAL_NOTICE
 
 try:
     from .a1_audit import (
@@ -476,7 +476,7 @@ def validate_pdf(
         "activity_name": record.get("activity_name", ""),
         "activity_address": record.get("activity_address", ""),
     }
-    if record.get("status_profile") in {"employee_multi_state", "posted_employee"}:
+    if A1_STATUS_VARIANTS.get(record.get("status_profile", "")) == "employee":
         required.pop("activity_name")
         required.pop("activity_address")
     for field_name in (
