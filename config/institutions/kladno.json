@@ -1,22 +1,23 @@
 {
-  "version": "1.0.0",
-  "review_status": "PROVISIONAL",
-  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/stredocesky-kraj/kladno",
-  "verified_on": "11.08.2026",
-  "current_office_contact": {
-    "name": "(doplnit ředitele OSSZ Kladno)",
-    "role": "ředitel OSSZ Kladno",
-    "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
-  },
-  "expected_ossz": "OSSZ Kladno",
-  "institution": {
-    "name": "OSSZ Kladno",
-    "street": "(doplnit)",
-    "house_number": "1",
-    "city": "Kladno",
-    "postal_code": "272 01",
-    "country_code": "CZ",
-    "code": "TBD"
-  },
-  "_note": "Office street/house_number/code are placeholders (doplnit) — verify from cssz.cz source_url before final use. OSSZ name/city from district->OSSZ mapping."
+    "version": "1.0.0",
+    "review_status": "PROVISIONAL",
+    "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/stredocesky-kraj/kladno",
+    "verified_on": "11.08.2026",
+    "current_office_contact": {
+        "name": "(doplnit ředitele OSSZ Kladno)",
+        "role": "ředitel OSSZ Kladno",
+        "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
+    },
+    "expected_ossz": "OSSZ Kladno",
+    "institution": {
+        "name": "OSSZ Kladno",
+        "street": "(doplnit)",
+        "house_number": "1",
+        "city": "Kladno",
+        "postal_code": "272 01",
+        "country_code": "CZ",
+        "code": "TBD"
+    },
+    "_note": "Office street/house_number/code are placeholders (doplnit) — verify from cssz.cz source_url before final use. OSSZ name/city from district->OSSZ mapping.",
+    "member_state": "CZ"
 }

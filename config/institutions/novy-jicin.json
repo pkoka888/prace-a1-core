@@ -1,17 +1,22 @@
 {
-  "version": "1.0.0",
-  "review_status": "VERIFIED",
-  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/moravskoslezsky-kraj/novy-jicin",
-  "verified_on": "11.08.2026",
-  "current_office_contact": {"name": "Ing. Marcela Paseková", "role": "ředitelka OSSZ", "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"},
-  "expected_ossz": "OSSZ Nový Jičín",
-  "institution": {
-    "name": "OSSZ Nový Jičín",
-    "street": "Svatopluka Čecha",
-    "house_number": "1697/15",
-    "city": "Nový Jičín",
-    "postal_code": "741 01",
-    "country_code": "CZ",
-    "code": "888"
-  }
+    "version": "1.0.0",
+    "review_status": "VERIFIED",
+    "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/moravskoslezsky-kraj/novy-jicin",
+    "verified_on": "11.08.2026",
+    "current_office_contact": {
+        "name": "Ing. Marcela Paseková",
+        "role": "ředitelka OSSZ",
+        "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
+    },
+    "expected_ossz": "OSSZ Nový Jičín",
+    "institution": {
+        "name": "OSSZ Nový Jičín",
+        "street": "Svatopluka Čecha",
+        "house_number": "1697/15",
+        "city": "Nový Jičín",
+        "postal_code": "741 01",
+        "country_code": "CZ",
+        "code": "888"
+    },
+    "member_state": "CZ"
 }

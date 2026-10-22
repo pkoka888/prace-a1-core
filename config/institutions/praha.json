@@ -1,17 +1,22 @@
 {
-  "version": "1.0.0",
-  "review_status": "VERIFIED",
-  "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/praha/",
+    "version": "1.0.0",
+    "review_status": "VERIFIED",
+    "source_url": "https://www.cssz.cz/web/cz/kontakty/region/ossz/praha/",
     "verified_on": "24.08.2026",
-  "current_office_contact": {"name": "Mgr. Vítězslav Kaliba, MPA", "role": "ředitel KSSZ pro kraj Středočeský", "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"},
-  "expected_ossz": "OSSZ Praha",
-  "institution": {
-    "name": "Pražská správa sociálního zabezpečení",
-    "street": "Sokolovská",
-    "house_number": "855/225",
-    "city": "Praha 9",
-    "postal_code": "190 00",
-    "country_code": "CZ",
-    "code": "511"
-  }
+    "current_office_contact": {
+        "name": "Mgr. Vítězslav Kaliba, MPA",
+        "role": "ředitel KSSZ pro kraj Středočeský",
+        "status": "CONTACT_NOT_CONFIRMED_SIGNATORY"
+    },
+    "expected_ossz": "OSSZ Praha",
+    "institution": {
+        "name": "Pražská správa sociálního zabezpečení",
+        "street": "Sokolovská",
+        "house_number": "855/225",
+        "city": "Praha 9",
+        "postal_code": "190 00",
+        "country_code": "CZ",
+        "code": "511"
+    },
+    "member_state": "CZ"
 }
