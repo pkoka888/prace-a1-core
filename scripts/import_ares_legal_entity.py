@@ -28,7 +28,10 @@ import hashlib
 import json
 import os
 import sys
+import time
+from collections import deque
 from pathlib import Path
+from threading import Lock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -37,10 +40,38 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import django  # noqa: E402
 
 
+class TokenBucketRateLimiter:
+    """Token bucket rate limiter for ARES API (500 requests/minute)."""
+
+    def __init__(self, rate: int = 500, per: int = 60):
+        self.rate = rate
+        self.per = per
+        self.tokens = rate
+        self.last = time.monotonic()
+        self.lock = Lock()
+
+    def acquire(self):
+        with self.lock:
+            now = time.monotonic()
+            elapsed = now - self.last
+            self.tokens = min(self.rate, self.tokens + elapsed * self.rate / self.per)
+            if self.tokens >= 1:
+                self.tokens -= 1
+                self.last = now
+                return
+            wait = (1 - self.tokens) * self.per / self.rate
+            time.sleep(wait)
+            self.tokens = 0
+            self.last = time.monotonic()
+
+
+ARES_RATE_LIMITER = TokenBucketRateLimiter(500, 60)
+
+
 def _store(review_path: Path) -> int:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "portal.settings")
     django.setup()
-    from portal.release1a.models import LegalEntity, Organization
+    from portal.release1a.models import LegalEntity, Organization, Assignment
 
     record = json.loads(review_path.read_text(encoding="utf-8"))
     organization = Organization.objects.filter(key="default").first()
@@ -61,8 +92,19 @@ def _store(review_path: Path) -> int:
             "content_sha256": record.get("content_sha256", ""),
         },
     )
-    print(f"{'created' if created else 'updated'} LegalEntity {entity.pk} "
-          f"for {entity.registration_id}")
+    # Link LegalEntity to Assignments that reference this registration_id
+    reg_id = record["registration_id"]
+    assignments = Assignment.objects.filter(
+        organization=organization,
+        a1_facts_json__employment_id=reg_id,
+    )
+    count = assignments.update(legal_entity=entity)
+    if count:
+        print(f"linked LegalEntity {entity.pk} to {count} Assignment(s)")
+    print(
+        f"{'created' if created else 'updated'} LegalEntity {entity.pk} "
+        f"for {entity.registration_id}"
+    )
     return 0
 
 
@@ -94,6 +136,7 @@ def _retrieve_one(registration_id: str, out: Path) -> bool:
         write_review_record,
     )
 
+    ARES_RATE_LIMITER.acquire()
     try:
         record = fetch_legal_entity(registration_id)
     except AresUnavailable as exc:
@@ -115,6 +158,7 @@ def _retrieve(registration_id: str, out: Path) -> int:
         write_review_record,
     )
 
+    ARES_RATE_LIMITER.acquire()
     try:
         record = fetch_legal_entity(registration_id)
     except AresUnavailable as exc:
@@ -160,6 +204,7 @@ def _annotate(review_path: Path) -> int:
         registration_id = (row.get("employment_id") or "").strip()
         if not registration_id.isdigit() or registration_id in registry:
             continue
+        ARES_RATE_LIMITER.acquire()
         try:
             registry[registration_id] = fetch_legal_entity(registration_id)
         except AresUnavailable as exc:
@@ -175,8 +220,9 @@ def _annotate(review_path: Path) -> int:
         if differences:
             row["employment_source_status"] = "DIVERGES_FROM_REGISTER"
             diverging += 1
-            print(f"{row.get('employee_id', registration_id)}: "
-                  + "; ".join(differences))
+            print(
+                f"{row.get('employee_id', registration_id)}: " + "; ".join(differences)
+            )
         else:
             row["employment_source_status"] = "REGISTRY_VERIFIED"
     with review_path.open("w", encoding="utf-8-sig", newline="") as stream:
@@ -233,8 +279,10 @@ def main(argv: list[str] | None = None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     print(f"retrieving {len(registrations)} registration(s) for review")
     retrieved = sum(1 for r in registrations if _retrieve_one(r, out))
-    print(f"{retrieved} of {len(registrations)} retrieved; review them, then "
-          "store each with --confirm")
+    print(
+        f"{retrieved} of {len(registrations)} retrieved; review them, then "
+        "store each with --confirm"
+    )
     return 0 if retrieved else 2
 
 

@@ -27,7 +27,17 @@ import pymupdf
 from PIL import Image, ImageOps, ImageDraw
 from pypdf import PdfReader
 
-from scripts.a1_core import A1_STATUS_VARIANTS, PROVISIONAL_NOTICE
+# Repository-root import bootstrap. The script is documented as a direct CLI
+# entry point (``venv/bin/python scripts/a1_quality_gate.py``), and direct
+# execution puts ``scripts/`` -- not the repository root -- on ``sys.path``.
+# Without this bootstrap the ``scripts.a1_core`` import below raises
+# ``ModuleNotFoundError`` before any argument is parsed, so the CLI could not
+# be invoked at all outside a package context.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.a1_core import A1_STATUS_VARIANTS, PROVISIONAL_NOTICE  # noqa: E402
 
 try:
     from .a1_audit import (
@@ -70,7 +80,6 @@ except ImportError:
     from a1_core import document_id_for_issue_year
 
 
-ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "config/a1_provisional.json"
 DEFAULT_REVIEW = None
 DEFAULT_LAYOUT = ROOT / "config/a1_layout.json"
@@ -178,6 +187,27 @@ def _pdf_paths(pdf_dir: Path) -> list[Path]:
 
 def _employee_id(path: Path) -> str:
     return path.stem.removeprefix(PDF_PREFIX)
+
+
+def _section_5_1_text(path: Path, layout_path: Path) -> str:
+    """Return the text drawn inside the Section 5.1 field box, if any.
+
+    The field is located from the canonical layout, not by searching the whole
+    page: the template prints the self-employment labels elsewhere on the same
+    page, so a global text search cannot tell a filled field from a blank one.
+    """
+    layout = json.loads(layout_path.read_text(encoding="utf-8"))
+    field = layout["fields"]["activity.name"]
+    with pymupdf.open(path) as document:
+        page = document[field["page"]]
+        baseline = page.rect.height - field["y"]
+        box = (
+            field["x"] - 1,
+            baseline - field["size"] * 1.5,
+            field["x"] + field["max_width"],
+            baseline + field["size"] * 0.5,
+        )
+        return page.get_text("text", clip=box).strip()
 
 
 def _package_is_provisional(pdf_dir: Path) -> bool:
@@ -425,6 +455,7 @@ def validate_pdf(
     max_erased_pixels: int,
     *,
     expect_provisional_notice: bool = False,
+    layout: Path | None = None,
 ) -> PdfResult:
     """Validate a rendered A1.
 
@@ -433,6 +464,12 @@ def validate_pdf(
     authoritative one: a certificate that says it is a draft would be
     self-contradictory, and a copy that says it is a draft but does not
     would be misleading. Decision D2 (2026-10-20).
+
+    Section 5.1 follows the same split. The self-employed multi-state
+    presentation leaves 5.1 blank on a client-confirmation copy
+    (``a1_core.mark_provisional``) and fills it on the authoritative
+    document. The gate therefore checks the field itself in both cases:
+    blank must be blank, and filled must carry the reviewed text.
     """
     result = PdfResult(_employee_id(path), path.name, sha256_file(path))
     try:
@@ -479,6 +516,14 @@ def validate_pdf(
     if A1_STATUS_VARIANTS.get(record.get("status_profile", "")) == "employee":
         required.pop("activity_name")
         required.pop("activity_address")
+    if (
+        expect_provisional_notice
+        and record.get("status_profile") == "self_employed_multi_state"
+    ):
+        # The provisional presentation leaves Section 5.1 blank by policy.
+        # Requiring the reviewed text here would reject a correct
+        # client-confirmation copy.
+        required.pop("activity_name")
     for field_name in (
         "employment_id",
         "employment_street",
@@ -504,6 +549,28 @@ def validate_pdf(
     }
     for name in missing:
         result.fail(f"missing expected {name}")
+    # Section 5.1 on a client-confirmation copy must be *blank*, not merely
+    # unsearched. The provisional policy leaves 5.1 empty for the
+    # self-employed multi-state presentation (``a1_core.mark_provisional``),
+    # while the authoritative document carries the reviewed activity text.
+    # The employee presentations keep 5.1: for them Section 5 carries the
+    # employer's activity in the host State, which is reviewed text.
+    if (
+        expect_provisional_notice
+        and record.get("status_profile") == "self_employed_multi_state"
+    ):
+        if layout is None:
+            result.fail("QA_LAYOUT_MISSING")
+            result.checks["section_5_1_blank"] = None
+        else:
+            field_text = _section_5_1_text(path, layout)
+            if field_text:
+                result.checks["section_5_1_blank"] = False
+                result.fail("provisional Section 5.1 is not blank")
+            else:
+                result.checks["section_5_1_blank"] = True
+    else:
+        result.checks["section_5_1_blank"] = None
     foreign_numbers = sorted(
         {
             other.get("insurance_number", "")
@@ -565,6 +632,7 @@ def validate_set(
     input_paths: Iterable[Path] = (),
     max_erased_pixels: int = 24,
     generation_evidence: dict[str, Any] | None = None,
+    layout_path: Path | None = None,
 ) -> dict[str, Any]:
     protected_path(pdf_dir)
     protected_path(preview_dir)
@@ -590,6 +658,7 @@ def validate_set(
         *([review_path] if review_path else []),
         *input_paths,
         *([background] if background else []),
+        *([layout_path] if layout_path else []),
     ]
     if any(not path.is_file() for path in sources):
         raise QualityGateError("QA_SOURCE_MISSING")
@@ -634,6 +703,7 @@ def validate_set(
             background,
             max_erased_pixels,
             expect_provisional_notice=expect_notice,
+            layout=layout_path,
         )
         for path in pdfs
         if _employee_id(path) in records
@@ -933,6 +1003,7 @@ def main(argv: list[str] | None = None) -> int:
                     [args.layout],
                     args.max_erased_template_pixels,
                     generation_evidence=generation_evidence,
+                    layout_path=args.layout,
                 )
                 validated_output = True
                 summary = {

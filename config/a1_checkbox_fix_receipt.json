@@ -2,7 +2,7 @@
   "fix_type": "original_checkbox_outlines_and_inset_marks",
   "template_sha256": "c816d97525cd9070d00c1984c486e73fbf1fa08b8a507df32459dbaf9c23d27a",
   "layout_sha256": "9ac1b8bc27e68e84b82a8697f81b77633160cf051fab3b41ba6c8b45762fd025",
-  "renderer_sha256": "99980502c4588e5318137179739c815ed9e3bb5546b5c86d7e1bf58b0c64ab3c",
+  "renderer_sha256": "d66cc123527146742531a206928cdbff48eda226bbae1ab4e311185383682618",
   "reference_sha256": "2d1a2b142b74920f0ef81d2197064cdeed1617a5a56976d05b0b0f05861e3f1d",
   "checks": [
     {
