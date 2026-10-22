@@ -184,6 +184,7 @@
         "portal/release1a/migrations/0018_a1_generation_confirmation.py",
         "portal/release1a/migrations/0019_worker_legacy_key.py",
         "portal/release1a/migrations/0020_a1case_identity_binding.py",
+        "portal/release1a/migrations/0023_add_fieldproposal_source_status.py",
         "tests/test_release1a_migration_chain.py",
         "tests/m2/test_migration_0003.py"
       ],

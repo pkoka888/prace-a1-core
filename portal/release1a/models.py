@@ -621,11 +621,29 @@ class FieldProposal(TenantModel):
         CONFLICT = "conflict", "Konflikt"
         SUPERSEDED = "superseded", "Nahrazeno"
 
+    class SourceStatus(models.TextChoices):
+        AUTHORITATIVE = "AUTHORITATIVE", "Autoritativní"
+        UNVERIFIED = "UNVERIFIED", "Neověřené"
+        DIVERGES_FROM_REGISTER = "DIVERGES_FROM_REGISTER", "Rozdíl oproti rejstříku"
+        NOT_STATED = "NOT_STATED", "Nevyplněno"
+
+    class FieldGroup(models.TextChoices):
+        PERSON = "person", "Osobní údaje"
+        EMPLOYER = "employer", "Zaměstnavatel"
+        ACTIVITY = "activity", "Činnost"
+        CERTIFICATE = "certificate", "Certifikát"
+        SIGNATORY = "signatory", "Podpisující"
+        INSTITUTION = "institution", "Ústav"
+        OTHER = "other", "Ostatní"
+
     document = models.ForeignKey(Document, models.CASCADE)
     version = models.ForeignKey(DocumentVersion, models.CASCADE)
     ocr_run = models.ForeignKey(OcrRun, models.CASCADE, null=True, blank=True)
     document_region_id = models.CharField(max_length=36, blank=True, default="")
     field_name = models.CharField(max_length=80)
+    field_group = models.CharField(
+        max_length=16, choices=FieldGroup.choices, default=FieldGroup.OTHER
+    )
     raw_ocr_text = models.TextField(blank=True, default="")
     proposed_value = models.CharField(max_length=240)
     confidence = models.DecimalField(
@@ -642,6 +660,9 @@ class FieldProposal(TenantModel):
     validation_findings = models.JSONField(default=list)
     state = models.CharField(
         max_length=16, choices=State.choices, default=State.PROPOSED
+    )
+    source_status = models.CharField(
+        max_length=24, choices=SourceStatus.choices, default=SourceStatus.UNVERIFIED
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
