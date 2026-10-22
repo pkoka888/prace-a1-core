@@ -3,88 +3,92 @@
 
 from __future__ import annotations
 
-import csv
 import argparse
+import csv
 import hashlib
 import json
 import os
+import sys
 import tempfile
 import uuid
-import sys
-
-import pymupdf
-
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 try:
+    from .a1_audit import audited, current_run_id
     from .a1_core import (
-        FONT_CANDIDATES,
         APPLICATION_DRAFT_NOTICE,
-        PROVISIONAL_NOTICE,
+        FONT_CANDIDATES,
         generate_a1_pdf,
         mark_provisional,
         provisional_one_year_period,
     )
-    from .finalize_a1 import (
-        ROOT,
-        FinalizationError,
-        read_review,
-        row_to_form,
-        verify_pdf,
-        validate_review,
-        generation_dependencies,
-        snapshot_hash,
-        validate_application_draft_row,
-        derive_variant,
-        VARIANT_PARAMETERS,
-        VARIANT_DEFAULT,
-    )
     from .a1_paths import (
-        validate_output_path,
-        unique_staging_path,
         cleanup_staging_only,
         destination_lock,
         publish_package,
+        unique_staging_path,
+        validate_output_path,
     )
-    from .a1_audit import audited, current_run_id
     from .a1_private import private_path, private_root
+    from .finalize_a1 import (
+        ROOT,
+        VARIANT_DEFAULT,
+        VARIANT_PARAMETERS,
+        FinalizationError,
+        derive_variant,
+        generation_dependencies,
+        identity_source_state,
+        load_json,
+        pending_review_gates,
+        provisional_warnings,
+        read_review,
+        row_to_form,
+        snapshot_hash,
+        validate_application_draft_row,
+        validate_review,
+        verify_pdf,
+    )
     from .generate_a1_placeholder import extract_field_positions, flatten_form_data
     from .pdf_named_fields import replace_placeholders
 except ImportError:  # Direct CLI execution.
+    from a1_audit import audited, current_run_id
     from a1_core import (
-        FONT_CANDIDATES,
         APPLICATION_DRAFT_NOTICE,
+        FONT_CANDIDATES,
         generate_a1_pdf,
         mark_provisional,
         provisional_one_year_period,
     )
-    from finalize_a1 import (
-        ROOT,
-        FinalizationError,
-        read_review,
-        row_to_form,
-        verify_pdf,
-        validate_review,
-        generation_dependencies,
-        snapshot_hash,
-        validate_application_draft_row,
-        derive_variant,
-        VARIANT_PARAMETERS,
-        VARIANT_DEFAULT,
-    )
     from a1_paths import (
-        validate_output_path,
-        unique_staging_path,
         cleanup_staging_only,
         destination_lock,
         publish_package,
+        unique_staging_path,
+        validate_output_path,
     )
-    from a1_audit import audited, current_run_id
+    from a1_private import private_path, private_root
+    from finalize_a1 import (
+        ROOT,
+        VARIANT_DEFAULT,
+        VARIANT_PARAMETERS,
+        FinalizationError,
+        derive_variant,
+        generation_dependencies,
+        identity_source_state,
+        load_json,
+        pending_review_gates,
+        provisional_warnings,
+        read_review,
+        row_to_form,
+        snapshot_hash,
+        validate_application_draft_row,
+        validate_review,
+        verify_pdf,
+    )
     from generate_a1_placeholder import extract_field_positions, flatten_form_data
     from pdf_named_fields import replace_placeholders
-    from a1_private import private_path, private_root
 
 
 def generate_a1_placeholder_technique(
@@ -259,6 +263,27 @@ def generate(
     built, config = build_provisional_rows(
         review, profiles, config_path, cohort_path, employees_path
     )
+    source_by_id = {
+        item["id"]: item for item in load_json(employees_path).get("employees", [])
+    }
+    review_state: dict[str, dict[str, Any]] = {}
+    for row, _, _ in built:
+        employee_id = row["employee_id"]
+        identity = (
+            identity_source_state(row, source_by_id[employee_id])
+            if employee_id in source_by_id
+            else None
+        )
+        gates = pending_review_gates(row)
+        review_state[employee_id] = {
+            "review_state": "PENDING_REVIEW" if gates else "REVIEWED",
+            "pending_gates": gates,
+            "warnings": provisional_warnings(row, identity=identity),
+            "identity_source_state": identity["state"]
+            if identity is not None
+            else "NOT_CHECKED",
+            "employer_source_status": row.get("employment_source_status", ""),
+        }
     if variant is None:
         variant = (
             derive_variant(built[0][0].get("status_profile", ""))
@@ -283,6 +308,14 @@ def generate(
         "notice": config["notice"],
         "generated_at": generated_at,
         "run_id": run_id,
+        "ready_for": "provisional_client_confirmation_copy",
+        "pending_employee_count": sum(
+            bool(state["pending_gates"]) for state in review_state.values()
+        ),
+        "pending_gate_count": sum(
+            len(state["pending_gates"]) for state in review_state.values()
+        ),
+        "warning_count": sum(len(state["warnings"]) for state in review_state.values()),
         "inputs": inputs,
         "snapshot_sha256": snapshot_hash([row for row, _, _ in built]),
         "review_sha256": sha256(review),
@@ -327,17 +360,29 @@ def generate(
                 target,
             )
             checks = verify_pdf(target, row, profile, all_rows, provisional=True)
+            state = review_state[row["employee_id"]]
             manifest["generated"].append(
-                {"employee_id": row["employee_id"], "path": target.name, **checks}
+                {
+                    "employee_id": row["employee_id"],
+                    "path": target.name,
+                    **state,
+                    **checks,
+                }
             )
             verification_rows.append(
                 {
                     "employee_id": row["employee_id"],
                     "status_profile": row["status_profile"],
-                    "identity": "ACCEPTED_SOURCE_MATCHED",
+                    "identity": state["identity_source_state"],
+                    "review_state": state["review_state"],
+                    "pending_gates": "; ".join(state["pending_gates"]),
+                    "warnings": "; ".join(state["warnings"]),
+                    "employer_source_status": state["employer_source_status"],
                     "institution": "VERIFIED_PROFILE",
-                    "certificate_source_status": row["certificate_source_status"],
-                    "signatory_source_status": row["signatory_source_status"],
+                    "certificate_source_status": row.get(
+                        "certificate_source_status", ""
+                    ),
+                    "signatory_source_status": row.get("signatory_source_status", ""),
                     "visual_review": "PENDING",
                     "publication": "NOT_FINAL",
                 }
@@ -427,9 +472,6 @@ def main(argv: list[str] | None = None) -> int:
         Exception,
         KeyboardInterrupt,
     ):  # CLI boundary: protected receipts retain non-content failure evidence.
-        import traceback
-
-        traceback.print_exc()
         print("PROVISIONAL_GENERATION_BLOCKED", file=sys.stderr)
         return 1
 

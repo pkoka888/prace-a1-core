@@ -388,18 +388,22 @@ class FinalizationTests(unittest.TestCase):
                     review_row(source, f"DOC-{index}")
                     for index, source in enumerate(self.employees)
                 ]
-                rows[0].update(activity_name="", **{field: value})
+                rows[0].update(activity_name="Testovací činnost", **{field: value})
                 report = readiness_report(rows, self.profile_dir, provisional=True)
-                self.assertFalse(report["ready"])
+                # Provisional mode: ready=True means ready for provisional copy,
+                # gates appear in pending_gates, not blockers
+                self.assertTrue(report["ready"])
                 self.assertTrue(
                     any(
-                        field in reason for reason in report["employees"][0]["blockers"]
+                        f"{field} must be" in reason
+                        for reason in report["employees"][0]["pending_gates"]
                     )
                 )
                 self.assertEqual(rows[0][field], value)
+                # But authoritative validation still requires gates closed
                 with self.assertRaisesRegex(FinalizationError, field):
                     validate_review(
-                        rows, self.employees_path, self.profile_dir, provisional=True
+                        rows, self.employees_path, self.profile_dir, provisional=False
                     )
 
     def test_provisional_readiness_keeps_territory_and_duplicate_id_checks(self):

@@ -189,7 +189,8 @@ VARIANT_DEFAULT = "employee"
 VARIANT_PARAMETERS = {
     "employee": {
         "status_profiles": tuple(
-            profile for profile in A1_STATUS_PROFILES
+            profile
+            for profile in A1_STATUS_PROFILES
             if A1_STATUS_VARIANTS[profile] == "employee"
         ),
         "section5_activity_name_default": "",
@@ -200,7 +201,8 @@ VARIANT_PARAMETERS = {
     },
     "self_employed": {
         "status_profiles": tuple(
-            profile for profile in A1_STATUS_PROFILES
+            profile
+            for profile in A1_STATUS_PROFILES
             if A1_STATUS_VARIANTS[profile] == "self_employed"
         ),
         "section5_activity_name_default": "Samostatná výdělečná činnost",
@@ -397,13 +399,17 @@ def _check_posting_conditions(employee_id: str, row: dict[str, str]) -> None:
     start = (row.get("start_date") or "").strip()
     end = (row.get("end_date") or "").strip()
     if start and end:
-        start_date = datetime.strptime(_date(start, f"{employee_id}.start_date"), "%d.%m.%Y")
+        start_date = datetime.strptime(
+            _date(start, f"{employee_id}.start_date"), "%d.%m.%Y"
+        )
         end_date = datetime.strptime(_date(end, f"{employee_id}.end_date"), "%d.%m.%Y")
         if end_date < start_date:
             raise FinalizationError(
                 f"{employee_id}: end_date {end} precedes start_date {start}"
             )
-        months = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+        months = (end_date.year - start_date.year) * 12 + (
+            end_date.month - start_date.month
+        )
         if months > POSTING_MAX_MONTHS:
             raise FinalizationError(
                 f"{employee_id}: a posting may not exceed {POSTING_MAX_MONTHS} "
@@ -666,14 +672,11 @@ def identity_source_state(
     differences = [
         field
         for field, value in source_values.items()
-        if value
-        and row.get(field, "").casefold() != str(value).strip().casefold()
+        if value and row.get(field, "").casefold() != str(value).strip().casefold()
     ]
     expected_scans = set(source_employee.get("provenance", {}).get("scans", []))
     reviewed_scans = {
-        item.strip()
-        for item in row.get("source_scans", "").split(";")
-        if item.strip()
+        item.strip() for item in row.get("source_scans", "").split(";") if item.strip()
     }
     if reviewed_scans != expected_scans:
         differences.append("source_scans")
@@ -812,9 +815,7 @@ def readiness_report(
                 "reviewed identity/residence differs from normalized scan source: "
                 + ", ".join(identity["differences"])
             )
-        warnings = (
-            provisional_warnings(row, identity=identity) if provisional else []
-        )
+        warnings = provisional_warnings(row, identity=identity) if provisional else []
         if blockers:
             gate_state = "BLOCKED"
         elif pending:
@@ -840,9 +841,7 @@ def readiness_report(
         "ready_for": "provisional_copy" if provisional else "authoritative_issue",
         "employee_count": len(rows),
         "blocked_employee_count": sum(bool(r["blockers"]) for r in report_rows),
-        "pending_employee_count": sum(
-            bool(r["pending_gates"]) for r in report_rows
-        ),
+        "pending_employee_count": sum(bool(r["pending_gates"]) for r in report_rows),
         "pending_gate_count": sum(len(r["pending_gates"]) for r in report_rows),
         "warning_count": sum(len(r["warnings"]) for r in report_rows),
         "employees": report_rows,
@@ -981,7 +980,11 @@ def validate_review(
                 f"{employee_id}: missing required values: {', '.join(missing)}"
             )
         if not provisional:
-            for flag in ("identity_reviewed", "certificate_reviewed", "approved_for_pdf"):
+            for flag in (
+                "identity_reviewed",
+                "certificate_reviewed",
+                "approved_for_pdf",
+            ):
                 if row.get(flag) != YES:
                     raise FinalizationError(f"{employee_id}: {flag} must be YES")
             if row.get("validated_by_user") != "1":
@@ -994,8 +997,7 @@ def validate_review(
             if identity["differences"]:
                 raise FinalizationError(
                     f"{employee_id}: reviewed identity/residence differs from "
-                    "normalized scan source: "
-                    + ", ".join(identity["differences"])
+                    "normalized scan source: " + ", ".join(identity["differences"])
                 )
         if row["sex"] not in {"M", "F"}:
             raise FinalizationError(f"{employee_id}: sex must be M or F")
@@ -1160,12 +1162,7 @@ def row_to_form(
         "activity": {
             "name": row["activity_name"],
             "address": row["activity_address"]
-            or (
-                "DE, CZ"
-                if row["status_profile"]
-                in A1_STATUS_PROFILES
-                else ""
-            ),
+            or ("DE, CZ" if row["status_profile"] in A1_STATUS_PROFILES else ""),
         },
         "certificate": {
             "document_id": row["document_id"],
@@ -1190,7 +1187,7 @@ def row_to_form(
         "source_url": profile["source_url"],
         "certificate": {"member_state": profile.get("member_state", "CZ")},
         "issue_date": row["issue_date"],
-        "signed_by": row["signed_by"],
+        "signed_by": row["signed_by"] or profile.get("signed_by", ""),
     }
     return build_form_data(
         employee, institution_config, application_draft=application_draft
@@ -1253,18 +1250,21 @@ def verify_pdf(
             layout = json.loads(
                 (ROOT / "config/a1_layout.json").read_text(encoding="utf-8")
             )
-            field = layout["fields"]["activity.name"]
-            with pymupdf.open(path) as document:
-                page = document[field["page"]]
-                baseline = page.rect.height - field["y"]
-                box = (
-                    field["x"] - 1,
-                    baseline - field["size"] * 1.5,
-                    field["x"] + field["max_width"],
-                    baseline + field["size"] * 0.5,
-                )
-                if page.get_text("text", clip=box).strip():
-                    raise FinalizationError("PROVISIONAL_SECTION_5_1_NOT_BLANK")
+            field = layout["fields"].get("activity.name")
+            if field is not None:
+                with pymupdf.open(path) as document:
+                    page = document[field["page"]]
+                    baseline = page.rect.height - field["y"]
+                    box = (
+                        field["x"] - 1,
+                        baseline - field["size"] * 1.5,
+                        field["x"] + field["max_width"],
+                        baseline + field["size"] * 0.5,
+                    )
+                    if page.get_text("text", clip=box).strip():
+                        raise FinalizationError("PROVISIONAL_SECTION_5_1_NOT_BLANK")
+            # If activity.name not in layout (e.g., v1 background), skip check:
+            # Section 5.1 is intentionally not a fillable field in that template.
     if provisional:
         # Decision D2 (2026-10-20): the client-confirmation copy states on
         # every page that it is not an issued A1. This is the document that
