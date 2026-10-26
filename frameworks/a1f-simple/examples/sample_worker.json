@@ -1,0 +1,54 @@
+{
+  "person": {
+    "insurance_number": "12345678",
+    "surname": "NOVÁK",
+    "given_name": "Jan",
+    "dob": "01.01.1990",
+    "birth_place": "Praha",
+    "sex": "M",
+    "nationality": "CZ"
+  },
+  "residence": {
+    "street": "Wilsonova",
+    "house_number": "1234",
+    "city": "Praha",
+    "postal_code": "100 00",
+    "country_code": "CZ"
+  },
+  "certificate": {
+    "member_state": "CZ",
+    "start_date": "01.01.2025",
+    "end_date": "31.12.2025",
+    "document_id": "N65023S444/2025/CZ"
+  },
+  "employment": {
+    "employer_id": "EMPL001",
+    "employer_name": "Firma s.r.o.",
+    "street": "Kolejna",
+    "house_number": "5",
+    "city": "Praha",
+    "postal_code": "110 00",
+    "country_code": "CZ"
+  },
+  "institution": {
+    "name": "Úřad práce",
+    "street": "Národní",
+    "house_number": "23",
+    "city": "Praha",
+    "postal_code": "110 00",
+    "country_code": "CZ",
+    "code": "01234567",
+    "issue_date": "01.01.2025",
+    "signed_by": "Jméno Příjmení",
+    "email": "mail@urp.cz",
+    "phone_fax": "+420 123 456 789",
+    "phone_tel": "+420 987 654 321"
+  },
+  "activity": {
+    "name": "Práce v Německu",
+    "address": "Berghzelfstraße 9, 80337 München, DE"
+  },
+  "maiden_name": "",
+  "gender_male": true,
+  "status_posted_employee": true
+}

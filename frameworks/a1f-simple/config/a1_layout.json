@@ -1,0 +1,76 @@
+{
+  "page_count": 3,
+  "coordinate_system": "ReportLab bottom-left points on 595.2 x 841.92",
+  "checkboxes": {
+    "gender_female": {
+      "section": "1.1",
+      "page": 0,
+      "x": 402.46,
+      "y": 452.83,
+      "size": 9.96
+    },
+    "gender_male": {
+      "section": "1.1",
+      "page": 0,
+      "x": 459.22,
+      "y": 452.83,
+      "size": 9.96
+    },
+    "valid_duration": {
+      "section": "2.4",
+      "page": 0,
+      "x": 83.42,
+      "y": 180.98,
+      "size": 7.44
+    },
+    "status_posted_employee": {
+      "section": "3.1",
+      "page": 1,
+      "x": 76.46,
+      "y": 614.86,
+      "size": 7.44
+    },
+    "status_employee_multistate": {
+      "section": "3.2",
+      "page": 1,
+      "x": 296.11,
+      "y": 614.86,
+      "size": 7.44
+    },
+    "status_posted_self_employed": {
+      "section": "3.3",
+      "page": 1,
+      "x": 76.46,
+      "y": 598.06,
+      "size": 7.44
+    },
+    "status_osv_c_multistate": {
+      "section": "3.4",
+      "page": 1,
+      "x": 296.11,
+      "y": 598.06,
+      "size": 7.44
+    },
+    "employer_type_employee": {
+      "section": "4.1.1",
+      "page": 1,
+      "x": 76.46,
+      "y": 409.99,
+      "size": 7.44
+    },
+    "employer_type_self_employed": {
+      "section": "4.1.2",
+      "page": 1,
+      "x": 296.11,
+      "y": 409.99,
+      "size": 7.44
+    },
+    "no_fixed_address": {
+      "section": "5.3",
+      "page": 2,
+      "x": 76.46,
+      "y": 409.39,
+      "size": 7.44
+    }
+  }
+}
