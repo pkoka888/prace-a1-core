@@ -255,7 +255,7 @@ def selection_key(record: Record, field_name: str) -> tuple[Any, ...]:
     )
 
 
-def load_ocr_proposals(root: Path) -> tuple[dict[str, list[Record]], dict[str, Path]]:
+def load_ocr_proposals(root: Path) -> dict[str, list[Record]]:
     """Load local OCR proposals as low-precedence records.
 
     Each proposal is a machine reading with confidence and findings; values
@@ -264,10 +264,8 @@ def load_ocr_proposals(root: Path) -> tuple[dict[str, list[Record]], dict[str, P
     """
     directory = root / OCR_PROPOSALS_DIR
     records: dict[str, list[Record]] = {}
-    inputs: dict[str, Path] = {}
     if not directory.is_dir():
-        return records, inputs
-    inputs[OCR_PROPOSALS_DIR] = directory
+        return records
     for path in sorted(directory.glob("*.json")):
         try:
             data = json.loads(read_text(path))
@@ -293,7 +291,7 @@ def load_ocr_proposals(root: Path) -> tuple[dict[str, list[Record]], dict[str, P
             employee_id, "ocr_proposal", f"ocr_proposal:{scan}", 5, 0, scan,
             "OCR_PROPOSAL", fields,
         ))
-    return records, inputs
+    return records
 
 
 def collect_records(root: Path = REPO_ROOT) -> tuple[
@@ -946,7 +944,7 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     if not root.is_dir():
         raise ExportError("Repository root is unavailable")
     records, a1_rows, people_rows, declared, declared_by, unmapped, inputs = collect_records(root)
-    ocr_proposal_records, ocr_proposal_inputs = load_ocr_proposals(root)
+    ocr_proposal_records = load_ocr_proposals(root)
     for employee_id, proposal_records in ocr_proposal_records.items():
         records.setdefault(employee_id, []).extend(proposal_records)
     inventory, worker_scans, scans_tree_hash = build_scan_inventory(root)
@@ -1059,11 +1057,16 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     ]
     inputs_payload.extend(input_details(path, root) for path in office_paths)
     inputs_payload.extend(input_details(path, root) for path in research_paths)
-    if ocr_proposal_inputs:
+    cache = root / OCR_PROPOSALS_DIR
+    if cache.is_dir():
+        cache_files = sorted(p for p in cache.glob("*.json") if p.is_file())
+        cache_hash = sha256_bytes(
+            "\n".join(f"{sha256_file(p)}:{p.name}" for p in cache_files).encode("utf-8")
+        ) if cache_files else ""
         inputs_payload.append({
             "path": OCR_PROPOSALS_DIR,
-            "file_count": len(list((root / OCR_PROPOSALS_DIR).glob("*.json"))),
-            "sha256": None,
+            "file_count": len(cache_files),
+            "tree_sha256": cache_hash,
             "note": "local OCR proposals; absent by default",
         })
     inputs_payload.append({
