@@ -51,9 +51,9 @@ class MergeExportTests(unittest.TestCase):
         self._write(
             "a1/review.csv",
             "employee_id,source_scans,surname,given_name,resolved_ossz,"
-            "institution_profile,status_profile\n"
+            "institution_profile,status_profile,employment_id,employment_name\n"
             "synthetic-worker-a,scans/incoming/synthetic-worker-a-op1.jpeg,"
-            "TESTER,ALPHA,OSSZ Teplice,teplice,EMPLOYED\n",
+            "TESTER,ALPHA,OSSZ Teplice,teplice,EMPLOYED,17511267,Jan Šlauf\n",
             bom=True,
         )
         self._write(
@@ -105,6 +105,34 @@ class MergeExportTests(unittest.TestCase):
             }),
         )
         self._write(
+            "runtime/portal/temporary/ares-review/17511267.json",
+            json.dumps({
+                "registration_id": "17511267", "legal_name": "Jan Šlauf",
+                "legal_form": "sole_trader", "country_code": "CZ",
+                "registered_address": {"street": "Masarykova 314/15, 41901 Duchcov",
+                                       "house_number": 314, "city": "Duchcov",
+                                       "postal_code": 41901, "country_code": "CZ"},
+                "nace_codes": ["43120", "81290"], "founded_on": "2022-09-07",
+                "registry_updated_on": "2024-12-04", "verified_on": "2026-10-21",
+                "source": "https://ares.example/17511267",
+                "content_sha256": "ares-17511267",
+            }),
+        )
+        self._write(
+            "a1/employees_normalized.json",
+            json.dumps({
+                "reviewed_on": "2026-10-20", "note": "synthetic",
+                "employees": [{
+                    "id": "synthetic-worker-a",
+                    "employment": {"kind": "employee", "employer_id": "17511267",
+                                   "employer_name": "Jan Šlauf",
+                                   "street": "Masarykova", "house_number": "314/15",
+                                   "city": "Duchcov", "postal_code": "419 01",
+                                   "country_code": "CZ"},
+                }],
+            }),
+        )
+        self._write(
             "runtime/portal/temporary/retained/ocr-scanonly-cache/"
             "synthetic-worker-d__synthetic-worker-d-op1.json",
             json.dumps({
@@ -117,6 +145,9 @@ class MergeExportTests(unittest.TestCase):
                      "confidence": 0.9, "findings": [], "source": "visual"},
                     {"field": "birth_date", "value": "2000-01-01",
                      "confidence": 0.9, "findings": [], "source": "visual"},
+                    {"field": "insurance_number", "value": "111222333",
+                     "confidence": 0.9, "findings": ["unlabelled_ehic"],
+                     "source": "visual"},
                 ],
             }),
         )
@@ -172,6 +203,19 @@ class MergeExportTests(unittest.TestCase):
 
         unmapped = list(csv.DictReader((out / "unmapped_ocr_fields.csv").open(encoding="utf-8", newline="")))
         self.assertEqual(["note_text"], sorted({r["raw_field"] for r in unmapped}))
+
+        dropped = list(csv.DictReader((out / "ocr_proposal_dropped.csv").open(encoding="utf-8", newline="")))
+        self.assertEqual(0, len(dropped))
+
+        employers = list(csv.DictReader((out / "employers.csv").open(encoding="utf-8", newline="")))
+        self.assertEqual(1, len(employers))
+        self.assertEqual("17511267", employers[0]["employment_id"])
+        self.assertEqual("ARES_VERIFIED", employers[0]["review_status"])
+        self.assertEqual("Jan Šlauf", employers[0]["ares_legal_name"])
+        self.assertEqual("43120,81290", employers[0]["ares_nace"])
+        conflicts = list(csv.DictReader(
+            (out / "employer_source_conflicts.csv").open(encoding="utf-8", newline="")))
+        self.assertEqual(0, len(conflicts))
 
         for employee_id, row in rows.items():
             sources = json.loads(row["field_sources"]) if row["field_sources"] else {}

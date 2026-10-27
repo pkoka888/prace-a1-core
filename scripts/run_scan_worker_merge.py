@@ -49,6 +49,13 @@ OCR_PROPOSAL_FIELD_MAP = {
     "issue_date": "issue_date",
     "expiry_date": "op_valid_to",
 }
+# Findings that mean the value itself is unusable. Source-level findings
+# (unlabelled card, pass disagreement) are advisory: the value is still the
+# best available reading and must not be silently dropped.
+OCR_VALUE_INVALID_FINDINGS = {
+    "invalid_date", "invalid_identifier", "invalid_ocr",
+    "mrz_checksum_or_date_invalid", "classification_unresolved",
+}
 
 CORE_FIELDS = (
     "surname", "given_name", "dob", "rodne_cislo", "street", "house_number",
@@ -255,17 +262,21 @@ def selection_key(record: Record, field_name: str) -> tuple[Any, ...]:
     )
 
 
-def load_ocr_proposals(root: Path) -> dict[str, list[Record]]:
+def load_ocr_proposals(root: Path) -> tuple[
+    dict[str, list[Record]], dict[str, list[dict[str, str]]]]:
     """Load local OCR proposals as low-precedence records.
 
-    Each proposal is a machine reading with confidence and findings; values
-    that carry findings are dropped, and the source is recorded as
-    `ocr_proposal:<scan>`. The cache is optional and absent by default.
+    Each proposal is a machine reading with confidence and findings. Values
+    whose findings say the value itself is unusable are dropped and recorded
+    in the second return value so they stay visible; source-level findings
+    (unlabelled card, pass disagreement) are advisory and the value is kept.
+    The cache is optional and absent by default.
     """
     directory = root / OCR_PROPOSALS_DIR
     records: dict[str, list[Record]] = {}
+    dropped: dict[str, list[dict[str, str]]] = {}
     if not directory.is_dir():
-        return records
+        return records, dropped
     for path in sorted(directory.glob("*.json")):
         try:
             data = json.loads(read_text(path))
@@ -276,22 +287,38 @@ def load_ocr_proposals(root: Path) -> dict[str, list[Record]]:
         if not employee_id or not scan:
             continue
         fields: dict[str, str] = {}
+        worker_dropped: list[dict[str, str]] = []
         for proposal in data.get("fields", []):
             if not isinstance(proposal, dict):
                 continue
-            if proposal.get("error") or proposal.get("findings"):
-                continue
+            findings = [f for f in (proposal.get("findings") or []) if f]
             col = OCR_PROPOSAL_FIELD_MAP.get(proposal.get("field"))
-            if not col or fields.get(col):
+            if not col:
                 continue
-            fields[col] = clean(proposal.get("value"))
+            value = clean(proposal.get("value"))
+            if not value:
+                continue
+            if set(findings) & OCR_VALUE_INVALID_FINDINGS:
+                worker_dropped.append({
+                    "employee_id": employee_id,
+                    "scan": scan,
+                    "field": proposal.get("field"),
+                    "value": value,
+                    "findings": ";".join(findings),
+                })
+                continue
+            if fields.get(col):
+                continue
+            fields[col] = value
         if not fields:
             continue
         records.setdefault(employee_id, []).append(Record(
             employee_id, "ocr_proposal", f"ocr_proposal:{scan}", 5, 0, scan,
             "OCR_PROPOSAL", fields,
         ))
-    return records
+        if worker_dropped:
+            dropped.setdefault(employee_id, []).extend(worker_dropped)
+    return records, dropped
 
 
 def collect_records(root: Path = REPO_ROOT) -> tuple[
@@ -734,6 +761,137 @@ def build_offices(
     return rows, by_profile, paths
 
 
+def build_employers(
+    workers: list[dict[str, str]],
+    root: Path = REPO_ROOT,
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Merge employment ids across workers, ARES registry reads and the
+    normalized employee record, and flag review-source conflicts.
+
+    `a1/review.csv` and `a1/<worker>/review.csv` may disagree about the same
+    worker's employer. Where the per-worker review matches an ARES record it
+    wins; otherwise the conflict is recorded instead of silently resolved.
+    """
+    ARES_DIR = "runtime/portal/temporary/ares-review"
+    NORMALIZED = "a1/employees_normalized.json"
+    by_id: dict[str, dict[str, str]] = {}
+    for worker in workers:
+        eid = clean(worker.get("employment_id"))
+        if not eid:
+            continue
+        entry = by_id.setdefault(eid, {
+            "employment_id": eid,
+            "employment_name": clean(worker.get("employment_name")),
+            "country_code": clean(worker.get("employment_country_code")),
+            "kind": "",
+            "workers": [],
+            "street": clean(worker.get("employment_street")),
+            "house_number": clean(worker.get("employment_house_number")),
+            "city": clean(worker.get("employment_city")),
+            "postal_code": clean(worker.get("employment_postal_code")),
+        })
+        entry["workers"].append(worker["employee_id"])
+        if worker["data_status"] == "REVIEWED":
+            entry["kind"] = "reviewed"
+
+    normalized_path = root / NORMALIZED
+    if normalized_path.is_file():
+        try:
+            data = json.loads(read_text(normalized_path))
+        except (OSError, ValueError):
+            data = {}
+        for record in data.get("employees", []) if isinstance(data, dict) else []:
+            emp = record.get("employment") or {}
+            eid = clean(emp.get("employer_id"))
+            if not eid or eid == "<PENDING_OPERATOR_REVIEW>":
+                continue
+            entry = by_id.setdefault(eid, {
+                "employment_id": eid, "employment_name": "", "country_code": "",
+                "kind": "normalized", "workers": [],
+                "street": "", "house_number": "", "city": "", "postal_code": "",
+            })
+            entry["employment_name"] = entry["employment_name"] or clean(emp.get("employer_name"))
+            entry["country_code"] = entry["country_code"] or clean(emp.get("country_code"))
+            entry["street"] = entry["street"] or clean(emp.get("street"))
+            entry["house_number"] = entry["house_number"] or clean(emp.get("house_number"))
+            entry["city"] = entry["city"] or clean(emp.get("city"))
+            entry["postal_code"] = entry["postal_code"] or clean(emp.get("postal_code"))
+            entry["workers"].append(clean(record.get("id")))
+
+    ares: dict[str, dict[str, Any]] = {}
+    ares_dir = root / "runtime/portal/temporary/ares-review"
+    if ares_dir.is_dir():
+        for path in sorted(ares_dir.glob("*.json")):
+            try:
+                data = read_json(path)
+            except (OSError, ValueError):
+                continue
+            rid = clean(data.get("registration_id"))
+            if rid:
+                ares[rid] = data
+
+    conflicts: list[dict[str, str]] = []
+    # A worker can appear under two employment ids when `a1/review.csv` and
+    # the per-worker review disagree. Prefer the id that matches ARES; drop
+    # the other and record it instead of silently keeping both.
+    by_worker: dict[str, list[str]] = {}
+    for eid, entry in by_id.items():
+        for wid in entry["workers"]:
+            by_worker.setdefault(wid, []).append(eid)
+    for wid, eids in by_worker.items():
+        if len(eids) < 2:
+            continue
+        matches = [e for e in eids if e in ares]
+        keep = matches[0] if matches else sorted(eids)[0]
+        for other in eids:
+            if other == keep:
+                continue
+            other_entry = by_id.pop(other, {})
+            entry = by_id[keep]
+            entry["workers"].extend(other_entry.get("workers", []))
+            entry["workers"] = sorted(set(entry["workers"]))
+            entry["employment_name"] = entry["employment_name"] or other_entry.get("employment_name", "")
+            entry["country_code"] = entry["country_code"] or other_entry.get("country_code", "")
+            entry["kind"] = entry["kind"] or other_entry.get("kind", "")
+            conflicts.append({
+                "employee_id": wid,
+                "a1_review_value": f"{other} / {other_entry.get('employment_name', '')}",
+                "a1_worker_review_value": f"{keep} / {entry.get('employment_name', '')}",
+                "ares_match": keep if keep in ares else "",
+                "resolution": (
+                    f"dropped {other}; kept {keep} (matches ARES)"
+                    if keep in ares else
+                    f"dropped {other}; kept {keep} (no ARES record for either id)"
+                ),
+            })
+
+    rows: list[dict[str, str]] = []
+    for eid, entry in sorted(by_id.items()):
+        a = ares.get(eid, {})
+        addr = a.get("registered_address", {}) or {}
+        rows.append({
+            "employment_id": eid,
+            "employment_name": entry["employment_name"],
+            "kind": entry["kind"],
+            "country_code": entry["country_code"],
+            "workers": ";".join(sorted(set(entry["workers"]))),
+            "street": entry["street"] or clean(addr.get("street")),
+            "house_number": entry["house_number"] or clean(addr.get("house_number")),
+            "city": entry["city"] or clean(addr.get("city")),
+            "postal_code": entry["postal_code"] or clean(addr.get("postal_code")),
+            "ares_legal_name": clean(a.get("legal_name")),
+            "ares_legal_form": clean(a.get("legal_form")),
+            "ares_nace": ",".join(a.get("nace_codes", [])),
+            "ares_founded_on": clean(a.get("founded_on")),
+            "ares_registry_updated_on": clean(a.get("registry_updated_on")),
+            "ares_verified_on": clean(a.get("verified_on")),
+            "ares_source_url": clean(a.get("source")),
+            "ares_content_sha256": clean(a.get("content_sha256")),
+            "review_status": "ARES_VERIFIED" if a else "NO_ARES_RECORD",
+        })
+    return rows, conflicts
+
+
 def build_worker_ossz(
     workers: list[dict[str, str]],
     offices: dict[str, dict[str, str]],
@@ -917,7 +1075,9 @@ def limitations_text(counts: dict[str, int]) -> str:
 - OCR values remain proposals. `new_people_review.csv` reflects operator
   corrections but is not an A1 issuance approval. Local OCR proposals in
   `ocr-scanonly-cache/` are machine readings with confidence and findings; they
-  are never treated as reviewed facts and are absent by default.
+  are never treated as reviewed facts and are absent by default. Proposals
+  whose reading itself is unusable are recorded in
+  `ocr_proposal_dropped.csv` rather than silently discarded.
 - `op_document_number_raw` preserves ambiguous OCR `personal_id_number` /
   `document_id` values. It is not `rodne_cislo`.
 - Conflicts are recorded in `conflicts.csv`; the highest-precedence source wins.
@@ -937,6 +1097,11 @@ def limitations_text(counts: dict[str, int]) -> str:
   They must not be committed, published or attached to tickets.
 - Next owner: operator/Jan for review of scan-only workers, conflict adjudication,
   and verification of non-VERIFIED OSSZ profiles.
+  - {counts['employers']} employers are recorded in `employers.csv`;
+    {counts['employers_ares_verified']} match an ARES registry read. Employer
+    identity is not reviewed here: an employment id that has no ARES record
+    (or a review-source conflict in `employer_source_conflicts.csv`) must be
+    resolved before any A1 activity is issued.
 """
 
 
@@ -944,7 +1109,7 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     if not root.is_dir():
         raise ExportError("Repository root is unavailable")
     records, a1_rows, people_rows, declared, declared_by, unmapped, inputs = collect_records(root)
-    ocr_proposal_records = load_ocr_proposals(root)
+    ocr_proposal_records, dropped_proposals = load_ocr_proposals(root)
     for employee_id, proposal_records in ocr_proposal_records.items():
         records.setdefault(employee_id, []).extend(proposal_records)
     inventory, worker_scans, scans_tree_hash = build_scan_inventory(root)
@@ -956,6 +1121,7 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     offices, offices_by_profile, office_paths = build_offices(root)
     worker_ossz = build_worker_ossz(workers, offices_by_profile)
     research, research_paths = build_research_rows(root)
+    employers, employer_conflicts = build_employers(workers, root)
 
     outdir = choose_output_dir(root, output_dir)
     os.umask(0o077)
@@ -1025,6 +1191,28 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
         mismatches,
     )
     write_csv(
+        outdir / "employers.csv",
+        (
+            "employment_id", "employment_name", "kind", "country_code", "workers",
+            "street", "house_number", "city", "postal_code", "ares_legal_name",
+            "ares_legal_form", "ares_nace", "ares_founded_on",
+            "ares_registry_updated_on", "ares_verified_on", "ares_source_url",
+            "ares_content_sha256", "review_status",
+        ),
+        employers,
+    )
+    write_csv(
+        outdir / "employer_source_conflicts.csv",
+        ("employee_id", "a1_review_value", "a1_worker_review_value",
+         "ares_match", "resolution"),
+        employer_conflicts,
+    )
+    write_csv(
+        outdir / "ocr_proposal_dropped.csv",
+        ("employee_id", "scan", "field", "value", "findings"),
+        [row for rows in dropped_proposals.values() for row in rows],
+    )
+    write_csv(
         outdir / "unmapped_ocr_fields.csv",
         ("employee_id", "source", "raw_field"),
         unmapped,
@@ -1048,6 +1236,12 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
         "ocr_proposal_fields": sum(
             int(row["ocr_proposal_count"]) for row in workers
         ),
+        "ocr_proposal_dropped": sum(len(rows) for rows in dropped_proposals.values()),
+        "employers": len(employers),
+        "employers_ares_verified": sum(
+            1 for row in employers if row["review_status"] == "ARES_VERIFIED"
+        ),
+        "employer_source_conflicts": len(employer_conflicts),
     }
 
     write_private_text(outdir / "LIMITATIONS.md", limitations_text(counts))
@@ -1057,6 +1251,20 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     ]
     inputs_payload.extend(input_details(path, root) for path in office_paths)
     inputs_payload.extend(input_details(path, root) for path in research_paths)
+    ares_dir = root / "runtime/portal/temporary/ares-review"
+    if ares_dir.is_dir():
+        ares_files = sorted(p for p in ares_dir.glob("*.json") if p.is_file())
+        inputs_payload.append({
+            "path": "runtime/portal/temporary/ares-review",
+            "file_count": len(ares_files),
+            "tree_sha256": sha256_bytes(
+                "\n".join(f"{sha256_file(p)}:{p.name}" for p in ares_files).encode("utf-8")
+            ) if ares_files else "",
+            "note": "ARES registry reads; not an acceptance record",
+        })
+    normalized_path = root / "a1/employees_normalized.json"
+    if normalized_path.is_file():
+        inputs_payload.append(input_details(normalized_path, root))
     cache = root / OCR_PROPOSALS_DIR
     if cache.is_dir():
         cache_files = sorted(p for p in cache.glob("*.json") if p.is_file())
