@@ -30,6 +30,25 @@ OCR1_MERGED = "ocr/new_scans_merged.json"
 OCR1_RAW = "ocr/new_scans_ocr.json"
 INSTITUTIONS_DIR = "config/institutions"
 RESEARCH_GLOB = "runtime/portal/temporary/ossz-research-*/report.json"
+# Local OCR proposals produced by the research extractor
+# (runtime/portal/temporary/retained/ocr-scanonly-cache/). Absent by default so
+# the export stays deterministic; present only where that cache exists.
+OCR_PROPOSALS_DIR = "runtime/portal/temporary/retained/ocr-scanonly-cache"
+OCR_PROPOSAL_FIELD_MAP = {
+    "family_name": "surname",
+    "given_name": "given_name",
+    "birth_date": "dob",
+    "birth_place": "birth_place",
+    "nationality": "nationality",
+    "sex": "sex",
+    "document_number": "op_document_number_raw",
+    "personal_identifier": "rodne_cislo",
+    "insurance_number": "insurance_number",
+    "insurer": "insurer",
+    "issuing_authority": "issuing_authority",
+    "issue_date": "issue_date",
+    "expiry_date": "op_valid_to",
+}
 
 CORE_FIELDS = (
     "surname", "given_name", "dob", "rodne_cislo", "street", "house_number",
@@ -71,7 +90,7 @@ WORKER_COLUMNS = (
         "data_status", "has_scan", "scan_count", "has_ocr",
         "has_a1_review", "has_people_review", "missing_core_fields",
         "field_sources", "source_scans", "review_source_scans_declared",
-        "review_source_scan_status",
+        "review_source_scan_status", "has_ocr_proposal", "ocr_proposal_count",
     )
 )
 
@@ -234,6 +253,47 @@ def selection_key(record: Record, field_name: str) -> tuple[Any, ...]:
         record.doc_name,
         record.doc_index,
     )
+
+
+def load_ocr_proposals(root: Path) -> tuple[dict[str, list[Record]], dict[str, Path]]:
+    """Load local OCR proposals as low-precedence records.
+
+    Each proposal is a machine reading with confidence and findings; values
+    that carry findings are dropped, and the source is recorded as
+    `ocr_proposal:<scan>`. The cache is optional and absent by default.
+    """
+    directory = root / OCR_PROPOSALS_DIR
+    records: dict[str, list[Record]] = {}
+    inputs: dict[str, Path] = {}
+    if not directory.is_dir():
+        return records, inputs
+    inputs[OCR_PROPOSALS_DIR] = directory
+    for path in sorted(directory.glob("*.json")):
+        try:
+            data = json.loads(read_text(path))
+        except (OSError, ValueError):
+            continue
+        employee_id = clean(data.get("employee_id"))
+        scan = clean(data.get("scan"))
+        if not employee_id or not scan:
+            continue
+        fields: dict[str, str] = {}
+        for proposal in data.get("fields", []):
+            if not isinstance(proposal, dict):
+                continue
+            if proposal.get("error") or proposal.get("findings"):
+                continue
+            col = OCR_PROPOSAL_FIELD_MAP.get(proposal.get("field"))
+            if not col or fields.get(col):
+                continue
+            fields[col] = clean(proposal.get("value"))
+        if not fields:
+            continue
+        records.setdefault(employee_id, []).append(Record(
+            employee_id, "ocr_proposal", f"ocr_proposal:{scan}", 5, 0, scan,
+            "OCR_PROPOSAL", fields,
+        ))
+    return records, inputs
 
 
 def collect_records(root: Path = REPO_ROOT) -> tuple[
@@ -535,6 +595,9 @@ def build_worker_rows(
             {name: sources[name] for name in sorted(sources)},
             ensure_ascii=False, sort_keys=True,
         )
+        proposal_records = [r for r in worker_records if r.source == "ocr_proposal"]
+        row["has_ocr_proposal"] = "YES" if proposal_records else "NO"
+        row["ocr_proposal_count"] = str(len(proposal_records))
         row["source_scans"] = ";".join(scans)
         row["review_source_scans_declared"] = ";".join(declared_paths)
         row["review_source_scan_status"] = review_status
@@ -845,13 +908,18 @@ def limitations_text(counts: dict[str, int]) -> str:
 - Worker roster contains {counts['workers']} scan-derived workers.
   {counts['reviewed']} have operator A1 review data, {counts['ocr_reviewed']} have
   operator-corrected OCR review data, {counts['ocr_only']} have OCR proposals
-  only, and {counts['scan_only']} have scans but no extracted or reviewed values.
+  only, and {counts['scan_only']} have scans but no reviewed values.
+  {counts['ocr_proposal_workers']} of those carry local OCR proposals
+  ({counts['ocr_proposal_fields']} fields) recorded as machine readings, not
+  reviewed facts.
 - Blank fields are unknown. They are not placeholders and must not be read as
   confirmed facts.
 - `a1/review.csv` is authoritative only for the fields and workers it contains.
   It does not carry `rodne_cislo` or OP validity dates.
 - OCR values remain proposals. `new_people_review.csv` reflects operator
-  corrections but is not an A1 issuance approval.
+  corrections but is not an A1 issuance approval. Local OCR proposals in
+  `ocr-scanonly-cache/` are machine readings with confidence and findings; they
+  are never treated as reviewed facts and are absent by default.
 - `op_document_number_raw` preserves ambiguous OCR `personal_id_number` /
   `document_id` values. It is not `rodne_cislo`.
 - Conflicts are recorded in `conflicts.csv`; the highest-precedence source wins.
@@ -878,6 +946,9 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     if not root.is_dir():
         raise ExportError("Repository root is unavailable")
     records, a1_rows, people_rows, declared, declared_by, unmapped, inputs = collect_records(root)
+    ocr_proposal_records, ocr_proposal_inputs = load_ocr_proposals(root)
+    for employee_id, proposal_records in ocr_proposal_records.items():
+        records.setdefault(employee_id, []).extend(proposal_records)
     inventory, worker_scans, scans_tree_hash = build_scan_inventory(root)
     scan_status, mismatches = build_scan_status(inventory, declared, declared_by)
     workers, conflicts = build_worker_rows(
@@ -975,6 +1046,10 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
         "conflicts": len(conflicts),
         "duplicates": len(duplicates),
         "scan_source_mismatches": len(mismatches),
+        "ocr_proposal_workers": sum(1 for row in workers if row["has_ocr_proposal"] == "YES"),
+        "ocr_proposal_fields": sum(
+            int(row["ocr_proposal_count"]) for row in workers
+        ),
     }
 
     write_private_text(outdir / "LIMITATIONS.md", limitations_text(counts))
@@ -984,6 +1059,13 @@ def run(root: Path, output_dir: str | None, retention_days: int) -> Path:
     ]
     inputs_payload.extend(input_details(path, root) for path in office_paths)
     inputs_payload.extend(input_details(path, root) for path in research_paths)
+    if ocr_proposal_inputs:
+        inputs_payload.append({
+            "path": OCR_PROPOSALS_DIR,
+            "file_count": len(list((root / OCR_PROPOSALS_DIR).glob("*.json"))),
+            "sha256": None,
+            "note": "local OCR proposals; absent by default",
+        })
     inputs_payload.append({
         "path": "scans",
         "file_count": len(inventory),
