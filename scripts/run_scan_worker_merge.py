@@ -192,6 +192,20 @@ def iter_scan_files(root: Path = REPO_ROOT) -> Iterable[Path]:
                 yield path
 
 
+def name_from_worker_id(employee_id: str) -> tuple[str, str]:
+    """Split a scan-derived worker id into (surname, given_name).
+
+    The scan filename is the only declared identity source for scan-only
+    workers, so the name recorded here is machine-derived, not reviewed.
+    """
+    if not employee_id or employee_id.startswith("_"):
+        return "", ""
+    parts = employee_id.split("-")
+    if len(parts) < 2:
+        return "", ""
+    return parts[0].title(), "-".join(parts[1:-1]).title() if len(parts) > 2 else parts[1].title()
+
+
 def normalize_for_compare(field_name: str, value: str) -> str:
     text = " ".join(value.strip().split())
     if field_name == "country_code":
@@ -468,6 +482,14 @@ def build_worker_rows(
                         alternatives, ensure_ascii=False, sort_keys=True
                     ),
                 })
+        for name in ("surname", "given_name"):
+            if values.get(name) and name not in sources:
+                sources[name] = "scan_filename"
+            elif not values.get(name) and name not in sources:
+                derived = name_from_worker_id(employee_id)[0 if name == "surname" else 1]
+                if derived:
+                    values[name] = derived
+                    sources[name] = "scan_filename"
         comments = []
         for record in worker_records:
             if record.source in {"a1_review", "people_review"}:
@@ -843,7 +865,8 @@ def limitations_text(counts: dict[str, int]) -> str:
 - Some `a1/review.csv` source scan paths are stale; `scan_source_mismatches.csv`
   resolves them by basename where possible and marks missing or ambiguous links.
 - Worker identity comes from scan filenames and declared rosters. Page content is
-  not re-inspected, so a swapped or misfiled page cannot be detected here.
+  not re-inspected, so a swapped or misfiled page cannot be detected here. Scan-only
+  workers carry a machine-derived name from the filename; it is not reviewed.
 - Outputs are private retained runtime artifacts with a 90-day retention review.
   They must not be committed, published or attached to tickets.
 - Next owner: operator/Jan for review of scan-only workers, conflict adjudication,

@@ -42,6 +42,7 @@ class MergeExportTests(unittest.TestCase):
             "synthetic-worker-a-zp1.jpeg",
             "synthetic-worker-b-op1.jpeg",
             "synthetic-worker-b-zp1.jpeg",
+            "synthetic-worker-d-op1.jpeg",
         ):
             (self.root / "scans/processed").mkdir(parents=True, exist_ok=True)
             (self.root / "scans/processed" / name).write_bytes(b"synthetic")
@@ -67,7 +68,7 @@ class MergeExportTests(unittest.TestCase):
             json.dumps({
                 "synthetic-worker-b-op1.jpeg": {
                     "fields": {"rodne_cislo": "000101/0001", "op_valid_from": "2020-01-01",
-                               "insurance_number": "999999999"},
+                               "insurance_number": "999999999", "note_text": "unmapped"},
                     "model": "synthetic",
                 },
                 "synthetic-worker-b-zp1.jpeg": {
@@ -110,9 +111,12 @@ class MergeExportTests(unittest.TestCase):
         out = self._run()
         rows = _workers(out / "workers.csv")
 
-        self.assertEqual(3, len(rows))
-        self.assertEqual({"REVIEWED", "OCR_ONLY"}, {rows["synthetic-worker-a"]["data_status"],
-                                                   rows["synthetic-worker-b"]["data_status"]})
+        self.assertEqual(4, len(rows))
+        self.assertEqual({"REVIEWED", "OCR_REVIEWED", "OCR_ONLY", "SCAN_ONLY"},
+                         {rows["synthetic-worker-a"]["data_status"],
+                          rows["synthetic-worker-b"]["data_status"],
+                          rows["synthetic-worker-c"]["data_status"],
+                          rows["synthetic-worker-d"]["data_status"]})
         self.assertEqual("OCR_REVIEWED", rows["synthetic-worker-c"]["data_status"])
 
         self.assertEqual("TESTER", rows["synthetic-worker-a"]["surname"])
@@ -130,6 +134,28 @@ class MergeExportTests(unittest.TestCase):
         self.assertEqual("111222333", rows["synthetic-worker-c"]["insurance_number"])
         self.assertEqual("SYNTHETIC INSURER", rows["synthetic-worker-c"]["insurer"])
 
+        worker_d = rows["synthetic-worker-d"]
+        self.assertEqual("SCAN_ONLY", worker_d["data_status"])
+        self.assertEqual("Synthetic", worker_d["surname"])
+        self.assertEqual("Worker", worker_d["given_name"])
+        self.assertEqual("scan_filename", json.loads(worker_d["field_sources"])["surname"])
+
+        unmapped = list(csv.DictReader((out / "unmapped_ocr_fields.csv").open(encoding="utf-8", newline="")))
+        self.assertEqual(["note_text"], sorted({r["raw_field"] for r in unmapped}))
+
+        for employee_id, row in rows.items():
+            sources = json.loads(row["field_sources"]) if row["field_sources"] else {}
+            for name, value in row.items():
+                if name in {
+                    "employee_id", "field_sources", "source_scans",
+                    "review_source_scans_declared", "review_source_scan_status",
+                    "missing_core_fields", "data_status", "has_scan", "scan_count",
+                    "has_ocr", "has_a1_review", "has_people_review", "comments",
+                }:
+                    continue
+                if value.strip() and name not in sources:
+                    self.fail(f"{employee_id}: {name} has no provenance entry")
+
     def test_private_permissions_and_retention(self) -> None:
         out = self._run()
         self.assertEqual(0o700, stat.S_IMODE(out.stat().st_mode))
@@ -138,7 +164,7 @@ class MergeExportTests(unittest.TestCase):
 
         manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(90, manifest["retention"]["days"])
-        self.assertEqual(3, manifest["counts"]["workers"])
+        self.assertEqual(4, manifest["counts"]["workers"])
         self.assertEqual(2, manifest["counts"]["worker_ossz"])
 
     def test_existing_permissive_output_directory_is_rejected(self) -> None:
@@ -153,7 +179,7 @@ class MergeExportTests(unittest.TestCase):
         (self.root / "runtime/portal/temporary/ossz-research-abc/report.json").unlink()
         out = self._run()
         rows = _workers(out / "workers.csv")
-        self.assertEqual(3, len(rows))
+        self.assertEqual(4, len(rows))
         manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(0, manifest["counts"]["ossz_offices"])
         self.assertEqual(0, manifest["counts"]["research_runs"])
