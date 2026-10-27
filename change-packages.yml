@@ -569,6 +569,21 @@
       "rollback": "Revert policy only and preserve existing private outputs.",
       "intended_commit": "docs: reconcile fail-closed A1 policy"
     },
+    "scan_worker_merge": {
+      "purpose": "Private proposal export consolidating existing scan filenames, operator review CSVs, OCR JSON outputs and OSSZ files; no OCR and no real-data activation.",
+      "paths": [
+        "scripts/run_scan_worker_merge.py",
+        "tests/test_run_scan_worker_merge.py"
+      ],
+      "checks": [
+        "venv/bin/python -m pytest tests/test_run_scan_worker_merge.py -q"
+      ],
+      "dependencies": [
+        "Existing private inputs remain under a1/, ocr/, scans/ and config/institutions/; output stays in protected runtime"
+      ],
+      "rollback": "Revert script and test together; preserve retained private exports.",
+      "intended_commit": "feat(scripts): merge scan, review and OSSZ sources into private export"
+    },
     "infrastructure_git_workflow": {
       "purpose": "Staged repository safety and existing GitHub CI failure propagation; no new remote or runner activation.",
       "paths": [
